@@ -1,0 +1,130 @@
+{
+  "realm": "iabconnect",
+  "enabled": true,
+  "displayName": "IAB Connect",
+  "loginTheme": "keycloak",
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "registrationEmailAsUsername": true,
+  "rememberMe": true,
+  "verifyEmail": true,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 5,
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "Administrator mit vollen Rechten"
+      },
+      {
+        "name": "vorstand",
+        "description": "Vorstandsmitglied"
+      },
+      {
+        "name": "member",
+        "description": "Reguläres Mitglied"
+      }
+    ]
+  },
+  "groups": [
+    {
+      "name": "Vorstand",
+      "realmRoles": ["vorstand", "member"]
+    },
+    {
+      "name": "Mitglieder",
+      "realmRoles": ["member"]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "iabconnect-api",
+      "name": "IAB Connect API",
+      "enabled": true,
+      "publicClient": false,
+      "bearerOnly": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false
+    },
+    {
+      "clientId": "iabconnect-frontend",
+      "name": "IAB Connect Frontend",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "frontend-dev-secret-2026",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "https://iabconnect.ch/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "https://iabconnect.ch"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "admin@iabconnect.ch",
+      "email": "admin@iabconnect.ch",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Admin",
+      "lastName": "IAB",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Admin-Dev-2026!",
+          "temporary": true
+        }
+      ],
+      "realmRoles": ["admin", "vorstand", "member"]
+    },
+    {
+      "username": "vorstand@iabconnect.ch",
+      "email": "vorstand@iabconnect.ch",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Vorstand",
+      "lastName": "Test",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Vorstand-Dev-2026!",
+          "temporary": true
+        }
+      ],
+      "realmRoles": ["vorstand", "member"]
+    },
+    {
+      "username": "member@iabconnect.ch",
+      "email": "member@iabconnect.ch",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Mitglied",
+      "lastName": "Test",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Member-Dev-2026!",
+          "temporary": true
+        }
+      ],
+      "realmRoles": ["member"]
+    }
+  ]
+}

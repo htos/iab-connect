@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>IabConnect.Domain</RootNamespace>
+    <AssemblyName>IabConnect.Domain</AssemblyName>
+  </PropertyGroup>
+
+  <!-- Domain has no external dependencies - pure C# -->
+
+</Project>

@@ -1,0 +1,178 @@
+﻿ID,Bereich,Anforderung,Beschreibung,Funktionalitäten,Priorität,Zielrollen,Daten/Objekte,Akzeptanzkriterien,Abhängigkeiten,Hinweise/Risiken
+REQ-001,Identity & Zugriff,Login & Zugriff (Admin und Mitglieder),Zugriff für administrative Nutzer sowie Bürger/Mitglieder mit getrennten Berechtigungen.,"• Login für Admin/Backoffice
+• Login für Mitgliederportal
+• Rollenbasierte Navigation & Menüs",Must,"Admin, Vorstand, Mitglied","User, Rollen",Admin kann sich anmelden und Admin-Funktionen sehen; Mitglied sieht nur Mitgliederfunktionen.,,
+REQ-002,Identity & Zugriff,Benutzerverwaltung,"Benutzer anlegen, bearbeiten, deaktivieren und verwalten.","• Benutzer anlegen/bearbeiten/löschen (soft delete)
+• Aktiv/Inaktiv setzen
+• Passwort zurücksetzen / Einladung per Mail",Must,Admin,User,Admin kann Nutzer verwalten; deaktivierte Nutzer können sich nicht anmelden.,,
+REQ-003,Identity & Zugriff,Rollenverwaltung,Rollen definieren und Benutzern zuweisen.,"• Rollen anlegen/ändern
+• Rollen zuweisen (mehrfach möglich)
+• Standardrollen (z. B. Admin, Kassier, Event-Manager)",Must,Admin,"Rolle, Berechtigung",Rolle steuert sichtbare Menüs und erlaubte Aktionen.,,
+REQ-004,Identity & Zugriff,Feingranulare Zugriffskontrolle,Berechtigungen pro Modul/Objekt (nicht nur global).,"• Rechte pro CRUD-Aktion
+• Objektbasierte Rechte (z. B. Event nur eigenes)
+• Dokumentrechte pro Ordner/Datei",Must,"Admin, Modulverantwortliche","Berechtigung, Event, Dokument",Unberechtigte Aktionen werden serverseitig blockiert und geloggt.,,
+REQ-005,Identity & Zugriff,SSO Anbindung (Keycloak / OIDC / SAML),Integration eines zentralen Identity Providers (z. B. Keycloak).,"• OIDC/SAML Login
+• Rollen/Claims Mapping
+• Single Logout (falls möglich)",Must,"Admin, Mitglied","User, Token",Login über IdP funktioniert; Rollen werden korrekt zugeordnet.,Keycloak/OIDC/SAML,Frühe Entscheidung wichtig (Architektur).
+REQ-006,Identity & Zugriff,"Social / Enterprise Logins (Google, Microsoft)",Optionaler Login über externe Provider zusätzlich zum Vereins-Login.,"• Google Sign-In
+• Microsoft Entra ID (Azure AD)
+• Konto-Verknüpfung mit bestehendem Profil",Should,"Mitglied, Admin","User, ProviderAccount",Benutzer kann Provider verbinden/entkoppeln.,Google/Microsoft OAuth,Datenschutz/Scopes sauber definieren.
+REQ-007,Identity & Zugriff,Registrierung & Onboarding,Selbstregistrierung oder Einladung inkl. Profilabschluss.,"• Registrierung (falls gewünscht)
+• Einladung per Mail-Link
+• Onboarding-Checkliste (Profil, Einwilligungen)",Must,"Mitglied, Admin","User, Member",Neues Mitglied kann Konto erstellen/aktivieren und Profil abschließen.,,
+REQ-008,Identity & Zugriff,Passwort Reset & Account Recovery,Sicherer Reset via E-Mail oder IdP-Flow.,"• Reset-Link mit Ablauf
+• Rate Limiting
+• Support-Reset durch Admin (protokolliert)",Must,"Mitglied, Admin",User,Reset funktioniert; Links sind einmalig und zeitlich begrenzt.,,
+REQ-009,Identity & Zugriff,Mehrfaktor-Authentifizierung (MFA),Erhöhte Sicherheit für Admin/Finanzrollen.,"• MFA optional/erzwungen pro Rolle
+• TOTP (Authenticator)
+• Backup-Codes",Should,"Admin, Kassier","User, MFA",Für Kassierrolle ist MFA aktivierbar/erzwingbar.,,
+REQ-010,Identity & Zugriff,Session- und Geräteverwaltung,Kontrolle über aktive Sitzungen und Logout.,"• Session Timeout
+• Logout überall
+• Geräte/Session-Liste",Should,"Mitglied, Admin",Session,User kann alle Sessions beenden; Timeouts greifen.,,
+REQ-011,Identity & Zugriff,Audit Log (Sicherheits- & Datenänderungen),Nachvollziehbarkeit von Änderungen und kritischen Aktionen.,"• Logins/Fehllogins
+• Änderungen an Mitglieds-/Finanzdaten
+• Exportierbar (CSV)",Must,"Admin, Vorstand, Kassier",AuditEvent,"Änderungen sind mit User, Zeit, Objekt, Aktion nachvollziehbar.",,
+REQ-012,Identity & Zugriff,Datenschutz & Einwilligungen (DSGVO),"Einwilligungen, Newsletter-Opt-in, Datenexport und Löschkonzept.","• Consent-Management
+• Datenexport (z. B. JSON/ZIP)
+• Lösch-/Anonymisierungsworkflow",Must,Admin,"Consent, Member",Einwilligungen werden gespeichert; Export/Löschung ist durchführbar.,,
+REQ-013,Mitglieder/CRM,Mitgliederstammdaten (CRM mini),Zentrale Profile für Mitglieder/Bürger.,"• Kontakt- und Adressdaten
+• Familien/Haushalt Verknüpfung (optional)
+• Tags/Segmente",Must,"Admin, Mitglied",Member,Daten sind pflegbar; Suche findet Mitglieder nach Name/E-Mail.,,
+REQ-014,Mitglieder/CRM,Mitgliedschaftsarten & Status,Abbildung verschiedener Mitgliedschaften inkl. Laufzeit.,"• Typen (z. B. Einzel, Familie, Förder)
+• Status (aktiv, pausiert, gekündigt)
+• Laufzeiten/Verlängerung",Must,"Admin, Kassier",Membership,Statuswechsel ist nachvollziehbar; Verlängerung erzeugt neue Periode.,,
+REQ-015,Mitglieder/CRM,Beiträge & Beitragsverwaltung,"Mitgliedsbeiträge, Sollstellungen und Historie.","• Beitragssätze pro Typ
+• Jahres-/Monatsbeiträge
+• Soll/Ist Übersicht",Must,"Kassier, Admin","Fee, Invoice, Payment",Für alle aktiven Mitglieder werden Beiträge erzeugt und statusgeführt.,,
+REQ-016,Mitglieder/CRM,Mitglieder Self‑Service Portal,Mitglieder können eigene Daten und Dokumente verwalten.,"• Profil bearbeiten
+• Rechnungen/Beiträge einsehen
+• Mitgliedsausweis/Bestätigungen downloaden",Must,Mitglied,"Member, Invoice, Document",Mitglied kann nur eigene Daten sehen und ändern (wo erlaubt).,,
+REQ-017,Mitglieder/CRM,Segmentierung & Verteiler,Mitgliedergruppen für Kommunikation und Auswertungen.,"• Filter (Status, Typ, Interessen)
+• gespeicherte Segmente
+• Export nach Segment",Should,"Admin, Kommunikation",Member,Segment kann gespeichert und für Mailing verwendet werden.,,
+REQ-018,Mitglieder/CRM,Dubletten-Erkennung,Verhindert doppelte Mitglieder/Accounts.,"• Warnung bei gleicher E-Mail
+• Merge-Prozess (Admin)
+• Protokollierte Zusammenführung",Should,Admin,Member,System warnt; Merge erstellt nachvollziehbare Historie.,,
+REQ-019,Events,"Eventverwaltung (Kalender, Details)","Events anlegen, pflegen und veröffentlichen.","• Titel, Beschreibung, Ort
+• Datum/Uhrzeit, Serienevents
+• Sichtbarkeit (öffentlich/privat)",Must,"Event-Manager, Admin",Event,"Event kann erstellt, bearbeitet und publiziert werden.",,
+REQ-020,Events,Event-Anmeldung / RSVP,Teilnehmermanagement für Events.,"• Anmeldung für Mitglieder/öffentlich
+• Kapazitätslimit
+• Storno/No‑Show Kennzeichnung",Must,"Event-Manager, Mitglied",Registration,Anmeldungen werden gezählt; Kapazitätsgrenzen greifen.,,
+REQ-021,Events,Warteliste & Nachrücken,"Wenn Event voll ist, Warteliste und automatisches Nachrücken.","• Wartelistenplatz
+• Benachrichtigung bei Platz
+• Nachrück-Fristen",Should,"Event-Manager, Mitglied",Registration,Bei freiem Platz wird Warteliste benachrichtigt; Status ändert sich.,,
+REQ-022,Events,Ticketing / Gebühren (optional),Bezahlte Events inkl. Ticket/Beleg.,"• Preis pro Kategorie
+• Gutschein/Ermäßigung (optional)
+• Ticket/Bestätigung per Mail",Should,"Kassier, Event-Manager","Invoice, Payment, Ticket",Bezahlte Anmeldung erzeugt Rechnung/Beleg.,,
+REQ-023,Events,Check‑in vor Ort (QR-Code),Schnelles Einchecken und Teilnehmerliste live.,"• QR‑Code pro Anmeldung
+• Check‑in Status
+• Offline‑Fallback (Exportliste)",Could,Event-Manager,Registration,Check-in setzt Status in Echtzeit; Exportliste ist verfügbar.,,
+REQ-024,Events,Helferplanung & Aufgaben,"Schichten, Aufgaben, To-Dos rund um Events.","• Aufgabenlisten
+• Helfer-Schichten
+• Erinnerungen an Helfer",Should,"Event-Manager, Admin","Task, Volunteer",Helfer können sich eintragen; Schichtplan ist exportierbar.,,
+REQ-025,Events,Kalender-Integration (iCal/Google),Events als Feed/Export bereitstellen.,"• iCal Feed
+• Export .ics
+• Einbettung auf Website",Could,"Mitglied, Öffentlichkeit",Event,iCal Link importierbar; Änderungen aktualisieren sich.,,
+REQ-026,Kommunikation,E‑Mail Verwaltung (Automatisiertes Mailing),"E-Mails an Mitglieder/Segmente, automatisiert und manuell.","• Mailing an Segmente
+• Testversand
+• Zustellstatus (gesendet/bounce)",Must,"Kommunikation, Admin",EmailCampaign,Kampagne kann erstellt und an Segment gesendet werden.,Mail Provider (z. B. SendGrid/M365),Zustellbarkeit (SPF/DKIM) beachten.
+REQ-027,Kommunikation,Template-Editor & Vorlagenpflege,Wiederverwendbare E-Mail Templates (HTML/Text) mit Variablen.,"• Vorlagen erstellen
+• Platzhalter (Name, Event, Betrag)
+• Versionierung/Entwurf",Must,Kommunikation,EmailTemplate,Template speichert Variablen; Vorschau zeigt korrekt gerenderte Mail.,,
+REQ-028,Kommunikation,Automations/Journeys,Automatische Mails für typische Prozesse.,"• Welcome-Mail
+• Event Reminder
+• Beitrags-/Mahnungsmails",Should,"Kommunikation, Kassier",AutomationRule,Auslöser senden Mail mit korrektem Template und Empfängern.,,
+REQ-029,Kommunikation,Newsletter Opt-in/Opt-out & Bounces,Rechtssicheres Newsletter-Handling.,"• Double Opt-in (optional)
+• Abmeldelink
+• Bounce/Complaint Handling",Must,Kommunikation,"Consent, EmailStatus",Abmeldung wirkt sofort; Einwilligung wird protokolliert.,,
+REQ-030,Kommunikation,Mehrkanal-Nachrichten (optional),SMS/WhatsApp/Push für Reminder (wenn gewünscht).,"• SMS Provider
+• WhatsApp Business (optional)
+• Kanalpräferenzen pro User",Could,Kommunikation,Notification,User kann Kanal wählen; Versand wird geloggt.,SMS/WhatsApp Provider,Kosten/Compliance beachten.
+REQ-031,Sponsoren & Lieferanten,Sponsorenverwaltung,"Sponsorenkontakte, Pakete, Zusagen, Leistungen.","• Sponsorprofile
+• Sponsoring-Pakete
+• Benefits/Leistungen tracken",Must,"Admin, Sponsor-Manager","Sponsor, Agreement","Sponsoren können gesucht, segmentiert und mit Verträgen verknüpft werden.",,
+REQ-032,Sponsoren & Lieferanten,Lieferantenverwaltung,"Lieferantenkontakte, Leistungen und Bestellungen/Verträge.","• Lieferantenprofile
+• Vertrags-/Kontaktinfos
+• Historie der Zusammenarbeit",Must,Admin,Vendor,Lieferant kann angelegt und Dokumenten/Belegen zugeordnet werden.,,
+REQ-033,Sponsoren & Lieferanten,Vertrags- & Dokumentenverknüpfung,"Sponsoren/Lieferanten mit Dokumenten, Rechnungen und Events verknüpfen.","• Link zu Dokumenten
+• Link zu Rechnungen
+• Link zu Events",Should,"Admin, Kassier","Sponsor, Vendor, Document, Invoice",Jeder Vertrag/Rechnung kann einem Sponsor/Lieferanten zugeordnet werden.,,
+REQ-034,Dokumente,Dokumentenverwaltung,"Speichern, organisieren und teilen von Vereinsdokumenten.","• Upload/Download
+• Ordnerstruktur
+• Metadaten (Tags, Kategorie)",Must,"Admin, Vorstand",Document,Dokument ist auffindbar; Zugriff je Rolle ist durchgesetzt.,,
+REQ-035,Dokumente,Dokumentrechte & Freigabe,"Workflow für Entwurf, Prüfung, Veröffentlichung.","• Status (Entwurf/Geprüft/Veröffentlicht)
+• Freigabe durch Rolle
+• Ablaufdatum/Archiv",Should,"Vorstand, Admin",Document,Nur freigegebene Dokumente sind sichtbar (je nach Sichtbarkeit).,,
+REQ-036,Dokumente,Versionierung,"Änderungen nachvollziehbar machen, alte Versionen verfügbar.","• Versionsnummern
+• Diff/Kommentar (optional)
+• Restore früherer Version",Should,Admin,DocumentVersion,Versionen sind abrufbar; Restore erstellt neue Version.,,
+REQ-037,Dokumente,Volltextsuche & Tags,Schnelle Auffindbarkeit auch bei vielen Dokumenten.,"• Suche in Metadaten
+• Volltext (PDF/DOCX) optional
+• Tags/Filter",Could,Alle,Document,Suche liefert relevante Treffer; Filter funktionieren.,,
+REQ-038,Finanzen,Mini-Buchhaltung (Grundfunktionen),Einnahmen/Ausgaben erfassen und auswerten.,"• Buchungen erfassen
+• Kategorien/Konten
+• Einnahmen/Ausgaben Übersicht",Must,Kassier,"Transaction, Account","Buchungen können erfasst, geändert (mit Audit) und ausgewertet werden.",,
+REQ-039,Finanzen,Rechnungsstellung,"Rechnungen für Beiträge, Events, Sponsoring.","• Rechnung erstellen
+• PDF Export
+• Nummernkreis",Must,Kassier,Invoice,Rechnung hat eindeutige Nummer; PDF ist generierbar.,,
+REQ-040,Finanzen,Zahlungsverwaltung & Abgleich,Zahlungen erfassen und Rechnungen ausgleichen.,"• Zahlung erfassen (bar, Überweisung)
+• Teilzahlungen
+• Offene Posten Liste",Must,Kassier,"Payment, Invoice",Offene Posten stimmen; Teilzahlungen reduzieren Restbetrag korrekt.,,
+REQ-041,Finanzen,Bankimport (CSV),Optionaler Import von Bankumsätzen zur Vereinfachung.,"• CSV Import
+• Matching Vorschläge
+• Manuelle Zuordnung",Should,Kassier,BankTransaction,Import funktioniert; Zuordnung erzeugt Zahlung/Buchung.,,
+REQ-042,Finanzen,Mahnwesen,Automatisierte Erinnerung und Mahnungen für offene Beiträge/Rechnungen.,"• Mahnstufen
+• Template je Stufe
+• Protokoll der Mahnungen",Should,"Kassier, Kommunikation",DunningNotice,Mahnung wird nur bei offenen Posten gesendet; Historie wird gespeichert.,,
+REQ-043,Finanzen,Belegmanagement,Quittungen/Belege hochladen und Buchungen zuordnen.,"• Upload Foto/PDF
+• Zuordnung zu Buchung
+• Steuerrelevante Metadaten (optional)",Should,Kassier,"Receipt, Transaction",Buchung kann Beleg haben; Beleg ist per Klick abrufbar.,,
+REQ-044,Finanzen,Budget & Kostenstellen,Auswertung nach Event/Projekt (Diwali etc.).,"• Kostenstellen
+• Budget pro Kostenstelle
+• Soll/Ist Vergleich",Could,"Kassier, Vorstand","CostCenter, Budget",Soll/Ist ist pro Kostenstelle sichtbar.,,
+REQ-045,Finanzen,Export für Steuer/Buchhaltung,Export der Daten (CSV/Excel) für externes System.,"• Buchungsjournal Export
+• OP-Liste Export
+• Sponsor-/Beitragslisten Export",Must,Kassier,Export,Export entspricht definierter Struktur und enthält notwendige Felder.,,
+REQ-046,Öffentlicher Bereich,Öffentliche Eventseite,Events öffentlich darstellen und Anmeldung ermöglichen.,"• Eventliste
+• Eventdetailseite
+• Öffentliche Anmeldung",Must,"Öffentlichkeit, Mitglied",Event,Öffentliche Seite zeigt nur freigegebene Events; Anmeldung funktioniert.,,
+REQ-047,Öffentlicher Bereich,News/Blog (optional),Einfache Inhaltsverwaltung für Vereinsnews.,"• Beiträge erstellen
+• Kategorien/Tags
+• Veröffentlichung/Archiv",Could,"Admin, Kommunikation",Post,Beiträge sind sortierbar; Entwurf/Publiziert Status.,,
+REQ-048,Öffentlicher Bereich,Sponsorenseite,"Sponsoren sichtbar machen (Logo, Paket, Link).","• Sponsor-Listing
+• Pakete/Badges
+• Sichtbarkeit steuern",Should,"Admin, Sponsor-Manager",Sponsor,Nur freigegebene Sponsoren werden angezeigt.,,
+REQ-049,Öffentlicher Bereich,Kontaktformular + Spam-Schutz,Kontaktaufnahme mit Captcha und Routing.,"• Formularfelder
+• Captcha
+• Weiterleitung an Mail/Queue",Must,"Öffentlichkeit, Admin",ContactMessage,Spam wird reduziert; Nachrichten landen beim richtigen Empfänger.,,
+REQ-050,Reporting & Daten,Dashboards & KPIs,"Übersichten für Vorstand, Kassier, Eventteam.","• Mitgliederentwicklung
+• Offene Beiträge
+• Event KPIs (Anmeldungen, Einnahmen)",Must,"Vorstand, Kassier, Event-Manager",Report,Dashboard zeigt aktuelle Daten; Filter nach Zeitraum.,,
+REQ-051,Reporting & Daten,Exports (CSV/Excel),Datenexporte für Auswertung und Archiv.,"• Mitgliederexport
+• Event-Teilnehmerlisten
+• Finanzexport",Must,"Admin, Kassier",Export,Exports respektieren Berechtigungen und enthalten definierte Spalten.,,
+REQ-052,Reporting & Daten,Such- & Filterfunktionen,"Schnelles Finden in Mitgliedern, Events, Dokumenten, Rechnungen.","• Volltext/teilweise Suche
+• Filter & Sortierung
+• gespeicherte Views (optional)",Must,Alle Backoffice Rollen,Query,Suchen liefert Ergebnisse <2s bei typischen Datenmengen.,,
+REQ-053,Betrieb & Qualität,Backup & Restore Konzept,Regelmäßige Backups inkl. Wiederherstellungstest.,"• DB Backup
+• Dokument-Storage Backup
+• Restore-Prozedur",Must,Admin/IT,Backup,Restore-Test ist dokumentiert und erfolgreich.,,
+REQ-054,Betrieb & Qualität,Logging & Monitoring,Fehler- und Performance-Monitoring.,"• Error Tracking
+• Metriken (Response Time)
+• Alarmierung (optional)",Should,Admin/IT,Logs,Kritische Fehler sind auffindbar; Logs enthalten Korrelations-ID.,,
+REQ-055,Betrieb & Qualität,Mehrsprachigkeit (DE/EN/HI optional),UI und Inhalte mehrsprachig.,"• UI-Übersetzungen
+• Inhaltssprache pro Beitrag/Event
+• Sprache pro Nutzer",Could,Alle,Locale,Sprache kann gewechselt werden; Fallback funktioniert.,,
+REQ-056,Betrieb & Qualität,Barrierefreiheit (Basis),Mindestens WCAG-Basics für Formulare und Navigation.,"• Tastaturbedienung
+• Kontraste
+• ARIA Labels",Should,Alle,UI,Wichtige Flows sind ohne Maus bedienbar.,,
+REQ-057,Betrieb & Qualität,Datenaufbewahrung & Archivierung,"Regeln, wie lange Daten/Dokumente gehalten werden.","• Aufbewahrungsfristen
+• Archivstatus
+• Lösch-/Anonymisierungsjobs",Must,"Admin, Vorstand",Policy,Archivierte Daten sind schreibgeschützt; Löschjobs protokolliert.,,
+REQ-058,Betrieb & Qualität,API/Webhooks (optional),Schnittstellen für spätere Integrationen.,"• REST API (read)
+• Webhooks (Event erstellt, Zahlung eingegangen)
+• API Keys/Scopes",Could,Admin/IT,API,API ist gesichert; Rate Limits vorhanden.,,
+REQ-059,Betrieb & Qualität,Konfiguration & Systemeinstellungen,"Zentrale Einstellungen des Vereins (Texte, Logos, Beiträge, Mail-Absender).","• Vereinsprofil
+• Beitragssätze
+• Mail-Settings",Must,Admin,Settings,Einstellungen wirken ohne Codeänderung; Änderungen sind auditiert.,,

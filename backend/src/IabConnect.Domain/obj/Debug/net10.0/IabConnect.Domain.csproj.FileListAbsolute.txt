@@ -1,0 +1,12 @@
+B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Domain\bin\Debug\net10.0\IabConnect.Domain.deps.json
+B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Domain\bin\Debug\net10.0\IabConnect.Domain.dll
+B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Domain\bin\Debug\net10.0\IabConnect.Domain.pdb
+B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Domain\obj\Debug\net10.0\IabConnect.Domain.GeneratedMSBuildEditorConfig.editorconfig
+B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Domain\obj\Debug\net10.0\IabConnect.Domain.AssemblyInfoInputs.cache
+B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Domain\obj\Debug\net10.0\IabConnect.Domain.AssemblyInfo.cs
+B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Domain\obj\Debug\net10.0\IabConnect.Domain.csproj.CoreCompileInputs.cache
+B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Domain\obj\Debug\net10.0\IabConnect.Domain.sourcelink.json
+B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Domain\obj\Debug\net10.0\IabConnect.Domain.dll
+B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Domain\obj\Debug\net10.0\refint\IabConnect.Domain.dll
+B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Domain\obj\Debug\net10.0\IabConnect.Domain.pdb
+B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Domain\obj\Debug\net10.0\ref\IabConnect.Domain.dll

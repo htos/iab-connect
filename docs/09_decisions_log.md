@@ -1,0 +1,115 @@
+Titel
+Decisions Log
+
+Einträge
+
+Datum
+2026 01 30
+
+Entscheidung
+Modularer Monolith als Backend Architektur.
+
+Begründung
+Schneller Aufbau, weniger Infrastruktur, bessere Wartbarkeit im MVP. Module können später ausgelagert werden.
+
+Alternativen
+Microservices Architektur von Beginn weg.
+
+Auswirkung
+Ein Deployment für Backend, klare Modul Trennung im Code, Gateway erst später nötig.
+
+
+Datum
+2026 01 30
+
+Entscheidung
+Backend Technologie ASP.NET Core C# mit Entity Framework Core und PostgreSQL.
+
+Begründung
+C# ist die stärkste Sprache des Teams. EF Core beschleunigt Entwicklung und Migrationen.
+
+Alternativen
+Java Spring Boot, Node mit NestJS, Python FastAPI.
+
+Auswirkung
+Standardisierte Patterns für Auth, Policies, Background Jobs, migrations und Testing.
+
+
+Datum
+2026 01 30
+
+Entscheidung
+Auth via Keycloak OIDC.
+
+Begründung
+Self hosted, flexibel, unterstützt Rollen, Social Login Provider, OIDC Standards.
+
+Alternativen
+Auth0, Microsoft Entra ID, direkte Provider Integration ohne Keycloak.
+
+Auswirkung
+Konfiguration im Identity Provider, Backend prüft JWT und mapped Rollen über Claims.
+
+
+Datum
+2026 01 30
+
+Entscheidung
+Requirements Quelle ist CSV Datei, Status wird in separatem Markdown Dokument geführt.
+
+Begründung
+Klare Trennung zwischen Anforderungsinhalten und Bearbeitungsstatus. CSV wird nicht versehentlich verändert. Status Tracking bleibt flexibel.
+
+Alternativen
+Alles in einer Datei, Datenbank für Requirements.
+
+Auswirkung
+Agent liest immer CSV für Inhalte und Status Dokument für Bearbeitungsstand. Matching erfolgt über ID.
+
+
+Datum
+2026 01 30
+
+Entscheidung
+ID Format in Status Datei ist REQ-NNN passend zur CSV Spalte ID.
+
+Begründung
+Konsistenz mit der Quelldatei. Eindeutige Zuordnung ohne Interpretationsspielraum.
+
+Alternativen
+Eigenes ID Schema, numerische IDs ohne Präfix.
+
+Auswirkung
+Alle 59 Requirements aus der CSV werden mit REQ-001 bis REQ-059 referenziert.
+
+
+Datum
+2026 01 30
+
+Entscheidung
+MVP umfasst 32 Must have Requirements gemäss CSV Priorität.
+
+Begründung
+CSV definiert Prioritäten. Must have deckt Kernfunktionen ab. Fokus auf schnelle Lieferung.
+
+Alternativen
+Eigene Priorisierung unabhängig von CSV.
+
+Auswirkung
+Backlog und Planung orientieren sich an den CSV Prioritäten. Änderungen erfordern expliziten Auftrag.
+
+
+Datum
+2026 01 30
+
+Entscheidung
+Dokumentation folgt strikt den definierten Templates ohne Formatierungshilfen.
+
+Begründung
+Konsistenz über Sessions hinweg. Keine Interpretation nötig. Einfaches Parsen und Vergleichen.
+
+Alternativen
+Freiere Formatierung mit Markdown Tabellen und Listen.
+
+Auswirkung
+Kein Fettdruck, keine verschachtelten Listen, keine Bindestriche ausser wo unumgänglich.

@@ -1,0 +1,69 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build-backend",
+      "command": "dotnet",
+      "type": "process",
+      "args": ["build", "${workspaceFolder}/backend/IabConnect.sln", "/property:GenerateFullPaths=true"],
+      "problemMatcher": "$msCompile",
+      "group": "build"
+    },
+    {
+      "label": "test-backend",
+      "command": "dotnet",
+      "type": "process",
+      "args": ["test", "${workspaceFolder}/backend/IabConnect.sln"],
+      "problemMatcher": "$msCompile",
+      "group": "test"
+    },
+    {
+      "label": "watch-backend",
+      "command": "dotnet",
+      "type": "process",
+      "args": ["watch", "run", "--project", "${workspaceFolder}/backend/src/IabConnect.Api"],
+      "problemMatcher": "$msCompile",
+      "isBackground": true
+    },
+    {
+      "label": "infra-up",
+      "type": "shell",
+      "command": "docker compose up -d",
+      "options": {
+        "cwd": "${workspaceFolder}/infra"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "infra-down",
+      "type": "shell",
+      "command": "docker compose down",
+      "options": {
+        "cwd": "${workspaceFolder}/infra"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "frontend-install",
+      "type": "npm",
+      "script": "install",
+      "path": "frontend/",
+      "problemMatcher": []
+    },
+    {
+      "label": "frontend-dev",
+      "type": "npm",
+      "script": "dev",
+      "path": "frontend/",
+      "problemMatcher": [],
+      "isBackground": true
+    },
+    {
+      "label": "frontend-test",
+      "type": "npm",
+      "script": "test",
+      "path": "frontend/",
+      "problemMatcher": []
+    }
+  ]
+}

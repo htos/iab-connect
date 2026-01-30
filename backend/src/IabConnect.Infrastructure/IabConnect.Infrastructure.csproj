@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>IabConnect.Infrastructure</RootNamespace>
+    <AssemblyName>IabConnect.Infrastructure</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Hangfire" />
+    <PackageReference Include="Hangfire.PostgreSql" />
+    <PackageReference Include="Minio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\IabConnect.Application\IabConnect.Application.csproj" />
+    <ProjectReference Include="..\IabConnect.Domain\IabConnect.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
