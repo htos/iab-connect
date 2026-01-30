@@ -1,0 +1,339 @@
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+
+namespace IabConnect.Infrastructure.Identity;
+
+/// <summary>
+/// Service for interacting with the Keycloak Admin REST API
+/// REQ-002: Benutzerverwaltung
+/// </summary>
+public interface IKeycloakAdminService
+{
+    Task<KeycloakUser?> GetUserByIdAsync(string userId, CancellationToken ct = default);
+    Task<KeycloakUser?> GetUserByEmailAsync(string email, CancellationToken ct = default);
+    Task<IReadOnlyList<KeycloakUser>> GetUsersAsync(string? search = null, int? first = null, int? max = null, CancellationToken ct = default);
+    Task<int> GetUserCountAsync(CancellationToken ct = default);
+    Task<string> CreateUserAsync(CreateKeycloakUserRequest request, CancellationToken ct = default);
+    Task UpdateUserAsync(string userId, UpdateKeycloakUserRequest request, CancellationToken ct = default);
+    Task DeleteUserAsync(string userId, CancellationToken ct = default);
+    Task SetUserEnabledAsync(string userId, bool enabled, CancellationToken ct = default);
+    Task SendPasswordResetEmailAsync(string userId, CancellationToken ct = default);
+    Task<IReadOnlyList<KeycloakRole>> GetUserRolesAsync(string userId, CancellationToken ct = default);
+    Task AssignRolesToUserAsync(string userId, IEnumerable<string> roleNames, CancellationToken ct = default);
+    Task RemoveRolesFromUserAsync(string userId, IEnumerable<string> roleNames, CancellationToken ct = default);
+    Task<IReadOnlyList<KeycloakRole>> GetAvailableRolesAsync(CancellationToken ct = default);
+}
+
+public class KeycloakAdminService : IKeycloakAdminService
+{
+    private readonly HttpClient _httpClient;
+    private readonly ILogger<KeycloakAdminService> _logger;
+    private readonly KeycloakAdminSettings _settings;
+    private readonly SemaphoreSlim _tokenSemaphore = new(1, 1);
+
+    private string? _accessToken;
+    private DateTime _tokenExpiry = DateTime.MinValue;
+
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
+
+    public KeycloakAdminService(
+        HttpClient httpClient,
+        IConfiguration configuration,
+        ILogger<KeycloakAdminService> logger)
+    {
+        _httpClient = httpClient;
+        _logger = logger;
+        _settings = new KeycloakAdminSettings();
+        configuration.GetSection("KeycloakAdmin").Bind(_settings);
+
+        if (string.IsNullOrEmpty(_settings.BaseUrl))
+            throw new InvalidOperationException("KeycloakAdmin:BaseUrl is not configured");
+    }
+
+    private string AdminApiBase => $"{_settings.BaseUrl}/admin/realms/{_settings.Realm}";
+
+    private async Task EnsureTokenAsync(CancellationToken ct)
+    {
+        if (_accessToken != null && DateTime.UtcNow < _tokenExpiry.AddMinutes(-1))
+            return;
+
+        await _tokenSemaphore.WaitAsync(ct);
+        try
+        {
+            // Double-check after acquiring lock
+            if (_accessToken != null && DateTime.UtcNow < _tokenExpiry.AddMinutes(-1))
+                return;
+
+            var tokenUrl = $"{_settings.BaseUrl}/realms/{_settings.Realm}/protocol/openid-connect/token";
+            var content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["grant_type"] = "client_credentials",
+                ["client_id"] = _settings.ClientId,
+                ["client_secret"] = _settings.ClientSecret
+            });
+
+            var response = await _httpClient.PostAsync(tokenUrl, content, ct);
+            response.EnsureSuccessStatusCode();
+
+            var tokenResponse = await response.Content.ReadFromJsonAsync<TokenResponse>(ct);
+            _accessToken = tokenResponse?.AccessToken;
+            _tokenExpiry = DateTime.UtcNow.AddSeconds(tokenResponse?.ExpiresIn ?? 300);
+
+            _logger.LogDebug("Obtained new Keycloak admin token, expires at {Expiry}", _tokenExpiry);
+        }
+        finally
+        {
+            _tokenSemaphore.Release();
+        }
+    }
+
+    private async Task<HttpRequestMessage> CreateRequestAsync(HttpMethod method, string url, CancellationToken ct)
+    {
+        await EnsureTokenAsync(ct);
+        var request = new HttpRequestMessage(method, url);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
+        return request;
+    }
+
+    public async Task<KeycloakUser?> GetUserByIdAsync(string userId, CancellationToken ct = default)
+    {
+        var request = await CreateRequestAsync(HttpMethod.Get, $"{AdminApiBase}/users/{userId}", ct);
+        var response = await _httpClient.SendAsync(request, ct);
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            return null;
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<KeycloakUser>(JsonOptions, ct);
+    }
+
+    public async Task<KeycloakUser?> GetUserByEmailAsync(string email, CancellationToken ct = default)
+    {
+        var users = await GetUsersAsync(email, 0, 1, ct);
+        return users.FirstOrDefault(u => u.Email?.Equals(email, StringComparison.OrdinalIgnoreCase) == true);
+    }
+
+    public async Task<IReadOnlyList<KeycloakUser>> GetUsersAsync(string? search = null, int? first = null, int? max = null, CancellationToken ct = default)
+    {
+        var query = new List<string>();
+        if (!string.IsNullOrEmpty(search)) query.Add($"search={Uri.EscapeDataString(search)}");
+        if (first.HasValue) query.Add($"first={first.Value}");
+        if (max.HasValue) query.Add($"max={max.Value}");
+
+        var queryString = query.Count > 0 ? "?" + string.Join("&", query) : "";
+        var request = await CreateRequestAsync(HttpMethod.Get, $"{AdminApiBase}/users{queryString}", ct);
+        var response = await _httpClient.SendAsync(request, ct);
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<List<KeycloakUser>>(JsonOptions, ct) ?? [];
+    }
+
+    public async Task<int> GetUserCountAsync(CancellationToken ct = default)
+    {
+        var request = await CreateRequestAsync(HttpMethod.Get, $"{AdminApiBase}/users/count", ct);
+        var response = await _httpClient.SendAsync(request, ct);
+        response.EnsureSuccessStatusCode();
+
+        var content = await response.Content.ReadAsStringAsync(ct);
+        return int.TryParse(content, out var count) ? count : 0;
+    }
+
+    public async Task<string> CreateUserAsync(CreateKeycloakUserRequest userRequest, CancellationToken ct = default)
+    {
+        var request = await CreateRequestAsync(HttpMethod.Post, $"{AdminApiBase}/users", ct);
+        request.Content = JsonContent.Create(userRequest, options: JsonOptions);
+
+        var response = await _httpClient.SendAsync(request, ct);
+
+        if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            throw new KeycloakConflictException("User with this email or username already exists");
+        }
+
+        response.EnsureSuccessStatusCode();
+
+        // Extract user ID from Location header
+        var location = response.Headers.Location?.ToString();
+        var userId = location?.Split('/').LastOrDefault();
+
+        if (string.IsNullOrEmpty(userId))
+        {
+            // Fallback: fetch user by email
+            var createdUser = await GetUserByEmailAsync(userRequest.Email!, ct);
+            userId = createdUser?.Id;
+        }
+
+        _logger.LogInformation("Created Keycloak user {UserId} with email {Email}", userId, userRequest.Email);
+        return userId ?? throw new InvalidOperationException("Could not determine created user ID");
+    }
+
+    public async Task UpdateUserAsync(string userId, UpdateKeycloakUserRequest userRequest, CancellationToken ct = default)
+    {
+        var request = await CreateRequestAsync(HttpMethod.Put, $"{AdminApiBase}/users/{userId}", ct);
+        request.Content = JsonContent.Create(userRequest, options: JsonOptions);
+
+        var response = await _httpClient.SendAsync(request, ct);
+        response.EnsureSuccessStatusCode();
+
+        _logger.LogInformation("Updated Keycloak user {UserId}", userId);
+    }
+
+    public async Task DeleteUserAsync(string userId, CancellationToken ct = default)
+    {
+        var request = await CreateRequestAsync(HttpMethod.Delete, $"{AdminApiBase}/users/{userId}", ct);
+        var response = await _httpClient.SendAsync(request, ct);
+        response.EnsureSuccessStatusCode();
+
+        _logger.LogInformation("Deleted Keycloak user {UserId}", userId);
+    }
+
+    public async Task SetUserEnabledAsync(string userId, bool enabled, CancellationToken ct = default)
+    {
+        await UpdateUserAsync(userId, new UpdateKeycloakUserRequest { Enabled = enabled }, ct);
+        _logger.LogInformation("Set Keycloak user {UserId} enabled={Enabled}", userId, enabled);
+    }
+
+    public async Task SendPasswordResetEmailAsync(string userId, CancellationToken ct = default)
+    {
+        var request = await CreateRequestAsync(HttpMethod.Put, $"{AdminApiBase}/users/{userId}/execute-actions-email", ct);
+        request.Content = JsonContent.Create(new[] { "UPDATE_PASSWORD" }, options: JsonOptions);
+
+        var response = await _httpClient.SendAsync(request, ct);
+        response.EnsureSuccessStatusCode();
+
+        _logger.LogInformation("Sent password reset email to Keycloak user {UserId}", userId);
+    }
+
+    public async Task<IReadOnlyList<KeycloakRole>> GetUserRolesAsync(string userId, CancellationToken ct = default)
+    {
+        var request = await CreateRequestAsync(HttpMethod.Get, $"{AdminApiBase}/users/{userId}/role-mappings/realm", ct);
+        var response = await _httpClient.SendAsync(request, ct);
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<List<KeycloakRole>>(JsonOptions, ct) ?? [];
+    }
+
+    public async Task<IReadOnlyList<KeycloakRole>> GetAvailableRolesAsync(CancellationToken ct = default)
+    {
+        var request = await CreateRequestAsync(HttpMethod.Get, $"{AdminApiBase}/roles", ct);
+        var response = await _httpClient.SendAsync(request, ct);
+        response.EnsureSuccessStatusCode();
+
+        var roles = await response.Content.ReadFromJsonAsync<List<KeycloakRole>>(JsonOptions, ct) ?? [];
+        // Filter out default roles
+        return roles.Where(r => !r.Name.StartsWith("default-roles-") &&
+                               !r.Name.StartsWith("uma_") &&
+                               r.Name != "offline_access").ToList();
+    }
+
+    public async Task AssignRolesToUserAsync(string userId, IEnumerable<string> roleNames, CancellationToken ct = default)
+    {
+        var allRoles = await GetAvailableRolesAsync(ct);
+        var rolesToAssign = allRoles.Where(r => roleNames.Contains(r.Name, StringComparer.OrdinalIgnoreCase)).ToList();
+
+        if (rolesToAssign.Count == 0) return;
+
+        var request = await CreateRequestAsync(HttpMethod.Post, $"{AdminApiBase}/users/{userId}/role-mappings/realm", ct);
+        request.Content = JsonContent.Create(rolesToAssign, options: JsonOptions);
+
+        var response = await _httpClient.SendAsync(request, ct);
+        response.EnsureSuccessStatusCode();
+
+        _logger.LogInformation("Assigned roles {Roles} to user {UserId}", string.Join(", ", roleNames), userId);
+    }
+
+    public async Task RemoveRolesFromUserAsync(string userId, IEnumerable<string> roleNames, CancellationToken ct = default)
+    {
+        var allRoles = await GetAvailableRolesAsync(ct);
+        var rolesToRemove = allRoles.Where(r => roleNames.Contains(r.Name, StringComparer.OrdinalIgnoreCase)).ToList();
+
+        if (rolesToRemove.Count == 0) return;
+
+        var request = await CreateRequestAsync(HttpMethod.Delete, $"{AdminApiBase}/users/{userId}/role-mappings/realm", ct);
+        request.Content = JsonContent.Create(rolesToRemove, options: JsonOptions);
+
+        var response = await _httpClient.SendAsync(request, ct);
+        response.EnsureSuccessStatusCode();
+
+        _logger.LogInformation("Removed roles {Roles} from user {UserId}", string.Join(", ", roleNames), userId);
+    }
+}
+
+public class KeycloakAdminSettings
+{
+    public string BaseUrl { get; set; } = "http://localhost:8080";
+    public string Realm { get; set; } = "iabconnect";
+    public string ClientId { get; set; } = "iabconnect-admin";
+    public string ClientSecret { get; set; } = "";
+}
+
+public class TokenResponse
+{
+    [JsonPropertyName("access_token")]
+    public string? AccessToken { get; set; }
+
+    [JsonPropertyName("expires_in")]
+    public int ExpiresIn { get; set; }
+}
+
+public class KeycloakUser
+{
+    public string? Id { get; set; }
+    public string? Username { get; set; }
+    public string? Email { get; set; }
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public bool Enabled { get; set; }
+    public bool EmailVerified { get; set; }
+    public long? CreatedTimestamp { get; set; }
+    public Dictionary<string, List<string>>? Attributes { get; set; }
+}
+
+public class KeycloakRole
+{
+    public string? Id { get; set; }
+    public string Name { get; set; } = "";
+    public string? Description { get; set; }
+}
+
+public class CreateKeycloakUserRequest
+{
+    public string? Username { get; set; }
+    public string? Email { get; set; }
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public bool Enabled { get; set; } = true;
+    public bool EmailVerified { get; set; } = false;
+    public List<CredentialRepresentation>? Credentials { get; set; }
+    public List<string>? RequiredActions { get; set; }
+}
+
+public class UpdateKeycloakUserRequest
+{
+    public string? Username { get; set; }
+    public string? Email { get; set; }
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public bool? Enabled { get; set; }
+    public bool? EmailVerified { get; set; }
+}
+
+public class CredentialRepresentation
+{
+    public string Type { get; set; } = "password";
+    public string? Value { get; set; }
+    public bool Temporary { get; set; } = true;
+}
+
+public class KeycloakConflictException : Exception
+{
+    public KeycloakConflictException(string message) : base(message) { }
+}

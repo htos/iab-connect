@@ -113,7 +113,7 @@ export default function EditMemberPage() {
         throw new Error(errorData?.message || t("error.savingError"));
       }
 
-      router.push(`/members/${memberId}`);
+      router.push("/members");
     } catch (err) {
       setError(err instanceof Error ? err.message : t("error.errorOccurred"));
     } finally {
@@ -175,7 +175,7 @@ export default function EditMemberPage() {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            {t("common.backToProfile")}
+            {t("common.backToMember")}
           </Link>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{t("members.editMember")}</h1>
           <p className="text-gray-600 mt-1">
@@ -328,7 +328,7 @@ export default function EditMemberPage() {
           {/* Actions */}
           <div className="flex justify-end gap-4 mt-8 pt-6 border-t border-gray-200">
             <Link
-              href={`/members/${memberId}`}
+              href="/members"
               className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
               {t("common.cancel")}

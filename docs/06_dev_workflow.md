@@ -202,3 +202,111 @@ VS Code Setup
     - GET /api/members/me → Eigenes Profil (Member)
     - PUT /api/members/me → Eigenes Profil bearbeiten (Member)
 
+---
+
+### REQ-002: Benutzerverwaltung (Admin)
+
+**Voraussetzungen:**
+- Backend und Frontend laufen
+- Keycloak Admin Client `iabconnect-admin` konfiguriert (siehe unten)
+- Login als Admin
+
+**Keycloak Setup (einmalig):**
+1. Öffne Keycloak Admin Console: http://localhost:8080/admin
+2. Login als admin / Admin-Dev-2026!
+3. Wähle Realm "iabconnect"
+4. Gehe zu Clients → Create client
+   - Client ID: `iabconnect-admin`
+   - Client authentication: ON
+   - Service accounts roles: ON
+5. Nach Erstellung: Client → Service account roles
+   - Assign role → Filter by clients
+   - Wähle realm-management: manage-users, view-users, query-users
+6. Client → Credentials → Secret kopieren
+7. In appsettings.Development.json aktualisieren:
+   ```json
+   "KeycloakAdmin": {
+     "BaseUrl": "http://localhost:8080",
+     "Realm": "iabconnect",
+     "ClientId": "iabconnect-admin",
+     "ClientSecret": "<KOPIERTES_SECRET>"
+   }
+   ```
+
+**Testschritte:**
+
+1. **Benutzerliste öffnen**
+   - Login als admin@iabconnect.ch
+   - Navigiere zu /users (über Navigation "Benutzer" im Admin-Bereich)
+   - ✅ Erwartung: Liste aller Keycloak-Benutzer
+   - ✅ Erwartung: E-Mail, Name, Rollen-Badges, Aktiv-Status
+   - ✅ Erwartung: Pagination funktioniert
+
+2. **Benutzer suchen**
+   - Gib "admin" in Suchfeld ein
+   - Klicke auf Suchen-Icon oder drücke Enter
+   - ✅ Erwartung: Nur Benutzer mit "admin" im Namen/E-Mail
+
+3. **Neuen Benutzer anlegen**
+   - Klicke auf "Neuer Benutzer"
+   - Fülle aus:
+     - E-Mail: test.user@example.ch
+     - Vorname: Test
+     - Nachname: User
+     - Aktiviert: ✓
+     - Einladung senden: ✓
+   - Wähle Rollen: member
+   - Klicke "Benutzer erstellen"
+   - ✅ Erwartung: Weiterleitung zur Benutzerliste
+   - ✅ Erwartung: Neuer Benutzer erscheint in der Liste
+   - ✅ Erwartung: (Falls SMTP konfiguriert) Einladungs-E-Mail wird gesendet
+
+4. **Benutzer bearbeiten**
+   - Klicke auf Bearbeiten-Icon bei einem Benutzer
+   - Ändere den Nachnamen
+   - Füge Rolle "vorstand" hinzu
+   - Klicke "Speichern"
+   - ✅ Erwartung: Änderungen werden in Keycloak gespeichert
+   - ✅ Erwartung: Rollen-Badges aktualisieren sich
+
+5. **Benutzer deaktivieren**
+   - In der Benutzerliste: Klicke auf Toggle-Switch in "Aktiv"-Spalte
+   - ✅ Erwartung: Benutzer wird deaktiviert
+   - ✅ Erwartung: Status wechselt auf "Deaktiviert"
+   - ✅ Erwartung: Deaktivierter Benutzer kann sich nicht mehr einloggen
+
+6. **Benutzer aktivieren**
+   - Klicke erneut auf Toggle-Switch
+   - ✅ Erwartung: Benutzer wird wieder aktiviert
+
+7. **Passwort-Reset senden**
+   - Klicke auf Schlüssel-Icon bei einem Benutzer
+   - Bestätige im Dialog
+   - ✅ Erwartung: (Falls SMTP konfiguriert) Passwort-Reset-E-Mail wird gesendet
+   - ✅ Erwartung: Erfolgsmeldung wird angezeigt
+
+8. **Benutzer löschen**
+   - Klicke auf Papierkorb-Icon bei einem Test-Benutzer
+   - Bestätige im Dialog
+   - ✅ Erwartung: Benutzer wird aus der Liste entfernt
+   - ✅ Erwartung: Benutzer existiert nicht mehr in Keycloak
+
+9. **Rollen-Management**
+   - Bearbeite einen Benutzer
+   - Ändere Rollen: Entferne alle, füge nur "admin" hinzu
+   - ✅ Erwartung: Nur Admin-Rolle wird angezeigt
+   - Logout und Login als dieser Benutzer
+   - ✅ Erwartung: Benutzer hat nur Admin-Rechte
+
+10. **API-Endpunkte testen (Swagger, nur Admin)**
+    - GET /api/v1/users → Paginierte Benutzerliste
+    - GET /api/v1/users/{id} → Einzelner Benutzer
+    - POST /api/v1/users → Neuen Benutzer anlegen
+    - PUT /api/v1/users/{id} → Benutzer bearbeiten
+    - DELETE /api/v1/users/{id} → Benutzer löschen
+    - PUT /api/v1/users/{id}/enabled → Aktivieren/Deaktivieren
+    - POST /api/v1/users/{id}/reset-password → Passwort-Reset
+    - GET /api/v1/users/{id}/roles → Rollen des Benutzers
+    - PUT /api/v1/users/{id}/roles → Rollen zuweisen
+    - GET /api/v1/users/roles → Alle verfügbaren Rollen
+

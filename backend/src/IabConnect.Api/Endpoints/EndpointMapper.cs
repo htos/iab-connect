@@ -11,8 +11,12 @@ public static class EndpointMapper
     {
         var api = app.MapGroup("/api/v1");
 
+        // Public Endpoints (no auth required)
+        app.MapRegistrationEndpoints(); // Public registration
+
         // Module Endpoints - REQ-001: Identity first
         api.MapIdentityEndpoints();
+        app.MapUserEndpoints(); // REQ-002: Benutzerverwaltung (direct mapping, no prefix)
         api.MapMemberEndpoints();
         api.MapEventEndpoints();
         api.MapDocumentEndpoints();

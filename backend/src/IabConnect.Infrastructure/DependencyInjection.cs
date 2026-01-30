@@ -1,6 +1,7 @@
 using Hangfire;
 using Hangfire.PostgreSql;
 using IabConnect.Domain.Members;
+using IabConnect.Infrastructure.Identity;
 using IabConnect.Infrastructure.Persistence;
 using IabConnect.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -37,6 +38,9 @@ public static class DependencyInjection
         // Repositories
         services.AddScoped<IMemberRepository, MemberRepository>();
         // TODO: Add other repositories as modules are implemented
+
+        // Keycloak Admin Service (REQ-002: Benutzerverwaltung)
+        services.AddHttpClient<IKeycloakAdminService, KeycloakAdminService>();
 
         // Hangfire (Background Jobs)
         services.AddHangfire(config =>

@@ -19,12 +19,12 @@ TicketLink:
 Notizen: Login via Keycloak implementiert. Backend: JWT-Authentifizierung mit Rollenmapping. Frontend: NextAuth.js mit Keycloak-Provider, Login-Seite, rollenbasierte Navigation. Manuelle Tests in docs/06_dev_workflow.md dokumentiert.
 
 ID: REQ-002
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 02 01
+Owner: Implementation Agent
+SprintOderRelease: Sprint 1
 TicketLink:
-Notizen:
+Notizen: Benutzerverwaltung über Keycloak Admin API. Backend: KeycloakAdminService mit Service Account, User-Endpoints für CRUD, Rollen-Management, Passwort-Reset. Frontend: User-Liste mit Suche/Pagination, Create/Edit-Seiten mit Rollenzuweisung, Enable/Disable-Funktion. Setup: iabconnect-admin Client in Keycloak erforderlich mit realm-management Rollen.
 
 ID: REQ-003
 Status: Done
@@ -43,12 +43,12 @@ TicketLink:
 Notizen:
 
 ID: REQ-005
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 01 31
+Owner: Implementation Agent
+SprintOderRelease: Sprint 1
 TicketLink:
-Notizen:
+Notizen: SSO via Keycloak OIDC implementiert als Teil von REQ-001 (Login). iabconnect-frontend Client für Browser-Flow, iabconnect-backend Client für Backend-Validierung. Realm-Export in infra/keycloak/realms/ verfügbar.
 
 ID: REQ-006
 Status: Backlog

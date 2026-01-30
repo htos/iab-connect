@@ -4,7 +4,7 @@
   "displayName": "IAB Connect",
   "loginTheme": "keycloak",
   "sslRequired": "external",
-  "registrationAllowed": false,
+  "registrationAllowed": true,
   "registrationEmailAsUsername": true,
   "rememberMe": true,
   "verifyEmail": true,
@@ -18,6 +18,10 @@
   "quickLoginCheckMilliSeconds": 1000,
   "maxDeltaTimeSeconds": 43200,
   "failureFactor": 5,
+  "eventsListeners": ["jboss-logging", "disable-new-users"],
+  "eventsEnabled": true,
+  "enabledEventTypes": ["REGISTER"],
+  "defaultRoles": ["member"],
   "roles": {
     "realm": [
       {
@@ -45,6 +49,18 @@
     }
   ],
   "clients": [
+    {
+      "clientId": "iabconnect-admin",
+      "name": "IAB Connect Admin Service",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "admin-service-secret-2026",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "fullScopeAllowed": true
+    },
     {
       "clientId": "iabconnect-api",
       "name": "IAB Connect API",

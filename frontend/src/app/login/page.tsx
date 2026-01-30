@@ -7,6 +7,7 @@
 import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { useTranslations } from "next-intl";
 
@@ -16,14 +17,24 @@ export default function LoginPage() {
   const { isAuthenticated, isLoading } = useAuth();
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showDisabledModal, setShowDisabledModal] = useState(false);
   const t = useTranslations();
 
   const callbackUrl = searchParams.get("callbackUrl") ?? "/";
   const errorParam = searchParams.get("error");
+  const errorDescription = searchParams.get("error_description");
 
   // Handle error from URL
   useEffect(() => {
     if (errorParam) {
+      // Check for account disabled error
+      if (errorDescription?.toLowerCase().includes("disabled") || 
+          errorDescription?.toLowerCase().includes("deaktiviert") ||
+          errorParam === "access_denied") {
+        setShowDisabledModal(true);
+        return;
+      }
+      
       switch (errorParam) {
         case "OAuthCallback":
           setError(t("auth.signInError"));
@@ -38,7 +49,7 @@ export default function LoginPage() {
           setError(t("auth.unknownError"));
       }
     }
-  }, [errorParam, t]);
+  }, [errorParam, errorDescription, t]);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -132,6 +143,14 @@ export default function LoginPage() {
             {t("auth.useYourCredentials")}
           </p>
 
+          {/* Register Link */}
+          <p className="mt-4 text-center text-sm text-gray-600">
+            {t("auth.noAccount")}{" "}
+            <Link href="/register" className="text-orange-600 hover:text-orange-700 font-medium">
+              {t("auth.registerHere")}
+            </Link>
+          </p>
+
           {/* Dev Credentials (only in development) */}
           {process.env.NODE_ENV === "development" && (
             <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
@@ -158,6 +177,37 @@ export default function LoginPage() {
           © {new Date().getFullYear()} Indischer Kulturverein Bern
         </p>
       </div>
+
+      {/* Account Disabled Modal */}
+      {showDisabledModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
+            <div className="text-center">
+              {/* Warning Icon */}
+              <div className="mx-auto h-16 w-16 bg-amber-100 rounded-full flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                {t("auth.accountDisabled")}
+              </h3>
+              
+              <p className="text-gray-600 mb-6">
+                {t("auth.accountDisabledMessage")}
+              </p>
+              
+              <button
+                onClick={() => setShowDisabledModal(false)}
+                className="w-full py-3 px-4 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg transition-colors"
+              >
+                {t("common.confirm")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

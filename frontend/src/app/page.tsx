@@ -84,11 +84,6 @@ export default function HomePage() {
               </span>
             )}
           </div>
-          {roles.length > 0 && (
-            <p className="text-sm text-gray-500 mt-3">
-              {t("roles.allRoles")}: {roles.join(", ")}
-            </p>
-          )}
         </div>
 
         {/* Quick Actions Grid */}

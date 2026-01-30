@@ -113,3 +113,19 @@ Freiere Formatierung mit Markdown Tabellen und Listen.
 
 Auswirkung
 Kein Fettdruck, keine verschachtelten Listen, keine Bindestriche ausser wo unumgänglich.
+
+
+Datum
+2026 02 01
+
+Entscheidung
+Benutzerverwaltung über Keycloak Admin REST API statt eigener User Tabelle.
+
+Begründung
+Keycloak ist Single Source of Truth für Identitäten. Vermeidung von Datenduplizierung. Einheitliches Rollen Management. Passwort Reset und E Mail Verification via Keycloak.
+
+Alternativen
+Lokale User Tabelle mit Synchronisation zu Keycloak. Komplett eigene User Verwaltung ohne Keycloak.
+
+Auswirkung
+Backend benötigt Service Account Client mit Admin API Rechten. User CRUD erfolgt direkt über Keycloak. Kein separates User Entity im Domain Model. Abhängigkeit von Keycloak für alle User Operationen.

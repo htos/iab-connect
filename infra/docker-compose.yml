@@ -40,6 +40,7 @@ services:
       - "8080:8080"
     volumes:
       - ./keycloak/realms:/opt/keycloak/data/import:ro
+      - ./keycloak/providers/disable-new-users/target/disable-new-users-spi-1.0.0.jar:/opt/keycloak/providers/disable-new-users-spi.jar:ro
     depends_on:
       postgres:
         condition: service_healthy

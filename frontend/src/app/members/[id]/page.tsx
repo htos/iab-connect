@@ -89,7 +89,7 @@ export default function MemberDetailPage() {
     setStatusUpdating(true);
     try {
       const response = await fetch(`${baseUrl}/api/v1/members/${memberId}/status`, {
-        method: "PATCH",
+        method: "PUT",
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
@@ -116,7 +116,7 @@ export default function MemberDetailPage() {
     setStatusUpdating(true);
     try {
       const response = await fetch(`${baseUrl}/api/v1/members/${memberId}/type`, {
-        method: "PATCH",
+        method: "PUT",
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",

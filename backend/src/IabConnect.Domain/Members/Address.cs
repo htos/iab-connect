@@ -34,6 +34,19 @@ public sealed class Address : ValueObject
         return new Address(street.Trim(), city.Trim(), postalCode.Trim(), country.Trim());
     }
 
+    /// <summary>
+    /// Creates an empty placeholder address for users without address data yet.
+    /// </summary>
+    public static Address CreateEmpty()
+    {
+        return new Address(
+            street: "Nicht angegeben",
+            city: "Nicht angegeben",
+            postalCode: "0000",
+            country: "Schweiz"
+        );
+    }
+
     protected override IEnumerable<object?> GetEqualityComponents()
     {
         yield return Street;
