@@ -1,6 +1,10 @@
 using Hangfire;
 using Hangfire.PostgreSql;
+using IabConnect.Application.Audit;
+using IabConnect.Domain.Audit;
 using IabConnect.Domain.Members;
+using IabConnect.Domain.Privacy;
+using IabConnect.Infrastructure.Audit;
 using IabConnect.Infrastructure.Identity;
 using IabConnect.Infrastructure.Persistence;
 using IabConnect.Infrastructure.Persistence.Repositories;
@@ -37,7 +41,13 @@ public static class DependencyInjection
 
         // Repositories
         services.AddScoped<IMemberRepository, MemberRepository>();
-        // TODO: Add other repositories as modules are implemented
+        services.AddScoped<IAuditEventRepository, AuditEventRepository>();
+        services.AddScoped<IConsentRepository, ConsentRepository>();
+        services.AddScoped<IDeletionRequestRepository, DeletionRequestRepository>();
+
+        // REQ-011: Audit Service (requires IHttpContextAccessor)
+        services.AddHttpContextAccessor();
+        services.AddScoped<IAuditService, AuditService>();
 
         // Keycloak Admin Service (REQ-002: Benutzerverwaltung)
         services.AddHttpClient<IKeycloakAdminService, KeycloakAdminService>();

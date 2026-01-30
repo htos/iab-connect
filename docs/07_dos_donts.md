@@ -13,6 +13,10 @@ Do
 9) Design Mobile-First mit Tailwind responsive Klassen
 10) Verwende die Sidebar-Navigation für alle authentifizierten Seiten
 11) Datumsformat immer dd/mm/yyyy verwenden (de-CH Locale): `toLocaleDateString("de-CH", { day: "2-digit", month: "2-digit", year: "numeric" })`
+12) UI-Elemente basierend auf Berechtigungen ein-/ausblenden: Wenn ein User eine Aktion nicht ausführen darf (z.B. Löschen nur für Admin), dann darf diese Aktion auch nicht in der UI sichtbar sein
+13) Schreibe Unit Tests für alle neuen Domain-Entities und Use Cases (xunit.v3 + FluentAssertions)
+14) Schreibe Integration Tests für alle Repositories mit Testcontainers (echte PostgreSQL DB)
+15) Tests müssen vor jedem Merge grün sein: `dotnet test` im Backend
 
 Dont
 1) Keine Microservices im MVP

@@ -310,3 +310,254 @@ VS Code Setup
     - PUT /api/v1/users/{id}/roles → Rollen zuweisen
     - GET /api/v1/users/roles → Alle verfügbaren Rollen
 
+---
+
+### REQ-004: Feingranulare Zugriffskontrolle
+
+**Voraussetzungen:**
+- Backend und Frontend laufen
+- Test-Benutzer vorhanden (admin, vorstand, member)
+
+**Testschritte:**
+
+1. **Admin-Berechtigungen prüfen**
+   - Login als admin@iabconnect.ch
+   - Navigiere zu /members
+   - ✅ Erwartung: Lösch-Button (Papierkorb) ist bei jedem Mitglied sichtbar
+   - ✅ Erwartung: Alle CRUD-Operationen möglich
+
+2. **Vorstand-Berechtigungen prüfen**
+   - Login als vorstand@iabconnect.ch
+   - Navigiere zu /members
+   - ✅ Erwartung: Lösch-Button ist NICHT sichtbar (nur Admin darf löschen)
+   - ✅ Erwartung: Anlegen, Bearbeiten, Status-Ändern möglich
+   - Navigiere zur Mitglieder-Detailseite
+   - ✅ Erwartung: Lösch-Button auf Detailseite ist NICHT sichtbar
+
+3. **Member-Berechtigungen prüfen**
+   - Login als member@iabconnect.ch
+   - ✅ Erwartung: Mitglieder-Menüpunkt ist NICHT sichtbar
+   - Versuche direkt /members zu öffnen
+   - ✅ Erwartung: Kein Zugriff / Weiterleitung
+   - Navigiere zu /profile
+   - ✅ Erwartung: Nur eigenes Profil kann bearbeitet werden
+
+4. **Backend-Autorisierung testen (API)**
+   - Als Vorstand: Versuche DELETE /api/v1/members/{id}
+   - ✅ Erwartung: 403 Forbidden (nur Admin darf löschen)
+   - Als Member: Versuche GET /api/v1/members
+   - ✅ Erwartung: 403 Forbidden (nur Vorstand/Admin)
+
+---
+
+### REQ-007: Registrierung & Onboarding
+
+**Voraussetzungen:**
+- Docker Compose läuft
+- Backend und Frontend laufen
+- (Optional) SMTP-Server für E-Mail-Versand konfiguriert
+
+**SMTP-Konfiguration für E-Mail-Tests (Mailhog):**
+Im Development-Setup ist Mailhog bereits konfiguriert und fängt alle E-Mails ab:
+- **SMTP-Server:** mailhog:1025 (intern im Docker-Netzwerk)
+- **Web-UI:** http://localhost:8025 (alle gefangenen E-Mails ansehen)
+
+Nach dem Neustart von Docker Compose werden alle E-Mails von Keycloak an Mailhog gesendet.
+
+```bash
+# Docker Compose neu starten um Mailhog zu aktivieren
+cd infra
+docker compose down
+docker compose up -d
+```
+
+**Testschritte:**
+
+1. **Selbstregistrierung testen**
+   - Öffne http://localhost:3000/login
+   - Klicke auf "Jetzt registrieren"
+   - ✅ Erwartung: Weiterleitung zur Registrierungsseite
+   - Fülle aus:
+     - Vorname: Neu
+     - Nachname: Mitglied
+     - E-Mail: neu.mitglied@example.ch
+     - Passwort: Test1234!
+     - Passwort bestätigen: Test1234!
+   - Klicke "Registrieren"
+   - ✅ Erwartung: Erfolgsmeldung "Registrierung erfolgreich"
+   - ✅ Erwartung: Hinweis auf Admin-Freischaltung
+
+2. **Registrierter Benutzer kann sich NICHT einloggen**
+   - Versuche Login mit neu.mitglied@example.ch
+   - ✅ Erwartung: Fehlermeldung "Konto nicht freigeschaltet"
+   - ✅ Erwartung: In Keycloak ist User disabled
+
+3. **Admin aktiviert den Benutzer**
+   - Login als admin@iabconnect.ch
+   - Navigiere zu /users
+   - Finde den neuen Benutzer
+   - ✅ Erwartung: Benutzer ist deaktiviert (Toggle aus)
+   - Aktiviere den Toggle
+   - ✅ Erwartung: Benutzer wird aktiviert
+   - ✅ Erwartung: Member-Eintrag wird automatisch erstellt
+
+4. **Aktivierter Benutzer kann sich einloggen**
+   - Logout als Admin
+   - Login als neu.mitglied@example.ch
+   - ✅ Erwartung: Login erfolgreich
+   - ✅ Erwartung: Dashboard wird angezeigt
+
+5. **Onboarding-Banner testen**
+   - Nach Login als neu.mitglied@example.ch
+   - ✅ Erwartung: Onboarding-Banner auf Dashboard
+   - ✅ Erwartung: Fortschrittsbalken zeigt < 100%
+   - ✅ Erwartung: Checkliste zeigt offene Punkte (Adresse)
+   - Klicke "Jetzt vervollständigen"
+   - ✅ Erwartung: Weiterleitung zu /profile
+
+6. **Profil vervollständigen**
+   - Klicke "Bearbeiten" auf Profilseite
+   - Fülle Adresse aus:
+     - Strasse: Musterstrasse 1
+     - PLZ: 3000
+     - Ort: Bern
+   - Klicke "Speichern"
+   - ✅ Erwartung: Profil wird gespeichert
+   - Navigiere zurück zum Dashboard
+   - ✅ Erwartung: Onboarding-Banner zeigt höheren Fortschritt
+   - ✅ Erwartung: Bei 100% verschwindet das Banner
+
+7. **Banner ausblenden testen**
+   - Falls Banner noch sichtbar: Klicke X-Button
+   - ✅ Erwartung: Banner wird für 24h ausgeblendet
+   - Seite neu laden
+   - ✅ Erwartung: Banner bleibt ausgeblendet
+
+8. **Einladung per Mail-Link testen (falls SMTP konfiguriert)**
+   - Login als admin@iabconnect.ch
+   - Navigiere zu /users/new
+   - Fülle aus:
+     - E-Mail: einladung.test@example.ch
+     - Vorname: Einladung
+     - Nachname: Test
+     - Aktiviert: ✓
+     - Einladungs-E-Mail senden: ✓
+   - Klicke "Benutzer erstellen"
+   - ✅ Erwartung: Benutzer wird erstellt
+   - ✅ Erwartung: E-Mail mit Passwort-Link wird gesendet
+   - (Prüfe E-Mail-Postfach oder Mailhog wenn konfiguriert)
+
+9. **API-Endpunkte testen**
+   - POST /api/v1/registration → Neuen Benutzer registrieren (Public)
+   - GET /api/v1/members/me/profile-status → Onboarding-Status abrufen
+
+---
+
+### REQ-008: Passwort Reset & Account Recovery
+
+**Voraussetzungen:**
+- Backend und Frontend laufen
+- Keycloak läuft mit aktiviertem resetPasswordAllowed
+- Mailhog läuft (für E-Mail-Tests): http://localhost:8025
+
+**Testschritte:**
+
+1. **Self-Service Passwort-Reset über Login-Seite**
+   - Gehe zu http://localhost:3000/login
+   - ✅ Erwartung: "Passwort vergessen?" Link ist sichtbar
+   - Klicke auf "Passwort vergessen?"
+   - ✅ Erwartung: Weiterleitung zu Keycloak Reset-Seite
+   - Gib eine existierende E-Mail-Adresse ein (z.B. member@iabconnect.ch)
+   - Klicke "Submit"
+   - ✅ Erwartung: Bestätigung dass E-Mail gesendet wurde
+   - Öffne Mailhog: http://localhost:8025
+   - ✅ Erwartung: E-Mail mit Reset-Link ist eingegangen
+   - Klicke auf den Link in der E-Mail
+   - ✅ Erwartung: Keycloak Passwort-Ändern-Seite erscheint
+   - Gib neues Passwort ein (z.B. Member-Dev-2026!!)
+   - ✅ Erwartung: Passwort wurde geändert
+
+2. **Login mit neuem Passwort**
+   - Gehe zu http://localhost:3000/login
+   - Logge dich mit E-Mail und neuem Passwort ein
+   - ✅ Erwartung: Login erfolgreich
+
+3. **Rate Limiting testen**
+   - Versuche mehrfach hintereinander Passwort-Reset anzufordern
+   - ✅ Erwartung: Nach mehreren Versuchen wird gebremst (Keycloak Brute Force Protection)
+
+4. **Admin-initiierter Passwort-Reset**
+   - Login als admin@iabconnect.ch
+   - Navigiere zu /users
+   - Wähle einen Benutzer aus
+   - Klicke auf "Passwort zurücksetzen" Button
+   - ✅ Erwartung: Bestätigungsdialog erscheint
+   - Bestätige
+   - ✅ Erwartung: "Passwort-Reset-E-Mail wurde gesendet"
+   - Öffne Mailhog
+   - ✅ Erwartung: Reset-E-Mail ist eingegangen
+
+5. **Reset-Link Ablauf testen**
+   - Fordere einen Passwort-Reset an
+   - Warte nicht zu lange (Standard: 12 Stunden Gültigkeit)
+   - Der Link sollte nur einmal verwendbar sein
+   - ✅ Erwartung: Nach Verwendung ist der Link ungültig
+
+6. **API-Endpunkte (Admin)**
+   - POST /api/v1/users/{userId}/reset-password → Passwort-Reset E-Mail senden
+
+---
+
+### REQ-011: Audit Log (Sicherheits- & Datenänderungen)
+
+**Voraussetzungen:**
+- Backend und Frontend laufen
+- Login als Admin
+
+**Testschritte:**
+
+1. **Audit-Log Seite öffnen**
+   - Login als admin@iabconnect.ch
+   - Navigiere zu http://localhost:3000/audit
+   - ✅ Erwartung: Audit-Log Seite mit Tabelle wird angezeigt
+   - ✅ Erwartung: Filterbereich ist verfügbar (Filter-Button)
+
+2. **Audit-Events durchsuchen**
+   - Klicke auf "Filter" um Filteroptionen anzuzeigen
+   - ✅ Erwartung: Filter für Datum, Kategorie, Ereignistyp, Schweregrad, Status
+   - Wähle Kategorie "Authentifizierung"
+   - ✅ Erwartung: Nur Login/Logout Events werden angezeigt
+   - Wähle Zeitraum (Von/Bis)
+   - ✅ Erwartung: Nur Events im Zeitraum werden angezeigt
+
+3. **Audit-Events durch Aktionen generieren**
+   - Öffne zweites Browser-Fenster
+   - Login/Logout durchführen
+   - Zurück zur Audit-Seite und aktualisieren
+   - ✅ Erwartung: Login-Event erscheint in der Liste
+   - Navigiere zu /users und ändere einen Benutzer
+   - ✅ Erwartung: Benutzer-Update-Event erscheint in der Liste
+   - Navigiere zu /members und ändere ein Mitglied
+   - ✅ Erwartung: Mitglied-Update-Event erscheint in der Liste
+
+4. **CSV-Export testen**
+   - Klicke auf "CSV Export" Button
+   - ✅ Erwartung: CSV-Datei wird heruntergeladen
+   - ✅ Erwartung: Dateiname enthält Datum (audit_export_YYYYMMDD_HHmmss.csv)
+   - Öffne CSV in Editor oder Excel
+   - ✅ Erwartung: Spalten: Timestamp, EventType, Category, Severity, UserId, UserName, IpAddress, EntityType, EntityId, Action, Success, ErrorMessage
+
+5. **Pagination testen**
+   - Wenn mehr als 50 Events vorhanden
+   - ✅ Erwartung: Pagination wird angezeigt
+   - Klicke "Weiter" / "Zurück"
+   - ✅ Erwartung: Seite wechselt
+
+6. **API-Endpunkte testen (Swagger)**
+   - GET /api/v1/audit → Audit-Events abrufen (paginiert)
+   - GET /api/v1/audit/export → CSV-Export
+   - GET /api/v1/audit/entity/{type}/{id} → Entity-History
+   - GET /api/v1/audit/user/{userId} → Benutzer-History
+   - GET /api/v1/audit/categories → Verfügbare Kategorien
+   - GET /api/v1/audit/event-types → Verfügbare Event-Typen
+   - ✅ Erwartung: Alle Endpunkte erfordern Admin-Berechtigung

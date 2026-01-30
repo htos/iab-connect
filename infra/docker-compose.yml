@@ -80,6 +80,17 @@ services:
       exit 0;
       "
 
+  # Mailhog - Local SMTP Server for Development (catches all emails)
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: iabconnect-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"   # SMTP Server
+      - "8025:8025"   # Web UI
+    logging:
+      driver: "none"  # Disable logging to reduce noise
+
   # Seq Log Server (optional, for structured logging)
   seq:
     image: datalust/seq:latest

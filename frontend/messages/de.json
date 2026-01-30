@@ -32,7 +32,8 @@
     "next": "Weiter",
     "noMembersFound": "Keine Mitglieder gefunden",
     "tryDifferentFilter": "Versuche andere Filterkriterien.",
-    "addFirstMember": "Füge dein erstes Mitglied hinzu."
+    "addFirstMember": "Füge dein erstes Mitglied hinzu.",
+    "dismiss": "Ausblenden"
   },
   "auth": {
     "signIn": "Anmelden",
@@ -50,7 +51,8 @@
     "accountDisabled": "Konto nicht freigeschaltet",
     "accountDisabledMessage": "Dein Konto wurde noch nicht von einem Administrator freigeschaltet. Bitte warte auf die Freischaltung.",
     "noAccount": "Noch kein Konto?",
-    "registerHere": "Jetzt registrieren"
+    "registerHere": "Jetzt registrieren",
+    "forgotPassword": "Passwort vergessen?"
   },
   "registration": {
     "title": "Konto erstellen",
@@ -270,5 +272,73 @@
     "temporaryPasswordDescription": "Der Benutzer muss das Passwort beim ersten Login ändern.",
     "emailRequired": "E-Mail-Adresse ist erforderlich",
     "passwordOrInvitationRequired": "Bitte wähle entweder Einladungs-E-Mail oder setze ein temporäres Passwort."
+  },
+  "onboarding": {
+    "completeProfile": "Vervollständige dein Profil",
+    "complete": "abgeschlossen",
+    "completeNow": "Jetzt vervollständigen",
+    "profileCreated": "Profil erstellt",
+    "addressProvided": "Adresse angegeben",
+    "phoneProvided": "Telefonnummer angegeben",
+    "required": "Erforderlich"
+  },
+  "audit": {
+    "title": "Audit Log",
+    "description": "Übersicht aller Sicherheits- und Datenänderungen im System",
+    "export": "CSV Export",
+    "filters": {
+      "toggle": "Filter",
+      "fromDate": "Von Datum",
+      "toDate": "Bis Datum",
+      "category": "Kategorie",
+      "eventType": "Ereignistyp",
+      "severity": "Schweregrad",
+      "status": "Status",
+      "search": "Suche",
+      "searchPlaceholder": "Benutzer, Aktion, Entity...",
+      "all": "Alle",
+      "clear": "Filter zurücksetzen"
+    },
+    "table": {
+      "timestamp": "Zeitpunkt",
+      "category": "Kategorie",
+      "eventType": "Ereignistyp",
+      "user": "Benutzer",
+      "action": "Aktion",
+      "status": "Status",
+      "severity": "Schweregrad",
+      "noResults": "Keine Audit-Einträge gefunden"
+    },
+    "severity": {
+      "info": "Info",
+      "warning": "Warnung",
+      "critical": "Kritisch"
+    },
+    "status": {
+      "success": "Erfolgreich",
+      "failure": "Fehlgeschlagen"
+    },
+    "results": {
+      "showing": "{count} von {total} Einträgen"
+    },
+    "pagination": {
+      "page": "Seite {current} von {total}"
+    },
+    "errors": {
+      "loadFailed": "Audit-Daten konnten nicht geladen werden",
+      "exportFailed": "Export fehlgeschlagen"
+    }
+  },
+  "admin": {
+    "title": "Administration",
+    "subtitle": "Systemverwaltung und Einstellungen",
+    "users": {
+      "title": "Benutzerverwaltung",
+      "description": "Benutzer verwalten, Rollen zuweisen und Konten aktivieren"
+    },
+    "audit": {
+      "title": "Audit-Log",
+      "description": "Sicherheits- und Änderungsprotokoll einsehen"
+    }
   }
 }

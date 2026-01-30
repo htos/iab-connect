@@ -35,12 +35,12 @@ TicketLink:
 Notizen: Implementiert als Teil von REQ-001. Drei Rollen (admin, vorstand, member) mit entsprechenden Authorization Policies im Backend und rollenbasierter UI im Frontend.
 
 ID: REQ-004
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 01 31
+Owner: Implementation Agent
+SprintOderRelease: Sprint 1
 TicketLink:
-Notizen:
+Notizen: Feingranulare Zugriffskontrolle implementiert. Permission-System mit 40+ Berechtigungen (CRUD pro Resource). Rollenbasiertes Permission-Mapping (admin, vorstand, kassier, event-manager, member). Resource-basierte Autorisierung mit Ownership-Checks (User kann nur eigene Daten bearbeiten). Security Audit Logger für alle Zugriffsentscheidungen. IAuthorizationService und ISecurityAuditLogger in Application Layer.
 
 ID: REQ-005
 Status: Done
@@ -59,20 +59,20 @@ TicketLink:
 Notizen:
 
 ID: REQ-007
-Status: Backlog
+Status: Done
 StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Owner: Implementation Agent
+SprintOderRelease: Sprint 1
 TicketLink:
-Notizen:
+Notizen: Registrierung und Onboarding implementiert. (1) Selbstregistrierung mit Admin-Freischaltung via Keycloak disable-new-users Event Listener. (2) Einladung per Mail-Link via SendInvitation-Option bei User-Erstellung. (3) Onboarding-Checkliste: Profile-Status Endpoint prüft Profilabschluss (Adresse, Telefon). OnboardingBanner-Komponente zeigt Fortschritt auf Dashboard an.
 
 ID: REQ-008
-Status: Backlog
+Status: Done
 StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Owner: Implementation Agent
+SprintOderRelease: Sprint 1
 TicketLink:
-Notizen:
+Notizen: Passwort Reset und Account Recovery implementiert. (1) Self-Service Reset: "Passwort vergessen?" Link auf Login-Seite leitet zu Keycloak's Reset-Flow weiter. Keycloak sendet Reset-Link per E-Mail (via Mailhog in dev). Link ist einmalig und zeitlich begrenzt (Keycloak Standard: 12h). (2) Admin-Reset: Admins können über Benutzerverwaltung Passwort-Reset-E-Mails versenden. (3) Rate Limiting: Keycloak Brute Force Protection ist aktiviert (bruteForceProtected: true im Realm).
 
 ID: REQ-009
 Status: Backlog
@@ -91,20 +91,20 @@ TicketLink:
 Notizen:
 
 ID: REQ-011
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 02 01
+Owner: Implementation Agent
+SprintOderRelease: Sprint 1
 TicketLink:
-Notizen:
+Notizen: Audit Log für Sicherheits- und Datenänderungen implementiert. Backend: (1) AuditEvent Entity mit EventType, Category, Severity, User/IP-Tracking. (2) IAuditService für Logging mit automatischer IP/UserAgent-Erfassung. (3) AuditEndpoints mit GET /api/v1/audit (paginiert + Filter), /export (CSV), /entity/{type}/{id}, /user/{userId}. (4) Integration in SecurityAuditLogger - alle Access-Events werden persistiert. Frontend: Audit-Log Seite unter /audit mit Tabelle, Filtern, und CSV-Export. Admin-only Zugriff via /admin Dashboard. BEKANNTE EINSCHRÄNKUNG: Login-Tracking über Frontend (LoginTracker) funktioniert noch nicht zuverlässig - muss später überarbeitet werden. Auditierte Aktionen: Member Create/Update/Delete/StatusChange/TypeChange, Access Granted/Denied Events.
 
 ID: REQ-012
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 01 31
+Owner: Implementation Agent
+SprintOderRelease: Sprint 1
 TicketLink:
-Notizen:
+Notizen: DSGVO/Datenschutz-Compliance implementiert. (1) Einwilligungsverwaltung: Consent Entity mit 5 Typen (DataProcessing erforderlich, Newsletter, Marketing, EventNotifications, PhotoUsage). API-Endpunkte: GET/PUT /privacy/consents (Übersicht + Bulk-Update), POST/DELETE /privacy/consents/{type}. (2) Datenexport (Art. 20): GET /privacy/export liefert alle Benutzerdaten (Profil, Einwilligungen, Audit-Log) als JSON. (3) Recht auf Löschung (Art. 17): DeletionRequest Entity mit Workflow (Pending→Confirmed→UnderReview→Completed/Cancelled/Rejected). Bestätigungs-Token per E-Mail. Admin-Endpunkte zur Bearbeitung. Anonymisierung statt Löschung für Audit-Compliance. (4) Tests: 20 Unit-Tests (Consent, DeletionRequest), 15 Integrationstests (ConsentRepository, DeletionRequestRepository mit Testcontainers).
 
 ID: REQ-013
 Status: Done

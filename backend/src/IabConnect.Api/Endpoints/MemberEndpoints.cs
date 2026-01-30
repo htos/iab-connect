@@ -1,3 +1,5 @@
+using IabConnect.Application.Authorization;
+using IabConnect.Domain.Authorization;
 using IabConnect.Domain.Members;
 using IabConnect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Mvc;
@@ -32,6 +34,12 @@ public static class MemberEndpoints
             .RequireAuthorization("RequireMember")
             .WithName("UpdateOwnMemberProfile")
             .WithDescription("REQ-016: Eigenes Profil bearbeiten");
+
+        // GET /api/v1/members/me/profile-status - Check if profile is complete (REQ-007)
+        members.MapGet("/me/profile-status", GetProfileStatus)
+            .RequireAuthorization("RequireMember")
+            .WithName("GetProfileStatus")
+            .WithDescription("REQ-007: Onboarding-Checkliste - Profilstatus prüfen");
 
         // === Admin/Vorstand endpoints ===
 
@@ -164,19 +172,43 @@ public static class MemberEndpoints
 
     private static async Task<IResult> GetMemberById(
         Guid id,
+        HttpContext httpContext,
         IMemberRepository memberRepository,
+        IAuthorizationService authService,
+        ISecurityAuditLogger auditLogger,
         CancellationToken ct)
     {
         var member = await memberRepository.GetByIdAsync(id, ct);
         if (member == null)
             return Results.NotFound(new { Error = "Mitglied nicht gefunden" });
 
+        // REQ-004: Check if user can access this specific member
+        var authResult = await authService.CanAccessMemberAsync(
+            httpContext.User,
+            id,
+            Permission.MemberRead,
+            memberRepository,
+            ct);
+
+        if (!authResult.IsAuthorized)
+        {
+            auditLogger.LogAccessDenied(
+                httpContext.User,
+                "Member",
+                "Read",
+                authResult.DenialReason ?? "Unauthorized",
+                id.ToString());
+            return Results.Forbid();
+        }
+
         return Results.Ok(MapToDto(member));
     }
 
     private static async Task<IResult> CreateMember(
         [FromBody] CreateMemberRequest request,
+        HttpContext httpContext,
         IMemberRepository memberRepository,
+        ISecurityAuditLogger auditLogger,
         ApplicationDbContext dbContext,
         CancellationToken ct)
     {
@@ -201,19 +233,50 @@ public static class MemberEndpoints
         await memberRepository.AddAsync(member, ct);
         await dbContext.SaveChangesAsync(ct);
 
+        // REQ-011: Log member creation
+        auditLogger.LogAccessGranted(
+            httpContext.User,
+            "Member",
+            "Create",
+            member.Id.ToString(),
+            new Dictionary<string, object> { ["MemberName"] = $"{member.FirstName} {member.LastName}", ["Email"] = member.Email });
+
         return Results.Created($"/api/v1/members/{member.Id}", MapToDto(member));
     }
 
     private static async Task<IResult> UpdateMember(
         Guid id,
         [FromBody] UpdateMemberRequest request,
+        HttpContext httpContext,
         IMemberRepository memberRepository,
+        IAuthorizationService authService,
+        ISecurityAuditLogger auditLogger,
         ApplicationDbContext dbContext,
         CancellationToken ct)
     {
         var member = await memberRepository.GetByIdAsync(id, ct);
         if (member == null)
             return Results.NotFound(new { Error = "Mitglied nicht gefunden" });
+
+        // REQ-004: Check if user can update this specific member
+        var authResult = await authService.CanAccessMemberAsync(
+            httpContext.User,
+            id,
+            Permission.MemberUpdate,
+            memberRepository,
+            ct);
+
+        if (!authResult.IsAuthorized)
+        {
+            auditLogger.LogAccessDenied(
+                httpContext.User,
+                "Member",
+                "Update",
+                authResult.DenialReason ?? "Unauthorized",
+                id.ToString(),
+                new Dictionary<string, object> { ["AttemptedChanges"] = request });
+            return Results.Forbid();
+        }
 
         // Check for duplicate email if changed
         if (request.Email != member.Email && await memberRepository.EmailExistsAsync(request.Email, ct))
@@ -234,12 +297,22 @@ public static class MemberEndpoints
 
         await dbContext.SaveChangesAsync(ct);
 
+        // Log successful update for audit trail
+        auditLogger.LogAccessGranted(
+            httpContext.User,
+            "Member",
+            "Update",
+            id.ToString());
+
         return Results.Ok(MapToDto(member));
     }
 
     private static async Task<IResult> DeleteMember(
         Guid id,
+        HttpContext httpContext,
         IMemberRepository memberRepository,
+        IAuthorizationService authService,
+        ISecurityAuditLogger auditLogger,
         ApplicationDbContext dbContext,
         CancellationToken ct)
     {
@@ -247,8 +320,32 @@ public static class MemberEndpoints
         if (member == null)
             return Results.NotFound(new { Error = "Mitglied nicht gefunden" });
 
+        // REQ-004: Delete requires explicit admin permission, not just ownership
+        if (!authService.HasPermission(httpContext.User, Permission.MemberDelete))
+        {
+            auditLogger.LogAccessDenied(
+                httpContext.User,
+                "Member",
+                "Delete",
+                "Missing member:delete permission - only admins can delete members",
+                id.ToString());
+            return Results.Forbid();
+        }
+
         memberRepository.Remove(member);
         await dbContext.SaveChangesAsync(ct);
+
+        // Log deletion for audit
+        auditLogger.LogAccessGranted(
+            httpContext.User,
+            "Member",
+            "Delete",
+            id.ToString(),
+            new Dictionary<string, object>
+            {
+                ["DeletedMemberEmail"] = member.Email,
+                ["DeletedMemberName"] = $"{member.FirstName} {member.LastName}"
+            });
 
         return Results.NoContent();
     }
@@ -256,7 +353,10 @@ public static class MemberEndpoints
     private static async Task<IResult> UpdateMemberStatus(
         Guid id,
         [FromBody] UpdateStatusRequest request,
+        HttpContext httpContext,
         IMemberRepository memberRepository,
+        IAuthorizationService authService,
+        ISecurityAuditLogger auditLogger,
         ApplicationDbContext dbContext,
         CancellationToken ct)
     {
@@ -264,6 +364,24 @@ public static class MemberEndpoints
         if (member == null)
             return Results.NotFound(new { Error = "Mitglied nicht gefunden" });
 
+        // REQ-004: Status change requires specific permission (not just update)
+        if (!authService.HasPermission(httpContext.User, Permission.MemberStatusChange))
+        {
+            auditLogger.LogAccessDenied(
+                httpContext.User,
+                "Member",
+                "StatusChange",
+                "Missing member:status:change permission",
+                id.ToString(),
+                new Dictionary<string, object>
+                {
+                    ["AttemptedStatus"] = request.Status.ToString(),
+                    ["CurrentStatus"] = member.Status.ToString()
+                });
+            return Results.Forbid();
+        }
+
+        var oldStatus = member.Status;
         switch (request.Status)
         {
             case MembershipStatus.Active:
@@ -281,13 +399,27 @@ public static class MemberEndpoints
 
         await dbContext.SaveChangesAsync(ct);
 
+        // Log status change
+        auditLogger.LogAccessGranted(
+            httpContext.User,
+            "Member",
+            "StatusChange",
+            id.ToString(),
+            new Dictionary<string, object>
+            {
+                ["OldStatus"] = oldStatus.ToString(),
+                ["NewStatus"] = request.Status.ToString()
+            });
+
         return Results.Ok(MapToDto(member));
     }
 
     private static async Task<IResult> UpdateMembershipType(
         Guid id,
         [FromBody] UpdateTypeRequest request,
+        HttpContext httpContext,
         IMemberRepository memberRepository,
+        ISecurityAuditLogger auditLogger,
         ApplicationDbContext dbContext,
         CancellationToken ct)
     {
@@ -295,8 +427,22 @@ public static class MemberEndpoints
         if (member == null)
             return Results.NotFound(new { Error = "Mitglied nicht gefunden" });
 
+        var oldType = member.MembershipType;
         member.ChangeMembershipType(request.MembershipType);
         await dbContext.SaveChangesAsync(ct);
+
+        // REQ-011: Log membership type change
+        auditLogger.LogAccessGranted(
+            httpContext.User,
+            "Member",
+            "TypeChange",
+            id.ToString(),
+            new Dictionary<string, object>
+            {
+                ["OldType"] = oldType.ToString(),
+                ["NewType"] = request.MembershipType.ToString(),
+                ["MemberName"] = $"{member.FirstName} {member.LastName}"
+            });
 
         return Results.Ok(MapToDto(member));
     }
@@ -367,6 +513,85 @@ public static class MemberEndpoints
         MembershipStatus.Suspended => "Gesperrt",
         _ => status.ToString()
     };
+
+    /// <summary>
+    /// REQ-007: Onboarding - Check profile completion status
+    /// Returns a checklist of profile completion items
+    /// </summary>
+    private static async Task<IResult> GetProfileStatus(
+        HttpContext httpContext,
+        IMemberRepository memberRepository,
+        CancellationToken ct)
+    {
+        var keycloakUserId = GetKeycloakUserId(httpContext);
+        if (keycloakUserId == null)
+            return Results.Unauthorized();
+
+        var member = await memberRepository.GetByKeycloakUserIdAsync(keycloakUserId.Value, ct);
+
+        // If no member profile exists yet, return incomplete status
+        if (member == null)
+        {
+            return Results.Ok(new ProfileStatusDto
+            {
+                IsComplete = false,
+                CompletionPercentage = 0,
+                HasProfile = false,
+                ChecklistItems = new List<ProfileChecklistItem>
+                {
+                    new() { Key = "profile", Label = "Profil erstellt", IsComplete = false, IsRequired = true },
+                    new() { Key = "address", Label = "Adresse angegeben", IsComplete = false, IsRequired = true },
+                    new() { Key = "phone", Label = "Telefonnummer angegeben", IsComplete = false, IsRequired = false }
+                },
+                NextAction = "Bitte vervollständigen Sie Ihr Profil",
+                ProfileUrl = "/profile"
+            });
+        }
+
+        // Check each profile field
+        var hasValidAddress = !string.IsNullOrWhiteSpace(member.Address.Street)
+            && member.Address.Street != "Nicht angegeben"
+            && !string.IsNullOrWhiteSpace(member.Address.City)
+            && member.Address.City != "Nicht angegeben"
+            && !string.IsNullOrWhiteSpace(member.Address.PostalCode)
+            && member.Address.PostalCode != "0000";
+
+        var hasPhone = !string.IsNullOrWhiteSpace(member.Phone);
+
+        var checklistItems = new List<ProfileChecklistItem>
+        {
+            new() { Key = "profile", Label = "Profil erstellt", IsComplete = true, IsRequired = true },
+            new() { Key = "address", Label = "Adresse angegeben", IsComplete = hasValidAddress, IsRequired = true },
+            new() { Key = "phone", Label = "Telefonnummer angegeben", IsComplete = hasPhone, IsRequired = false }
+        };
+
+        // Calculate completion (required items only for "complete" status)
+        var requiredItems = checklistItems.Where(i => i.IsRequired).ToList();
+        var completedRequiredItems = requiredItems.Count(i => i.IsComplete);
+        var isComplete = completedRequiredItems == requiredItems.Count;
+
+        // Calculate percentage including optional items
+        var totalItems = checklistItems.Count;
+        var completedItems = checklistItems.Count(i => i.IsComplete);
+        var completionPercentage = totalItems > 0 ? (int)Math.Round((completedItems * 100.0) / totalItems) : 0;
+
+        // Determine next action
+        string? nextAction = null;
+        if (!hasValidAddress)
+            nextAction = "Bitte geben Sie Ihre Adresse an";
+        else if (!hasPhone)
+            nextAction = "Bitte geben Sie Ihre Telefonnummer an (optional)";
+
+        return Results.Ok(new ProfileStatusDto
+        {
+            IsComplete = isComplete,
+            CompletionPercentage = completionPercentage,
+            HasProfile = true,
+            ChecklistItems = checklistItems,
+            NextAction = nextAction,
+            ProfileUrl = "/profile"
+        });
+    }
 }
 
 // === Request/Response DTOs ===
@@ -450,4 +675,46 @@ public record PagedResponse<T>
     public int PageSize { get; init; }
     public int TotalCount { get; init; }
     public int TotalPages { get; init; }
+}
+
+/// <summary>
+/// REQ-007: Profile status for onboarding checklist
+/// </summary>
+public record ProfileStatusDto
+{
+    /// <summary>True if all required profile fields are complete</summary>
+    public bool IsComplete { get; init; }
+
+    /// <summary>Percentage of profile completion (0-100)</summary>
+    public int CompletionPercentage { get; init; }
+
+    /// <summary>True if member profile exists in database</summary>
+    public bool HasProfile { get; init; }
+
+    /// <summary>List of checklist items with completion status</summary>
+    public IReadOnlyList<ProfileChecklistItem> ChecklistItems { get; init; } = [];
+
+    /// <summary>Suggested next action for the user (null if complete)</summary>
+    public string? NextAction { get; init; }
+
+    /// <summary>URL to the profile page</summary>
+    public string ProfileUrl { get; init; } = "/profile";
+}
+
+/// <summary>
+/// Single checklist item for profile completion
+/// </summary>
+public record ProfileChecklistItem
+{
+    /// <summary>Unique key for the checklist item</summary>
+    public string Key { get; init; } = null!;
+
+    /// <summary>Display label for the checklist item</summary>
+    public string Label { get; init; } = null!;
+
+    /// <summary>True if this item is complete</summary>
+    public bool IsComplete { get; init; }
+
+    /// <summary>True if this item is required for profile completion</summary>
+    public bool IsRequired { get; init; }
 }

@@ -28,13 +28,13 @@ export default function LoginPage() {
   useEffect(() => {
     if (errorParam) {
       // Check for account disabled error
-      if (errorDescription?.toLowerCase().includes("disabled") || 
+      if (errorDescription?.toLowerCase().includes("disabled") ||
           errorDescription?.toLowerCase().includes("deaktiviert") ||
           errorParam === "access_denied") {
         setShowDisabledModal(true);
         return;
       }
-      
+
       switch (errorParam) {
         case "OAuthCallback":
           setError(t("auth.signInError"));
@@ -143,6 +143,16 @@ export default function LoginPage() {
             {t("auth.useYourCredentials")}
           </p>
 
+          {/* Forgot Password Link */}
+          <p className="mt-4 text-center text-sm text-gray-600">
+            <a
+              href={`${process.env.NEXT_PUBLIC_KEYCLOAK_URL || "http://localhost:8080"}/realms/${process.env.NEXT_PUBLIC_KEYCLOAK_REALM || "iabconnect"}/login-actions/reset-credentials?client_id=${process.env.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID || "iabconnect-frontend"}`}
+              className="text-orange-600 hover:text-orange-700 font-medium"
+            >
+              {t("auth.forgotPassword")}
+            </a>
+          </p>
+
           {/* Register Link */}
           <p className="mt-4 text-center text-sm text-gray-600">
             {t("auth.noAccount")}{" "}
@@ -189,15 +199,15 @@ export default function LoginPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
-              
+
               <h3 className="text-xl font-bold text-gray-900 mb-2">
                 {t("auth.accountDisabled")}
               </h3>
-              
+
               <p className="text-gray-600 mb-6">
                 {t("auth.accountDisabledMessage")}
               </p>
-              
+
               <button
                 onClick={() => setShowDisabledModal(false)}
                 className="w-full py-3 px-4 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg transition-colors"

@@ -230,7 +230,7 @@ public static class UserEndpoints
             // Handle member status based on user enabled state
             var keycloakUserId = Guid.Parse(userId);
             var existingMember = await memberRepository.GetByKeycloakUserIdAsync(keycloakUserId, ct);
-            
+
             if (request.Enabled == true)
             {
                 // If user is being activated, create member entry in database if not exists
@@ -238,7 +238,7 @@ public static class UserEndpoints
                 {
                     logger.LogInformation("Creating member profile for user {Email} (Keycloak ID: {UserId})",
                         request.Email ?? existingUser.Email, userId);
-                    
+
                     // Create new member entry with placeholder address
                     var address = Address.CreateEmpty();
 
@@ -339,12 +339,12 @@ public static class UserEndpoints
             {
                 var keycloakUserId = Guid.Parse(userId);
                 var existingMember = await memberRepository.GetByKeycloakUserIdAsync(keycloakUserId, ct);
-                
+
                 if (existingMember == null)
                 {
                     logger.LogInformation("Creating member profile for user {Email} (Keycloak ID: {UserId})",
                         existingUser.Email, userId);
-                    
+
                     // Create new member entry
                     var address = Address.Create(
                         street: "",

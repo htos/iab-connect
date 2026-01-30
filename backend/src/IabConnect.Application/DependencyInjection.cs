@@ -1,4 +1,5 @@
 using FluentValidation;
+using IabConnect.Application.Authorization;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
@@ -24,6 +25,12 @@ public static class DependencyInjection
 
         // FluentValidation
         services.AddValidatorsFromAssembly(assembly);
+
+        // REQ-004: Authorization services
+        services.AddScoped<IAuthorizationService, AuthorizationService>();
+        services.AddScoped<ISecurityAuditLogger, SecurityAuditLogger>();
+
+        // Note: IAuditService is registered in Infrastructure layer (requires IHttpContextAccessor)
 
         return services;
     }

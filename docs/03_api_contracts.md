@@ -90,3 +90,16 @@ Reporting
 GET /api/reports/dashboard
 GET /api/exports/members
 GET /api/exports/finance
+
+Privacy and DSGVO (REQ-012)
+GET /api/v1/privacy/consents
+PUT /api/v1/privacy/consents
+POST /api/v1/privacy/consents/{type}
+DELETE /api/v1/privacy/consents/{type}
+GET /api/v1/privacy/export
+POST /api/v1/privacy/delete-request
+GET /api/v1/privacy/delete-request
+POST /api/v1/privacy/delete-request/confirm
+DELETE /api/v1/privacy/delete-request
+GET /api/v1/privacy/delete-requests (Admin)
+PUT /api/v1/privacy/delete-requests/{id} (Admin)

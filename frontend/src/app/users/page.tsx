@@ -98,7 +98,7 @@ export default function UsersPage() {
   const handlePasswordReset = async (user: User) => {
     if (!accessToken) return;
 
-    if (!confirm(t("confirmPasswordReset", { email: user.email }))) {
+    if (!confirm(t("confirmPasswordReset", { email: user.email ?? "" }))) {
       return;
     }
 
@@ -117,7 +117,7 @@ export default function UsersPage() {
   const handleDelete = async (user: User) => {
     if (!accessToken) return;
 
-    if (!confirm(t("confirmDelete", { email: user.email }))) {
+    if (!confirm(t("confirmDelete", { email: user.email ?? "" }))) {
       return;
     }
 

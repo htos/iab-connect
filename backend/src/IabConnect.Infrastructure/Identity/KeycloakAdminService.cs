@@ -218,7 +218,11 @@ public class KeycloakAdminService : IKeycloakAdminService
         var response = await _httpClient.SendAsync(request, ct);
         response.EnsureSuccessStatusCode();
 
-        return await response.Content.ReadFromJsonAsync<List<KeycloakRole>>(JsonOptions, ct) ?? [];
+        var roles = await response.Content.ReadFromJsonAsync<List<KeycloakRole>>(JsonOptions, ct) ?? [];
+        // Filter out default/system roles - only return application-specific roles
+        return roles.Where(r => !r.Name.StartsWith("default-roles-") &&
+                               !r.Name.StartsWith("uma_") &&
+                               r.Name != "offline_access").ToList();
     }
 
     public async Task<IReadOnlyList<KeycloakRole>> GetAvailableRolesAsync(CancellationToken ct = default)

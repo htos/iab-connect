@@ -3,10 +3,12 @@
 /**
  * Dashboard / Home Page for IAB Connect
  * REQ-001: Shows different content based on authentication status
+ * REQ-007: Includes onboarding banner for incomplete profiles
  */
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { useTranslations } from "next-intl";
+import { OnboardingBanner } from "@/components/OnboardingBanner";
 
 export default function HomePage() {
   const { isAuthenticated, isLoading, user, roles, isAdmin, isVorstand, isMember } = useAuth();
@@ -54,6 +56,9 @@ export default function HomePage() {
   return (
     <main className="min-h-[calc(100vh-4rem)] p-4 md:p-8 bg-gray-50">
       <div className="max-w-7xl mx-auto">
+        {/* REQ-007: Onboarding Banner for incomplete profiles */}
+        <OnboardingBanner />
+
         {/* Welcome Header */}
         <div className="mb-8">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">

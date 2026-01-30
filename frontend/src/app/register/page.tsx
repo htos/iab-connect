@@ -13,7 +13,7 @@ import { registerUser } from "@/lib/api/registration";
 export default function RegisterPage() {
   const router = useRouter();
   const t = useTranslations();
-  
+
   const [formData, setFormData] = useState({
     email: "",
     password: "",

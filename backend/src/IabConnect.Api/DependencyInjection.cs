@@ -1,7 +1,9 @@
 using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using IabConnect.Api.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
@@ -117,6 +119,10 @@ public static class DependencyInjection
                 policy.RequireRole("admin", "vorstand"))
             .AddPolicy("RequireMember", policy =>
                 policy.RequireRole("admin", "vorstand", "member"));
+
+        // REQ-004: Permission-based authorization handler
+        services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
+        services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 
         // Health Checks
         services.AddHealthChecks();

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("IabConnect.Api.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8cf37fd7ea4ab7d2d905a372c6cd1cbe970efca5")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c835b7f25d8d8cc05c4300ecbb3ffd8577e62c6c")]
 [assembly: System.Reflection.AssemblyProductAttribute("IabConnect.Api.Tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("IabConnect.Api.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

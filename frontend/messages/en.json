@@ -19,7 +19,7 @@
     "notSpecified": "Not specified",
     "tryAgain": "Try Again",
     "yes": "Yes",
-    "no": "Nein",
+    "no": "No",
     "confirm": "Confirm",
     "actions": "Actions",
     "details": "Details",
@@ -32,7 +32,8 @@
     "next": "Next",
     "noMembersFound": "No members found",
     "tryDifferentFilter": "Try different filter criteria.",
-    "addFirstMember": "Add your first member."
+    "addFirstMember": "Add your first member.",
+    "dismiss": "Dismiss"
   },
   "auth": {
     "signIn": "Sign In",
@@ -50,7 +51,8 @@
     "accountDisabled": "Account not activated",
     "accountDisabledMessage": "Your account has not been activated by an administrator yet. Please wait for activation.",
     "noAccount": "Don't have an account?",
-    "registerHere": "Register now"
+    "registerHere": "Register now",
+    "forgotPassword": "Forgot password?"
   },
   "registration": {
     "title": "Create Account",
@@ -270,5 +272,73 @@
     "temporaryPasswordDescription": "The user must change the password on first login.",
     "emailRequired": "Email address is required",
     "passwordOrInvitationRequired": "Please either send an invitation email or set a temporary password."
+  },
+  "onboarding": {
+    "completeProfile": "Complete your profile",
+    "complete": "complete",
+    "completeNow": "Complete now",
+    "profileCreated": "Profile created",
+    "addressProvided": "Address provided",
+    "phoneProvided": "Phone number provided",
+    "required": "Required"
+  },
+  "audit": {
+    "title": "Audit Log",
+    "description": "Overview of all security and data changes in the system",
+    "export": "CSV Export",
+    "filters": {
+      "toggle": "Filters",
+      "fromDate": "From Date",
+      "toDate": "To Date",
+      "category": "Category",
+      "eventType": "Event Type",
+      "severity": "Severity",
+      "status": "Status",
+      "search": "Search",
+      "searchPlaceholder": "User, action, entity...",
+      "all": "All",
+      "clear": "Clear Filters"
+    },
+    "table": {
+      "timestamp": "Timestamp",
+      "category": "Category",
+      "eventType": "Event Type",
+      "user": "User",
+      "action": "Action",
+      "status": "Status",
+      "severity": "Severity",
+      "noResults": "No audit entries found"
+    },
+    "severity": {
+      "info": "Info",
+      "warning": "Warning",
+      "critical": "Critical"
+    },
+    "status": {
+      "success": "Success",
+      "failure": "Failure"
+    },
+    "results": {
+      "showing": "Showing {count} of {total} entries"
+    },
+    "pagination": {
+      "page": "Page {current} of {total}"
+    },
+    "errors": {
+      "loadFailed": "Failed to load audit data",
+      "exportFailed": "Export failed"
+    }
+  },
+  "admin": {
+    "title": "Administration",
+    "subtitle": "System management and settings",
+    "users": {
+      "title": "User Management",
+      "description": "Manage users, assign roles and activate accounts"
+    },
+    "audit": {
+      "title": "Audit Log",
+      "description": "View security and change logs"
+    }
   }
 }

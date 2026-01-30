@@ -135,7 +135,7 @@ public static class RegistrationEndpoints
             // Note: Member entry in database will be created when admin activates the user
             // This allows admin to review and approve registrations before creating member profiles
 
-            logger.LogInformation("New user registered: {Email} (ID: {UserId}) - awaiting admin approval", 
+            logger.LogInformation("New user registered: {Email} (ID: {UserId}) - awaiting admin approval",
                 request.Email, userId);
 
             return TypedResults.Ok(new RegistrationResponse

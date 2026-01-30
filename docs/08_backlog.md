@@ -121,3 +121,12 @@ REQ-047 News und Blog optional
 Betrieb und Qualität
 REQ-055 Mehrsprachigkeit DE EN HI optional
 REQ-058 API und Webhooks optional
+
+
+Technische Verbesserungen (Technical Debt)
+
+TECH-001 JWT Token Refresh bei Rollenänderung
+Beschreibung: Nach einer Rollenänderung über die Benutzerverwaltung muss der betroffene User sich ausloggen und wieder einloggen, damit das neue JWT Token die aktualisierten Rollen enthält.
+Lösung: Keycloak Session invalidieren nach Rollenänderung über Admin API oder Refresh Token Rotation erzwingen.
+Priorität: Low
+Abhängigkeit: REQ-002 REQ-003

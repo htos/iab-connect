@@ -22,6 +22,20 @@
   "eventsEnabled": true,
   "enabledEventTypes": ["REGISTER"],
   "defaultRoles": ["member"],
+  "smtpServer": {
+    "replyToDisplayName": "IAB Connect",
+    "starttls": "false",
+    "auth": "false",
+    "envelopeFrom": "",
+    "ssl": "false",
+    "password": "",
+    "port": "1025",
+    "host": "mailhog",
+    "replyTo": "noreply@iabconnect.ch",
+    "from": "noreply@iabconnect.ch",
+    "fromDisplayName": "IAB Connect",
+    "user": ""
+  },
   "roles": {
     "realm": [
       {
