@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("IabConnect.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c835b7f25d8d8cc05c4300ecbb3ffd8577e62c6c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0c847f9dad1464d54a1c4ccd0ff0afac54467352")]
 [assembly: System.Reflection.AssemblyProductAttribute("IabConnect.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("IabConnect.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

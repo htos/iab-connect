@@ -2,9 +2,12 @@ using Hangfire;
 using Hangfire.PostgreSql;
 using IabConnect.Application.Audit;
 using IabConnect.Domain.Audit;
+using IabConnect.Domain.Communication;
+using IabConnect.Domain.Events;
 using IabConnect.Domain.Members;
 using IabConnect.Domain.Privacy;
 using IabConnect.Infrastructure.Audit;
+using IabConnect.Infrastructure.Email;
 using IabConnect.Infrastructure.Identity;
 using IabConnect.Infrastructure.Persistence;
 using IabConnect.Infrastructure.Persistence.Repositories;
@@ -44,6 +47,9 @@ public static class DependencyInjection
         services.AddScoped<IAuditEventRepository, AuditEventRepository>();
         services.AddScoped<IConsentRepository, ConsentRepository>();
         services.AddScoped<IDeletionRequestRepository, DeletionRequestRepository>();
+        services.AddScoped<IEventRepository, EventRepository>();
+        services.AddScoped<IEventRegistrationRepository, EventRegistrationRepository>();
+        services.AddScoped<IEmailCampaignRepository, EmailCampaignRepository>();
 
         // REQ-011: Audit Service (requires IHttpContextAccessor)
         services.AddHttpContextAccessor();
@@ -66,8 +72,15 @@ public static class DependencyInjection
         });
         services.AddHangfireServer();
 
+        // REQ-026: E-Mail-Sender
+        services.Configure<SmtpSettings>(configuration.GetSection(SmtpSettings.SectionName));
+        services.AddScoped<IEmailSender, SmtpEmailSender>();
+
+        // REQ-026: E-Mail-Kampagnen Job Service (Hangfire)
+        services.AddScoped<IEmailCampaignJobService, EmailCampaignJobService>();
+        services.AddScoped<EmailCampaignSendJob>();
+
         // TODO: Add MinIO file storage service
-        // TODO: Add email service
         // TODO: Add caching (Redis)
 
         return services;

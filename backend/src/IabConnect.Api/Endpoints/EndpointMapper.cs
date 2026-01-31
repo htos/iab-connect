@@ -20,7 +20,9 @@ public static class EndpointMapper
         api.MapMemberEndpoints();
         app.MapAuditEndpoints(); // REQ-011: Audit Log
         api.MapPrivacyEndpoints(); // REQ-012: Datenschutz & Einwilligungen (DSGVO)
-        api.MapEventEndpoints();
+        app.MapEventEndpoints(); // REQ-019: Eventverwaltung (uses EventEndpoints.cs)
+        app.MapEventRegistrationEndpoints(); // REQ-020: Event-Anmeldung / RSVP
+        app.MapEmailCampaignEndpoints(); // REQ-026: E-Mail-Kampagnen
         api.MapDocumentEndpoints();
         api.MapCommunicationEndpoints();
         api.MapFinanceEndpoints();
@@ -31,42 +33,7 @@ public static class EndpointMapper
 
     // Identity endpoints moved to IdentityEndpoints.cs
     // Member endpoints moved to MemberEndpoints.cs
-
-    private static RouteGroupBuilder MapEventEndpoints(this RouteGroupBuilder group)
-    {
-        var events = group.MapGroup("/events")
-            .WithTags("Events");
-
-        // REQ-019: Event calendar
-        events.MapGet("/", () =>
-        {
-            // TODO: Implement - returns events list
-            return Results.Ok(new { Message = "Not implemented" });
-        })
-        .WithName("GetEvents")
-        .WithDescription("REQ-019: Eventkalender mit allen Veranstaltungen");
-
-        // REQ-020: Event management (Vorstand only)
-        events.MapPost("/", () =>
-        {
-            // TODO: Implement - creates new event
-            return Results.Ok(new { Message = "Not implemented" });
-        })
-        .RequireAuthorization("RequireVorstand")
-        .WithName("CreateEvent")
-        .WithDescription("REQ-020: Event erstellen");
-
-        events.MapPut("/{id:guid}", (Guid id) =>
-        {
-            // TODO: Implement - updates event
-            return Results.Ok(new { Message = "Not implemented" });
-        })
-        .RequireAuthorization("RequireVorstand")
-        .WithName("UpdateEvent")
-        .WithDescription("REQ-020: Event bearbeiten");
-
-        return group;
-    }
+    // Event endpoints moved to EventEndpoints.cs
 
     private static RouteGroupBuilder MapDocumentEndpoints(this RouteGroupBuilder group)
     {

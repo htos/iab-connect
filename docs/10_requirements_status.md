@@ -155,20 +155,20 @@ TicketLink:
 Notizen:
 
 ID: REQ-019
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 02 01
+Owner: Implementation Agent
+SprintOderRelease: Sprint 1
 TicketLink:
-Notizen:
+Notizen: Eventverwaltung vollständig implementiert. Backend: (1) Event-Entity mit umfassenden Properties (Titel, Beschreibung, Ort, Datum/Zeit, Kategorie, Sichtbarkeit, Status, Anmeldung, Kosten, Kontakt). (2) EventEnums: EventVisibility (MembersOnly/Public/InviteOnly/Hidden), EventStatus (Draft/Published/Cancelled/Completed), EventCategory (11 Typen), RecurrencePattern. (3) IEventRepository mit EventFilterOptions für flexible Abfragen. (4) EventEndpoints: 12 Endpunkte (Public: GET /events/public, /events/public/{id}; Protected: CRUD, /upcoming, /statistics, /publish, /unpublish, /cancel). Frontend: (1) /events - Event-Liste mit Listen- und Kalenderansicht, Filter nach Status/Kategorie, Paginierung. (2) /events/[id] - Detailseite mit Aktionen (Publish/Unpublish/Cancel/Delete). (3) /events/new und /events/[id]/edit - Formulare für Event-Erstellung und -Bearbeitung. (4) events.ts Service mit 13 API-Funktionen und Utility-Helpers. Tests: 58 Unit-Tests für Event-Entity (Creation, Updates, State Transitions, Validations).
 
 ID: REQ-020
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 02 01
+Owner: Implementation Agent
+SprintOderRelease: Sprint 1
 TicketLink:
-Notizen:
+Notizen: Event-Anmeldung (RSVP) vollständig implementiert. Backend: (1) EventRegistration-Entity mit Factory-Methods (CreateForMember, CreateForGuest, CreateWaitlisted), State-Transitions (Confirm, Cancel, CheckIn, MarkAsNoShow, MoveToWaitlist, PromoteFromWaitlist), QR-Code-Token-Generierung. (2) RegistrationStatus-Enum (Pending, Confirmed, Cancelled, Waitlisted, CheckedIn, NoShow). (3) IEventRegistrationRepository mit Filter- und Statistik-Funktionen. (4) EventRegistrationEndpoints: 15+ Endpunkte (Public: POST /public; Protected: CRUD, /cancel, /confirm, /check-in, /no-show, /statistics, /waitlist, /promote-from-waitlist, /check-in/{qrCodeToken}, /my-registrations). Frontend: (1) EventRegistration-Komponente für Anmeldeformular. (2) EventParticipantsList-Komponente für Admin-Verwaltung mit Filter, Export. (3) MyRegistrations-Komponente für persönliche Anmeldungen. (4) EventCheckIn-Komponente für QR-Code-Scan. (5) EventTicket-Komponente für Ticket-Anzeige. (6) events.ts Service erweitert mit 15+ Registration-Funktionen. Tests: 41 Unit-Tests für EventRegistration-Entity, alle bestanden.
 
 ID: REQ-021
 Status: Backlog
@@ -211,12 +211,12 @@ TicketLink:
 Notizen:
 
 ID: REQ-026
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 02 01
+Owner: Implementation Agent
+SprintOderRelease: Sprint 1
 TicketLink:
-Notizen:
+Notizen: E-Mail Verwaltung / Automatisiertes Mailing vollständig implementiert. Backend: (1) EmailCampaign-Entity mit Factory-Method, State-Transitions (Draft→Scheduled→Sending→Sent/Cancelled/Failed), Statistiken (TotalRecipients, SentCount, DeliveredCount, OpenedCount, ClickedCount, BouncedCount, FailedCount). (2) EmailRecipient-Entity mit Status-Tracking (Pending→Sent→Delivered→Opened→Clicked/Bounced/Failed), Bounce-Typen. (3) Enums: EmailCampaignStatus, EmailRecipientStatus, BounceType, RecipientSegmentType. (4) IEmailCampaignRepository mit Filter, Paginierung, Statistik-Abfragen. (5) IEmailSender Interface mit SmtpEmailSender-Implementation für Mailhog (dev). (6) EmailCampaignEndpoints: 13 API-Endpunkte (CRUD, /send, /test, /schedule, /cancel, /recipients, /recipients/preview, /statistics). (7) EF Core Configurations mit Indizes auf Status, CreatedAt, ScheduledAt. Migration AddEmailCampaigns erstellt und angewendet. Frontend: (1) /email-campaigns - Kampagnenliste mit Status-Filter, Paginierung, Statistik-Anzeige. (2) /email-campaigns/new - Kampagnen-Erstellung mit Absender, Empfängergruppe, HTML-Editor. (3) /email-campaigns/[id] - Detailseite mit Test-E-Mail, Planen, Jetzt-Senden Aktionen, Empfängerliste, Statistiken. (4) email-campaigns.ts Types und Helpers. (5) Navigation-Link in Sidebar unter "Kommunikation". Tests: 12 Unit-Tests für EmailCampaign-Entity (Create, Update, Schedule, StartSending, CompleteSending, Cancel, AddRecipient, UpdateStatistics), alle bestanden.
 
 ID: REQ-027
 Status: Backlog

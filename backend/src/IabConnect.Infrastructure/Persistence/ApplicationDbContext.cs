@@ -1,4 +1,6 @@
 using IabConnect.Domain.Audit;
+using IabConnect.Domain.Communication;
+using IabConnect.Domain.Events;
 using IabConnect.Domain.Members;
 using IabConnect.Domain.Privacy;
 using Microsoft.EntityFrameworkCore;
@@ -19,8 +21,10 @@ public sealed class ApplicationDbContext : DbContext
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
     public DbSet<Consent> Consents => Set<Consent>();
     public DbSet<DeletionRequest> DeletionRequests => Set<DeletionRequest>();
-    // TODO: Add other DbSets as modules are implemented
-    // public DbSet<Event> Events => Set<Event>();
+    public DbSet<Event> Events => Set<Event>();
+    public DbSet<EventRegistration> EventRegistrations => Set<EventRegistration>();
+    public DbSet<EmailCampaign> EmailCampaigns => Set<EmailCampaign>();
+    public DbSet<EmailRecipient> EmailRecipients => Set<EmailRecipient>();
     // public DbSet<Document> Documents => Set<Document>();
     // public DbSet<Payment> Payments => Set<Payment>();
 
