@@ -70,11 +70,25 @@ public static class DependencyInjection
             options.AddPolicy("AllowFrontend", policy =>
             {
                 var frontendUrl = configuration["Frontend:BaseUrl"] ?? "http://localhost:3000";
-                policy
-                    .WithOrigins(frontendUrl)
-                    .AllowAnyMethod()
-                    .AllowAnyHeader()
-                    .AllowCredentials();
+
+                if (IsDevEnvironment())
+                {
+                    // In development, be more permissive
+                    policy
+                        .WithOrigins(frontendUrl, "http://localhost:3001", "http://127.0.0.1:3000", "http://127.0.0.1:3001")
+                        .AllowAnyMethod()
+                        .AllowAnyHeader()
+                        .AllowCredentials();
+                }
+                else
+                {
+                    // In production, be strict
+                    policy
+                        .WithOrigins(frontendUrl)
+                        .AllowAnyMethod()
+                        .AllowAnyHeader()
+                        .AllowCredentials();
+                }
             });
         });
 
@@ -85,7 +99,7 @@ public static class DependencyInjection
                 var keycloakSection = configuration.GetSection("Keycloak");
                 options.Authority = keycloakSection["Authority"];
                 options.Audience = keycloakSection["ClientId"];
-                options.RequireHttpsMetadata = !IsDevEnvironment();
+                options.RequireHttpsMetadata = false; // Allow HTTP in development (Keycloak on localhost)
 
                 // Disable automatic claim mapping to preserve original claim names (e.g., "sub")
                 options.MapInboundClaims = false;
@@ -174,7 +188,10 @@ public static class DependencyInjection
         }
 
         // Security
-        app.UseHttpsRedirection();
+        if (!app.Environment.IsDevelopment())
+        {
+            app.UseHttpsRedirection();
+        }
         app.UseCors("AllowFrontend");
 
         // Serilog request logging

@@ -219,12 +219,12 @@ TicketLink:
 Notizen: E-Mail Verwaltung / Automatisiertes Mailing vollständig implementiert. Backend: (1) EmailCampaign-Entity mit Factory-Method, State-Transitions (Draft→Scheduled→Sending→Sent/Cancelled/Failed), Statistiken (TotalRecipients, SentCount, DeliveredCount, OpenedCount, ClickedCount, BouncedCount, FailedCount). (2) EmailRecipient-Entity mit Status-Tracking (Pending→Sent→Delivered→Opened→Clicked/Bounced/Failed), Bounce-Typen. (3) Enums: EmailCampaignStatus, EmailRecipientStatus, BounceType, RecipientSegmentType. (4) IEmailCampaignRepository mit Filter, Paginierung, Statistik-Abfragen. (5) IEmailSender Interface mit SmtpEmailSender-Implementation für Mailhog (dev). (6) EmailCampaignEndpoints: 13 API-Endpunkte (CRUD, /send, /test, /schedule, /cancel, /recipients, /recipients/preview, /statistics). (7) EF Core Configurations mit Indizes auf Status, CreatedAt, ScheduledAt. Migration AddEmailCampaigns erstellt und angewendet. Frontend: (1) /email-campaigns - Kampagnenliste mit Status-Filter, Paginierung, Statistik-Anzeige. (2) /email-campaigns/new - Kampagnen-Erstellung mit Absender, Empfängergruppe, HTML-Editor. (3) /email-campaigns/[id] - Detailseite mit Test-E-Mail, Planen, Jetzt-Senden Aktionen, Empfängerliste, Statistiken. (4) email-campaigns.ts Types und Helpers. (5) Navigation-Link in Sidebar unter "Kommunikation". Tests: 12 Unit-Tests für EmailCampaign-Entity (Create, Update, Schedule, StartSending, CompleteSending, Cancel, AddRecipient, UpdateStatistics), alle bestanden.
 
 ID: REQ-027
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 02 01
+Owner: Implementation Agent
+SprintOderRelease: Sprint 1
 TicketLink:
-Notizen:
+Notizen: Email Template Editor komplett implementiert. Backend: (1) EmailTemplate-Entity mit int ID, CRUD-Repository, 7 API-Endpoints (GET all/by-id/by-category, POST create, PUT update, DELETE, POST preview, POST deactivate). (2) Support für Variablen mit {{variable}} Syntax, Auto-Rendering für HTML und Subject. (3) Migration für PostgreSQL Datenbank erstellt. Frontend: (1) TypeScript Types und API-Service für Vorlagen. (2) Admin-Seite /email-templates mit Suche, Paginierung, Filter. (3) Create/Edit Formular mit HTML-Editor und Variablen-Management. (4) Live-Vorschau mit Variable-Rendering. Tests: 6 Unit-Tests für EmailTemplate-Entity (Create, Update, Rendering, Variables).
 
 ID: REQ-028
 Status: Backlog

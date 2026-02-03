@@ -25,6 +25,7 @@ public sealed class ApplicationDbContext : DbContext
     public DbSet<EventRegistration> EventRegistrations => Set<EventRegistration>();
     public DbSet<EmailCampaign> EmailCampaigns => Set<EmailCampaign>();
     public DbSet<EmailRecipient> EmailRecipients => Set<EmailRecipient>();
+    public DbSet<EmailTemplate> EmailTemplates => Set<EmailTemplate>();
     // public DbSet<Document> Documents => Set<Document>();
     // public DbSet<Payment> Payments => Set<Payment>();
 

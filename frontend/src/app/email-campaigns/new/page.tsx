@@ -13,6 +13,9 @@ import {
   RecipientSegmentType,
   getSegmentTypeLabel,
 } from "@/lib/api/email-campaigns";
+import { RichTextEditor, HtmlSourceEditor } from "@/components/ui/rich-text-editor";
+
+type EditorMode = "visual" | "html";
 
 export default function NewEmailCampaignPage() {
   const { isAuthenticated, isLoading: authLoading, isVorstand, isAdmin, accessToken } = useAuth();
@@ -20,6 +23,7 @@ export default function NewEmailCampaignPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editorMode, setEditorMode] = useState<EditorMode>("visual");
   const [formData, setFormData] = useState<CreateEmailCampaignRequest>({
     name: "",
     subject: "",
@@ -241,28 +245,88 @@ export default function NewEmailCampaignPage() {
           </div>
 
           {/* Inhalt */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">Inhalt</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  HTML-Inhalt *
-                </label>
-                <textarea
-                  name="htmlContent"
-                  value={formData.htmlContent}
-                  onChange={handleChange}
-                  required
-                  rows={12}
-                  className="w-full border rounded-lg px-3 py-2 text-gray-900 font-mono text-sm"
-                  placeholder="<html>...</html>"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Verfügbare Platzhalter: {"{{firstName}}"}, {"{{lastName}}"}, {"{{email}}"}
-                </p>
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <h2 className="text-lg font-semibold text-gray-900">Inhalt</h2>
+                <p className="text-sm text-gray-500">E-Mail Text und Design</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-sm font-medium text-gray-700">
+                    HTML-Inhalt *
+                  </label>
+                  <div className="flex gap-1 bg-gray-100 p-1 rounded-md">
+                    <button
+                      type="button"
+                      onClick={() => setEditorMode("visual")}
+                      className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                        editorMode === "visual"
+                          ? "bg-white text-orange-600 shadow-sm"
+                          : "text-gray-600 hover:text-gray-900"
+                      }`}
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        Visuell
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditorMode("html")}
+                      className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                        editorMode === "html"
+                          ? "bg-white text-orange-600 shadow-sm"
+                          : "text-gray-600 hover:text-gray-900"
+                      }`}
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                        </svg>
+                        HTML
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {editorMode === "visual" ? (
+                  <RichTextEditor
+                    content={formData.htmlContent}
+                    onChange={(content) => setFormData((prev) => ({ ...prev, htmlContent: content }))}
+                    placeholder="Schreiben Sie hier Ihre E-Mail..."
+                    minHeight="300px"
+                  />
+                ) : (
+                  <HtmlSourceEditor
+                    content={formData.htmlContent}
+                    onChange={(content) => setFormData((prev) => ({ ...prev, htmlContent: content }))}
+                    placeholder="<html>...</html>"
+                    minHeight="300px"
+                  />
+                )}
+                <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+                  <p className="text-xs text-gray-600">
+                    <span className="font-medium">Verfügbare Platzhalter:</span>{" "}
+                    <code className="bg-gray-200 px-1 py-0.5 rounded text-orange-600">{"{{firstName}}"}</code>,{" "}
+                    <code className="bg-gray-200 px-1 py-0.5 rounded text-orange-600">{"{{lastName}}"}</code>,{" "}
+                    <code className="bg-gray-200 px-1 py-0.5 rounded text-orange-600">{"{{email}}"}</code>
+                  </p>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Plaintext-Version (optional)
                 </label>
                 <textarea
@@ -270,9 +334,12 @@ export default function NewEmailCampaignPage() {
                   value={formData.plainTextContent}
                   onChange={handleChange}
                   rows={6}
-                  className="w-full border rounded-lg px-3 py-2 text-gray-900"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
                   placeholder="Textversion für E-Mail-Clients ohne HTML-Unterstützung"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Wird automatisch aus dem HTML-Inhalt generiert, falls leer gelassen.
+                </p>
               </div>
             </div>
           </div>
@@ -281,7 +348,7 @@ export default function NewEmailCampaignPage() {
           <div className="flex justify-end gap-4">
             <Link
               href="/email-campaigns"
-              className="px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-50"
+              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
             >
               Abbrechen
             </Link>

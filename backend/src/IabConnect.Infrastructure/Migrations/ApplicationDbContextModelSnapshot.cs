@@ -371,6 +371,107 @@ namespace IabConnect.Infrastructure.Migrations
                     b.ToTable("email_recipients", (string)null);
                 });
 
+            modelBuilder.Entity("IabConnect.Domain.Communication.EmailTemplate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("HtmlContent")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("TextContent")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Category");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("Name");
+
+                    b.ToTable("EmailTemplates");
+                });
+
+            modelBuilder.Entity("IabConnect.Domain.Communication.EmailTemplateVariable", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("DefaultValue")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("EmailTemplateId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmailTemplateId");
+
+                    b.ToTable("EmailTemplateVariable");
+                });
+
             modelBuilder.Entity("IabConnect.Domain.Events.Event", b =>
                 {
                     b.Property<Guid>("Id")
@@ -976,6 +1077,15 @@ namespace IabConnect.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("IabConnect.Domain.Communication.EmailTemplateVariable", b =>
+                {
+                    b.HasOne("IabConnect.Domain.Communication.EmailTemplate", null)
+                        .WithMany("Variables")
+                        .HasForeignKey("EmailTemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("IabConnect.Domain.Members.Member", b =>
                 {
                     b.OwnsOne("IabConnect.Domain.Members.Address", "Address", b1 =>
@@ -1022,6 +1132,11 @@ namespace IabConnect.Infrastructure.Migrations
             modelBuilder.Entity("IabConnect.Domain.Communication.EmailCampaign", b =>
                 {
                     b.Navigation("Recipients");
+                });
+
+            modelBuilder.Entity("IabConnect.Domain.Communication.EmailTemplate", b =>
+                {
+                    b.Navigation("Variables");
                 });
 #pragma warning restore 612, 618
         }

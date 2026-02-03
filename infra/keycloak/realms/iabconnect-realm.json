@@ -73,7 +73,9 @@
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": true,
       "authorizationServicesEnabled": false,
-      "fullScopeAllowed": true
+      "fullScopeAllowed": true,
+      "defaultClientScopes": ["web-origins", "acr", "roles", "profile", "email"],
+      "optionalClientScopes": ["address", "phone", "offline_access", "microprofile-jwt"]
     },
     {
       "clientId": "iabconnect-api",
@@ -155,6 +157,14 @@
         }
       ],
       "realmRoles": ["member"]
+    },
+    {
+      "username": "service-account-iabconnect-admin",
+      "enabled": true,
+      "serviceAccountClientId": "iabconnect-admin",
+      "clientRoles": {
+        "realm-management": ["realm-admin"]
+      }
     }
   ]
 }

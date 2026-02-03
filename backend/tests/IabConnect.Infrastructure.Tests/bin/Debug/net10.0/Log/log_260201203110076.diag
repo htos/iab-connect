@@ -1,0 +1,15 @@
+2026-02-01T20:31:10.0807792+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Version: 1.5.3+2a34431d753f39463aadf19674237f6c4e5b6865
+2026-02-01T20:31:10.0927443+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Logging mode: asynchronous
+2026-02-01T20:31:10.0933151+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Logging level: Information
+2026-02-01T20:31:10.0933175+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION CreateBuilderAsync entry time: 20:31:10.067
+2026-02-01T20:31:10.0945149+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION PID: 921644
+2026-02-01T20:31:10.0945445+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Runtime information: win-x64 - .NET 10.0.2
+2026-02-01T20:31:10.0945565+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Runtime location: C:\Program Files\dotnet\shared\Microsoft.NETCore.App\10.0.2\System.Private.CoreLib.dll
+2026-02-01T20:31:10.0945648+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION IsDynamicCodeSupported: True
+2026-02-01T20:31:10.0945711+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Test module: B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Infrastructure.Tests\bin\Debug\net10.0\IabConnect.Infrastructure.Tests.dll
+2026-02-01T20:31:10.0946956+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Command line arguments: '--server --diagnostic --diagnostic-verbosity Information --diagnostic-output-directory B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Infrastructure.Tests\bin\Debug\net10.0\Log --client-port 64264'
+2026-02-01T20:31:10.0951839+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION TESTINGPLATFORM_DEFAULT_HANG_TIMEOUT: ''
+2026-02-01T20:31:10.1047898+00:00 Microsoft.Testing.Platform.Hosts.TestHostBuilder INFORMATION Setting RegisterEnvironmentVariablesConfigurationSource: 'True'
+2026-02-01T20:31:10.1135912+00:00 Microsoft.Testing.Platform.Hosts.TestHostBuilder INFORMATION Setting PlatformExitProcessOnUnhandledException: 'False', config file: False environment variable:  VSTest mode: False
+2026-02-01T20:31:10.2379990+00:00 Microsoft.Testing.Platform.Requests.TestHostTestFrameworkInvoker INFORMATION Test framework UID: '30ea7c6e-dd24-4152-a360-1387158cd41d' Version: '1.1.0' DisplayName: 'xUnit.net v3 Microsoft.Testing.Platform test framework' Description: 'xUnit.net v3 Microsoft.Testing.Platform test framework'
+2026-02-01T20:31:10.2416715+00:00 xUnit.net INFORMATION xUnit.net v3 In-Process Runner v1.1.0+7ad077d852 (64-bit .NET 10.0.2)

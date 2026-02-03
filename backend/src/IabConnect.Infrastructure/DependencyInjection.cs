@@ -1,6 +1,7 @@
 using Hangfire;
 using Hangfire.PostgreSql;
 using IabConnect.Application.Audit;
+using IabConnect.Application.Communication;
 using IabConnect.Domain.Audit;
 using IabConnect.Domain.Communication;
 using IabConnect.Domain.Events;
@@ -50,6 +51,7 @@ public static class DependencyInjection
         services.AddScoped<IEventRepository, EventRepository>();
         services.AddScoped<IEventRegistrationRepository, EventRegistrationRepository>();
         services.AddScoped<IEmailCampaignRepository, EmailCampaignRepository>();
+        services.AddScoped<IEmailTemplateRepository, EmailTemplateRepository>();
 
         // REQ-011: Audit Service (requires IHttpContextAccessor)
         services.AddHttpContextAccessor();

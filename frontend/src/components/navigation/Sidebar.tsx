@@ -2,19 +2,21 @@
 
 /**
  * Sidebar Navigation Component
- * Collapsible sidebar with navigation items based on user roles
+ * Collapsible sidebar with navigation items based on user roles with submenu support
  */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth, ROLES } from "@/lib/auth";
 import { useSidebar } from "./SidebarContext";
+import { useState } from "react";
 
 interface NavItem {
   labelKey: string;
-  href: string;
+  href?: string;
   icon: React.ReactNode;
   requiredRoles?: string[];
+  submenu?: NavItem[];
 }
 
 // Navigation items with role requirements
@@ -93,7 +95,6 @@ const navItems: NavItem[] = [
   },
   {
     labelKey: "nav.communication",
-    href: "/email-campaigns",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -105,6 +106,18 @@ const navItems: NavItem[] = [
       </svg>
     ),
     requiredRoles: [ROLES.VORSTAND, ROLES.ADMIN],
+    submenu: [
+      {
+        labelKey: "nav.emailCampaigns",
+        href: "/email-campaigns",
+        icon: <></>,
+      },
+      {
+        labelKey: "nav.emailTemplates",
+        href: "/admin/email-templates",
+        icon: <></>,
+      },
+    ],
   },
   {
     labelKey: "nav.finance",
@@ -174,6 +187,104 @@ const navItems: NavItem[] = [
   },
 ];
 
+interface SidebarItemProps {
+  item: NavItem;
+  isActive: boolean;
+  isOpen: boolean;
+  onNavigate: () => void;
+  t: any;
+}
+
+function NavItemWithSubmenu({ item, isActive, isOpen, onNavigate, t }: SidebarItemProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const pathname = usePathname();
+
+  if (!item.submenu) {
+    return (
+      <Link
+        href={item.href || "#"}
+        onClick={onNavigate}
+        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group ${
+          isActive
+            ? "bg-orange-100 text-orange-700"
+            : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+        }`}
+        title={!isOpen ? t(item.labelKey) : undefined}
+      >
+        <span className="flex-shrink-0">{item.icon}</span>
+        <span
+          className={`font-medium whitespace-nowrap transition-opacity duration-200 ${
+            isOpen ? "opacity-100" : "lg:opacity-0 lg:w-0 lg:overflow-hidden"
+          }`}
+        >
+          {t(item.labelKey)}
+        </span>
+      </Link>
+    );
+  }
+
+  // Has submenu
+  const hasActiveChild = item.submenu.some(
+    (sub) => pathname === sub.href || pathname.startsWith(sub.href + "/")
+  );
+
+  return (
+    <div>
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group ${
+          hasActiveChild || isActive
+            ? "bg-orange-100 text-orange-700"
+            : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+        }`}
+        title={!isOpen ? t(item.labelKey) : undefined}
+      >
+        <span className="flex-shrink-0">{item.icon}</span>
+        <span
+          className={`font-medium whitespace-nowrap transition-opacity duration-200 flex-1 text-left ${
+            isOpen ? "opacity-100" : "lg:opacity-0 lg:w-0 lg:overflow-hidden"
+          }`}
+        >
+          {t(item.labelKey)}
+        </span>
+        {isOpen && (
+          <svg
+            className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+          </svg>
+        )}
+      </button>
+
+      {/* Submenu */}
+      {isOpen && isExpanded && (
+        <div className="ml-3 mt-1 space-y-1 border-l border-gray-200 pl-3">
+          {item.submenu.map((subitem) => {
+            const isSubActive = pathname === subitem.href || pathname.startsWith(subitem.href + "/");
+            return (
+              <Link
+                key={subitem.href}
+                href={subitem.href || "#"}
+                onClick={onNavigate}
+                className={`block px-3 py-2 rounded-lg text-sm transition-colors ${
+                  isSubActive
+                    ? "bg-orange-50 text-orange-600 font-medium"
+                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                }`}
+              >
+                {t(subitem.labelKey)}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Sidebar() {
   const pathname = usePathname();
   const t = useTranslations();
@@ -217,35 +328,22 @@ export function Sidebar() {
           {/* Navigation Items */}
           <div className="flex-1 px-3 space-y-1 overflow-y-auto">
             {visibleNavItems.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-              const label = t(item.labelKey);
+              const isActive = pathname === item.href || (item.href && pathname.startsWith(item.href + "/"));
 
               return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => {
+                <NavItemWithSubmenu
+                  key={item.labelKey}
+                  item={item}
+                  isActive={isActive}
+                  isOpen={isOpen}
+                  onNavigate={() => {
                     // Close sidebar on mobile after navigation
                     if (window.innerWidth < 1024) {
                       close();
                     }
                   }}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group ${
-                    isActive
-                      ? "bg-orange-100 text-orange-700"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                  }`}
-                  title={!isOpen ? label : undefined}
-                >
-                  <span className="flex-shrink-0">{item.icon}</span>
-                  <span
-                    className={`font-medium whitespace-nowrap transition-opacity duration-200 ${
-                      isOpen ? "opacity-100" : "lg:opacity-0 lg:w-0 lg:overflow-hidden"
-                    }`}
-                  >
-                    {label}
-                  </span>
-                </Link>
+                  t={t}
+                />
               );
             })}
           </div>

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "2ocUtP0DOKo=",
+  "dgSpecHash": "WLWybPVV3ok=",
   "success": true,
   "projectFilePath": "B:\\Projects\\IAB Connect\\iab-connect\\backend\\src\\IabConnect.Api\\IabConnect.Api.csproj",
   "expectedPackageFiles": [
@@ -32,6 +32,7 @@
     "C:\\Users\\Harry\\.nuget\\packages\\microsoft.entityframeworkcore.analyzers\\10.0.2\\microsoft.entityframeworkcore.analyzers.10.0.2.nupkg.sha512",
     "C:\\Users\\Harry\\.nuget\\packages\\microsoft.entityframeworkcore.design\\10.0.2\\microsoft.entityframeworkcore.design.10.0.2.nupkg.sha512",
     "C:\\Users\\Harry\\.nuget\\packages\\microsoft.entityframeworkcore.relational\\10.0.2\\microsoft.entityframeworkcore.relational.10.0.2.nupkg.sha512",
+    "C:\\Users\\Harry\\.nuget\\packages\\microsoft.entityframeworkcore.tools\\10.0.2\\microsoft.entityframeworkcore.tools.10.0.2.nupkg.sha512",
     "C:\\Users\\Harry\\.nuget\\packages\\microsoft.extensions.apidescription.server\\6.0.5\\microsoft.extensions.apidescription.server.6.0.5.nupkg.sha512",
     "C:\\Users\\Harry\\.nuget\\packages\\microsoft.extensions.dependencymodel\\10.0.2\\microsoft.extensions.dependencymodel.10.0.2.nupkg.sha512",
     "C:\\Users\\Harry\\.nuget\\packages\\microsoft.identitymodel.abstractions\\8.0.1\\microsoft.identitymodel.abstractions.8.0.1.nupkg.sha512",

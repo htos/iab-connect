@@ -74,6 +74,13 @@
               "version": "[10.0.2, )",
               "versionCentrallyManaged": true
             },
+            "Microsoft.EntityFrameworkCore.Tools": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[10.0.2, )",
+              "versionCentrallyManaged": true
+            },
             "Microsoft.OpenApi": {
               "target": "Package",
               "version": "[1.6.14, )",
@@ -121,6 +128,7 @@
             "Microsoft.AspNetCore.Mvc.Testing": "10.0.2",
             "Microsoft.EntityFrameworkCore": "10.0.2",
             "Microsoft.EntityFrameworkCore.Design": "10.0.2",
+            "Microsoft.EntityFrameworkCore.Tools": "10.0.2",
             "Microsoft.Extensions.Logging.Abstractions": "10.0.2",
             "Microsoft.NET.Test.Sdk": "18.0.0",
             "Microsoft.OpenApi": "1.6.14",
@@ -666,6 +674,7 @@
             "Microsoft.AspNetCore.Mvc.Testing": "10.0.2",
             "Microsoft.EntityFrameworkCore": "10.0.2",
             "Microsoft.EntityFrameworkCore.Design": "10.0.2",
+            "Microsoft.EntityFrameworkCore.Tools": "10.0.2",
             "Microsoft.Extensions.Logging.Abstractions": "10.0.2",
             "Microsoft.NET.Test.Sdk": "18.0.0",
             "Microsoft.OpenApi": "1.6.14",
@@ -1044,6 +1053,7 @@
             "Microsoft.AspNetCore.Mvc.Testing": "10.0.2",
             "Microsoft.EntityFrameworkCore": "10.0.2",
             "Microsoft.EntityFrameworkCore.Design": "10.0.2",
+            "Microsoft.EntityFrameworkCore.Tools": "10.0.2",
             "Microsoft.Extensions.Logging.Abstractions": "10.0.2",
             "Microsoft.NET.Test.Sdk": "18.0.0",
             "Microsoft.OpenApi": "1.6.14",
@@ -1422,6 +1432,13 @@
               "version": "[10.0.2, )",
               "versionCentrallyManaged": true
             },
+            "Microsoft.EntityFrameworkCore.Tools": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[10.0.2, )",
+              "versionCentrallyManaged": true
+            },
             "Microsoft.SourceLink.GitHub": {
               "suppressParent": "All",
               "target": "Package",
@@ -1454,6 +1471,7 @@
             "Microsoft.AspNetCore.Mvc.Testing": "10.0.2",
             "Microsoft.EntityFrameworkCore": "10.0.2",
             "Microsoft.EntityFrameworkCore.Design": "10.0.2",
+            "Microsoft.EntityFrameworkCore.Tools": "10.0.2",
             "Microsoft.Extensions.Logging.Abstractions": "10.0.2",
             "Microsoft.NET.Test.Sdk": "18.0.0",
             "Microsoft.OpenApi": "1.6.14",
