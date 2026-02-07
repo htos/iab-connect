@@ -37,15 +37,28 @@ try
         {
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var env = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
-            
+
             Log.Information("Environment: {Environment}", env.EnvironmentName);
 
             if (env.IsDevelopment())
             {
-                Log.Information("Using EnsureCreated for development");
-                // In development, use EnsureCreated for quick schema sync
-                await db.Database.EnsureCreatedAsync();
-                Log.Information("Database schema ensured");
+                Log.Information("Using migrations for development (shared database with Keycloak)");
+                // Always use migrations because EnsureCreated doesn't work when Keycloak
+                // has already created tables in the shared database
+                await db.Database.MigrateAsync();
+                Log.Information("Database migrations applied");
+
+                // Seed development data (creates Member records for Keycloak users)
+                try
+                {
+                    Log.Information("Seeding development data...");
+                    await DevelopmentDataSeeder.SeedAsync(app.Services);
+                    Log.Information("Development data seeding completed");
+                }
+                catch (Exception seedEx)
+                {
+                    Log.Warning(seedEx, "Development data seeding failed (non-fatal, continuing startup)");
+                }
             }
             else
             {

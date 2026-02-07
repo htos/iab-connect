@@ -94,7 +94,7 @@
       "publicClient": false,
       "secret": "frontend-dev-secret-2026",
       "standardFlowEnabled": true,
-      "directAccessGrantsEnabled": false,
+      "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": false,
       "redirectUris": [
         "http://localhost:3000/*",

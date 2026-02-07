@@ -30,7 +30,7 @@ Before starting the application, ensure you have the following installed:
 ### Network Ports Required
 - **3000** - Frontend (Next.js)
 - **5000** - Backend API (.NET Core)
-- **5432** - PostgreSQL
+- **5433** - PostgreSQL
 - **6379** - Redis (if configured)
 - **8080** - Keycloak
 - **9000** - MinIO S3 Storage
@@ -41,7 +41,21 @@ Before starting the application, ensure you have the following installed:
 
 ## Quick Start
 
-For experienced developers who have successfully started the app before:
+### Recommended: Use Startup Scripts
+
+The easiest way to start the application is using the provided startup scripts:
+
+```bash
+# Start everything (Docker + Backend + Frontend)
+.\start-all.bat
+
+# Or start only the backend
+.\start-backend.bat
+```
+
+### Manual Start
+
+For experienced developers who want to start services individually:
 
 ```bash
 # 1. Navigate to project root
@@ -59,8 +73,9 @@ docker-compose -f infra/docker-compose.yml up -d
 cd backend
 dotnet ef database update --project src/IabConnect.Infrastructure --startup-project src/IabConnect.Api
 
-# 6. Start backend
+# 6. Start backend (IMPORTANT: Set ASPNETCORE_ENVIRONMENT!)
 cd src/IabConnect.Api
+$env:ASPNETCORE_ENVIRONMENT = "Development"
 dotnet run
 
 # 7. In new terminal, start frontend
@@ -71,18 +86,21 @@ npm run dev
 # 8. Access application
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:5000
-- Keycloak Admin: http://localhost:8080 (admin/admin-dev-2026)
+- Keycloak Admin: http://localhost:8080 (admin/admin)
 ```
+
+> ⚠️ **CRITICAL**: Always set `ASPNETCORE_ENVIRONMENT=Development` before running the backend!
+> Without this, the backend runs in Production mode and uses wrong Keycloak credentials.
 
 ---
 
 ## Common Issues & Solutions
 
-### Issue 1: PostgreSQL Port 5432 Already in Use
+### Issue 1: PostgreSQL Port 5433 Already in Use
 
 **Problem:** Docker fails to start PostgreSQL container with message like:
 ```
-Error response from daemon: Ports are not available: exposing port TCP 0.0.0.0:5432 -> 0.0.0.0:5432
+Error response from daemon: Ports are not available: exposing port TCP 0.0.0.0:5433 -> 0.0.0.0:5433
 ```
 
 **Root Cause:** Windows PostgreSQL service running locally, blocking Docker container.
@@ -135,21 +153,22 @@ Set-Service -Name postgresql-x64-17 -StartupType Manual
 2. Login to Keycloak Admin Console:
    - URL: http://localhost:8080
    - Username: admin
-   - Password: admin-dev-2026
+   - Password: admin
 
-3. Navigate: Clients → admin-service → Credentials → Copy "Client Secret"
+3. Navigate: Clients → iabconnect-admin → Credentials → Copy "Client Secret"
 
 4. Update `appsettings.Development.json` if different
 
 **Step B: Verify Service Account Roles**
 1. In Keycloak Admin Console:
-   - Go to Clients → admin-service → Service Account Roles
+   - Go to Clients → iabconnect-admin → Service Account Roles
    - Ensure "realm-admin" role is assigned
    - If missing: Available Roles → realm-management → realm-admin → Add selected
 
 2. Restart backend:
 ```bash
 # Ctrl+C to stop current process
+$env:ASPNETCORE_ENVIRONMENT = "Development"
 dotnet run
 ```
 
@@ -248,7 +267,60 @@ docker exec -it iab-postgres psql -U postgres -d iabconnect
 
 ---
 
-### Issue 5: Port Already in Use
+### Issue 5: Backend Running in Production Mode (Keycloak 401 Errors)
+
+**Problem:** Backend logs show 401 errors when requesting Keycloak tokens:
+```
+[23:20:59 INF] Received HTTP response headers after 7.5251ms - 401
+[23:20:59 ERR] HTTP GET /api/v1/users responded 500 in 38.1912 ms
+```
+
+And you see `Environment: Production` in the startup logs instead of `Environment: Development`.
+
+**Root Cause:** The `ASPNETCORE_ENVIRONMENT` variable is not set, so .NET defaults to Production mode and loads `appsettings.json` instead of `appsettings.Development.json` (which has the correct Keycloak credentials).
+
+**Solution:**
+
+**Option 1: Use Startup Scripts (Recommended)**
+```bash
+# Use the provided startup scripts that set the environment automatically
+.\start-backend.bat     # Start only backend
+.\start-all.bat         # Start everything
+```
+
+**Option 2: Set Environment Variable Manually**
+```powershell
+# In PowerShell
+$env:ASPNETCORE_ENVIRONMENT = "Development"
+dotnet run
+```
+
+```bash
+# In bash/Git Bash
+export ASPNETCORE_ENVIRONMENT=Development
+dotnet run
+```
+
+**Option 3: Use Launch Profile**
+```bash
+dotnet run --launch-profile Development
+```
+
+**Verify Correct Environment:**
+Check the backend logs for:
+```
+[INF] Environment: Development     ✅ Correct
+[INF] Hosting environment: Development
+```
+
+NOT:
+```
+[INF] Environment: Production      ❌ Wrong!
+```
+
+---
+
+### Issue 6: Port Already in Use
 
 **Problem:** Cannot start services due to port conflicts:
 ```

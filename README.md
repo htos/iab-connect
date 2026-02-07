@@ -257,7 +257,7 @@ Key configuration sections:
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Port=5432;Database=iabconnect;Username=postgres;Password=postgres"
+    "DefaultConnection": "Host=localhost;Port=5433;Database=iabconnect;Username=postgres;Password=postgres"
   },
   "Keycloak": {
     "ServerUrl": "http://localhost:8080",
