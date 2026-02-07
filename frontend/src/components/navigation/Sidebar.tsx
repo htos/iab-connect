@@ -109,12 +109,12 @@ const navItems: NavItem[] = [
     submenu: [
       {
         labelKey: "nav.emailCampaigns",
-        href: "/email-campaigns",
+        href: "/communication/email-campaigns",
         icon: <></>,
       },
       {
         labelKey: "nav.emailTemplates",
-        href: "/admin/email-templates",
+        href: "/communication/email-templates",
         icon: <></>,
       },
     ],
@@ -148,21 +148,6 @@ const navItems: NavItem[] = [
       </svg>
     ),
     requiredRoles: [ROLES.VORSTAND, ROLES.ADMIN],
-  },
-  {
-    labelKey: "nav.users",
-    href: "/users",
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-        />
-      </svg>
-    ),
-    requiredRoles: [ROLES.ADMIN],
   },
   {
     labelKey: "nav.admin",
@@ -328,7 +313,7 @@ export function Sidebar() {
           {/* Navigation Items */}
           <div className="flex-1 px-3 space-y-1 overflow-y-auto">
             {visibleNavItems.map((item) => {
-              const isActive = pathname === item.href || (item.href && pathname.startsWith(item.href + "/"));
+              const isActive = item.href ? (pathname === item.href || pathname.startsWith(item.href + "/")) : false;
 
               return (
                 <NavItemWithSubmenu

@@ -1,9 +1,8 @@
 "use client";
 
 /**
- * Admin Dashboard Page
- * REQ-004: Administration (Benutzerverwaltung, Rechte)
- * REQ-011: Audit Log access
+ * Communication Dashboard Page
+ * Central hub for email campaigns and templates management
  */
 
 import { useEffect } from "react";
@@ -13,29 +12,7 @@ import { useAuth } from "@/lib/auth";
 import Link from "next/link";
 
 // Icons as components
-const UsersIcon = ({ className }: { className?: string }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-    />
-  </svg>
-);
-
-const AuditIcon = ({ className }: { className?: string }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-    />
-  </svg>
-);
-
-const EmailTemplateIcon = ({ className }: { className?: string }) => (
+const EmailCampaignIcon = ({ className }: { className?: string }) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path
       strokeLinecap="round"
@@ -46,19 +23,13 @@ const EmailTemplateIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-const SettingsIcon = ({ className }: { className?: string }) => (
+const EmailTemplateIcon = ({ className }: { className?: string }) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth={2}
-      d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-    />
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
     />
   </svg>
 );
@@ -69,17 +40,17 @@ const ChevronRightIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-export default function AdminPage() {
-  const t = useTranslations("admin");
+export default function CommunicationPage() {
+  const t = useTranslations("communication");
   const router = useRouter();
-  const { isAuthenticated, isLoading, isAdmin } = useAuth();
+  const { isAuthenticated, isLoading, isAdmin, isVorstand } = useAuth();
 
-  // Redirect if not admin
+  // Redirect if not authorized
   useEffect(() => {
-    if (!isLoading && (!isAuthenticated || !isAdmin)) {
+    if (!isLoading && (!isAuthenticated || (!isAdmin && !isVorstand))) {
       router.push("/");
     }
-  }, [isLoading, isAuthenticated, isAdmin, router]);
+  }, [isLoading, isAuthenticated, isAdmin, isVorstand, router]);
 
   if (isLoading) {
     return (
@@ -93,34 +64,22 @@ export default function AdminPage() {
     );
   }
 
-  if (!isAuthenticated || !isAdmin) {
+  if (!isAuthenticated || (!isAdmin && !isVorstand)) {
     return null;
   }
 
-  const adminSections = [
+  const communicationSections = [
     {
-      href: "/admin/users",
-      titleKey: "users.title",
-      descriptionKey: "users.description",
-      icon: UsersIcon,
+      href: "/communication/email-campaigns",
+      titleKey: "emailCampaigns.title",
+      descriptionKey: "emailCampaigns.description",
+      icon: EmailCampaignIcon,
     },
     {
-      href: "/admin/audit",
-      titleKey: "audit.title",
-      descriptionKey: "audit.description",
-      icon: AuditIcon,
-    },
-    {
-      href: "/admin/register",
-      titleKey: "register.title",
-      descriptionKey: "register.description",
+      href: "/communication/email-templates",
+      titleKey: "emailTemplates.title",
+      descriptionKey: "emailTemplates.description",
       icon: EmailTemplateIcon,
-    },
-    {
-      href: "/admin/settings",
-      titleKey: "settings.title",
-      descriptionKey: "settings.description",
-      icon: SettingsIcon,
     },
   ];
 
@@ -137,9 +96,9 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Admin Cards Grid */}
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {adminSections.map((section) => {
+        {/* Communication Cards Grid */}
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-2">
+          {communicationSections.map((section) => {
             const IconComponent = section.icon;
             return (
               <Link
@@ -166,11 +125,32 @@ export default function AdminPage() {
           })}
         </div>
 
-        {/* Quick Stats Section */}
+        {/* Quick Actions */}
         <div className="mt-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">{t("quickInfo.title")}</h2>
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <p className="text-gray-600">{t("quickInfo.description")}</p>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">{t("quickActions.title")}</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Link
+              href="/communication/email-campaigns/new"
+              className="flex items-center gap-3 p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow"
+            >
+              <div className="p-2 bg-green-100 rounded-lg">
+                <svg className="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </div>
+              <span className="font-medium text-gray-900">{t("quickActions.newCampaign")}</span>
+            </Link>
+            <Link
+              href="/communication/email-templates/new"
+              className="flex items-center gap-3 p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow"
+            >
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </div>
+              <span className="font-medium text-gray-900">{t("quickActions.newTemplate")}</span>
+            </Link>
           </div>
         </div>
       </div>

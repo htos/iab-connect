@@ -127,7 +127,7 @@ export default function CreateUserPage() {
       };
 
       const newUser = await createUser(accessToken, request);
-      router.push(`/users/${newUser.id}`);
+      router.push(`/admin/users/${newUser.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create user");
     } finally {
@@ -144,11 +144,11 @@ export default function CreateUserPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-3xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+    <main className="min-h-[calc(100vh-4rem)] p-4 md:p-8 bg-gray-50">
+      <div className="max-w-3xl mx-auto">
         {/* Back Link */}
         <Link
-          href="/users"
+          href="/admin/users"
           className="text-orange-600 hover:underline flex items-center gap-1 mb-6"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -158,23 +158,25 @@ export default function CreateUserPage() {
         </Link>
 
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">{t("createUser")}</h1>
-          <p className="text-gray-600">{t("createUserDescription")}</p>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{t("createUser")}</h1>
+            <p className="text-gray-600 mt-1">{t("createUserDescription")}</p>
+          </div>
         </div>
 
         {/* Error Message */}
         {error && (
-          <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-            {error}
-            <button onClick={() => setError(null)} className="float-right font-bold">
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700 font-bold ml-4">
               ×
             </button>
           </div>
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm p-6 space-y-6">
           {/* Email */}
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700">
@@ -188,7 +190,7 @@ export default function CreateUserPage() {
               onChange={handleChange}
               required
               placeholder="user@example.com"
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
             />
           </div>
 
@@ -203,7 +205,7 @@ export default function CreateUserPage() {
               name="firstName"
               value={formData.firstName}
               onChange={handleChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
             />
           </div>
 
@@ -218,7 +220,7 @@ export default function CreateUserPage() {
               name="lastName"
               value={formData.lastName}
               onChange={handleChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
             />
           </div>
 
@@ -265,7 +267,7 @@ export default function CreateUserPage() {
                     value={formData.temporaryPassword}
                     onChange={handleChange}
                     required={!formData.sendInvitation}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                   />
                   <p className="text-sm text-gray-500 mt-1">{t("temporaryPasswordDescription")}</p>
                 </div>
@@ -302,15 +304,15 @@ export default function CreateUserPage() {
           <div className="flex justify-end gap-4 pt-4 border-t border-gray-200">
             <button
               type="button"
-              onClick={() => router.push("/users")}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              onClick={() => router.push("/admin/users")}
+              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
             >
               {tCommon("cancel")}
             </button>
             <button
               type="submit"
               disabled={isSaving}
-              className="px-4 py-2 text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-4 py-2 text-white bg-orange-600 rounded-xl hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
             >
               {isSaving && (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -320,6 +322,6 @@ export default function CreateUserPage() {
           </div>
         </form>
       </div>
-    </div>
+    </main>
   );
 }

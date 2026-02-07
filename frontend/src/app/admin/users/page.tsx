@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth";
 import {
@@ -145,19 +146,29 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+    <main className="min-h-[calc(100vh-4rem)] p-4 md:p-8 bg-gray-50">
+      <div className="max-w-7xl mx-auto">
+        <Link
+          href="/admin"
+          className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          {t("backToAdmin")}
+        </Link>
+
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{t("title")}</h1>
-            <p className="text-gray-600">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{t("title")}</h1>
+            <p className="text-gray-600 mt-1">
               {t("totalUsers", { count: totalCount })}
             </p>
           </div>
           <button
-            onClick={() => router.push("/users/new")}
-            className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2"
+            onClick={() => router.push("/admin/users/new")}
+            className="bg-orange-600 text-white px-4 py-2 rounded-xl hover:bg-orange-700 transition-colors flex items-center gap-2 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
           >
             <svg
               className="w-5 h-5"
@@ -178,11 +189,11 @@ export default function UsersPage() {
 
         {/* Error Message */}
         {error && (
-          <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-            {error}
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 flex items-center justify-between">
+            <span>{error}</span>
             <button
               onClick={() => setError(null)}
-              className="float-right font-bold"
+              className="text-red-500 hover:text-red-700 font-bold ml-4"
             >
               ×
             </button>
@@ -197,11 +208,11 @@ export default function UsersPage() {
               placeholder={t("searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
             />
             <button
               type="submit"
-              className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+              className="bg-gray-200 text-gray-700 px-4 py-2 rounded-xl hover:bg-gray-300 transition-colors focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
             >
               {tCommon("search")}
             </button>
@@ -209,7 +220,7 @@ export default function UsersPage() {
         </form>
 
         {/* Users Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -299,7 +310,7 @@ export default function UsersPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex justify-end gap-2">
                       <button
-                        onClick={() => router.push(`/users/${user.id}`)}
+                        onClick={() => router.push(`/admin/users/${user.id}`)}
                         className="text-orange-600 hover:text-orange-900"
                         title={tCommon("edit")}
                       >
@@ -427,7 +438,7 @@ export default function UsersPage() {
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="px-3 py-1 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                className="px-3 py-1 border rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
               >
                 {tCommon("previous")}
               </button>
@@ -437,7 +448,7 @@ export default function UsersPage() {
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="px-3 py-1 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                className="px-3 py-1 border rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
               >
                 {tCommon("next")}
               </button>
@@ -445,6 +456,6 @@ export default function UsersPage() {
           </div>
         )}
       </div>
-    </div>
+    </main>
   );
 }

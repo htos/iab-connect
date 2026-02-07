@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import {
   EmailCampaignDto,
   PagedResponse,
@@ -17,6 +18,7 @@ import {
 } from "@/lib/api/email-campaigns";
 
 export default function EmailCampaignsPage() {
+  const t = useTranslations("emailCampaigns");
   const { isAuthenticated, isLoading: authLoading, isVorstand, isAdmin, accessToken } = useAuth();
   const router = useRouter();
 
@@ -53,7 +55,7 @@ export default function EmailCampaignsPage() {
       });
 
       if (!response.ok) {
-        throw new Error(`Fehler beim Laden der Kampagnen: ${response.statusText}`);
+        throw new Error(t("loadError"));
       }
 
       const data: PagedResponse<EmailCampaignDto> = await response.json();
@@ -61,11 +63,11 @@ export default function EmailCampaignsPage() {
       setTotalPages(data.totalPages);
       setTotalCount(data.totalCount);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Ein Fehler ist aufgetreten");
+      setError(err instanceof Error ? err.message : t("genericError"));
     } finally {
       setLoading(false);
     }
-  }, [baseUrl]);
+  }, [baseUrl, t]);
 
   // Auth check
   useEffect(() => {
@@ -85,7 +87,7 @@ export default function EmailCampaignsPage() {
   }, [accessToken, isVorstand, isAdmin, page, statusFilter, fetchCampaigns]);
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Kampagne "${name}" wirklich löschen?`)) return;
+    if (!confirm(t("deleteConfirm", { name }))) return;
 
     try {
       const response = await fetch(`${baseUrl}/api/v1/email-campaigns/${id}`, {
@@ -97,12 +99,12 @@ export default function EmailCampaignsPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Fehler beim Löschen");
+        throw new Error(errorData.message || t("deleteError"));
       }
 
       fetchCampaigns(page, statusFilter);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Fehler beim Löschen");
+      alert(err instanceof Error ? err.message : t("deleteError"));
     }
   };
 
@@ -111,7 +113,7 @@ export default function EmailCampaignsPage() {
       <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Laden...</p>
+          <p className="mt-4 text-gray-600">{t("loading")}</p>
         </div>
       </div>
     );
@@ -127,42 +129,42 @@ export default function EmailCampaignsPage() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">E-Mail Kampagnen</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{t("title")}</h1>
             <p className="text-gray-600 mt-1">
-              {totalCount} Kampagne{totalCount !== 1 ? "n" : ""} insgesamt
+              {t("totalCampaigns", { count: totalCount })}
             </p>
           </div>
           <Link
-            href="/email-campaigns/new"
-            className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-700 transition-colors"
+            href="/communication/email-campaigns/new"
+            className="inline-flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-700 transition-colors"
           >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          Neue Kampagne
+          {t("newCampaign")}
         </Link>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-4 mb-6">
+      <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
         <div className="flex flex-wrap gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t("status")}</label>
             <select
               value={statusFilter}
               onChange={(e) => {
                 setStatusFilter(e.target.value as EmailCampaignStatus | "");
                 setPage(1);
               }}
-              className="border rounded-lg px-3 py-2 text-gray-900"
+              className="border rounded-xl px-3 py-2 text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
             >
-              <option value="">Alle Status</option>
-              <option value="Draft">Entwurf</option>
-              <option value="Scheduled">Geplant</option>
-              <option value="Sending">Wird gesendet</option>
-              <option value="Sent">Gesendet</option>
-              <option value="Cancelled">Abgebrochen</option>
-              <option value="Failed">Fehlgeschlagen</option>
+              <option value="">{t("allStatuses")}</option>
+              <option value="Draft">{t("statusDraft")}</option>
+              <option value="Scheduled">{t("statusScheduled")}</option>
+              <option value="Sending">{t("statusSending")}</option>
+              <option value="Sent">{t("statusSent")}</option>
+              <option value="Cancelled">{t("statusCancelled")}</option>
+              <option value="Failed">{t("statusFailed")}</option>
             </select>
           </div>
         </div>
@@ -170,33 +172,33 @@ export default function EmailCampaignsPage() {
 
       {/* Error */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 mb-6">
           {error}
         </div>
       )}
 
       {/* Campaign List */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Kampagne
+                {t("table.campaign")}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
+                {t("status")}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Empfänger
+                {t("table.recipients")}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Statistik
+                {t("table.statistics")}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Erstellt
+                {t("table.created")}
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Aktionen
+                {t("table.actions")}
               </th>
             </tr>
           </thead>
@@ -204,21 +206,21 @@ export default function EmailCampaignsPage() {
             {campaigns.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-                  Keine Kampagnen gefunden
+                  {t("noCampaignsFound")}
                 </td>
               </tr>
             ) : (
               campaigns.map((campaign) => (
                 <tr key={campaign.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
-                    <Link href={`/email-campaigns/${campaign.id}`} className="text-blue-600 hover:underline font-medium">
+                    <Link href={`/communication/email-campaigns/${campaign.id}`} className="text-blue-600 hover:underline font-medium">
                       {campaign.name}
                     </Link>
                     <div className="text-sm text-gray-500">{campaign.subject}</div>
                   </td>
                   <td className="px-6 py-4">
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(campaign.status)}`}>
-                      {getStatusLabel(campaign.status)}
+                      {getStatusLabelTranslated(campaign.status, t)}
                     </span>
                     {campaign.scheduledAt && campaign.status === "Scheduled" && (
                       <div className="text-xs text-gray-500 mt-1">
@@ -238,7 +240,7 @@ export default function EmailCampaignsPage() {
                           <span className="text-purple-600">🖱 {campaign.clickedCount}</span>
                         </div>
                         {campaign.bouncedCount > 0 && (
-                          <span className="text-red-600">⚠ {campaign.bouncedCount} Bounces</span>
+                          <span className="text-red-600">⚠ {campaign.bouncedCount} {t("bounces")}</span>
                         )}
                       </div>
                     ) : (
@@ -251,24 +253,24 @@ export default function EmailCampaignsPage() {
                   </td>
                   <td className="px-6 py-4 text-right space-x-2">
                     <Link
-                      href={`/email-campaigns/${campaign.id}`}
+                      href={`/communication/email-campaigns/${campaign.id}`}
                       className="text-blue-600 hover:text-blue-800"
                     >
-                      Details
+                      {t("details")}
                     </Link>
                     {campaign.status === "Draft" && (
                       <>
                         <Link
-                          href={`/email-campaigns/${campaign.id}/edit`}
+                          href={`/communication/email-campaigns/${campaign.id}/edit`}
                           className="text-gray-600 hover:text-gray-800"
                         >
-                          Bearbeiten
+                          {t("edit")}
                         </Link>
                         <button
                           onClick={() => handleDelete(campaign.id, campaign.name)}
                           className="text-red-600 hover:text-red-800"
                         >
-                          Löschen
+                          {t("delete")}
                         </button>
                       </>
                     )}
@@ -286,19 +288,19 @@ export default function EmailCampaignsPage() {
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            className="px-4 py-2 border rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
           >
-            Zurück
+            {t("previous")}
           </button>
           <span className="text-gray-600">
-            Seite {page} von {totalPages}
+            {t("pagination", { current: page, total: totalPages })}
           </span>
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            className="px-4 py-2 border rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
           >
-            Weiter
+            {t("next")}
           </button>
         </div>
       )}
@@ -307,20 +309,20 @@ export default function EmailCampaignsPage() {
   );
 }
 
-function getStatusLabel(status: EmailCampaignStatus): string {
+function getStatusLabelTranslated(status: EmailCampaignStatus, t: (key: string) => string): string {
   switch (status) {
     case "Draft":
-      return "Entwurf";
+      return t("statusDraft");
     case "Scheduled":
-      return "Geplant";
+      return t("statusScheduled");
     case "Sending":
-      return "Wird gesendet";
+      return t("statusSending");
     case "Sent":
-      return "Gesendet";
+      return t("statusSent");
     case "Cancelled":
-      return "Abgebrochen";
+      return t("statusCancelled");
     case "Failed":
-      return "Fehlgeschlagen";
+      return t("statusFailed");
     default:
       return status;
   }

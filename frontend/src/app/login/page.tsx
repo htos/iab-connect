@@ -156,7 +156,7 @@ export default function LoginPage() {
           {/* Register Link */}
           <p className="mt-4 text-center text-sm text-gray-600">
             {t("auth.noAccount")}{" "}
-            <Link href="/register" className="text-orange-600 hover:text-orange-700 font-medium">
+            <Link href="/admin/register" className="text-orange-600 hover:text-orange-700 font-medium">
               {t("auth.registerHere")}
             </Link>
           </p>

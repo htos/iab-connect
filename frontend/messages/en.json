@@ -236,6 +236,7 @@
     "de": "Deutsch"
   },
   "users": {
+    "backToAdmin": "Back to Admin",
     "title": "User Management",
     "totalUsers": "{count} users total",
     "createUser": "New User",
@@ -285,7 +286,9 @@
     "required": "Required"
   },
   "audit": {
+    "backToAdmin": "Back to Admin",
     "title": "Audit Log",
+    "subtitle": "Overview of all security and data changes in the system",
     "description": "Overview of all security and data changes in the system",
     "export": "CSV Export",
     "filters": {
@@ -331,6 +334,23 @@
       "exportFailed": "Export failed"
     }
   },
+  "communication": {
+    "title": "Communication",
+    "subtitle": "Manage email campaigns and templates",
+    "emailCampaigns": {
+      "title": "Email Campaigns",
+      "description": "Create and manage email campaigns for your members"
+    },
+    "emailTemplates": {
+      "title": "Email Templates",
+      "description": "Create templates for automated emails and campaigns"
+    },
+    "quickActions": {
+      "title": "Quick Actions",
+      "newCampaign": "Create New Campaign",
+      "newTemplate": "Create New Template"
+    }
+  },
   "admin": {
     "title": "Administration",
     "subtitle": "System management and settings",
@@ -341,6 +361,18 @@
     "audit": {
       "title": "Audit Log",
       "description": "View security and change logs"
+    },
+    "register": {
+      "title": "Registration",
+      "description": "Manage and approve new user registrations"
+    },
+    "settings": {
+      "title": "System Settings",
+      "description": "General system configuration and settings"
+    },
+    "quickInfo": {
+      "title": "Quick Info",
+      "description": "Select a section to start administering."
     }
   },
   "events": {
@@ -589,6 +621,179 @@
       "phoneOptional": "Phone (optional)",
       "phonePlaceholder": "+41 79 xxx xx xx",
       "nameEmailRequired": "Please provide name and email."
+    }
+  },
+  "emailCampaigns": {
+    "title": "Email Campaigns",
+    "totalCampaigns": "{count, plural, =0 {No campaigns} =1 {1 campaign total} other {# campaigns total}}",
+    "newCampaign": "New Campaign",
+    "loading": "Loading...",
+    "loadError": "Error loading campaigns",
+    "genericError": "An error occurred",
+    "deleteConfirm": "Really delete campaign \"{name}\"?",
+    "deleteError": "Error deleting",
+    "status": "Status",
+    "allStatuses": "All Statuses",
+    "statusDraft": "Draft",
+    "statusScheduled": "Scheduled",
+    "statusSending": "Sending",
+    "statusSent": "Sent",
+    "statusCancelled": "Cancelled",
+    "statusFailed": "Failed",
+    "noCampaignsFound": "No campaigns found",
+    "bounces": "Bounces",
+    "details": "Details",
+    "edit": "Edit",
+    "delete": "Delete",
+    "previous": "Previous",
+    "next": "Next",
+    "pagination": "Page {current} of {total}",
+    "backToCampaigns": "Back to Campaigns",
+    "backToCampaign": "Back to Campaign",
+    "notFound": "Campaign not found",
+    "sendTestEmail": "Send Test Email",
+    "schedule": "Schedule",
+    "sendNow": "Send Now",
+    "resend": "Resend",
+    "scheduledFor": "Scheduled for:",
+    "cancel": "Cancel",
+    "statistics": "Statistics",
+    "sender": "Sender",
+    "replyTo": "Reply to",
+    "recipients": "Recipients",
+    "created": "Created",
+    "by": "by",
+    "sentAt": "Sent",
+    "emailPreview": "Email Preview",
+    "to": "To:",
+    "openedAt": "Opened",
+    "clickedAt": "Clicked",
+    "testEmailFailed": "Test email could not be sent",
+    "testEmailSent": "Test email sent!",
+    "scheduleFailed": "Scheduling failed",
+    "confirmSendNow": "Send campaign to all recipients now?",
+    "sendFailed": "Sending failed",
+    "confirmCancel": "Really cancel campaign?",
+    "cancelFailed": "Cancel failed",
+    "resendFailed": "Resend failed",
+    "stats": {
+      "total": "Total",
+      "sent": "Sent",
+      "delivered": "Delivered",
+      "opened": "Opened",
+      "clicked": "Clicked",
+      "bounces": "Bounces",
+      "errors": "Errors"
+    },
+    "table": {
+      "campaign": "Campaign",
+      "recipients": "Recipients",
+      "statistics": "Statistics",
+      "created": "Created",
+      "actions": "Actions",
+      "email": "Email",
+      "name": "Name",
+      "status": "Status",
+      "activity": "Activity"
+    },
+    "modal": {
+      "emailAddress": "Email Address",
+      "sending": "Sending...",
+      "sendTest": "Send Test",
+      "scheduleCampaign": "Schedule Campaign",
+      "sendTime": "Send Time",
+      "scheduling": "Scheduling...",
+      "resendCampaign": "Resend Campaign",
+      "resendDescription": "Choose who to resend the campaign to:",
+      "sendToAll": "Send to all recipients",
+      "sendToAllDesc": "Resend to all {count} recipients",
+      "sendToFailedOnly": "Resend to failed only",
+      "sendToFailedDesc": "Resend to {count} failed recipients"
+    },
+    "form": {
+      "newTitle": "New Email Campaign",
+      "editTitle": "Edit Campaign",
+      "editSubtitle": "Edit the details of your email campaign",
+      "basicInfo": "Basic Information",
+      "basicInfoDescription": "Name and subject of the campaign",
+      "campaignName": "Campaign Name",
+      "campaignNamePlaceholder": "e.g. Newsletter January 2025",
+      "subject": "Subject",
+      "subjectPlaceholder": "Email Subject",
+      "sender": "Sender",
+      "senderDescription": "Who should the email come from?",
+      "senderName": "Sender Name",
+      "senderEmail": "Sender Email",
+      "replyToEmail": "Reply-To Email (optional)",
+      "replyToEmailPlaceholder": "If different from sender",
+      "recipients": "Recipients",
+      "recipientsDescription": "Who should receive the email?",
+      "recipientGroup": "Recipient Group",
+      "customFilter": "Filter (SQL-like)",
+      "customFilterPlaceholder": "e.g. membershipType = 'Regular'",
+      "customFilterHint": "Available fields: membershipType, status, memberSince",
+      "content": "Content",
+      "contentDescription": "Email text and design",
+      "htmlContent": "HTML Content",
+      "visualMode": "Visual",
+      "htmlMode": "HTML",
+      "editorPlaceholder": "Write your email here...",
+      "availablePlaceholders": "Available placeholders",
+      "plainTextVersion": "Plain Text Version (optional)",
+      "plainTextPlaceholder": "Text version for email clients without HTML support",
+      "plainTextHint": "Will be automatically generated from HTML content if left empty.",
+      "createCampaign": "Create Campaign",
+      "creating": "Creating...",
+      "saveChanges": "Save Changes",
+      "saving": "Saving...",
+      "createError": "Error creating campaign",
+      "saveError": "Error saving campaign",
+      "loadError": "Campaign not found",
+      "editNotPossible": "Editing not possible",
+      "editNotPossibleReason": "This campaign can no longer be edited as it has already been sent or scheduled."
+    }
+  },
+  "emailTemplates": {
+    "title": "Email Templates",
+    "subtitle": "Manage reusable email templates",
+    "createTemplate": "New Template",
+    "createFirstTemplate": "Create First Template",
+    "searchPlaceholder": "Search templates...",
+    "noTemplates": "No templates available",
+    "noTemplatesDescription": "No email templates have been created yet.",
+    "noSearchResults": "No templates found matching your search.",
+    "inactive": "Inactive",
+    "confirmDelete": "Are you sure you want to delete this template?",
+    "loadError": "Error loading templates",
+    "deleteError": "Error deleting template",
+    "backToTemplates": "Back to Templates",
+    "newTitle": "New Email Template",
+    "newSubtitle": "Create a new reusable email template",
+    "editTitle": "Edit Template",
+    "editSubtitle": "Edit the email template",
+    "templateNotFound": "Template not found",
+    "form": {
+      "name": "Name",
+      "namePlaceholder": "e.g. Welcome Email",
+      "category": "Category",
+      "description": "Description",
+      "descriptionPlaceholder": "Description of the template",
+      "subject": "Subject Line",
+      "subjectPlaceholder": "e.g. Welcome to '{{organizationName}}'",
+      "htmlContent": "HTML Content",
+      "textContent": "Text Content",
+      "variables": "Variables",
+      "variableNamePlaceholder": "Variable name (e.g. name, eventTitle)",
+      "variableDescriptionPlaceholder": "Description",
+      "variableDefaultPlaceholder": "Default value (optional)",
+      "variableNameRequired": "Variable name required",
+      "required": "Required",
+      "addVariable": "Add Variable",
+      "remove": "Remove",
+      "saveError": "Error saving template",
+      "createError": "Error creating template",
+      "createSuccess": "Template created successfully",
+      "saveSuccess": "Template saved successfully"
     }
   }
 }

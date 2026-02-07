@@ -236,6 +236,7 @@
     "de": "Deutsch"
   },
   "users": {
+    "backToAdmin": "Zurück zur Administration",
     "title": "Benutzerverwaltung",
     "totalUsers": "{count} Benutzer insgesamt",
     "createUser": "Neuer Benutzer",
@@ -285,7 +286,9 @@
     "required": "Erforderlich"
   },
   "audit": {
+    "backToAdmin": "Zurück zur Administration",
     "title": "Audit Log",
+    "subtitle": "Übersicht aller Sicherheits- und Datenänderungen im System",
     "description": "Übersicht aller Sicherheits- und Datenänderungen im System",
     "export": "CSV Export",
     "filters": {
@@ -331,6 +334,23 @@
       "exportFailed": "Export fehlgeschlagen"
     }
   },
+  "communication": {
+    "title": "Kommunikation",
+    "subtitle": "E-Mail-Kampagnen und Vorlagen verwalten",
+    "emailCampaigns": {
+      "title": "E-Mail-Kampagnen",
+      "description": "Erstellen und verwalten Sie E-Mail-Kampagnen für Ihre Mitglieder"
+    },
+    "emailTemplates": {
+      "title": "E-Mail-Vorlagen",
+      "description": "Vorlagen für automatisierte E-Mails und Kampagnen erstellen"
+    },
+    "quickActions": {
+      "title": "Schnellaktionen",
+      "newCampaign": "Neue Kampagne erstellen",
+      "newTemplate": "Neue Vorlage erstellen"
+    }
+  },
   "admin": {
     "title": "Administration",
     "subtitle": "Systemverwaltung und Einstellungen",
@@ -341,6 +361,18 @@
     "audit": {
       "title": "Audit-Log",
       "description": "Sicherheits- und Änderungsprotokoll einsehen"
+    },
+    "register": {
+      "title": "Registrierung",
+      "description": "Neue Benutzerregistrierungen verwalten und genehmigen"
+    },
+    "settings": {
+      "title": "Systemeinstellungen",
+      "description": "Allgemeine Systemkonfiguration und Einstellungen"
+    },
+    "quickInfo": {
+      "title": "Schnellinfo",
+      "description": "Wählen Sie einen Bereich aus, um mit der Administration zu beginnen."
     }
   },
   "events": {
@@ -589,6 +621,179 @@
       "phoneOptional": "Telefon (optional)",
       "phonePlaceholder": "+41 79 xxx xx xx",
       "nameEmailRequired": "Bitte Name und E-Mail angeben."
+    }
+  },
+  "emailCampaigns": {
+    "title": "E-Mail Kampagnen",
+    "totalCampaigns": "{count, plural, =0 {Keine Kampagnen} =1 {1 Kampagne insgesamt} other {# Kampagnen insgesamt}}",
+    "newCampaign": "Neue Kampagne",
+    "loading": "Laden...",
+    "loadError": "Fehler beim Laden der Kampagnen",
+    "genericError": "Ein Fehler ist aufgetreten",
+    "deleteConfirm": "Kampagne \"{name}\" wirklich löschen?",
+    "deleteError": "Fehler beim Löschen",
+    "status": "Status",
+    "allStatuses": "Alle Status",
+    "statusDraft": "Entwurf",
+    "statusScheduled": "Geplant",
+    "statusSending": "Wird gesendet",
+    "statusSent": "Gesendet",
+    "statusCancelled": "Abgebrochen",
+    "statusFailed": "Fehlgeschlagen",
+    "noCampaignsFound": "Keine Kampagnen gefunden",
+    "bounces": "Bounces",
+    "details": "Details",
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "previous": "Zurück",
+    "next": "Weiter",
+    "pagination": "Seite {current} von {total}",
+    "backToCampaigns": "Zurück zu Kampagnen",
+    "backToCampaign": "Zurück zur Kampagne",
+    "notFound": "Kampagne nicht gefunden",
+    "sendTestEmail": "Test-E-Mail senden",
+    "schedule": "Planen",
+    "sendNow": "Jetzt senden",
+    "resend": "Erneut senden",
+    "scheduledFor": "Geplant für:",
+    "cancel": "Abbrechen",
+    "statistics": "Statistiken",
+    "sender": "Absender",
+    "replyTo": "Antwort an",
+    "recipients": "Empfänger",
+    "created": "Erstellt",
+    "by": "von",
+    "sentAt": "Gesendet",
+    "emailPreview": "E-Mail Vorschau",
+    "to": "An:",
+    "openedAt": "Geöffnet",
+    "clickedAt": "Geklickt",
+    "testEmailFailed": "Test-Mail konnte nicht gesendet werden",
+    "testEmailSent": "Test-E-Mail wurde gesendet!",
+    "scheduleFailed": "Planung fehlgeschlagen",
+    "confirmSendNow": "Kampagne jetzt an alle Empfänger senden?",
+    "sendFailed": "Senden fehlgeschlagen",
+    "confirmCancel": "Kampagne wirklich abbrechen?",
+    "cancelFailed": "Abbruch fehlgeschlagen",
+    "resendFailed": "Erneutes Senden fehlgeschlagen",
+    "stats": {
+      "total": "Gesamt",
+      "sent": "Gesendet",
+      "delivered": "Zugestellt",
+      "opened": "Geöffnet",
+      "clicked": "Geklickt",
+      "bounces": "Bounces",
+      "errors": "Fehler"
+    },
+    "table": {
+      "campaign": "Kampagne",
+      "recipients": "Empfänger",
+      "statistics": "Statistik",
+      "created": "Erstellt",
+      "actions": "Aktionen",
+      "email": "E-Mail",
+      "name": "Name",
+      "status": "Status",
+      "activity": "Aktivität"
+    },
+    "modal": {
+      "emailAddress": "E-Mail-Adresse",
+      "sending": "Senden...",
+      "sendTest": "Test senden",
+      "scheduleCampaign": "Kampagne planen",
+      "sendTime": "Sendezeitpunkt",
+      "scheduling": "Planen...",
+      "resendCampaign": "Kampagne erneut senden",
+      "resendDescription": "Wählen Sie, an wen Sie die Kampagne erneut senden möchten:",
+      "sendToAll": "An alle Empfänger senden",
+      "sendToAllDesc": "Sendet an alle {count} Empfänger erneut",
+      "sendToFailedOnly": "Nur fehlgeschlagene erneut senden",
+      "sendToFailedDesc": "Sendet an {count} fehlgeschlagene Empfänger erneut"
+    },
+    "form": {
+      "newTitle": "Neue E-Mail Kampagne",
+      "editTitle": "Kampagne bearbeiten",
+      "editSubtitle": "Bearbeiten Sie die Details Ihrer E-Mail-Kampagne",
+      "basicInfo": "Grunddaten",
+      "basicInfoDescription": "Name und Betreff der Kampagne",
+      "campaignName": "Kampagnenname",
+      "campaignNamePlaceholder": "z.B. Newsletter Januar 2025",
+      "subject": "Betreff",
+      "subjectPlaceholder": "E-Mail Betreff",
+      "sender": "Absender",
+      "senderDescription": "Von wem soll die E-Mail kommen?",
+      "senderName": "Absendername",
+      "senderEmail": "Absender-E-Mail",
+      "replyToEmail": "Antwort-E-Mail (optional)",
+      "replyToEmailPlaceholder": "Falls abweichend von Absender",
+      "recipients": "Empfänger",
+      "recipientsDescription": "An wen soll die E-Mail gesendet werden?",
+      "recipientGroup": "Empfängergruppe",
+      "customFilter": "Filter (SQL-ähnlich)",
+      "customFilterPlaceholder": "z.B. membershipType = 'Regular'",
+      "customFilterHint": "Verfügbare Felder: membershipType, status, memberSince",
+      "content": "Inhalt",
+      "contentDescription": "E-Mail Text und Design",
+      "htmlContent": "HTML-Inhalt",
+      "visualMode": "Visuell",
+      "htmlMode": "HTML",
+      "editorPlaceholder": "Schreiben Sie hier Ihre E-Mail...",
+      "availablePlaceholders": "Verfügbare Platzhalter",
+      "plainTextVersion": "Plaintext-Version (optional)",
+      "plainTextPlaceholder": "Textversion für E-Mail-Clients ohne HTML-Unterstützung",
+      "plainTextHint": "Wird automatisch aus dem HTML-Inhalt generiert, falls leer gelassen.",
+      "createCampaign": "Kampagne erstellen",
+      "creating": "Wird erstellt...",
+      "saveChanges": "Änderungen speichern",
+      "saving": "Wird gespeichert...",
+      "createError": "Fehler beim Erstellen der Kampagne",
+      "saveError": "Fehler beim Speichern der Kampagne",
+      "loadError": "Kampagne nicht gefunden",
+      "editNotPossible": "Bearbeitung nicht möglich",
+      "editNotPossibleReason": "Diese Kampagne kann nicht mehr bearbeitet werden, da sie bereits versendet oder geplant wurde."
+    }
+  },
+  "emailTemplates": {
+    "title": "E-Mail Vorlagen",
+    "subtitle": "Verwalten Sie wiederverwendbare E-Mail-Vorlagen",
+    "createTemplate": "Neue Vorlage",
+    "createFirstTemplate": "Erste Vorlage erstellen",
+    "searchPlaceholder": "Vorlagen durchsuchen...",
+    "noTemplates": "Keine Vorlagen vorhanden",
+    "noTemplatesDescription": "Es wurden noch keine E-Mail-Vorlagen erstellt.",
+    "noSearchResults": "Keine Vorlagen gefunden, die Ihrer Suche entsprechen.",
+    "inactive": "Inaktiv",
+    "confirmDelete": "Möchten Sie diese Vorlage wirklich löschen?",
+    "loadError": "Fehler beim Laden der Vorlagen",
+    "deleteError": "Fehler beim Löschen der Vorlage",
+    "backToTemplates": "Zurück zu Vorlagen",
+    "newTitle": "Neue E-Mail Vorlage",
+    "newSubtitle": "Erstellen Sie eine neue wiederverwendbare E-Mail-Vorlage",
+    "editTitle": "Vorlage bearbeiten",
+    "editSubtitle": "Bearbeiten Sie die E-Mail-Vorlage",
+    "templateNotFound": "Vorlage nicht gefunden",
+    "form": {
+      "name": "Name",
+      "namePlaceholder": "z.B. Willkommens-E-Mail",
+      "category": "Kategorie",
+      "description": "Beschreibung",
+      "descriptionPlaceholder": "Beschreibung der Vorlage",
+      "subject": "Betreffzeile",
+      "subjectPlaceholder": "z.B. Willkommen bei '{{organizationName}}'",
+      "htmlContent": "HTML Inhalt",
+      "textContent": "Text Inhalt",
+      "variables": "Variablen",
+      "variableNamePlaceholder": "Variablenname (z.B. name, eventTitle)",
+      "variableDescriptionPlaceholder": "Beschreibung",
+      "variableDefaultPlaceholder": "Standard-Wert (optional)",
+      "variableNameRequired": "Variablenname erforderlich",
+      "required": "Erforderlich",
+      "addVariable": "Variable hinzufügen",
+      "remove": "Entfernen",
+      "saveError": "Fehler beim Speichern der Vorlage",
+      "createError": "Fehler beim Erstellen der Vorlage",
+      "createSuccess": "Vorlage erfolgreich erstellt",
+      "saveSuccess": "Vorlage erfolgreich gespeichert"
     }
   }
 }

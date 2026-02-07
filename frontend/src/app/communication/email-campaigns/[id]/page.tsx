@@ -6,6 +6,7 @@
 
 import { useAuth } from "@/lib/auth";
 import { useRouter, useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import {
@@ -21,6 +22,7 @@ export default function EmailCampaignDetailPage() {
   const { isAuthenticated, isLoading: authLoading, isVorstand, isAdmin, accessToken } = useAuth();
   const router = useRouter();
   const params = useParams();
+  const t = useTranslations("emailCampaigns");
   const campaignId = params.id as string;
 
   const [campaign, setCampaign] = useState<EmailCampaignDto | null>(null);
@@ -55,7 +57,7 @@ export default function EmailCampaignDetailPage() {
         }),
       ]);
 
-      if (!campaignRes.ok) throw new Error("Kampagne nicht gefunden");
+      if (!campaignRes.ok) throw new Error(t("notFound"));
 
       const campaignData = await campaignRes.json();
       setCampaign(campaignData);
@@ -70,7 +72,7 @@ export default function EmailCampaignDetailPage() {
         setRecipients(recipientsData.items);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler beim Laden");
+      setError(err instanceof Error ? err.message : t("loadError"));
     } finally {
       setLoading(false);
     }
@@ -104,13 +106,13 @@ export default function EmailCampaignDetailPage() {
         body: JSON.stringify({ testEmail }),
       });
 
-      if (!response.ok) throw new Error("Test-Mail konnte nicht gesendet werden");
+      if (!response.ok) throw new Error(t("testEmailFailed"));
 
-      alert("Test-E-Mail wurde gesendet!");
+      alert(t("testEmailSent"));
       setShowTestModal(false);
       setTestEmail("");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Fehler");
+      alert(err instanceof Error ? err.message : t("genericError"));
     } finally {
       setActionLoading(false);
     }
@@ -129,19 +131,19 @@ export default function EmailCampaignDetailPage() {
         body: JSON.stringify({ scheduledAt: new Date(scheduledAt).toISOString() }),
       });
 
-      if (!response.ok) throw new Error("Planung fehlgeschlagen");
+      if (!response.ok) throw new Error(t("scheduleFailed"));
 
       await fetchCampaign();
       setShowScheduleModal(false);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Fehler");
+      alert(err instanceof Error ? err.message : t("genericError"));
     } finally {
       setActionLoading(false);
     }
   };
 
   const handleSendNow = async () => {
-    if (!confirm("Kampagne jetzt an alle Empfänger senden?")) return;
+    if (!confirm(t("confirmSendNow"))) return;
     setActionLoading(true);
     try {
       const response = await fetch(`${baseUrl}/api/v1/email-campaigns/${campaignId}/send`, {
@@ -149,18 +151,18 @@ export default function EmailCampaignDetailPage() {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
 
-      if (!response.ok) throw new Error("Senden fehlgeschlagen");
+      if (!response.ok) throw new Error(t("sendFailed"));
 
       await fetchCampaign();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Fehler");
+      alert(err instanceof Error ? err.message : t("genericError"));
     } finally {
       setActionLoading(false);
     }
   };
 
   const handleCancel = async () => {
-    if (!confirm("Kampagne wirklich abbrechen?")) return;
+    if (!confirm(t("confirmCancel"))) return;
     setActionLoading(true);
     try {
       const response = await fetch(`${baseUrl}/api/v1/email-campaigns/${campaignId}/cancel`, {
@@ -168,11 +170,11 @@ export default function EmailCampaignDetailPage() {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
 
-      if (!response.ok) throw new Error("Abbruch fehlgeschlagen");
+      if (!response.ok) throw new Error(t("cancelFailed"));
 
       await fetchCampaign();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Fehler");
+      alert(err instanceof Error ? err.message : t("genericError"));
     } finally {
       setActionLoading(false);
     }
@@ -187,12 +189,12 @@ export default function EmailCampaignDetailPage() {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
 
-      if (!response.ok) throw new Error("Erneutes Senden fehlgeschlagen");
+      if (!response.ok) throw new Error(t("resendFailed"));
 
       await fetchCampaign();
       setShowResendModal(false);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Fehler");
+      alert(err instanceof Error ? err.message : t("genericError"));
     } finally {
       setActionLoading(false);
     }
@@ -211,10 +213,10 @@ export default function EmailCampaignDetailPage() {
       <div className="min-h-[calc(100vh-4rem)] p-4 md:p-8 bg-gray-50">
         <div className="max-w-7xl mx-auto">
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl">
-            {error || "Kampagne nicht gefunden"}
+            {error || t("notFound")}
           </div>
-          <Link href="/email-campaigns" className="text-orange-600 hover:underline mt-4 inline-block">
-            Zurück zu Kampagnen
+          <Link href="/communication/email-campaigns" className="text-orange-600 hover:underline mt-4 inline-block">
+            {t("backToCampaigns")}
           </Link>
         </div>
       </div>
@@ -226,11 +228,11 @@ export default function EmailCampaignDetailPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <Link href="/email-campaigns" className="text-orange-600 hover:underline flex items-center gap-1 mb-2">
+          <Link href="/communication/email-campaigns" className="text-orange-600 hover:underline flex items-center gap-1 mb-2">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Zurück zu Kampagnen
+            {t("backToCampaigns")}
           </Link>
 
           <div className="flex justify-between items-start">
@@ -239,7 +241,7 @@ export default function EmailCampaignDetailPage() {
               <p className="text-gray-600">{campaign.subject}</p>
             </div>
             <span className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusColor(campaign.status)}`}>
-              {getStatusLabel(campaign.status)}
+              {t(`status${campaign.status}`)}
             </span>
           </div>
         </div>
@@ -254,31 +256,31 @@ export default function EmailCampaignDetailPage() {
         {campaign.status === "Draft" && (
           <div className="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-wrap gap-4">
             <Link
-              href={`/email-campaigns/${campaignId}/edit`}
+              href={`/communication/email-campaigns/${campaignId}/edit`}
               className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
             >
-              Bearbeiten
+              {t("edit")}
             </Link>
             <button
               onClick={() => setShowTestModal(true)}
               disabled={actionLoading}
               className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
-              Test-E-Mail senden
+              {t("sendTestEmail")}
             </button>
             <button
               onClick={() => setShowScheduleModal(true)}
               disabled={actionLoading}
               className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
-              Planen
+              {t("schedule")}
             </button>
             <button
               onClick={handleSendNow}
               disabled={actionLoading}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
             >
-              Jetzt senden
+              {t("sendNow")}
             </button>
           </div>
         )}
@@ -292,7 +294,7 @@ export default function EmailCampaignDetailPage() {
                 disabled={actionLoading}
                 className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
               >
-                Erneut senden
+                {t("resend")}
               </button>
             </div>
           </div>
@@ -301,7 +303,7 @@ export default function EmailCampaignDetailPage() {
       {campaign.status === "Scheduled" && (
           <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-xl mb-6 flex justify-between items-center">
             <div>
-              <span className="font-medium">Geplant für: </span>
+              <span className="font-medium">{t("scheduledFor")} </span>
               {campaign.scheduledAt && new Date(campaign.scheduledAt).toLocaleString("de-DE")}
             </div>
             <button
@@ -309,7 +311,7 @@ export default function EmailCampaignDetailPage() {
               disabled={actionLoading}
               className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
             >
-              Abbrechen
+              {t("cancel")}
             </button>
           </div>
         )}
@@ -317,47 +319,47 @@ export default function EmailCampaignDetailPage() {
         {/* Statistics */}
         {statistics && (campaign.status === "Sent" || campaign.status === "Sending") && (
           <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-            <h2 className="text-lg font-semibold mb-4">Statistiken</h2>
+            <h2 className="text-lg font-semibold mb-4">{t("statistics")}</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-              <StatCard label="Gesamt" value={statistics.totalRecipients} />
-              <StatCard label="Gesendet" value={statistics.sent} color="blue" />
-              <StatCard label="Zugestellt" value={statistics.delivered} color="green" />
-              <StatCard label="Geöffnet" value={statistics.opened} rate={statistics.openRate} color="emerald" />
-              <StatCard label="Geklickt" value={statistics.clicked} rate={statistics.clickRate} color="orange" />
-              <StatCard label="Bounces" value={statistics.bounced} rate={statistics.bounceRate} color="yellow" />
-              <StatCard label="Fehler" value={statistics.failed} color="red" />
+              <StatCard label={t("stats.total")} value={statistics.totalRecipients} />
+              <StatCard label={t("stats.sent")} value={statistics.sent} color="blue" />
+              <StatCard label={t("stats.delivered")} value={statistics.delivered} color="green" />
+              <StatCard label={t("stats.opened")} value={statistics.opened} rate={statistics.openRate} color="emerald" />
+              <StatCard label={t("stats.clicked")} value={statistics.clicked} rate={statistics.clickRate} color="orange" />
+              <StatCard label={t("stats.bounces")} value={statistics.bounced} rate={statistics.bounceRate} color="yellow" />
+              <StatCard label={t("stats.errors")} value={statistics.failed} color="red" />
             </div>
           </div>
         )}
 
         {/* Details */}
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">Details</h2>
+          <h2 className="text-lg font-semibold mb-4">{t("details")}</h2>
           <dl className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="flex flex-col">
-              <dt className="text-sm text-gray-500">Absender</dt>
+              <dt className="text-sm text-gray-500">{t("sender")}</dt>
               <dd className="font-medium text-gray-900">{campaign.fromName} &lt;{campaign.fromEmail}&gt;</dd>
             </div>
             {campaign.replyToEmail && (
               <div className="flex flex-col">
-                <dt className="text-sm text-gray-500">Antwort an</dt>
+                <dt className="text-sm text-gray-500">{t("replyTo")}</dt>
                 <dd className="font-medium text-gray-900">{campaign.replyToEmail}</dd>
               </div>
             )}
             <div className="flex flex-col">
-              <dt className="text-sm text-gray-500">Empfänger</dt>
+              <dt className="text-sm text-gray-500">{t("recipients")}</dt>
               <dd className="font-medium text-gray-900">{campaign.totalRecipients}</dd>
             </div>
             <div className="flex flex-col">
-              <dt className="text-sm text-gray-500">Erstellt</dt>
+              <dt className="text-sm text-gray-500">{t("created")}</dt>
               <dd className="font-medium text-gray-900">
                 {new Date(campaign.createdAt).toLocaleString("de-DE")}
-                <span className="text-gray-500 text-sm ml-2">von {campaign.createdByName}</span>
+                <span className="text-gray-500 text-sm ml-2">{t("by")} {campaign.createdByName}</span>
               </dd>
             </div>
             {campaign.sentAt && (
               <div className="flex flex-col">
-                <dt className="text-sm text-gray-500">Gesendet</dt>
+                <dt className="text-sm text-gray-500">{t("sentAt")}</dt>
                 <dd className="font-medium text-gray-900">{new Date(campaign.sentAt).toLocaleString("de-DE")}</dd>
               </div>
             )}
@@ -371,13 +373,13 @@ export default function EmailCampaignDetailPage() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
-              <span className="font-medium text-gray-700">E-Mail Vorschau</span>
+              <span className="font-medium text-gray-700">{t("emailPreview")}</span>
             </div>
             <Link
-              href={`/email-campaigns/${campaignId}/edit`}
+              href={`/communication/email-campaigns/${campaignId}/edit`}
               className="text-orange-600 hover:text-orange-700 font-medium text-sm"
             >
-              Bearbeiten
+              {t("edit")}
             </Link>
           </div>
 
@@ -398,13 +400,13 @@ export default function EmailCampaignDetailPage() {
                     <span className="text-gray-400">&lt;{campaign.fromEmail}&gt;</span>
                   </div>
                   <div className="text-sm text-gray-500 mt-1">
-                    An: <span className="text-gray-700">Empfänger</span>
+                    {t("to")} <span className="text-gray-700">{t("recipients")}</span>
                   </div>
                 </div>
                 <div className="text-sm text-gray-400 flex-shrink-0">
                   {campaign.sentAt
                     ? new Date(campaign.sentAt).toLocaleString("de-DE", { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-                    : 'Entwurf'
+                    : t("statusDraft")
                   }
                 </div>
               </div>
@@ -429,7 +431,7 @@ export default function EmailCampaignDetailPage() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
-                {campaign.totalRecipients} Empfänger
+                {campaign.totalRecipients} {t("recipients")}
               </span>
             </div>
           </div>
@@ -439,15 +441,15 @@ export default function EmailCampaignDetailPage() {
         {recipients.length > 0 && (
           <div className="bg-white rounded-xl shadow-sm overflow-hidden">
             <div className="p-4 border-b">
-              <h2 className="text-lg font-semibold">Empfänger ({recipients.length})</h2>
+              <h2 className="text-lg font-semibold">{t("recipients")} ({recipients.length})</h2>
             </div>
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">E-Mail</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aktivität</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t("table.email")}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t("table.name")}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t("table.status")}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t("table.activity")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -463,8 +465,8 @@ export default function EmailCampaignDetailPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
-                      {recipient.openedAt && `Geöffnet: ${new Date(recipient.openedAt).toLocaleString("de-DE")}`}
-                      {recipient.clickedAt && ` • Geklickt: ${new Date(recipient.clickedAt).toLocaleString("de-DE")}`}
+                      {recipient.openedAt && `${t("openedAt")}: ${new Date(recipient.openedAt).toLocaleString("de-DE")}`}
+                      {recipient.clickedAt && ` • ${t("clickedAt")}: ${new Date(recipient.clickedAt).toLocaleString("de-DE")}`}
                       {recipient.errorMessage && <span className="text-red-600">{recipient.errorMessage}</span>}
                     </td>
                   </tr>
@@ -475,10 +477,10 @@ export default function EmailCampaignDetailPage() {
         )}
         {/* Test Email Modal */}
         {showTestModal && (
-          <Modal title="Test-E-Mail senden" onClose={() => setShowTestModal(false)}>
+          <Modal title={t("sendTestEmail")} onClose={() => setShowTestModal(false)}>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">E-Mail-Adresse</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t("modal.emailAddress")}</label>
                 <input
                   type="email"
                   value={testEmail}
@@ -492,14 +494,14 @@ export default function EmailCampaignDetailPage() {
                   onClick={() => setShowTestModal(false)}
                   className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                 >
-                  Abbrechen
+                  {t("cancel")}
                 </button>
                 <button
                   onClick={handleSendTest}
                   disabled={actionLoading || !testEmail}
                   className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 transition-colors"
                 >
-                  {actionLoading ? "Senden..." : "Test senden"}
+                  {actionLoading ? t("modal.sending") : t("modal.sendTest")}
                 </button>
               </div>
             </div>
@@ -508,10 +510,10 @@ export default function EmailCampaignDetailPage() {
 
         {/* Schedule Modal */}
         {showScheduleModal && (
-          <Modal title="Kampagne planen" onClose={() => setShowScheduleModal(false)}>
+          <Modal title={t("modal.scheduleCampaign")} onClose={() => setShowScheduleModal(false)}>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Sendezeitpunkt</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t("modal.sendTime")}</label>
                 <input
                   type="datetime-local"
                   value={scheduledAt}
@@ -525,14 +527,14 @@ export default function EmailCampaignDetailPage() {
                   onClick={() => setShowScheduleModal(false)}
                   className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                 >
-                  Abbrechen
+                  {t("cancel")}
                 </button>
                 <button
                   onClick={handleSchedule}
                   disabled={actionLoading || !scheduledAt}
                   className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 transition-colors"
                 >
-                  {actionLoading ? "Planen..." : "Planen"}
+                  {actionLoading ? t("modal.scheduling") : t("schedule")}
                 </button>
               </div>
             </div>
@@ -541,10 +543,10 @@ export default function EmailCampaignDetailPage() {
 
         {/* Resend Modal */}
         {showResendModal && (
-          <Modal title="Kampagne erneut senden" onClose={() => setShowResendModal(false)}>
+          <Modal title={t("modal.resendCampaign")} onClose={() => setShowResendModal(false)}>
             <div className="space-y-4">
               <p className="text-gray-600">
-                Wählen Sie, an wen Sie die Kampagne erneut senden möchten:
+                {t("modal.resendDescription")}
               </p>
               <div className="space-y-3">
                 <button
@@ -552,17 +554,17 @@ export default function EmailCampaignDetailPage() {
                   disabled={actionLoading}
                   className="w-full px-4 py-3 text-left border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
-                  <div className="font-medium text-gray-900">An alle Empfänger senden</div>
-                  <div className="text-sm text-gray-500">Sendet an alle {campaign.totalRecipients} Empfänger erneut</div>
+                  <div className="font-medium text-gray-900">{t("modal.sendToAll")}</div>
+                  <div className="text-sm text-gray-500">{t("modal.sendToAllDesc", { count: campaign.totalRecipients })}</div>
                 </button>
                 <button
                   onClick={() => handleResend(true)}
                   disabled={actionLoading || (statistics?.failed ?? 0) === 0}
                   className="w-full px-4 py-3 text-left border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
-                  <div className="font-medium text-gray-900">Nur fehlgeschlagene erneut senden</div>
+                  <div className="font-medium text-gray-900">{t("modal.sendToFailedOnly")}</div>
                   <div className="text-sm text-gray-500">
-                    Sendet an {statistics?.failed ?? 0} fehlgeschlagene Empfänger erneut
+                    {t("modal.sendToFailedDesc", { count: statistics?.failed ?? 0 })}
                   </div>
                 </button>
               </div>
@@ -572,7 +574,7 @@ export default function EmailCampaignDetailPage() {
                   className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                   disabled={actionLoading}
                 >
-                  Abbrechen
+                  {t("cancel")}
                 </button>
               </div>
             </div>
@@ -624,14 +626,4 @@ function Modal({ title, children, onClose }: { title: string; children: React.Re
   );
 }
 
-function getStatusLabel(status: string): string {
-  const labels: Record<string, string> = {
-    Draft: "Entwurf",
-    Scheduled: "Geplant",
-    Sending: "Wird gesendet",
-    Sent: "Gesendet",
-    Cancelled: "Abgebrochen",
-    Failed: "Fehlgeschlagen",
-  };
-  return labels[status] || status;
-}
+

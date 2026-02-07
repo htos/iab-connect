@@ -290,6 +290,9 @@ export function RichTextEditor({
         heading: {
           levels: [1, 2, 3],
         },
+        // Disable extensions that we configure separately to avoid duplicates
+        link: false,
+        underline: false,
       }),
       Underline,
       Link.configure({

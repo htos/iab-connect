@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/auth";
 import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import {
   UpdateEmailCampaignRequest,
   RecipientSegmentType,
@@ -24,6 +25,8 @@ export default function EditEmailCampaignPage() {
   const router = useRouter();
   const params = useParams();
   const campaignId = params.id as string;
+  const t = useTranslations('emailCampaigns');
+  const tCommon = useTranslations('common');
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -55,7 +58,7 @@ export default function EditEmailCampaignPage() {
       });
 
       if (!response.ok) {
-        throw new Error("Kampagne nicht gefunden");
+        throw new Error(t('form.loadError'));
       }
 
       const data: EmailCampaignDto = await response.json();
@@ -74,7 +77,7 @@ export default function EditEmailCampaignPage() {
         segmentFilter: data.segmentFilter || "",
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler beim Laden");
+      setError(err instanceof Error ? err.message : t('form.loadError'));
     } finally {
       setLoading(false);
     }
@@ -112,12 +115,12 @@ export default function EditEmailCampaignPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || errorData.error || "Fehler beim Speichern der Kampagne");
+        throw new Error(errorData.message || errorData.error || t('form.saveError'));
       }
 
-      router.push(`/email-campaigns/${campaignId}`);
+      router.push(`/communication/email-campaigns/${campaignId}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Ein Fehler ist aufgetreten");
+      setError(err instanceof Error ? err.message : t('genericError'));
     } finally {
       setSaving(false);
     }
@@ -136,7 +139,7 @@ export default function EditEmailCampaignPage() {
         <div className="flex items-center justify-center min-h-[50vh]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Laden...</p>
+            <p className="mt-4 text-gray-600">{t('loading')}</p>
           </div>
         </div>
       </main>
@@ -153,13 +156,13 @@ export default function EditEmailCampaignPage() {
       <main className="min-h-[calc(100vh-4rem)] p-4 md:p-8 bg-gray-50">
         <div className="max-w-7xl mx-auto">
           <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-6 py-4 rounded-xl shadow-sm">
-            <h2 className="font-semibold mb-2">Bearbeitung nicht möglich</h2>
-            <p>Diese Kampagne kann nicht mehr bearbeitet werden, da sie bereits versendet oder geplant wurde.</p>
+            <h2 className="font-semibold mb-2">{t('form.editNotPossible')}</h2>
+            <p>{t('form.editNotPossibleReason')}</p>
             <Link
-              href={`/email-campaigns/${campaignId}`}
-              className="inline-block mt-4 text-orange-600 hover:underline"
+              href={`/communication/email-campaigns/${campaignId}`}
+              className="inline-block mt-4 text-gray-600 hover:text-gray-900"
             >
-              Zurück zur Kampagne
+              {t('backToCampaign')}
             </Link>
           </div>
         </div>
@@ -172,18 +175,18 @@ export default function EditEmailCampaignPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <Link href={`/email-campaigns/${campaignId}`} className="text-orange-600 hover:underline flex items-center gap-1 mb-2">
+          <Link href={`/communication/email-campaigns/${campaignId}`} className="text-gray-600 hover:text-gray-900 flex items-center gap-1 mb-2">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Zurück zur Kampagne
+            {t('backToCampaign')}
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900">Kampagne bearbeiten</h1>
-          <p className="text-gray-500 mt-1">Bearbeiten Sie die Details Ihrer E-Mail-Kampagne</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('form.editTitle')}</h1>
+          <p className="text-gray-500 mt-1">{t('form.editSubtitle')}</p>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-6 shadow-sm">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 mb-6">
             <div className="flex items-center gap-2">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -203,14 +206,14 @@ export default function EditEmailCampaignPage() {
                 </svg>
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Grunddaten</h2>
-                <p className="text-sm text-gray-500">Name und Betreff der Kampagne</p>
+                <h2 className="text-lg font-medium text-gray-900">{t('form.basicInfo')}</h2>
+                <p className="text-sm text-gray-500">{t('form.basicInfoDescription')}</p>
               </div>
             </div>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Kampagnenname *
+                  {t('form.campaignName')} *
                 </label>
                 <input
                   type="text"
@@ -218,13 +221,13 @@ export default function EditEmailCampaignPage() {
                   value={formData.name}
                   onChange={handleChange}
                   required
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
-                  placeholder="z.B. Newsletter Januar 2025"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                  placeholder={t('form.campaignNamePlaceholder')}
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Betreff *
+                  {t('form.subject')} *
                 </label>
                 <input
                   type="text"
@@ -232,8 +235,8 @@ export default function EditEmailCampaignPage() {
                   value={formData.subject}
                   onChange={handleChange}
                   required
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
-                  placeholder="E-Mail Betreff"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                  placeholder={t('form.subjectPlaceholder')}
                 />
               </div>
             </div>
@@ -248,14 +251,14 @@ export default function EditEmailCampaignPage() {
                 </svg>
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Absender</h2>
-                <p className="text-sm text-gray-500">Von wem soll die E-Mail kommen?</p>
+                <h2 className="text-lg font-medium text-gray-900">{t('form.sender')}</h2>
+                <p className="text-sm text-gray-500">{t('form.senderDescription')}</p>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Absendername *
+                  {t('form.senderName')} *
                 </label>
                 <input
                   type="text"
@@ -263,12 +266,12 @@ export default function EditEmailCampaignPage() {
                   value={formData.fromName}
                   onChange={handleChange}
                   required
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Absender-E-Mail *
+                  {t('form.senderEmail')} *
                 </label>
                 <input
                   type="email"
@@ -276,20 +279,20 @@ export default function EditEmailCampaignPage() {
                   value={formData.fromEmail}
                   onChange={handleChange}
                   required
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
                 />
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Antwort-E-Mail (optional)
+                  {t('form.replyToEmail')}
                 </label>
                 <input
                   type="email"
                   name="replyToEmail"
                   value={formData.replyToEmail}
                   onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
-                  placeholder="Falls abweichend von Absender"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                  placeholder={t('form.replyToEmailPlaceholder')}
                 />
               </div>
             </div>
@@ -304,19 +307,19 @@ export default function EditEmailCampaignPage() {
                 </svg>
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Empfänger</h2>
-                <p className="text-sm text-gray-500">An wen soll die E-Mail gesendet werden?</p>
+                <h2 className="text-lg font-medium text-gray-900">{t('form.recipients')}</h2>
+                <p className="text-sm text-gray-500">{t('form.recipientsDescription')}</p>
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Empfängergruppe *
+                {t('form.recipientGroup')} *
               </label>
               <select
                 name="segmentType"
                 value={formData.segmentType}
                 onChange={handleChange}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
               >
                 {(["AllActiveMembers", "NewsletterSubscribers", "EventParticipants", "Custom"] as RecipientSegmentType[]).map(
                   (type) => (
@@ -330,18 +333,18 @@ export default function EditEmailCampaignPage() {
             {formData.segmentType === "Custom" && (
               <div className="mt-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Filter (SQL-ähnlich)
+                  {t('form.customFilter')}
                 </label>
                 <input
                   type="text"
                   name="segmentFilter"
                   value={formData.segmentFilter}
                   onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
-                  placeholder="z.B. membershipType = 'Regular'"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                  placeholder={t('form.customFilterPlaceholder')}
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Verfügbare Felder: membershipType, status, memberSince
+                  {t('form.customFilterHint')}
                 </p>
               </div>
             )}
@@ -357,8 +360,8 @@ export default function EditEmailCampaignPage() {
                   </svg>
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">E-Mail-Inhalt</h2>
-                  <p className="text-sm text-gray-500">Gestalten Sie Ihre E-Mail</p>
+                  <h2 className="text-lg font-medium text-gray-900">{t('form.content')}</h2>
+                  <p className="text-sm text-gray-500">{t('form.contentDescription')}</p>
                 </div>
               </div>
               {/* Editor Mode Toggle */}
@@ -377,7 +380,7 @@ export default function EditEmailCampaignPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                     </svg>
-                    Visuell
+                    {t('form.visualMode')}
                   </span>
                 </button>
                 <button
@@ -393,7 +396,7 @@ export default function EditEmailCampaignPage() {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
                     </svg>
-                    HTML
+                    {t('form.htmlMode')}
                   </span>
                 </button>
               </div>
@@ -402,13 +405,13 @@ export default function EditEmailCampaignPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  HTML-Inhalt *
+                  {t('form.htmlContent')} *
                 </label>
                 {editorMode === "visual" ? (
                   <RichTextEditor
                     content={formData.htmlContent}
                     onChange={(content) => setFormData((prev) => ({ ...prev, htmlContent: content }))}
-                    placeholder="Schreiben Sie hier Ihre E-Mail..."
+                    placeholder={t('form.editorPlaceholder')}
                     minHeight="300px"
                   />
                 ) : (
@@ -419,9 +422,9 @@ export default function EditEmailCampaignPage() {
                     minHeight="300px"
                   />
                 )}
-                <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+                <div className="mt-2 p-3 bg-gray-50 rounded-xl">
                   <p className="text-xs text-gray-600">
-                    <span className="font-medium">Verfügbare Platzhalter:</span>{" "}
+                    <span className="font-medium">{t('form.availablePlaceholders')}:</span>{" "}
                     <code className="bg-gray-200 px-1 py-0.5 rounded text-orange-600">{"{{firstName}}"}</code>,{" "}
                     <code className="bg-gray-200 px-1 py-0.5 rounded text-orange-600">{"{{lastName}}"}</code>,{" "}
                     <code className="bg-gray-200 px-1 py-0.5 rounded text-orange-600">{"{{email}}"}</code>
@@ -430,18 +433,18 @@ export default function EditEmailCampaignPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Plaintext-Version (optional)
+                  {t('form.plainTextVersion')}
                 </label>
                 <textarea
                   name="plainTextContent"
                   value={formData.plainTextContent}
                   onChange={handleChange}
                   rows={6}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
-                  placeholder="Textversion für E-Mail-Clients ohne HTML-Unterstützung"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                  placeholder={t('form.plainTextPlaceholder')}
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Wird automatisch aus dem HTML-Inhalt generiert, falls leer gelassen.
+                  {t('form.plainTextHint')}
                 </p>
               </div>
             </div>
@@ -450,10 +453,10 @@ export default function EditEmailCampaignPage() {
           {/* Actions */}
           <div className="flex justify-end gap-4 pb-8">
             <Link
-              href={`/email-campaigns/${campaignId}`}
+              href={`/communication/email-campaigns/${campaignId}`}
               className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium transition-colors"
             >
-              Abbrechen
+              {tCommon('cancel')}
             </Link>
             <button
               type="submit"
@@ -463,14 +466,14 @@ export default function EditEmailCampaignPage() {
               {saving ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  Wird gespeichert...
+                  {t('form.saving')}
                 </>
               ) : (
                 <>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  Änderungen speichern
+                  {t('form.saveChanges')}
                 </>
               )}
             </button>
