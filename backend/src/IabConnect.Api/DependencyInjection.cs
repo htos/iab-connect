@@ -132,7 +132,11 @@ public static class DependencyInjection
             .AddPolicy("RequireVorstand", policy =>
                 policy.RequireRole("admin", "vorstand"))
             .AddPolicy("RequireMember", policy =>
-                policy.RequireRole("admin", "vorstand", "member"));
+                policy.RequireRole("admin", "vorstand", "member"))
+            .AddPolicy("RequireFinanceRead", policy =>
+                policy.RequireRole("admin", "kassier", "auditor"))
+            .AddPolicy("RequireFinanceWrite", policy =>
+                policy.RequireRole("admin", "kassier"));
 
         // REQ-004: Permission-based authorization handler
         services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();

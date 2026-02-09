@@ -2,11 +2,12 @@ Titel
 Requirements Status
 
 Regeln
-1) Quelle der Requirements Inhalte ist docs/Anforderungen_WebApp_Indischer_Kulturverein.csv
-2) Quelle des Status ist dieses Dokument
-3) Matching erfolgt über die Spalte ID aus der CSV
-4) Erlaubte Status Werte sind Backlog, Ready, InProgress, Blocked, Done, Dropped
-5) Wenn ein Status fehlt, gilt Backlog
+
+1. Quelle der Requirements Inhalte ist docs/Anforderungen_WebApp_Indischer_Kulturverein.csv
+2. Quelle des Status ist dieses Dokument
+3. Matching erfolgt über die Spalte ID aus der CSV
+4. Erlaubte Status Werte sind Backlog, Ready, InProgress, Blocked, Done, Dropped
+5. Wenn ein Status fehlt, gilt Backlog
 
 Status Einträge
 
@@ -307,52 +308,52 @@ TicketLink:
 Notizen:
 
 ID: REQ-038
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 02 03
+Owner: Implementation Agent
+SprintOderRelease: Sprint 2
 TicketLink:
-Notizen:
+Notizen: Finance Module Grundstruktur implementiert. Backend: 10 Domain Entities (Account, Category, Transaction, Invoice, InvoiceItem, Payment, BankImport, BankImportItem, DunningNotice, Receipt), EF Core Configs, 8 Repository-Interfaces + Implementierungen, 9 Endpoint-Dateien, EF Migration. Frontend: Dashboard mit KPIs, Quick Links, 12 Seiten. Rollen: kassier (Vollzugriff), auditor (Lesezugriff). Auth-Policies: RequireFinanceRead, RequireFinanceWrite.
 
 ID: REQ-039
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 02 03
+Owner: Implementation Agent
+SprintOderRelease: Sprint 2
 TicketLink:
-Notizen:
+Notizen: Einnahmen/Ausgaben erfassen implementiert. Backend: Transaction CRUD Endpoints mit Summary, Account/Category Management. Frontend: Transactions-Seite mit Filtern (Datum, Typ, Konto, Kategorie), CRUD Modal, Accounts-Seite mit Sortierung, Categories-Seite mit Farbauswahl. Belege-Upload via Receipts-Seite mit FormData-Upload.
 
 ID: REQ-040
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 02 03
+Owner: Implementation Agent
+SprintOderRelease: Sprint 2
 TicketLink:
-Notizen:
+Notizen: Rechnungserstellung implementiert. Backend: Invoice CRUD mit Status-Workflow (Draft→Sent→Paid/Overdue/Cancelled), InvoiceItem, automatische Rechnungsnummer (INV-YYYY-NNNN). Frontend: Rechnungsliste mit Statusfilter, Detailseite mit Positionen/Zahlungsverlauf, Neue Rechnung mit dynamischen Positionen und automatischer Berechnung.
 
 ID: REQ-041
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 02 03
+Owner: Implementation Agent
+SprintOderRelease: Sprint 2
 TicketLink:
-Notizen:
+Notizen: Zahlungsverwaltung implementiert. Backend: Payment CRUD mit automatischer Invoice-Markierung als bezahlt. Frontend: Payments-Seite mit Tabs (Offene Posten / Alle Zahlungen), Zahlungserfassung mit Methodenauswahl (Bank/Bar/Karte).
 
 ID: REQ-042
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 02 03
+Owner: Implementation Agent
+SprintOderRelease: Sprint 2
 TicketLink:
-Notizen:
+Notizen: Bank-Import implementiert. Backend: BankImport/BankImportItem Entities, Upload-Endpoint (POST), GetAll (GET), Match/Ignore/Unmatch (PUT). Frontend: Bank-Import-Seite mit CSV-Upload via FormData, Import-Verlauf, Item-Ansicht mit Zuordnungs-Aktionen.
 
 ID: REQ-043
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 02 03
+Owner: Implementation Agent
+SprintOderRelease: Sprint 2
 TicketLink:
-Notizen:
+Notizen: Mahnwesen implementiert. Backend: DunningNotice Entity mit Level (1-3), Status-Workflow (Draft→Sent), Create und Send Endpoints. Frontend: Dunning-Seite mit Mahnungsliste, Erstellen-Modal mit überfälligen Rechnungen, Level-Badges, Senden-Aktion.
 
 ID: REQ-044
 Status: Backlog
@@ -363,12 +364,12 @@ TicketLink:
 Notizen:
 
 ID: REQ-045
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 02 03
+Owner: Implementation Agent
+SprintOderRelease: Sprint 2
 TicketLink:
-Notizen:
+Notizen: Buchhaltungsexport implementiert. Backend: FinanceExportEndpoints mit Journal-CSV und Offene-Posten-CSV (RequireFinanceRead). Frontend: Export-Seite mit zwei Export-Karten (Journal mit Datumsbereich, Offene Posten), CSV-Download via Blob mit automatischer Content-Type-Erkennung.
 
 ID: REQ-046
 Status: Backlog
@@ -475,9 +476,9 @@ TicketLink:
 Notizen:
 
 ID: REQ-059
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 02 03
+Owner: Implementation Agent
+SprintOderRelease: Sprint 2
 TicketLink:
-Notizen:
+Notizen: Admin-Konfiguration implementiert. Backend: SystemSettings Entity (ApplicationName, LogoText, LogoBackgroundColor, LogoTextColor), SettingsEndpoints (GET/PUT + Public GET), CustomRole Entity mit CRUD. Frontend: /admin/settings mit zwei Tabs (Allgemein + Benutzerdefinierte Rollen), AppSettingsProvider Context für dynamisches Branding in Header/Sidebar/Navigation.

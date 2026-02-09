@@ -1,0 +1,173 @@
+using IabConnect.Domain.Common;
+
+namespace IabConnect.Domain.Finance;
+
+/// <summary>
+/// REQ-039: Invoice (Rechnung) for members, sponsors, vendors.
+/// </summary>
+public class Invoice : Entity
+{
+    public string InvoiceNumber { get; private set; } = string.Empty;
+    public DateTime Date { get; private set; }
+    public DateTime DueDate { get; private set; }
+    public InvoiceStatus Status { get; private set; } = InvoiceStatus.Draft;
+    public RecipientType RecipientType { get; private set; }
+    public Guid? RecipientId { get; private set; }
+    public string RecipientName { get; private set; } = string.Empty;
+    public string? RecipientAddress { get; private set; }
+    public decimal SubTotal { get; private set; }
+    public decimal TaxRate { get; private set; }
+    public decimal TaxAmount { get; private set; }
+    public decimal Total { get; private set; }
+    public string? Notes { get; private set; }
+
+    private readonly List<InvoiceItem> _items = [];
+    public IReadOnlyList<InvoiceItem> Items => _items.AsReadOnly();
+
+    public DateTime CreatedAt { get; private set; }
+    public string CreatedBy { get; private set; } = string.Empty;
+    public DateTime? UpdatedAt { get; private set; }
+    public string? UpdatedBy { get; private set; }
+
+    private Invoice() { }
+
+    public static Invoice Create(
+        string invoiceNumber,
+        DateTime date,
+        DateTime dueDate,
+        RecipientType recipientType,
+        Guid? recipientId,
+        string recipientName,
+        string? recipientAddress,
+        decimal taxRate,
+        string? notes,
+        string createdBy)
+    {
+        if (string.IsNullOrWhiteSpace(invoiceNumber))
+            throw new ArgumentException("Invoice number is required.", nameof(invoiceNumber));
+        if (string.IsNullOrWhiteSpace(recipientName))
+            throw new ArgumentException("Recipient name is required.", nameof(recipientName));
+
+        return new Invoice
+        {
+            InvoiceNumber = invoiceNumber.Trim(),
+            Date = date,
+            DueDate = dueDate,
+            RecipientType = recipientType,
+            RecipientId = recipientId,
+            RecipientName = recipientName.Trim(),
+            RecipientAddress = recipientAddress?.Trim(),
+            TaxRate = taxRate,
+            Notes = notes?.Trim(),
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = createdBy
+        };
+    }
+
+    public void Update(
+        DateTime date,
+        DateTime dueDate,
+        RecipientType recipientType,
+        Guid? recipientId,
+        string recipientName,
+        string? recipientAddress,
+        decimal taxRate,
+        string? notes,
+        string updatedBy)
+    {
+        if (Status != InvoiceStatus.Draft)
+            throw new InvalidOperationException("Only draft invoices can be edited.");
+
+        Date = date;
+        DueDate = dueDate;
+        RecipientType = recipientType;
+        RecipientId = recipientId;
+        RecipientName = recipientName.Trim();
+        RecipientAddress = recipientAddress?.Trim();
+        TaxRate = taxRate;
+        Notes = notes?.Trim();
+        UpdatedAt = DateTime.UtcNow;
+        UpdatedBy = updatedBy;
+        RecalculateTotals();
+    }
+
+    public void AddItem(string description, decimal quantity, decimal unitPrice)
+    {
+        if (Status != InvoiceStatus.Draft)
+            throw new InvalidOperationException("Only draft invoices can be modified.");
+
+        var item = InvoiceItem.Create(Id, description, quantity, unitPrice);
+        _items.Add(item);
+        RecalculateTotals();
+    }
+
+    public void RemoveItem(Guid itemId)
+    {
+        if (Status != InvoiceStatus.Draft)
+            throw new InvalidOperationException("Only draft invoices can be modified.");
+
+        var item = _items.FirstOrDefault(i => i.Id == itemId);
+        if (item != null)
+        {
+            _items.Remove(item);
+            RecalculateTotals();
+        }
+    }
+
+    public void SetItems(List<InvoiceItem> items)
+    {
+        if (Status != InvoiceStatus.Draft)
+            throw new InvalidOperationException("Only draft invoices can be modified.");
+
+        _items.Clear();
+        _items.AddRange(items);
+        RecalculateTotals();
+    }
+
+    public void MarkAsSent(string updatedBy)
+    {
+        if (Status != InvoiceStatus.Draft)
+            throw new InvalidOperationException("Only draft invoices can be sent.");
+
+        Status = InvoiceStatus.Sent;
+        UpdatedAt = DateTime.UtcNow;
+        UpdatedBy = updatedBy;
+    }
+
+    public void MarkAsPaid(string updatedBy)
+    {
+        if (Status is InvoiceStatus.Cancelled or InvoiceStatus.Paid)
+            throw new InvalidOperationException("Cannot mark cancelled or already paid invoice as paid.");
+
+        Status = InvoiceStatus.Paid;
+        UpdatedAt = DateTime.UtcNow;
+        UpdatedBy = updatedBy;
+    }
+
+    public void MarkAsOverdue(string updatedBy)
+    {
+        if (Status != InvoiceStatus.Sent)
+            throw new InvalidOperationException("Only sent invoices can be marked as overdue.");
+
+        Status = InvoiceStatus.Overdue;
+        UpdatedAt = DateTime.UtcNow;
+        UpdatedBy = updatedBy;
+    }
+
+    public void Cancel(string updatedBy)
+    {
+        if (Status == InvoiceStatus.Paid)
+            throw new InvalidOperationException("Cannot cancel a paid invoice.");
+
+        Status = InvoiceStatus.Cancelled;
+        UpdatedAt = DateTime.UtcNow;
+        UpdatedBy = updatedBy;
+    }
+
+    private void RecalculateTotals()
+    {
+        SubTotal = _items.Sum(i => i.Amount);
+        TaxAmount = Math.Round(SubTotal * TaxRate / 100, 2);
+        Total = SubTotal + TaxAmount;
+    }
+}

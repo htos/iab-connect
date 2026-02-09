@@ -8,6 +8,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth, ROLES } from "@/lib/auth";
+import { useAppSettings } from "@/components/providers/AppSettingsProvider";
 import { useSidebar } from "./SidebarContext";
 import { useState } from "react";
 
@@ -25,7 +26,12 @@ const navItems: NavItem[] = [
     labelKey: "nav.dashboard",
     href: "/",
     icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -39,7 +45,12 @@ const navItems: NavItem[] = [
     labelKey: "nav.myProfile",
     href: "/profile",
     icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -54,7 +65,12 @@ const navItems: NavItem[] = [
     labelKey: "nav.members",
     href: "/members",
     icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -69,7 +85,12 @@ const navItems: NavItem[] = [
     labelKey: "nav.events",
     href: "/events",
     icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -83,7 +104,12 @@ const navItems: NavItem[] = [
     labelKey: "nav.documents",
     href: "/documents",
     icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -96,7 +122,12 @@ const navItems: NavItem[] = [
   {
     labelKey: "nav.communication",
     icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -121,9 +152,13 @@ const navItems: NavItem[] = [
   },
   {
     labelKey: "nav.finance",
-    href: "/finance",
     icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -132,13 +167,60 @@ const navItems: NavItem[] = [
         />
       </svg>
     ),
-    requiredRoles: [ROLES.VORSTAND, ROLES.ADMIN],
+    requiredRoles: [ROLES.KASSIER, ROLES.AUDITOR, ROLES.ADMIN],
+    submenu: [
+      {
+        labelKey: "nav.financeDashboard",
+        href: "/finance",
+        icon: <></>,
+      },
+      {
+        labelKey: "nav.transactions",
+        href: "/finance/transactions",
+        icon: <></>,
+      },
+      {
+        labelKey: "nav.invoices",
+        href: "/finance/invoices",
+        icon: <></>,
+      },
+      {
+        labelKey: "nav.payments",
+        href: "/finance/payments",
+        icon: <></>,
+      },
+      {
+        labelKey: "nav.bankImport",
+        href: "/finance/bank-import",
+        icon: <></>,
+      },
+      {
+        labelKey: "nav.dunning",
+        href: "/finance/dunning",
+        icon: <></>,
+      },
+      {
+        labelKey: "nav.receipts",
+        href: "/finance/receipts",
+        icon: <></>,
+      },
+      {
+        labelKey: "nav.exports",
+        href: "/finance/exports",
+        icon: <></>,
+      },
+    ],
   },
   {
     labelKey: "nav.reports",
     href: "/reports",
     icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -153,7 +235,12 @@ const navItems: NavItem[] = [
     labelKey: "nav.admin",
     href: "/admin",
     icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -180,7 +267,13 @@ interface SidebarItemProps {
   t: any;
 }
 
-function NavItemWithSubmenu({ item, isActive, isOpen, onNavigate, t }: SidebarItemProps) {
+function NavItemWithSubmenu({
+  item,
+  isActive,
+  isOpen,
+  onNavigate,
+  t,
+}: SidebarItemProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const pathname = usePathname();
 
@@ -189,7 +282,7 @@ function NavItemWithSubmenu({ item, isActive, isOpen, onNavigate, t }: SidebarIt
       <Link
         href={item.href || "#"}
         onClick={onNavigate}
-        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group ${
+        className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${
           isActive
             ? "bg-orange-100 text-orange-700"
             : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
@@ -199,7 +292,7 @@ function NavItemWithSubmenu({ item, isActive, isOpen, onNavigate, t }: SidebarIt
         <span className="flex-shrink-0">{item.icon}</span>
         <span
           className={`font-medium whitespace-nowrap transition-opacity duration-200 ${
-            isOpen ? "opacity-100" : "lg:opacity-0 lg:w-0 lg:overflow-hidden"
+            isOpen ? "opacity-100" : "lg:w-0 lg:overflow-hidden lg:opacity-0"
           }`}
         >
           {t(item.labelKey)}
@@ -217,7 +310,7 @@ function NavItemWithSubmenu({ item, isActive, isOpen, onNavigate, t }: SidebarIt
     <div>
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group ${
+        className={`group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${
           hasActiveChild || isActive
             ? "bg-orange-100 text-orange-700"
             : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
@@ -226,37 +319,44 @@ function NavItemWithSubmenu({ item, isActive, isOpen, onNavigate, t }: SidebarIt
       >
         <span className="flex-shrink-0">{item.icon}</span>
         <span
-          className={`font-medium whitespace-nowrap transition-opacity duration-200 flex-1 text-left ${
-            isOpen ? "opacity-100" : "lg:opacity-0 lg:w-0 lg:overflow-hidden"
+          className={`flex-1 text-left font-medium whitespace-nowrap transition-opacity duration-200 ${
+            isOpen ? "opacity-100" : "lg:w-0 lg:overflow-hidden lg:opacity-0"
           }`}
         >
           {t(item.labelKey)}
         </span>
         {isOpen && (
           <svg
-            className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+            className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 14l-7 7m0 0l-7-7m7 7V3"
+            />
           </svg>
         )}
       </button>
 
       {/* Submenu */}
       {isOpen && isExpanded && (
-        <div className="ml-3 mt-1 space-y-1 border-l border-gray-200 pl-3">
+        <div className="mt-1 ml-3 space-y-1 border-l border-gray-200 pl-3">
           {item.submenu.map((subitem) => {
-            const isSubActive = pathname === subitem.href || pathname.startsWith(subitem.href + "/");
+            const isSubActive =
+              pathname === subitem.href ||
+              pathname.startsWith(subitem.href + "/");
             return (
               <Link
                 key={subitem.href}
                 href={subitem.href || "#"}
                 onClick={onNavigate}
-                className={`block px-3 py-2 rounded-lg text-sm transition-colors ${
+                className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
                   isSubActive
-                    ? "bg-orange-50 text-orange-600 font-medium"
+                    ? "bg-orange-50 font-medium text-orange-600"
                     : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                 }`}
               >
@@ -274,6 +374,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const t = useTranslations();
   const { isAuthenticated, isLoading, roles } = useAuth();
+  const { settings } = useAppSettings();
   const { isOpen, close } = useSidebar();
 
   // Don't show on login or error pages
@@ -297,7 +398,7 @@ export function Sidebar() {
       {/* Overlay for mobile */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
           onClick={close}
           aria-hidden="true"
         />
@@ -305,15 +406,19 @@ export function Sidebar() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-16 left-0 z-40 h-[calc(100vh-4rem)] bg-white border-r border-gray-200 transition-all duration-300 ease-in-out ${
-          isOpen ? "w-64 translate-x-0" : "w-64 -translate-x-full lg:w-20 lg:translate-x-0"
+        className={`fixed top-16 left-0 z-40 h-[calc(100vh-4rem)] border-r border-gray-200 bg-white transition-all duration-300 ease-in-out ${
+          isOpen
+            ? "w-64 translate-x-0"
+            : "w-64 -translate-x-full lg:w-20 lg:translate-x-0"
         }`}
       >
-        <nav className="flex flex-col h-full py-4">
+        <nav className="flex h-full flex-col py-4">
           {/* Navigation Items */}
-          <div className="flex-1 px-3 space-y-1 overflow-y-auto">
+          <div className="flex-1 space-y-1 overflow-y-auto px-3">
             {visibleNavItems.map((item) => {
-              const isActive = item.href ? (pathname === item.href || pathname.startsWith(item.href + "/")) : false;
+              const isActive = item.href
+                ? pathname === item.href || pathname.startsWith(item.href + "/")
+                : false;
 
               return (
                 <NavItemWithSubmenu
@@ -335,11 +440,13 @@ export function Sidebar() {
 
           {/* Bottom section - App version or additional info */}
           <div
-            className={`px-3 py-4 border-t border-gray-200 transition-opacity duration-200 ${
+            className={`border-t border-gray-200 px-3 py-4 transition-opacity duration-200 ${
               isOpen ? "opacity-100" : "lg:opacity-0"
             }`}
           >
-            <p className="text-xs text-gray-400 text-center">IAB Connect v0.1.0</p>
+            <p className="text-center text-xs text-gray-400">
+              {settings.applicationName} v0.1.0
+            </p>
           </div>
         </nav>
       </aside>

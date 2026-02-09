@@ -1,7 +1,10 @@
 using Hangfire;
 using Hangfire.PostgreSql;
 using IabConnect.Application.Audit;
+using IabConnect.Application.Authorization;
+using IabConnect.Application.Common;
 using IabConnect.Application.Communication;
+using IabConnect.Application.Finance;
 using IabConnect.Domain.Audit;
 using IabConnect.Domain.Communication;
 using IabConnect.Domain.Events;
@@ -52,6 +55,20 @@ public static class DependencyInjection
         services.AddScoped<IEventRegistrationRepository, EventRegistrationRepository>();
         services.AddScoped<IEmailCampaignRepository, EmailCampaignRepository>();
         services.AddScoped<IEmailTemplateRepository, EmailTemplateRepository>();
+
+        // REQ-059: System Settings & Custom Roles
+        services.AddScoped<ISystemSettingsRepository, SystemSettingsRepository>();
+        services.AddScoped<ICustomRoleRepository, CustomRoleRepository>();
+
+        // REQ-038..045: Finance repositories
+        services.AddScoped<IAccountRepository, AccountRepository>();
+        services.AddScoped<ICategoryRepository, CategoryRepository>();
+        services.AddScoped<ITransactionRepository, TransactionRepository>();
+        services.AddScoped<IInvoiceRepository, InvoiceRepository>();
+        services.AddScoped<IPaymentRepository, PaymentRepository>();
+        services.AddScoped<IBankImportRepository, BankImportRepository>();
+        services.AddScoped<IDunningNoticeRepository, DunningNoticeRepository>();
+        services.AddScoped<IReceiptRepository, ReceiptRepository>();
 
         // REQ-011: Audit Service (requires IHttpContextAccessor)
         services.AddHttpContextAccessor();

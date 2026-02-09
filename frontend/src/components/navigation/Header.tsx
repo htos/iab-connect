@@ -9,6 +9,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth";
+import { useAppSettings } from "@/components/providers/AppSettingsProvider";
 import { useSidebar } from "./SidebarContext";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 
@@ -16,6 +17,7 @@ export function Header() {
   const pathname = usePathname();
   const t = useTranslations();
   const { isAuthenticated, isLoading, user, isAdmin, isVorstand } = useAuth();
+  const { settings } = useAppSettings();
   const { toggle, isOpen } = useSidebar();
 
   // Don't show on login or error pages
@@ -28,19 +30,19 @@ export function Header() {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm h-16">
-      <div className="flex items-center justify-between h-full px-4">
+    <header className="fixed top-0 right-0 left-0 z-50 h-16 border-b border-gray-200 bg-white shadow-sm">
+      <div className="flex h-full items-center justify-between px-4">
         {/* Left: Hamburger + Logo */}
         <div className="flex items-center gap-3">
           {/* Hamburger Menu Button */}
           {isAuthenticated && (
             <button
               onClick={toggle}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-colors lg:hidden"
+              className="rounded-lg p-2 transition-colors hover:bg-gray-100 lg:hidden"
               aria-label={t("nav.toggleSidebar")}
             >
               <svg
-                className="w-6 h-6 text-gray-600"
+                className="h-6 w-6 text-gray-600"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -68,11 +70,11 @@ export function Header() {
           {isAuthenticated && (
             <button
               onClick={toggle}
-              className="hidden lg:flex p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              className="hidden rounded-lg p-2 transition-colors hover:bg-gray-100 lg:flex"
               aria-label={t("nav.toggleSidebar")}
             >
               <svg
-                className="w-5 h-5 text-gray-600"
+                className="h-5 w-5 text-gray-600"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -89,11 +91,19 @@ export function Header() {
 
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
-            <div className="h-9 w-9 bg-orange-600 rounded-full flex items-center justify-center">
-              <span className="text-sm text-white font-bold">IAB</span>
+            <div
+              className="flex h-9 w-9 items-center justify-center rounded-full"
+              style={{ backgroundColor: settings.logoBackgroundColor }}
+            >
+              <span
+                className="text-sm font-bold"
+                style={{ color: settings.logoTextColor }}
+              >
+                {settings.logoText}
+              </span>
             </div>
-            <span className="text-lg font-semibold text-gray-900 hidden sm:inline">
-              IAB Connect
+            <span className="hidden text-lg font-semibold text-gray-900 sm:inline">
+              {settings.applicationName}
             </span>
           </Link>
         </div>
@@ -104,26 +114,26 @@ export function Header() {
           <LanguageSwitcher />
 
           {isLoading ? (
-            <div className="animate-pulse h-8 w-24 bg-gray-200 rounded"></div>
+            <div className="h-8 w-24 animate-pulse rounded bg-gray-200"></div>
           ) : isAuthenticated ? (
             <>
               {/* Role badges - hidden on mobile */}
-              <div className="hidden md:flex items-center gap-2">
+              <div className="hidden items-center gap-2 md:flex">
                 {isAdmin && (
-                  <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded-full">
+                  <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-700">
                     {t("roles.admin")}
                   </span>
                 )}
                 {isVorstand && !isAdmin && (
-                  <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">
+                  <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700">
                     {t("roles.board")}
                   </span>
                 )}
               </div>
 
               {/* User info */}
-              <div className="hidden sm:block text-right">
-                <p className="text-sm font-medium text-gray-900 truncate max-w-[150px]">
+              <div className="hidden text-right sm:block">
+                <p className="max-w-[150px] truncate text-sm font-medium text-gray-900">
                   {user?.name || user?.email}
                 </p>
               </div>
@@ -131,10 +141,15 @@ export function Header() {
               {/* Sign Out Button */}
               <button
                 onClick={handleSignOut}
-                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
                 title={t("auth.signOut")}
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg
+                  className="h-5 w-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -148,7 +163,7 @@ export function Header() {
           ) : (
             <Link
               href="/login"
-              className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors"
+              className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700"
             >
               {t("auth.signIn")}
             </Link>

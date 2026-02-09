@@ -155,6 +155,11 @@ public class AuditService : IAuditService
             AuditEventType.MemberStatusChanged or AuditEventType.MemberTypeChanged
                 => AuditCategory.MemberManagement,
 
+            AuditEventType.FinanceCreated or AuditEventType.FinanceUpdated or
+            AuditEventType.FinanceDeleted or AuditEventType.FinanceExported or
+            AuditEventType.FinanceStatusChanged
+                => AuditCategory.Finance,
+
             AuditEventType.DataExported or AuditEventType.DataViewed
                 => AuditCategory.DataAccess,
 

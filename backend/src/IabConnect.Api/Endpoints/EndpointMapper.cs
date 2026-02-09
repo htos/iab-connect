@@ -24,10 +24,23 @@ public static class EndpointMapper
         app.MapEventRegistrationEndpoints(); // REQ-020: Event-Anmeldung / RSVP
         app.MapEmailCampaignEndpoints(); // REQ-026: E-Mail-Kampagnen
         app.MapEmailTemplateEndpoints(); // REQ-027: Email Template Editor
+        app.MapSettingsEndpoints(); // REQ-059: System Settings
+        app.MapCustomRoleEndpoints(); // REQ-003: Custom Roles
         api.MapDocumentEndpoints();
         api.MapCommunicationEndpoints();
         api.MapFinanceEndpoints();
         api.MapReportingEndpoints();
+
+        // REQ-038-044: Finance module endpoints
+        app.MapAccountEndpoints();
+        app.MapCategoryEndpoints();
+        app.MapTransactionEndpoints();
+        app.MapInvoiceEndpoints();
+        app.MapPaymentEndpoints();
+        app.MapBankImportEndpoints();
+        app.MapDunningEndpoints();
+        app.MapReceiptEndpoints();
+        app.MapFinanceExportEndpoints();
 
         return app;
     }
@@ -100,45 +113,10 @@ public static class EndpointMapper
 
     private static RouteGroupBuilder MapFinanceEndpoints(this RouteGroupBuilder group)
     {
-        var finance = group.MapGroup("/finance")
-            .WithTags("Finance")
-            .RequireAuthorization("RequireVorstand");
-
-        // REQ-038: Membership fees overview
-        finance.MapGet("/fees", () =>
-        {
-            // TODO: Implement - returns fee overview
-            return Results.Ok(new { Message = "Not implemented" });
-        })
-        .WithName("GetFeesOverview")
-        .WithDescription("REQ-038: Übersicht Mitgliederbeiträge");
-
-        // REQ-039: Payment tracking
-        finance.MapGet("/payments", () =>
-        {
-            // TODO: Implement - returns payments list
-            return Results.Ok(new { Message = "Not implemented" });
-        })
-        .WithName("GetPayments")
-        .WithDescription("REQ-039: Zahlungsverfolgung");
-
-        finance.MapPost("/payments", () =>
-        {
-            // TODO: Implement - records payment
-            return Results.Ok(new { Message = "Not implemented" });
-        })
-        .WithName("RecordPayment")
-        .WithDescription("REQ-039: Zahlung erfassen");
-
-        // REQ-040: Payment reminders
-        finance.MapPost("/reminders", () =>
-        {
-            // TODO: Implement - sends payment reminders
-            return Results.Ok(new { Message = "Not implemented" });
-        })
-        .WithName("SendPaymentReminders")
-        .WithDescription("REQ-040: Zahlungserinnerungen versenden");
-
+        // Finance endpoints are now in dedicated files:
+        // AccountEndpoints, CategoryEndpoints, TransactionEndpoints,
+        // InvoiceEndpoints, PaymentEndpoints, BankImportEndpoints,
+        // DunningEndpoints, ReceiptEndpoints, FinanceExportEndpoints
         return group;
     }
 

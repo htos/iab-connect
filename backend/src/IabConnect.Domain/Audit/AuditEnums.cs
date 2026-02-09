@@ -30,6 +30,13 @@ public enum AuditEventType
     MemberStatusChanged,
     MemberTypeChanged,
 
+    // Finance events
+    FinanceCreated,
+    FinanceUpdated,
+    FinanceDeleted,
+    FinanceExported,
+    FinanceStatusChanged,
+
     // Data access events
     DataExported,
     DataViewed,
@@ -57,6 +64,7 @@ public enum AuditCategory
     Authentication,
     UserManagement,
     MemberManagement,
+    Finance,
     DataAccess,
     System
 }

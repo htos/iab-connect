@@ -1,6 +1,9 @@
 using IabConnect.Domain.Audit;
+using IabConnect.Domain.Authorization;
+using IabConnect.Domain.Common;
 using IabConnect.Domain.Communication;
 using IabConnect.Domain.Events;
+using IabConnect.Domain.Finance;
 using IabConnect.Domain.Members;
 using IabConnect.Domain.Privacy;
 using Microsoft.EntityFrameworkCore;
@@ -26,12 +29,27 @@ public sealed class ApplicationDbContext : DbContext
     public DbSet<EmailCampaign> EmailCampaigns => Set<EmailCampaign>();
     public DbSet<EmailRecipient> EmailRecipients => Set<EmailRecipient>();
     public DbSet<EmailTemplate> EmailTemplates => Set<EmailTemplate>();
-    // public DbSet<Document> Documents => Set<Document>();
-    // public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<SystemSettings> SystemSettings => Set<SystemSettings>();
+    public DbSet<CustomRole> CustomRoles => Set<CustomRole>();
+
+    // Finance (REQ-038..045)
+    public DbSet<Account> Accounts => Set<Account>();
+    public DbSet<Category> Categories => Set<Category>();
+    public DbSet<Transaction> Transactions => Set<Transaction>();
+    public DbSet<Invoice> Invoices => Set<Invoice>();
+    public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
+    public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<BankImport> BankImports => Set<BankImport>();
+    public DbSet<BankImportItem> BankImportItems => Set<BankImportItem>();
+    public DbSet<DunningNotice> DunningNotices => Set<DunningNotice>();
+    public DbSet<Receipt> Receipts => Set<Receipt>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        // Ignore DomainEvent — it's an in-memory collection, not a DB entity
+        modelBuilder.Ignore<IabConnect.Domain.Common.DomainEvent>();
 
         // Apply all configurations from assembly
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);

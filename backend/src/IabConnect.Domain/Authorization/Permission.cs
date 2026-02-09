@@ -195,6 +195,18 @@ public static class RolePermissions
 
             Permission.DocumentRead,
             Permission.DocumentReadOwn
+        },
+
+        ["auditor"] = new HashSet<string>
+        {
+            // Auditor has read-only access to all finance data
+            Permission.FinanceRead,
+            Permission.FinanceExport,
+
+            Permission.MemberRead,
+            Permission.MemberReadOwn,
+
+            Permission.AuditRead
         }
     };
 

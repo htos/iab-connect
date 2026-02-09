@@ -10,6 +10,8 @@ import { useCallback, useMemo } from "react";
 export const ROLES = {
   ADMIN: "admin",
   VORSTAND: "vorstand",
+  KASSIER: "kassier",
+  AUDITOR: "auditor",
   MEMBER: "member",
 } as const;
 
@@ -33,10 +35,14 @@ export interface AuthState {
 export interface RoleChecks {
   isAdmin: boolean;
   isVorstand: boolean;
+  isKassier: boolean;
+  isAuditor: boolean;
   isMember: boolean;
   hasRole: (role: Role) => boolean;
   hasAnyRole: (...roles: Role[]) => boolean;
   hasAllRoles: (...roles: Role[]) => boolean;
+  canReadFinance: boolean;
+  canWriteFinance: boolean;
 }
 
 /**
@@ -47,10 +53,7 @@ export function useAuth(): AuthState & RoleChecks {
 
   const roles = useMemo(() => session?.roles ?? [], [session?.roles]);
 
-  const hasRole = useCallback(
-    (role: Role) => roles.includes(role),
-    [roles]
-  );
+  const hasRole = useCallback((role: Role) => roles.includes(role), [roles]);
 
   const hasAnyRole = useCallback(
     (...checkRoles: Role[]) => checkRoles.some((role) => roles.includes(role)),
@@ -71,10 +74,14 @@ export function useAuth(): AuthState & RoleChecks {
     error: session?.error,
     isAdmin: hasRole(ROLES.ADMIN),
     isVorstand: hasRole(ROLES.VORSTAND),
+    isKassier: hasRole(ROLES.KASSIER),
+    isAuditor: hasRole(ROLES.AUDITOR),
     isMember: hasRole(ROLES.MEMBER),
     hasRole,
     hasAnyRole,
     hasAllRoles,
+    canReadFinance: hasAnyRole(ROLES.ADMIN, ROLES.KASSIER, ROLES.AUDITOR),
+    canWriteFinance: hasAnyRole(ROLES.ADMIN, ROLES.KASSIER),
   };
 }
 
@@ -129,7 +136,10 @@ export async function logout(): Promise<void> {
 
   // Sign out from NextAuth
   await signOut({
-    callbackUrl: keycloakLogoutUrl + "?redirect_uri=" + encodeURIComponent(window.location.origin),
+    callbackUrl:
+      keycloakLogoutUrl +
+      "?redirect_uri=" +
+      encodeURIComponent(window.location.origin),
   });
 }
 
@@ -184,11 +194,60 @@ export function useApiClient() {
 
         if (!response.ok) {
           const errorText = await response.text();
-          return { data: null, error: errorText || response.statusText, status: response.status };
+          return {
+            data: null,
+            error: errorText || response.statusText,
+            status: response.status,
+          };
         }
 
-        const data = await response.json();
-        return { data, error: null, status: response.status };
+        const contentType = response.headers.get("content-type") ?? "";
+        if (contentType.includes("application/json")) {
+          const data = await response.json();
+          return { data, error: null, status: response.status };
+        }
+        // For non-JSON responses (e.g. blob downloads), return the response itself
+        const data = await response.blob();
+        return { data: data as T, error: null, status: response.status };
+      } catch (error) {
+        return {
+          data: null,
+          error: error instanceof Error ? error.message : "Unknown error",
+          status: 500,
+        };
+      }
+    },
+    [accessToken, isAuthenticated, baseUrl]
+  );
+
+  const uploadFile = useCallback(
+    async <T>(
+      endpoint: string,
+      formData: FormData
+    ): Promise<{ data: T | null; error: string | null; status: number }> => {
+      if (!isAuthenticated || !accessToken) {
+        return { data: null, error: "Not authenticated", status: 401 };
+      }
+      try {
+        const response = await fetchWithAuth(
+          `${baseUrl}${endpoint}`,
+          { method: "POST", body: formData },
+          accessToken
+        );
+        if (!response.ok) {
+          const errorText = await response.text();
+          return {
+            data: null,
+            error: errorText || response.statusText,
+            status: response.status,
+          };
+        }
+        const contentType = response.headers.get("content-type") ?? "";
+        if (contentType.includes("application/json")) {
+          const data = await response.json();
+          return { data, error: null, status: response.status };
+        }
+        return { data: null, error: null, status: response.status };
       } catch (error) {
         return {
           data: null,
@@ -206,6 +265,9 @@ export function useApiClient() {
       fetchApi<T>(endpoint, { method: "POST", body: JSON.stringify(body) }),
     put: <T>(endpoint: string, body: unknown) =>
       fetchApi<T>(endpoint, { method: "PUT", body: JSON.stringify(body) }),
-    delete: <T>(endpoint: string) => fetchApi<T>(endpoint, { method: "DELETE" }),
+    delete: <T>(endpoint: string) =>
+      fetchApi<T>(endpoint, { method: "DELETE" }),
+    upload: <T>(endpoint: string, formData: FormData) =>
+      uploadFile<T>(endpoint, formData),
   };
 }
