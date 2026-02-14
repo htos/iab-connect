@@ -190,12 +190,25 @@ export default function NewEmailCampaignPage() {
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100">
-                  <svg className="h-5 w-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  <svg
+                    className="h-5 w-5 text-amber-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
                   </svg>
                 </div>
                 <div className="flex-1">
-                  <label htmlFor="templateSelect" className="mb-1 block text-sm font-medium text-amber-800">
+                  <label
+                    htmlFor="templateSelect"
+                    className="mb-1 block text-sm font-medium text-amber-800"
+                  >
                     {t("form.loadFromTemplate")}
                   </label>
                   <select
@@ -207,7 +220,8 @@ export default function NewEmailCampaignPage() {
                     <option value="">{t("form.selectTemplate")}</option>
                     {templates.map((tmpl) => (
                       <option key={tmpl.id} value={tmpl.id}>
-                        {tmpl.name}{tmpl.category ? ` (${tmpl.category})` : ""}
+                        {tmpl.name}
+                        {tmpl.category ? ` (${tmpl.category})` : ""}
                       </option>
                     ))}
                   </select>
