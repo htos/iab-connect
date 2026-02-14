@@ -18,7 +18,6 @@ Microservices Architektur von Beginn weg.
 Auswirkung
 Ein Deployment für Backend, klare Modul Trennung im Code, Gateway erst später nötig.
 
-
 Datum
 2026 01 30
 
@@ -33,7 +32,6 @@ Java Spring Boot, Node mit NestJS, Python FastAPI.
 
 Auswirkung
 Standardisierte Patterns für Auth, Policies, Background Jobs, migrations und Testing.
-
 
 Datum
 2026 01 30
@@ -50,7 +48,6 @@ Auth0, Microsoft Entra ID, direkte Provider Integration ohne Keycloak.
 Auswirkung
 Konfiguration im Identity Provider, Backend prüft JWT und mapped Rollen über Claims.
 
-
 Datum
 2026 01 30
 
@@ -65,7 +62,6 @@ Alles in einer Datei, Datenbank für Requirements.
 
 Auswirkung
 Agent liest immer CSV für Inhalte und Status Dokument für Bearbeitungsstand. Matching erfolgt über ID.
-
 
 Datum
 2026 01 30
@@ -82,7 +78,6 @@ Eigenes ID Schema, numerische IDs ohne Präfix.
 Auswirkung
 Alle 59 Requirements aus der CSV werden mit REQ-001 bis REQ-059 referenziert.
 
-
 Datum
 2026 01 30
 
@@ -97,7 +92,6 @@ Eigene Priorisierung unabhängig von CSV.
 
 Auswirkung
 Backlog und Planung orientieren sich an den CSV Prioritäten. Änderungen erfordern expliziten Auftrag.
-
 
 Datum
 2026 01 30
@@ -114,7 +108,6 @@ Freiere Formatierung mit Markdown Tabellen und Listen.
 Auswirkung
 Kein Fettdruck, keine verschachtelten Listen, keine Bindestriche ausser wo unumgänglich.
 
-
 Datum
 2026 02 01
 
@@ -129,3 +122,18 @@ Lokale User Tabelle mit Synchronisation zu Keycloak. Komplett eigene User Verwal
 
 Auswirkung
 Backend benötigt Service Account Client mit Admin API Rechten. User CRUD erfolgt direkt über Keycloak. Kein separates User Entity im Domain Model. Abhängigkeit von Keycloak für alle User Operationen.
+
+Datum
+2026 02 14
+
+Entscheidung
+MinIO durch RustFS als S3-kompatiblen Document Storage ersetzt.
+
+Begründung
+Benutzer fordert RustFS statt MinIO. RustFS ist S3-kompatibel und unterstützt Versionierung über SNMD mit mehreren Datendirectories. AWSSDK.S3 wird als Client-Bibliothek verwendet, da es mit jedem S3-kompatiblen Storage funktioniert.
+
+Alternativen
+MinIO beibehalten, Azure Blob Storage, lokales Filesystem.
+
+Auswirkung
+Docker Compose verwendet RustFS-Image statt MinIO. Backend nutzt AWSSDK.S3 statt Minio .NET SDK. Konfiguration unter DocumentStorage Section statt Minio Section. IDocumentStorage Abstraktion ermöglicht späteren Storage-Wechsel ohne Code-Änderung.

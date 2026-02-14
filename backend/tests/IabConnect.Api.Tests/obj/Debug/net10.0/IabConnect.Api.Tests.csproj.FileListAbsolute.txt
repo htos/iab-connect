@@ -331,7 +331,6 @@ B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug
 B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug\net10.0\refs\WindowsBase.dll
 B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug\net10.0\BouncyCastle.Cryptography.dll
 B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug\net10.0\Castle.Core.dll
-B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug\net10.0\CommunityToolkit.HighPerformance.dll
 B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug\net10.0\Dapper.dll
 B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug\net10.0\Docker.DotNet.dll
 B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug\net10.0\Docker.DotNet.X509.dll
@@ -364,7 +363,6 @@ B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug
 B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug\net10.0\Microsoft.Testing.Extensions.TrxReport.Abstractions.dll
 B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug\net10.0\Microsoft.Testing.Platform.dll
 B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug\net10.0\Microsoft.Testing.Extensions.MSBuild.dll
-B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug\net10.0\Minio.dll
 B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug\net10.0\Moq.dll
 B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug\net10.0\Newtonsoft.Json.dll
 B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug\net10.0\Npgsql.dll
@@ -384,8 +382,6 @@ B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug
 B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug\net10.0\Swashbuckle.AspNetCore.SwaggerGen.dll
 B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug\net10.0\Swashbuckle.AspNetCore.SwaggerUI.dll
 B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug\net10.0\System.IdentityModel.Tokens.Jwt.dll
-B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug\net10.0\System.IO.Hashing.dll
-B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug\net10.0\System.Reactive.dll
 B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug\net10.0\Testcontainers.dll
 B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug\net10.0\Testcontainers.PostgreSql.dll
 B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug\net10.0\xunit.v3.assert.dll
@@ -524,3 +520,5 @@ B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug
 B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug\net10.0\zh-Hant\Microsoft.TestPlatform.CommunicationUtilities.resources.dll
 B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug\net10.0\zh-Hant\Microsoft.TestPlatform.CrossPlatEngine.resources.dll
 B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug\net10.0\zh-Hant\Microsoft.VisualStudio.TestPlatform.Common.resources.dll
+B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug\net10.0\AWSSDK.Core.dll
+B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Api.Tests\bin\Debug\net10.0\AWSSDK.S3.dll

@@ -276,36 +276,36 @@ TicketLink:
 Notizen:
 
 ID: REQ-034
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 02 14
+Owner: Implementation Agent
+SprintOderRelease: Sprint 3
 TicketLink:
-Notizen:
+Notizen: Dokumentenverwaltung implementiert. Backend: Document-Aggregat mit Folder-Hierarchie, DocumentVersion, DocumentTag. S3-kompatibler Storage (RustFS) für Datei-Upload/Download. API-Endpunkte für CRUD, Upload, Download, Versionen, Tags, Ordner. Frontend: Dokumenten-Seite mit Ordner-Navigation, Upload, Download, Vorschau.
 
 ID: REQ-035
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 02 14
+Owner: Implementation Agent
+SprintOderRelease: Sprint 3
 TicketLink:
-Notizen:
+Notizen: Dokumentrechte und Freigabe implementiert. FolderPermission-Entity mit rollenbasierter Zugriffskontrolle (Read, Write, Manage) pro Ordner. Document-Status-Workflow (Draft→UnderReview→Published/Archived) mit Freigabe durch Vorstand/Admin.
 
 ID: REQ-036
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 02 14
+Owner: Implementation Agent
+SprintOderRelease: Sprint 3
 TicketLink:
-Notizen:
+Notizen: Dokumenten-Versionierung implementiert. DocumentVersion-Entity mit version_number, storage_key, file_size, content_type, comment. Automatische Versionsnummer-Inkrementierung bei Upload. Ältere Versionen bleiben im Storage erhalten und können heruntergeladen werden.
 
 ID: REQ-037
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 02 14
+Owner: Implementation Agent
+SprintOderRelease: Sprint 3
 TicketLink:
-Notizen:
+Notizen: Volltextsuche und Tags für Dokumente implementiert. DocumentTag-Entity für flexible Verschlagwortung. Such-Endpunkt mit Filter nach Name, Kategorie, Tags, Status, Ordner. Frontend: Tag-Management in Dokumenten-Detailansicht, Suche über alle Dokumenten-Metadaten.
 
 ID: REQ-038
 Status: Done

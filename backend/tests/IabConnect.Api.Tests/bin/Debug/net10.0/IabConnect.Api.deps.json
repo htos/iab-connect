@@ -23,11 +23,22 @@
           "IabConnect.Api.dll": {}
         }
       },
-      "CommunityToolkit.HighPerformance/8.3.0": {
+      "AWSSDK.Core/3.7.302.6": {
         "runtime": {
-          "lib/net8.0/CommunityToolkit.HighPerformance.dll": {
-            "assemblyVersion": "8.3.0.0",
-            "fileVersion": "8.3.0.1"
+          "lib/net8.0/AWSSDK.Core.dll": {
+            "assemblyVersion": "3.3.0.0",
+            "fileVersion": "3.7.302.6"
+          }
+        }
+      },
+      "AWSSDK.S3/3.7.305.22": {
+        "dependencies": {
+          "AWSSDK.Core": "3.7.302.6"
+        },
+        "runtime": {
+          "lib/net8.0/AWSSDK.S3.dll": {
+            "assemblyVersion": "3.3.0.0",
+            "fileVersion": "3.7.305.22"
           }
         }
       },
@@ -632,19 +643,6 @@
           }
         }
       },
-      "Minio/6.0.4": {
-        "dependencies": {
-          "CommunityToolkit.HighPerformance": "8.3.0",
-          "System.IO.Hashing": "8.0.0",
-          "System.Reactive": "6.0.1"
-        },
-        "runtime": {
-          "lib/net8.0/Minio.dll": {
-            "assemblyVersion": "6.0.4.0",
-            "fileVersion": "6.0.4.0"
-          }
-        }
-      },
       "Mono.TextTemplating/3.0.0": {
         "dependencies": {
           "System.CodeDom": "6.0.0"
@@ -918,22 +916,6 @@
           }
         }
       },
-      "System.IO.Hashing/8.0.0": {
-        "runtime": {
-          "lib/net8.0/System.IO.Hashing.dll": {
-            "assemblyVersion": "8.0.0.0",
-            "fileVersion": "8.0.23.53103"
-          }
-        }
-      },
-      "System.Reactive/6.0.1": {
-        "runtime": {
-          "lib/net6.0/System.Reactive.dll": {
-            "assemblyVersion": "6.0.0.0",
-            "fileVersion": "6.0.1.7420"
-          }
-        }
-      },
       "IabConnect.Application/1.0.0": {
         "dependencies": {
           "FluentValidation": "11.11.0",
@@ -958,12 +940,12 @@
       },
       "IabConnect.Infrastructure/1.0.0": {
         "dependencies": {
+          "AWSSDK.S3": "3.7.305.22",
           "Hangfire": "1.8.22",
           "Hangfire.PostgreSql": "1.20.10",
           "IabConnect.Application": "1.0.0",
           "IabConnect.Domain": "1.0.0",
           "Microsoft.EntityFrameworkCore": "10.0.2",
-          "Minio": "6.0.4",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "10.0.0"
         },
         "runtime": {
@@ -981,12 +963,19 @@
       "serviceable": false,
       "sha512": ""
     },
-    "CommunityToolkit.HighPerformance/8.3.0": {
+    "AWSSDK.Core/3.7.302.6": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-2zc0Wfr9OtEbLqm6J1Jycim/nKmYv+v12CytJ3tZGNzw7n3yjh1vNCMX0kIBaFBk3sw8g0pMR86QJGXGlArC+A==",
-      "path": "communitytoolkit.highperformance/8.3.0",
-      "hashPath": "communitytoolkit.highperformance.8.3.0.nupkg.sha512"
+      "sha512": "sha512-eOPMHT3YSLQg5wXm+UL8Qoka17byK5l/4qxfuE/S32IoQ34gkTDQ1yI9pQPk8LEpeV/W0BE2np+XuhdDQ3wE8g==",
+      "path": "awssdk.core/3.7.302.6",
+      "hashPath": "awssdk.core.3.7.302.6.nupkg.sha512"
+    },
+    "AWSSDK.S3/3.7.305.22": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-KSqGLLSX28j/SaeSuvOWzaGBVNLDeiog5DIuJKO52GRKI4XO89jaJgeElWiLvUFsOh9FaXNkmOHpStET6IvHUQ==",
+      "path": "awssdk.s3/3.7.305.22",
+      "hashPath": "awssdk.s3.3.7.305.22.nupkg.sha512"
     },
     "Dapper/2.0.123": {
       "type": "package",
@@ -1219,13 +1208,6 @@
       "path": "microsoft.visualstudio.solutionpersistence/1.0.52",
       "hashPath": "microsoft.visualstudio.solutionpersistence.1.0.52.nupkg.sha512"
     },
-    "Minio/6.0.4": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-JckRL95hQ/eDHTQZ/BB7jeR0JyF+bOctMW6uriXHY5YPjCX61hiJGsswGjuDSEViKJEPxtPi3e4IwD/1TJ7PIw==",
-      "path": "minio/6.0.4",
-      "hashPath": "minio.6.0.4.nupkg.sha512"
-    },
     "Mono.TextTemplating/3.0.0": {
       "type": "package",
       "serviceable": true,
@@ -1407,20 +1389,6 @@
       "sha512": "sha512-GJw3bYkWpOgvN3tJo5X4lYUeIFA2HD293FPUhKmp7qxS+g5ywAb34Dnd3cDAFLkcMohy5XTpoaZ4uAHuw0uSPQ==",
       "path": "system.identitymodel.tokens.jwt/8.0.1",
       "hashPath": "system.identitymodel.tokens.jwt.8.0.1.nupkg.sha512"
-    },
-    "System.IO.Hashing/8.0.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-ne1843evDugl0md7Fjzy6QjJrzsjh46ZKbhf8GwBXb5f/gw97J4bxMs0NQKifDuThh/f0bZ0e62NPl1jzTuRqA==",
-      "path": "system.io.hashing/8.0.0",
-      "hashPath": "system.io.hashing.8.0.0.nupkg.sha512"
-    },
-    "System.Reactive/6.0.1": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-rHaWtKDwCi9qJ3ObKo8LHPMuuwv33YbmQi7TcUK1C264V3MFnOr5Im7QgCTdLniztP3GJyeiSg5x8NqYJFqRmg==",
-      "path": "system.reactive/6.0.1",
-      "hashPath": "system.reactive.6.0.1.nupkg.sha512"
     },
     "IabConnect.Application/1.0.0": {
       "type": "project",

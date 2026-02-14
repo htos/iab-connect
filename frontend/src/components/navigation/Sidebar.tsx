@@ -102,7 +102,6 @@ const navItems: NavItem[] = [
   },
   {
     labelKey: "nav.documents",
-    href: "/documents",
     icon: (
       <svg
         className="h-5 w-5"
@@ -118,6 +117,25 @@ const navItems: NavItem[] = [
         />
       </svg>
     ),
+    submenu: [
+      {
+        labelKey: "nav.documentsBrowse",
+        href: "/documents",
+        icon: <></>,
+      },
+      {
+        labelKey: "nav.documentsManage",
+        href: "/board/documents",
+        icon: <></>,
+        requiredRoles: [ROLES.VORSTAND, ROLES.ADMIN],
+      },
+      {
+        labelKey: "nav.documentsFolders",
+        href: "/admin/documents",
+        icon: <></>,
+        requiredRoles: [ROLES.ADMIN],
+      },
+    ],
   },
   {
     labelKey: "nav.communication",
@@ -265,6 +283,7 @@ interface SidebarItemProps {
   isOpen: boolean;
   onNavigate: () => void;
   t: any;
+  roles: string[];
 }
 
 function NavItemWithSubmenu({
@@ -273,6 +292,7 @@ function NavItemWithSubmenu({
   isOpen,
   onNavigate,
   t,
+  roles,
 }: SidebarItemProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const pathname = usePathname();
@@ -345,25 +365,30 @@ function NavItemWithSubmenu({
       {/* Submenu */}
       {isOpen && isExpanded && (
         <div className="mt-1 ml-3 space-y-1 border-l border-gray-200 pl-3">
-          {item.submenu.map((subitem) => {
-            const isSubActive =
-              pathname === subitem.href ||
-              pathname.startsWith(subitem.href + "/");
-            return (
-              <Link
-                key={subitem.href}
-                href={subitem.href || "#"}
-                onClick={onNavigate}
-                className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
-                  isSubActive
-                    ? "bg-orange-50 font-medium text-orange-600"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                }`}
-              >
-                {t(subitem.labelKey)}
-              </Link>
-            );
-          })}
+          {item.submenu
+            .filter((subitem) => {
+              if (!subitem.requiredRoles) return true;
+              return subitem.requiredRoles.some((role) => roles.includes(role));
+            })
+            .map((subitem) => {
+              const isSubActive =
+                pathname === subitem.href ||
+                pathname.startsWith(subitem.href + "/");
+              return (
+                <Link
+                  key={subitem.href}
+                  href={subitem.href || "#"}
+                  onClick={onNavigate}
+                  className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
+                    isSubActive
+                      ? "bg-orange-50 font-medium text-orange-600"
+                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  }`}
+                >
+                  {t(subitem.labelKey)}
+                </Link>
+              );
+            })}
         </div>
       )}
     </div>
@@ -433,6 +458,7 @@ export function Sidebar() {
                     }
                   }}
                   t={t}
+                  roles={roles}
                 />
               );
             })}
@@ -445,7 +471,7 @@ export function Sidebar() {
             }`}
           >
             <p className="text-center text-xs text-gray-400">
-              {settings.applicationName} v0.1.0
+              {settings.applicationName} v0.5.0
             </p>
           </div>
         </nav>

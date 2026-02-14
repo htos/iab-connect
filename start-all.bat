@@ -46,7 +46,7 @@ echo   - Frontend:       http://localhost:3000
 echo   - Keycloak:       http://localhost:8080
 echo   - PostgreSQL:     localhost:5433
 echo   - MailHog:        http://localhost:8025
-echo   - MinIO Console:  http://localhost:9001
+echo   - RustFS Console: http://localhost:9001
 echo   - Seq Logs:       http://localhost:5341
 echo.
 echo Test Users:

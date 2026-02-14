@@ -2,6 +2,7 @@ using IabConnect.Domain.Audit;
 using IabConnect.Domain.Authorization;
 using IabConnect.Domain.Common;
 using IabConnect.Domain.Communication;
+using IabConnect.Domain.Documents;
 using IabConnect.Domain.Events;
 using IabConnect.Domain.Finance;
 using IabConnect.Domain.Members;
@@ -43,6 +44,13 @@ public sealed class ApplicationDbContext : DbContext
     public DbSet<BankImportItem> BankImportItems => Set<BankImportItem>();
     public DbSet<DunningNotice> DunningNotices => Set<DunningNotice>();
     public DbSet<Receipt> Receipts => Set<Receipt>();
+
+    // Documents (REQ-034..037)
+    public DbSet<DocumentFolder> DocumentFolders => Set<DocumentFolder>();
+    public DbSet<Document> Documents => Set<Document>();
+    public DbSet<DocumentVersion> DocumentVersions => Set<DocumentVersion>();
+    public DbSet<DocumentTag> DocumentTags => Set<DocumentTag>();
+    public DbSet<FolderPermission> FolderPermissions => Set<FolderPermission>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

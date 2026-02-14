@@ -2,6 +2,35 @@
   "version": 3,
   "targets": {
     "net10.0": {
+      "AWSSDK.Core/3.7.302.6": {
+        "type": "package",
+        "compile": {
+          "lib/net8.0/AWSSDK.Core.dll": {
+            "related": ".pdb;.xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/AWSSDK.Core.dll": {
+            "related": ".pdb;.xml"
+          }
+        }
+      },
+      "AWSSDK.S3/3.7.305.22": {
+        "type": "package",
+        "dependencies": {
+          "AWSSDK.Core": "[3.7.302.6, 4.0.0)"
+        },
+        "compile": {
+          "lib/net8.0/AWSSDK.S3.dll": {
+            "related": ".pdb;.xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/AWSSDK.S3.dll": {
+            "related": ".pdb;.xml"
+          }
+        }
+      },
       "BouncyCastle.Cryptography/2.6.2": {
         "type": "package",
         "compile": {
@@ -28,19 +57,6 @@
         "runtime": {
           "lib/net6.0/Castle.Core.dll": {
             "related": ".xml"
-          }
-        }
-      },
-      "CommunityToolkit.HighPerformance/8.3.0": {
-        "type": "package",
-        "compile": {
-          "lib/net8.0/CommunityToolkit.HighPerformance.dll": {
-            "related": ".pdb;.xml"
-          }
-        },
-        "runtime": {
-          "lib/net8.0/CommunityToolkit.HighPerformance.dll": {
-            "related": ".pdb;.xml"
           }
         }
       },
@@ -453,13 +469,13 @@
       "Microsoft.EntityFrameworkCore.Analyzers/10.0.2": {
         "type": "package"
       },
-      "Microsoft.EntityFrameworkCore.Relational/10.0.0": {
+      "Microsoft.EntityFrameworkCore.Relational/10.0.2": {
         "type": "package",
         "dependencies": {
-          "Microsoft.EntityFrameworkCore": "10.0.0",
-          "Microsoft.Extensions.Caching.Memory": "10.0.0",
-          "Microsoft.Extensions.Configuration.Abstractions": "10.0.0",
-          "Microsoft.Extensions.Logging": "10.0.0"
+          "Microsoft.EntityFrameworkCore": "10.0.2",
+          "Microsoft.Extensions.Caching.Memory": "10.0.2",
+          "Microsoft.Extensions.Configuration.Abstractions": "10.0.2",
+          "Microsoft.Extensions.Logging": "10.0.2"
         },
         "compile": {
           "lib/net10.0/Microsoft.EntityFrameworkCore.Relational.dll": {
@@ -1654,26 +1670,6 @@
           "build/net8.0/Microsoft.TestPlatform.TestHost.targets": {}
         }
       },
-      "Minio/6.0.4": {
-        "type": "package",
-        "dependencies": {
-          "CommunityToolkit.HighPerformance": "8.3.0",
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.1",
-          "Microsoft.Extensions.Logging": "8.0.0",
-          "System.IO.Hashing": "8.0.0",
-          "System.Reactive": "6.0.1"
-        },
-        "compile": {
-          "lib/net8.0/Minio.dll": {
-            "related": ".pdb;.xml"
-          }
-        },
-        "runtime": {
-          "lib/net8.0/Minio.dll": {
-            "related": ".pdb;.xml"
-          }
-        }
-      },
       "Moq/4.20.72": {
         "type": "package",
         "dependencies": {
@@ -2049,38 +2045,6 @@
           }
         }
       },
-      "System.IO.Hashing/8.0.0": {
-        "type": "package",
-        "compile": {
-          "lib/net8.0/System.IO.Hashing.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net8.0/System.IO.Hashing.dll": {
-            "related": ".xml"
-          }
-        },
-        "build": {
-          "buildTransitive/net6.0/_._": {}
-        }
-      },
-      "System.Reactive/6.0.1": {
-        "type": "package",
-        "compile": {
-          "lib/net6.0/System.Reactive.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net6.0/System.Reactive.dll": {
-            "related": ".xml"
-          }
-        },
-        "build": {
-          "buildTransitive/net6.0/_._": {}
-        }
-      },
       "Testcontainers/4.10.0": {
         "type": "package",
         "dependencies": {
@@ -2299,12 +2263,12 @@
         "type": "project",
         "framework": ".NETCoreApp,Version=v10.0",
         "dependencies": {
+          "AWSSDK.S3": "3.7.305.22",
           "Hangfire": "1.8.22",
           "Hangfire.PostgreSql": "1.20.10",
           "IabConnect.Application": "1.0.0",
           "IabConnect.Domain": "1.0.0",
           "Microsoft.EntityFrameworkCore": "10.0.2",
-          "Minio": "6.0.4",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "10.0.0"
         },
         "compile": {
@@ -2317,6 +2281,67 @@
     }
   },
   "libraries": {
+    "AWSSDK.Core/3.7.302.6": {
+      "sha512": "eOPMHT3YSLQg5wXm+UL8Qoka17byK5l/4qxfuE/S32IoQ34gkTDQ1yI9pQPk8LEpeV/W0BE2np+XuhdDQ3wE8g==",
+      "type": "package",
+      "path": "awssdk.core/3.7.302.6",
+      "hasTools": true,
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "awssdk.core.3.7.302.6.nupkg.sha512",
+        "awssdk.core.nuspec",
+        "images/AWSLogo.png",
+        "lib/net35/AWSSDK.Core.dll",
+        "lib/net35/AWSSDK.Core.pdb",
+        "lib/net35/AWSSDK.Core.xml",
+        "lib/net45/AWSSDK.Core.dll",
+        "lib/net45/AWSSDK.Core.pdb",
+        "lib/net45/AWSSDK.Core.xml",
+        "lib/net8.0/AWSSDK.Core.dll",
+        "lib/net8.0/AWSSDK.Core.pdb",
+        "lib/net8.0/AWSSDK.Core.xml",
+        "lib/netcoreapp3.1/AWSSDK.Core.dll",
+        "lib/netcoreapp3.1/AWSSDK.Core.pdb",
+        "lib/netcoreapp3.1/AWSSDK.Core.xml",
+        "lib/netstandard2.0/AWSSDK.Core.dll",
+        "lib/netstandard2.0/AWSSDK.Core.pdb",
+        "lib/netstandard2.0/AWSSDK.Core.xml",
+        "tools/account-management.ps1"
+      ]
+    },
+    "AWSSDK.S3/3.7.305.22": {
+      "sha512": "KSqGLLSX28j/SaeSuvOWzaGBVNLDeiog5DIuJKO52GRKI4XO89jaJgeElWiLvUFsOh9FaXNkmOHpStET6IvHUQ==",
+      "type": "package",
+      "path": "awssdk.s3/3.7.305.22",
+      "hasTools": true,
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "analyzers/dotnet/cs/AWSSDK.S3.CodeAnalysis.dll",
+        "analyzers/dotnet/cs/SharedAnalysisCode.dll",
+        "awssdk.s3.3.7.305.22.nupkg.sha512",
+        "awssdk.s3.nuspec",
+        "images/AWSLogo.png",
+        "lib/net35/AWSSDK.S3.dll",
+        "lib/net35/AWSSDK.S3.pdb",
+        "lib/net35/AWSSDK.S3.xml",
+        "lib/net45/AWSSDK.S3.dll",
+        "lib/net45/AWSSDK.S3.pdb",
+        "lib/net45/AWSSDK.S3.xml",
+        "lib/net8.0/AWSSDK.S3.dll",
+        "lib/net8.0/AWSSDK.S3.pdb",
+        "lib/net8.0/AWSSDK.S3.xml",
+        "lib/netcoreapp3.1/AWSSDK.S3.dll",
+        "lib/netcoreapp3.1/AWSSDK.S3.pdb",
+        "lib/netcoreapp3.1/AWSSDK.S3.xml",
+        "lib/netstandard2.0/AWSSDK.S3.dll",
+        "lib/netstandard2.0/AWSSDK.S3.pdb",
+        "lib/netstandard2.0/AWSSDK.S3.xml",
+        "tools/install.ps1",
+        "tools/uninstall.ps1"
+      ]
+    },
     "BouncyCastle.Cryptography/2.6.2": {
       "sha512": "7oWOcvnntmMKNzDLsdxAYqApt+AjpRpP2CShjMfIa3umZ42UQMvH0tl1qAliYPNYO6vTdcGMqnRrCPmsfzTI1w==",
       "type": "package",
@@ -2359,35 +2384,6 @@
         "lib/netstandard2.1/Castle.Core.dll",
         "lib/netstandard2.1/Castle.Core.xml",
         "readme.txt"
-      ]
-    },
-    "CommunityToolkit.HighPerformance/8.3.0": {
-      "sha512": "2zc0Wfr9OtEbLqm6J1Jycim/nKmYv+v12CytJ3tZGNzw7n3yjh1vNCMX0kIBaFBk3sw8g0pMR86QJGXGlArC+A==",
-      "type": "package",
-      "path": "communitytoolkit.highperformance/8.3.0",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "Icon.png",
-        "License.md",
-        "ThirdPartyNotices.txt",
-        "communitytoolkit.highperformance.8.3.0.nupkg.sha512",
-        "communitytoolkit.highperformance.nuspec",
-        "lib/net6.0/CommunityToolkit.HighPerformance.dll",
-        "lib/net6.0/CommunityToolkit.HighPerformance.pdb",
-        "lib/net6.0/CommunityToolkit.HighPerformance.xml",
-        "lib/net7.0/CommunityToolkit.HighPerformance.dll",
-        "lib/net7.0/CommunityToolkit.HighPerformance.pdb",
-        "lib/net7.0/CommunityToolkit.HighPerformance.xml",
-        "lib/net8.0/CommunityToolkit.HighPerformance.dll",
-        "lib/net8.0/CommunityToolkit.HighPerformance.pdb",
-        "lib/net8.0/CommunityToolkit.HighPerformance.xml",
-        "lib/netstandard2.0/CommunityToolkit.HighPerformance.dll",
-        "lib/netstandard2.0/CommunityToolkit.HighPerformance.pdb",
-        "lib/netstandard2.0/CommunityToolkit.HighPerformance.xml",
-        "lib/netstandard2.1/CommunityToolkit.HighPerformance.dll",
-        "lib/netstandard2.1/CommunityToolkit.HighPerformance.pdb",
-        "lib/netstandard2.1/CommunityToolkit.HighPerformance.xml"
       ]
     },
     "coverlet.collector/6.0.4": {
@@ -3071,10 +3067,10 @@
         "microsoft.entityframeworkcore.analyzers.nuspec"
       ]
     },
-    "Microsoft.EntityFrameworkCore.Relational/10.0.0": {
-      "sha512": "A3MX1ee7RDxWCUdx/KqP+74fbksz0UIhkVZh56YHvbPkEKsffCXgHU3LGkRDwqR/MrBNWLCWC/IVX79tzM30ZA==",
+    "Microsoft.EntityFrameworkCore.Relational/10.0.2": {
+      "sha512": "1fUeyNmqDNfMogJ2ut7OKO57/WGjjkHMYeX51SpA3PwP7ftbx8g/Z3fbErD+1q14DILrqJfsszYsYhGssBRfDg==",
       "type": "package",
-      "path": "microsoft.entityframeworkcore.relational/10.0.0",
+      "path": "microsoft.entityframeworkcore.relational/10.0.2",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -3082,7 +3078,7 @@
         "PACKAGE.md",
         "lib/net10.0/Microsoft.EntityFrameworkCore.Relational.dll",
         "lib/net10.0/Microsoft.EntityFrameworkCore.Relational.xml",
-        "microsoft.entityframeworkcore.relational.10.0.0.nupkg.sha512",
+        "microsoft.entityframeworkcore.relational.10.0.2.nupkg.sha512",
         "microsoft.entityframeworkcore.relational.nuspec"
       ]
     },
@@ -4961,29 +4957,6 @@
         "microsoft.testplatform.testhost.nuspec"
       ]
     },
-    "Minio/6.0.4": {
-      "sha512": "JckRL95hQ/eDHTQZ/BB7jeR0JyF+bOctMW6uriXHY5YPjCX61hiJGsswGjuDSEViKJEPxtPi3e4IwD/1TJ7PIw==",
-      "type": "package",
-      "path": "minio/6.0.4",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "LICENSE",
-        "icon.png",
-        "lib/net6.0/Minio.dll",
-        "lib/net6.0/Minio.pdb",
-        "lib/net6.0/Minio.xml",
-        "lib/net8.0/Minio.dll",
-        "lib/net8.0/Minio.pdb",
-        "lib/net8.0/Minio.xml",
-        "lib/netstandard2.0/Minio.dll",
-        "lib/netstandard2.0/Minio.pdb",
-        "lib/netstandard2.0/Minio.xml",
-        "minio.6.0.4.nupkg.sha512",
-        "minio.nuspec",
-        "readme.md"
-      ]
-    },
     "Moq/4.20.72": {
       "sha512": "EA55cjyNn8eTNWrgrdZJH5QLFp2L43oxl1tlkoYUKIE9pRwL784OWiTXeCV5ApS+AMYEAlt7Fo03A2XfouvHmQ==",
       "type": "package",
@@ -5506,64 +5479,6 @@
         "system.identitymodel.tokens.jwt.nuspec"
       ]
     },
-    "System.IO.Hashing/8.0.0": {
-      "sha512": "ne1843evDugl0md7Fjzy6QjJrzsjh46ZKbhf8GwBXb5f/gw97J4bxMs0NQKifDuThh/f0bZ0e62NPl1jzTuRqA==",
-      "type": "package",
-      "path": "system.io.hashing/8.0.0",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "Icon.png",
-        "LICENSE.TXT",
-        "PACKAGE.md",
-        "THIRD-PARTY-NOTICES.TXT",
-        "buildTransitive/net461/System.IO.Hashing.targets",
-        "buildTransitive/net462/_._",
-        "buildTransitive/net6.0/_._",
-        "buildTransitive/netcoreapp2.0/System.IO.Hashing.targets",
-        "lib/net462/System.IO.Hashing.dll",
-        "lib/net462/System.IO.Hashing.xml",
-        "lib/net6.0/System.IO.Hashing.dll",
-        "lib/net6.0/System.IO.Hashing.xml",
-        "lib/net7.0/System.IO.Hashing.dll",
-        "lib/net7.0/System.IO.Hashing.xml",
-        "lib/net8.0/System.IO.Hashing.dll",
-        "lib/net8.0/System.IO.Hashing.xml",
-        "lib/netstandard2.0/System.IO.Hashing.dll",
-        "lib/netstandard2.0/System.IO.Hashing.xml",
-        "system.io.hashing.8.0.0.nupkg.sha512",
-        "system.io.hashing.nuspec",
-        "useSharedDesignerContext.txt"
-      ]
-    },
-    "System.Reactive/6.0.1": {
-      "sha512": "rHaWtKDwCi9qJ3ObKo8LHPMuuwv33YbmQi7TcUK1C264V3MFnOr5Im7QgCTdLniztP3GJyeiSg5x8NqYJFqRmg==",
-      "type": "package",
-      "path": "system.reactive/6.0.1",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "build/net6.0-windows10.0.19041/_._",
-        "build/net6.0/_._",
-        "buildTransitive/net6.0-windows10.0.19041/_._",
-        "buildTransitive/net6.0/_._",
-        "icon.png",
-        "lib/net472/System.Reactive.dll",
-        "lib/net472/System.Reactive.xml",
-        "lib/net6.0-windows10.0.19041/System.Reactive.dll",
-        "lib/net6.0-windows10.0.19041/System.Reactive.xml",
-        "lib/net6.0/System.Reactive.dll",
-        "lib/net6.0/System.Reactive.xml",
-        "lib/netstandard2.0/System.Reactive.dll",
-        "lib/netstandard2.0/System.Reactive.xml",
-        "lib/uap10.0.18362/System.Reactive.dll",
-        "lib/uap10.0.18362/System.Reactive.pri",
-        "lib/uap10.0.18362/System.Reactive.xml",
-        "readme.md",
-        "system.reactive.6.0.1.nupkg.sha512",
-        "system.reactive.nuspec"
-      ]
-    },
     "Testcontainers/4.10.0": {
       "sha512": "a7tH+s9IRME6QEeMRgl/mTqQyudgtGNJmJRPn1+LwW8w/2L11cJzRJd7Io0QoSrP+i6lAOETX2SRY7cLbElcdQ==",
       "type": "package",
@@ -5929,6 +5844,7 @@
         "centralPackageVersions": {
           "AspNetCore.HealthChecks.NpgSql": "8.0.2",
           "AspNetCore.HealthChecks.Redis": "8.0.1",
+          "AWSSDK.S3": "3.7.305.22",
           "coverlet.collector": "6.0.4",
           "FluentAssertions": "8.8.0",
           "FluentValidation": "11.11.0",
@@ -5941,12 +5857,12 @@
           "Microsoft.AspNetCore.Mvc.Testing": "10.0.2",
           "Microsoft.EntityFrameworkCore": "10.0.2",
           "Microsoft.EntityFrameworkCore.Design": "10.0.2",
+          "Microsoft.EntityFrameworkCore.Relational": "10.0.2",
           "Microsoft.EntityFrameworkCore.Tools": "10.0.2",
           "Microsoft.Extensions.Logging.Abstractions": "10.0.2",
           "Microsoft.NET.Test.Sdk": "18.0.0",
           "Microsoft.OpenApi": "1.6.14",
           "Microsoft.SourceLink.GitHub": "8.0.0",
-          "Minio": "6.0.4",
           "Moq": "4.20.72",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "10.0.0",
           "Serilog.AspNetCore": "10.0.0",
@@ -6254,6 +6170,10 @@
   },
   "centralTransitiveDependencyGroups": {
     "net10.0": {
+      "AWSSDK.S3": {
+        "include": "Runtime, Compile, Native, BuildTransitive",
+        "version": "[3.7.305.22, )"
+      },
       "FluentValidation": {
         "include": "Runtime, Compile, Native, BuildTransitive",
         "version": "[11.11.0, )"
@@ -6286,6 +6206,10 @@
         "include": "Runtime, Compile, Native, BuildTransitive",
         "version": "[10.0.2, )"
       },
+      "Microsoft.EntityFrameworkCore.Relational": {
+        "include": "Runtime, Compile, Native, BuildTransitive",
+        "version": "[10.0.2, )"
+      },
       "Microsoft.Extensions.Logging.Abstractions": {
         "include": "Runtime, Compile, Native, BuildTransitive",
         "version": "[10.0.2, )"
@@ -6293,10 +6217,6 @@
       "Microsoft.OpenApi": {
         "include": "Runtime, Compile, Native, BuildTransitive",
         "version": "[1.6.14, )"
-      },
-      "Minio": {
-        "include": "Runtime, Compile, Native, BuildTransitive",
-        "version": "[6.0.4, )"
       },
       "Npgsql.EntityFrameworkCore.PostgreSQL": {
         "include": "Runtime, Compile, Native, BuildTransitive",

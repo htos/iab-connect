@@ -20,6 +20,25 @@
           "IabConnect.Infrastructure.Tests.dll": {}
         }
       },
+      "AWSSDK.Core/3.7.302.6": {
+        "runtime": {
+          "lib/net8.0/AWSSDK.Core.dll": {
+            "assemblyVersion": "3.3.0.0",
+            "fileVersion": "3.7.302.6"
+          }
+        }
+      },
+      "AWSSDK.S3/3.7.305.22": {
+        "dependencies": {
+          "AWSSDK.Core": "3.7.302.6"
+        },
+        "runtime": {
+          "lib/net8.0/AWSSDK.S3.dll": {
+            "assemblyVersion": "3.3.0.0",
+            "fileVersion": "3.7.305.22"
+          }
+        }
+      },
       "BouncyCastle.Cryptography/2.6.2": {
         "runtime": {
           "lib/net6.0/BouncyCastle.Cryptography.dll": {
@@ -33,14 +52,6 @@
           "lib/net6.0/Castle.Core.dll": {
             "assemblyVersion": "5.0.0.0",
             "fileVersion": "5.1.1.0"
-          }
-        }
-      },
-      "CommunityToolkit.HighPerformance/8.3.0": {
-        "runtime": {
-          "lib/net8.0/CommunityToolkit.HighPerformance.dll": {
-            "assemblyVersion": "8.3.0.0",
-            "fileVersion": "8.3.0.1"
           }
         }
       },
@@ -260,14 +271,14 @@
           }
         }
       },
-      "Microsoft.EntityFrameworkCore.Relational/10.0.0": {
+      "Microsoft.EntityFrameworkCore.Relational/10.0.2": {
         "dependencies": {
           "Microsoft.EntityFrameworkCore": "10.0.2"
         },
         "runtime": {
           "lib/net10.0/Microsoft.EntityFrameworkCore.Relational.dll": {
-            "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.25.52411"
+            "assemblyVersion": "10.0.2.0",
+            "fileVersion": "10.0.225.61305"
           }
         }
       },
@@ -632,19 +643,6 @@
           }
         }
       },
-      "Minio/6.0.4": {
-        "dependencies": {
-          "CommunityToolkit.HighPerformance": "8.3.0",
-          "System.IO.Hashing": "8.0.0",
-          "System.Reactive": "6.0.1"
-        },
-        "runtime": {
-          "lib/net8.0/Minio.dll": {
-            "assemblyVersion": "6.0.4.0",
-            "fileVersion": "6.0.4.0"
-          }
-        }
-      },
       "Moq/4.20.72": {
         "dependencies": {
           "Castle.Core": "5.1.1"
@@ -675,7 +673,7 @@
       "Npgsql.EntityFrameworkCore.PostgreSQL/10.0.0": {
         "dependencies": {
           "Microsoft.EntityFrameworkCore": "10.0.2",
-          "Microsoft.EntityFrameworkCore.Relational": "10.0.0",
+          "Microsoft.EntityFrameworkCore.Relational": "10.0.2",
           "Npgsql": "10.0.0"
         },
         "runtime": {
@@ -701,22 +699,6 @@
           "lib/net9.0/Renci.SshNet.dll": {
             "assemblyVersion": "2025.1.0.1",
             "fileVersion": "2025.1.0.1"
-          }
-        }
-      },
-      "System.IO.Hashing/8.0.0": {
-        "runtime": {
-          "lib/net8.0/System.IO.Hashing.dll": {
-            "assemblyVersion": "8.0.0.0",
-            "fileVersion": "8.0.23.53103"
-          }
-        }
-      },
-      "System.Reactive/6.0.1": {
-        "runtime": {
-          "lib/net6.0/System.Reactive.dll": {
-            "assemblyVersion": "6.0.0.0",
-            "fileVersion": "6.0.1.7420"
           }
         }
       },
@@ -837,12 +819,12 @@
       },
       "IabConnect.Infrastructure/1.0.0": {
         "dependencies": {
+          "AWSSDK.S3": "3.7.305.22",
           "Hangfire": "1.8.22",
           "Hangfire.PostgreSql": "1.20.10",
           "IabConnect.Application": "1.0.0",
           "IabConnect.Domain": "1.0.0",
           "Microsoft.EntityFrameworkCore": "10.0.2",
-          "Minio": "6.0.4",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "10.0.0"
         },
         "runtime": {
@@ -860,6 +842,20 @@
       "serviceable": false,
       "sha512": ""
     },
+    "AWSSDK.Core/3.7.302.6": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-eOPMHT3YSLQg5wXm+UL8Qoka17byK5l/4qxfuE/S32IoQ34gkTDQ1yI9pQPk8LEpeV/W0BE2np+XuhdDQ3wE8g==",
+      "path": "awssdk.core/3.7.302.6",
+      "hashPath": "awssdk.core.3.7.302.6.nupkg.sha512"
+    },
+    "AWSSDK.S3/3.7.305.22": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-KSqGLLSX28j/SaeSuvOWzaGBVNLDeiog5DIuJKO52GRKI4XO89jaJgeElWiLvUFsOh9FaXNkmOHpStET6IvHUQ==",
+      "path": "awssdk.s3/3.7.305.22",
+      "hashPath": "awssdk.s3.3.7.305.22.nupkg.sha512"
+    },
     "BouncyCastle.Cryptography/2.6.2": {
       "type": "package",
       "serviceable": true,
@@ -873,13 +869,6 @@
       "sha512": "sha512-rpYtIczkzGpf+EkZgDr9CClTdemhsrwA/W5hMoPjLkRFnXzH44zDLoovXeKtmxb1ykXK9aJVODSpiJml8CTw2g==",
       "path": "castle.core/5.1.1",
       "hashPath": "castle.core.5.1.1.nupkg.sha512"
-    },
-    "CommunityToolkit.HighPerformance/8.3.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-2zc0Wfr9OtEbLqm6J1Jycim/nKmYv+v12CytJ3tZGNzw7n3yjh1vNCMX0kIBaFBk3sw8g0pMR86QJGXGlArC+A==",
-      "path": "communitytoolkit.highperformance/8.3.0",
-      "hashPath": "communitytoolkit.highperformance.8.3.0.nupkg.sha512"
     },
     "Dapper/2.0.123": {
       "type": "package",
@@ -1007,12 +996,12 @@
       "path": "microsoft.entityframeworkcore.abstractions/10.0.2",
       "hashPath": "microsoft.entityframeworkcore.abstractions.10.0.2.nupkg.sha512"
     },
-    "Microsoft.EntityFrameworkCore.Relational/10.0.0": {
+    "Microsoft.EntityFrameworkCore.Relational/10.0.2": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-A3MX1ee7RDxWCUdx/KqP+74fbksz0UIhkVZh56YHvbPkEKsffCXgHU3LGkRDwqR/MrBNWLCWC/IVX79tzM30ZA==",
-      "path": "microsoft.entityframeworkcore.relational/10.0.0",
-      "hashPath": "microsoft.entityframeworkcore.relational.10.0.0.nupkg.sha512"
+      "sha512": "sha512-1fUeyNmqDNfMogJ2ut7OKO57/WGjjkHMYeX51SpA3PwP7ftbx8g/Z3fbErD+1q14DILrqJfsszYsYhGssBRfDg==",
+      "path": "microsoft.entityframeworkcore.relational/10.0.2",
+      "hashPath": "microsoft.entityframeworkcore.relational.10.0.2.nupkg.sha512"
     },
     "Microsoft.NET.Test.Sdk/18.0.0": {
       "type": "package",
@@ -1056,13 +1045,6 @@
       "path": "microsoft.testplatform.testhost/18.0.0",
       "hashPath": "microsoft.testplatform.testhost.18.0.0.nupkg.sha512"
     },
-    "Minio/6.0.4": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-JckRL95hQ/eDHTQZ/BB7jeR0JyF+bOctMW6uriXHY5YPjCX61hiJGsswGjuDSEViKJEPxtPi3e4IwD/1TJ7PIw==",
-      "path": "minio/6.0.4",
-      "hashPath": "minio.6.0.4.nupkg.sha512"
-    },
     "Moq/4.20.72": {
       "type": "package",
       "serviceable": true,
@@ -1104,20 +1086,6 @@
       "sha512": "sha512-jrnbtf0ItVaXAe6jE8X/kSLa6uC+0C+7W1vepcnRQB/rD88qy4IxG7Lf1FIbWmkoc4iVXv0pKrz+Wc6J4ngmHw==",
       "path": "ssh.net/2025.1.0",
       "hashPath": "ssh.net.2025.1.0.nupkg.sha512"
-    },
-    "System.IO.Hashing/8.0.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-ne1843evDugl0md7Fjzy6QjJrzsjh46ZKbhf8GwBXb5f/gw97J4bxMs0NQKifDuThh/f0bZ0e62NPl1jzTuRqA==",
-      "path": "system.io.hashing/8.0.0",
-      "hashPath": "system.io.hashing.8.0.0.nupkg.sha512"
-    },
-    "System.Reactive/6.0.1": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-rHaWtKDwCi9qJ3ObKo8LHPMuuwv33YbmQi7TcUK1C264V3MFnOr5Im7QgCTdLniztP3GJyeiSg5x8NqYJFqRmg==",
-      "path": "system.reactive/6.0.1",
-      "hashPath": "system.reactive.6.0.1.nupkg.sha512"
     },
     "Testcontainers/4.10.0": {
       "type": "package",

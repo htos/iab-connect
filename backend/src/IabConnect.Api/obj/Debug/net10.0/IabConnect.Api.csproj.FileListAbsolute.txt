@@ -6,7 +6,6 @@ B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\bin\Debug\net10.0
 B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\bin\Debug\net10.0\IabConnect.Api.runtimeconfig.json
 B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\bin\Debug\net10.0\IabConnect.Api.dll
 B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\bin\Debug\net10.0\IabConnect.Api.pdb
-B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\bin\Debug\net10.0\CommunityToolkit.HighPerformance.dll
 B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\bin\Debug\net10.0\Dapper.dll
 B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\bin\Debug\net10.0\FluentValidation.dll
 B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\bin\Debug\net10.0\FluentValidation.DependencyInjectionExtensions.dll
@@ -40,7 +39,6 @@ B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\bin\Debug\net10.0
 B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\bin\Debug\net10.0\Microsoft.IdentityModel.Tokens.dll
 B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\bin\Debug\net10.0\Microsoft.OpenApi.dll
 B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\bin\Debug\net10.0\Microsoft.VisualStudio.SolutionPersistence.dll
-B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\bin\Debug\net10.0\Minio.dll
 B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\bin\Debug\net10.0\Mono.TextTemplating.dll
 B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\bin\Debug\net10.0\Newtonsoft.Json.dll
 B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\bin\Debug\net10.0\Npgsql.dll
@@ -65,8 +63,6 @@ B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\bin\Debug\net10.0
 B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\bin\Debug\net10.0\System.Composition.Runtime.dll
 B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\bin\Debug\net10.0\System.Composition.TypedParts.dll
 B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\bin\Debug\net10.0\System.IdentityModel.Tokens.Jwt.dll
-B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\bin\Debug\net10.0\System.IO.Hashing.dll
-B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\bin\Debug\net10.0\System.Reactive.dll
 B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\bin\Debug\net10.0\ca\Hangfire.Core.resources.dll
 B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\bin\Debug\net10.0\de\Hangfire.Core.resources.dll
 B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\bin\Debug\net10.0\es\Hangfire.Core.resources.dll
@@ -176,3 +172,5 @@ B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\obj\Debug\net10.0
 B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\obj\Debug\net10.0\IabConnect.Api.pdb
 B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\obj\Debug\net10.0\IabConnect.Api.genruntimeconfig.cache
 B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\obj\Debug\net10.0\ref\IabConnect.Api.dll
+B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\bin\Debug\net10.0\AWSSDK.Core.dll
+B:\Projects\IAB Connect\iab-connect\backend\src\IabConnect.Api\bin\Debug\net10.0\AWSSDK.S3.dll

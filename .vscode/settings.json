@@ -25,5 +25,8 @@
   },
   "editor.quickSuggestions": {
     "strings": true
+  },
+  "chat.tools.terminal.autoApprove": {
+    "dotnet build": true
   }
 }

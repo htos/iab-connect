@@ -14,7 +14,7 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Hangfire" />
     <PackageReference Include="Hangfire.PostgreSql" />
-    <PackageReference Include="Minio" />
+    <PackageReference Include="AWSSDK.S3" />
   </ItemGroup>
 
   <ItemGroup>

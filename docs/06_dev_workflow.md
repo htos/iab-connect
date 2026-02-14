@@ -15,40 +15,47 @@ infra
 docker compose, scripts, deployment files
 
 Branching
-1) main ist stabil
-2) feature branches pro Änderung
-3) Merge via Pull Request
+
+1. main ist stabil
+2. feature branches pro Änderung
+3. Merge via Pull Request
 
 PR Regeln
-1) Mindestens eine Review
-2) Build und Tests müssen grün sein
-3) Keine Secrets im Code
-4) Kurze Beschreibung und Bezug zu Requirement ID falls vorhanden
+
+1. Mindestens eine Review
+2. Build und Tests müssen grün sein
+3. Keine Secrets im Code
+4. Kurze Beschreibung und Bezug zu Requirement ID falls vorhanden
 
 Code Style
-1) EditorConfig im Repo
-2) C# analyzers aktiv
-3) Frontend lint und format via ESLint und Prettier
+
+1. EditorConfig im Repo
+2. C# analyzers aktiv
+3. Frontend lint und format via ESLint und Prettier
 
 DB Migration Workflow
-1) EF Core Migrationen nur über definierte Commands
-2) Jede Migration hat sprechenden Namen
-3) Migrations laufen in Staging vor Produktion
+
+1. EF Core Migrationen nur über definierte Commands
+2. Jede Migration hat sprechenden Namen
+3. Migrations laufen in Staging vor Produktion
 
 Lokales Setup Schritte
-1) docker compose up für postgres, keycloak, minio
-2) Backend starten und DB Migration ausführen
-3) Frontend starten mit Environment Variablen für API Base URL
-4) Login über Keycloak testen
+
+1. docker compose up für postgres, keycloak, rustfs
+2. Backend starten und DB Migration ausführen
+3. Frontend starten mit Environment Variablen für API Base URL
+4. Login über Keycloak testen
 
 **WICHTIG: Backend und Frontend müssen in separaten Terminals gestartet werden!**
+
 - Terminal 1: `cd backend/src/IabConnect.Api && dotnet run`
 - Terminal 2: `cd frontend && npm run dev`
 - Niemals beide in einem Terminal starten, da das Starten des einen den anderen Prozess beendet.
 
 VS Code Setup
-1) Launch Configs für Backend und Frontend
-2) Tasks für build, test, migrations
+
+1. Launch Configs für Backend und Frontend
+2. Tasks für build, test, migrations
 
 ---
 
@@ -57,7 +64,8 @@ VS Code Setup
 ### REQ-001: Login & Zugriff (Admin und Mitglieder)
 
 **Voraussetzungen:**
-- Docker Compose läuft (PostgreSQL, Keycloak, MinIO)
+
+- Docker Compose läuft (PostgreSQL, Keycloak, RustFS)
 - Backend auf http://localhost:5000
 - Frontend auf http://localhost:3000
 
@@ -122,6 +130,7 @@ VS Code Setup
 ### REQ-013 bis REQ-016: Mitgliederverwaltung
 
 **Voraussetzungen:**
+
 - Backend und Frontend laufen
 - Login als Admin oder Vorstand
 
@@ -207,11 +216,13 @@ VS Code Setup
 ### REQ-002: Benutzerverwaltung (Admin)
 
 **Voraussetzungen:**
+
 - Backend und Frontend laufen
 - Keycloak Admin Client `iabconnect-admin` konfiguriert (siehe unten)
 - Login als Admin
 
 **Keycloak Setup (einmalig):**
+
 1. Öffne Keycloak Admin Console: http://localhost:8080/admin
 2. Login als admin / Admin-Dev-2026!
 3. Wähle Realm "iabconnect"
@@ -315,6 +326,7 @@ VS Code Setup
 ### REQ-004: Feingranulare Zugriffskontrolle
 
 **Voraussetzungen:**
+
 - Backend und Frontend laufen
 - Test-Benutzer vorhanden (admin, vorstand, member)
 
@@ -353,12 +365,14 @@ VS Code Setup
 ### REQ-007: Registrierung & Onboarding
 
 **Voraussetzungen:**
+
 - Docker Compose läuft
 - Backend und Frontend laufen
 - (Optional) SMTP-Server für E-Mail-Versand konfiguriert
 
 **SMTP-Konfiguration für E-Mail-Tests (Mailhog):**
 Im Development-Setup ist Mailhog bereits konfiguriert und fängt alle E-Mails ab:
+
 - **SMTP-Server:** mailhog:1025 (intern im Docker-Netzwerk)
 - **Web-UI:** http://localhost:8025 (alle gefangenen E-Mails ansehen)
 
@@ -456,6 +470,7 @@ docker compose up -d
 ### REQ-008: Passwort Reset & Account Recovery
 
 **Voraussetzungen:**
+
 - Backend und Frontend laufen
 - Keycloak läuft mit aktiviertem resetPasswordAllowed
 - Mailhog läuft (für E-Mail-Tests): http://localhost:8025
@@ -511,6 +526,7 @@ docker compose up -d
 ### REQ-011: Audit Log (Sicherheits- & Datenänderungen)
 
 **Voraussetzungen:**
+
 - Backend und Frontend laufen
 - Login als Admin
 

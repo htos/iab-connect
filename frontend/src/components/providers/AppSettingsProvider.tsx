@@ -28,8 +28,8 @@ interface AppSettingsContextType {
 }
 
 const defaultSettings: AppSettings = {
-  applicationName: "IAB Connect",
-  logoText: "IAB",
+  applicationName: "Association Connect by Harwinder Singh",
+  logoText: "AC",
   logoBackgroundColor: "#EA580C",
   logoTextColor: "#FFFFFF",
 };

@@ -1,3 +1,4 @@
+using Amazon.S3;
 using Hangfire;
 using Hangfire.PostgreSql;
 using IabConnect.Application.Audit;
@@ -7,6 +8,7 @@ using IabConnect.Application.Communication;
 using IabConnect.Application.Finance;
 using IabConnect.Domain.Audit;
 using IabConnect.Domain.Communication;
+using IabConnect.Domain.Documents;
 using IabConnect.Domain.Events;
 using IabConnect.Domain.Members;
 using IabConnect.Domain.Privacy;
@@ -15,6 +17,7 @@ using IabConnect.Infrastructure.Email;
 using IabConnect.Infrastructure.Identity;
 using IabConnect.Infrastructure.Persistence;
 using IabConnect.Infrastructure.Persistence.Repositories;
+using IabConnect.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -70,6 +73,10 @@ public static class DependencyInjection
         services.AddScoped<IDunningNoticeRepository, DunningNoticeRepository>();
         services.AddScoped<IReceiptRepository, ReceiptRepository>();
 
+        // REQ-034..037: Documents repositories
+        services.AddScoped<IDocumentRepository, DocumentRepository>();
+        services.AddScoped<IDocumentFolderRepository, DocumentFolderRepository>();
+
         // REQ-011: Audit Service (requires IHttpContextAccessor)
         services.AddHttpContextAccessor();
         services.AddScoped<IAuditService, AuditService>();
@@ -99,7 +106,22 @@ public static class DependencyInjection
         services.AddScoped<IEmailCampaignJobService, EmailCampaignJobService>();
         services.AddScoped<EmailCampaignSendJob>();
 
-        // TODO: Add MinIO file storage service
+        // REQ-034: Document Storage (RustFS via S3 SDK)
+        services.Configure<DocumentStorageSettings>(configuration.GetSection(DocumentStorageSettings.SectionName));
+        var storageSettings = configuration.GetSection(DocumentStorageSettings.SectionName).Get<DocumentStorageSettings>()
+            ?? new DocumentStorageSettings();
+        services.AddSingleton<IAmazonS3>(_ =>
+        {
+            var config = new AmazonS3Config
+            {
+                ServiceURL = storageSettings.ServiceUrl,
+                ForcePathStyle = true,
+                UseHttp = !storageSettings.UseHttps
+            };
+            return new AmazonS3Client(storageSettings.AccessKey, storageSettings.SecretKey, config);
+        });
+        services.AddScoped<IDocumentStorage, S3DocumentStorage>();
+
         // TODO: Add caching (Redis)
 
         return services;

@@ -3,6 +3,7 @@
 Comprehensive guide for starting the IAB Connect application and resolving common startup issues.
 
 ## Table of Contents
+
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
 - [Common Issues & Solutions](#common-issues--solutions)
@@ -17,23 +18,26 @@ Comprehensive guide for starting the IAB Connect application and resolving commo
 Before starting the application, ensure you have the following installed:
 
 ### Required Software
+
 - **Docker Desktop** (with Docker Compose) - https://www.docker.com/products/docker-desktop
 - **.NET SDK 10.0** - https://dotnet.microsoft.com/download
 - **Node.js 20+** - https://nodejs.org/
 - **Git** - https://git-scm.com/
 
 ### Environment Setup
+
 - Clone the repository: `git clone https://github.com/htos/iab-connect.git`
 - Navigate to project root: `cd iab-connect`
 - Docker must be running and accessible from command line
 
 ### Network Ports Required
+
 - **3000** - Frontend (Next.js)
 - **5000** - Backend API (.NET Core)
 - **5433** - PostgreSQL
 - **6379** - Redis (if configured)
 - **8080** - Keycloak
-- **9000** - MinIO S3 Storage
+- **9000** - RustFS S3 Storage
 - **1025/1080** - MailHog (Email testing)
 - **5341** - Seq (Logging)
 
@@ -99,6 +103,7 @@ npm run dev
 ### Issue 1: PostgreSQL Port 5433 Already in Use
 
 **Problem:** Docker fails to start PostgreSQL container with message like:
+
 ```
 Error response from daemon: Ports are not available: exposing port TCP 0.0.0.0:5433 -> 0.0.0.0:5433
 ```
@@ -106,6 +111,7 @@ Error response from daemon: Ports are not available: exposing port TCP 0.0.0.0:5
 **Root Cause:** Windows PostgreSQL service running locally, blocking Docker container.
 
 **Solution:**
+
 ```powershell
 # Check if service is running
 Get-Service postgresql-x64-17 | Select-Object Status
@@ -119,6 +125,7 @@ docker-compose -f infra/docker-compose.yml up -d
 ```
 
 **Prevention:** Set PostgreSQL service to Manual startup:
+
 ```powershell
 Set-Service -Name postgresql-x64-17 -StartupType Manual
 ```
@@ -128,11 +135,13 @@ Set-Service -Name postgresql-x64-17 -StartupType Manual
 ### Issue 2: Keycloak 403 Forbidden Error
 
 **Problem:** Backend logs show authentication failures:
+
 ```
 [403] POST http://localhost:8080/realms/iabconnect/protocol/openid-connect/token - 403 Forbidden
 ```
 
-**Root Cause:** 
+**Root Cause:**
+
 - Incorrect client secret in configuration
 - Missing service account roles
 - Mismatched Keycloak realm
@@ -140,7 +149,9 @@ Set-Service -Name postgresql-x64-17 -StartupType Manual
 **Solution:**
 
 **Step A: Verify Client Secret**
+
 1. Check `appsettings.Development.json`:
+
 ```json
 "Keycloak": {
   "ServerUrl": "http://localhost:8080",
@@ -160,12 +171,14 @@ Set-Service -Name postgresql-x64-17 -StartupType Manual
 4. Update `appsettings.Development.json` if different
 
 **Step B: Verify Service Account Roles**
+
 1. In Keycloak Admin Console:
    - Go to Clients → iabconnect-admin → Service Account Roles
    - Ensure "realm-admin" role is assigned
    - If missing: Available Roles → realm-management → realm-admin → Add selected
 
 2. Restart backend:
+
 ```bash
 # Ctrl+C to stop current process
 $env:ASPNETCORE_ENVIRONMENT = "Development"
@@ -173,6 +186,7 @@ dotnet run
 ```
 
 **Step C: Fresh Realm Import (if still failing)**
+
 ```bash
 # Delete existing realm data (⚠️ WARNING: Deletes all users/settings)
 docker-compose -f infra/docker-compose.yml down -v
@@ -188,6 +202,7 @@ docker-compose -f infra/docker-compose.yml up -d
 ### Issue 3: Database Relation Errors
 
 **Problem:** Database errors like:
+
 ```
 ERROR 42P01: relation "events" does not exist
 ERROR 42P01: relation "email_campaigns" does not exist
@@ -196,6 +211,7 @@ ERROR 42P01: relation "email_campaigns" does not exist
 **Root Cause:** Database migrations not applied after container startup.
 
 **Solution:**
+
 ```bash
 cd backend
 
@@ -210,6 +226,7 @@ dotnet ef database update \
 ```
 
 **Verify Migrations Applied:**
+
 ```bash
 # Connect to PostgreSQL container
 docker exec -it iab-postgres psql -U postgres -d iabconnect
@@ -226,6 +243,7 @@ docker exec -it iab-postgres psql -U postgres -d iabconnect
 ### Issue 4: Missing Translation Keys (Frontend)
 
 **Problem:** Browser console shows errors:
+
 ```
 [next-intl] Missing message: "events.form.basicInfoDescription"
 [next-intl] Missing message: "events.form.dateTimeDescription"
@@ -245,6 +263,7 @@ docker exec -it iab-postgres psql -U postgres -d iabconnect
    - English translations: `frontend/messages/en.json`
 
 3. **Example Fix:**
+
 ```json
 {
   "events": {
@@ -270,6 +289,7 @@ docker exec -it iab-postgres psql -U postgres -d iabconnect
 ### Issue 5: Backend Running in Production Mode (Keycloak 401 Errors)
 
 **Problem:** Backend logs show 401 errors when requesting Keycloak tokens:
+
 ```
 [23:20:59 INF] Received HTTP response headers after 7.5251ms - 401
 [23:20:59 ERR] HTTP GET /api/v1/users responded 500 in 38.1912 ms
@@ -282,6 +302,7 @@ And you see `Environment: Production` in the startup logs instead of `Environmen
 **Solution:**
 
 **Option 1: Use Startup Scripts (Recommended)**
+
 ```bash
 # Use the provided startup scripts that set the environment automatically
 .\start-backend.bat     # Start only backend
@@ -289,6 +310,7 @@ And you see `Environment: Production` in the startup logs instead of `Environmen
 ```
 
 **Option 2: Set Environment Variable Manually**
+
 ```powershell
 # In PowerShell
 $env:ASPNETCORE_ENVIRONMENT = "Development"
@@ -302,18 +324,21 @@ dotnet run
 ```
 
 **Option 3: Use Launch Profile**
+
 ```bash
 dotnet run --launch-profile Development
 ```
 
 **Verify Correct Environment:**
 Check the backend logs for:
+
 ```
 [INF] Environment: Development     ✅ Correct
 [INF] Hosting environment: Development
 ```
 
 NOT:
+
 ```
 [INF] Environment: Production      ❌ Wrong!
 ```
@@ -323,6 +348,7 @@ NOT:
 ### Issue 6: Port Already in Use
 
 **Problem:** Cannot start services due to port conflicts:
+
 ```
 Error: listen EADDRINUSE: address already in use :::3000
 Error: listen EADDRINUSE: address already in use :::5000
@@ -343,6 +369,7 @@ Get-Process node | Stop-Process -Force
 ```
 
 **Restart the service:**
+
 ```bash
 npm run dev      # Frontend
 # or
@@ -354,6 +381,7 @@ dotnet run       # Backend
 ### Issue 6: Docker Containers Keep Restarting
 
 **Problem:** Docker container exits immediately after starting:
+
 ```
 Container exited with code 1
 ```
@@ -361,6 +389,7 @@ Container exited with code 1
 **Solution:**
 
 1. **Check container logs:**
+
 ```bash
 docker-compose -f infra/docker-compose.yml logs -f postgres
 docker-compose -f infra/docker-compose.yml logs -f keycloak
@@ -374,6 +403,7 @@ docker-compose -f infra/docker-compose.yml logs -f mailhog
    - Volume permission issues → Check folder permissions
 
 3. **Nuclear option (⚠️ deletes all data):**
+
 ```bash
 docker-compose -f infra/docker-compose.yml down -v
 docker-compose -f infra/docker-compose.yml up -d
@@ -388,6 +418,7 @@ Follow this process sequentially if application won't start:
 ### Phase 1: Infrastructure Setup (5 minutes)
 
 **Step 1.1: Stop Conflicting Services**
+
 ```powershell
 # Stop local PostgreSQL if installed
 net stop postgresql-x64-17
@@ -397,12 +428,14 @@ Get-Service postgresql-x64-17 | Select-Object Status
 ```
 
 **Step 1.2: Start Docker Containers**
+
 ```bash
 cd b:\Projects\IAB Connect\iab-connect
 docker-compose -f infra/docker-compose.yml up -d
 ```
 
 **Step 1.3: Verify Containers Starting**
+
 ```bash
 # Check container status (should be "Up")
 docker-compose -f infra/docker-compose.yml ps
@@ -412,6 +445,7 @@ docker-compose -f infra/docker-compose.yml logs -f
 ```
 
 **Wait indicators:**
+
 - Keycloak: "Admin console listening on..." message
 - PostgreSQL: "database system is ready..." message
 - Wait 20-30 seconds total before proceeding
@@ -419,6 +453,7 @@ docker-compose -f infra/docker-compose.yml logs -f
 ### Phase 2: Database Setup (3 minutes)
 
 **Step 2.1: Apply Migrations**
+
 ```bash
 cd backend
 
@@ -428,6 +463,7 @@ dotnet ef database update \
 ```
 
 **Expected output:**
+
 ```
 Build started...
 Build succeeded.
@@ -438,12 +474,14 @@ Done.
 ### Phase 3: Backend Startup (2 minutes)
 
 **Step 3.1: Start Backend API**
+
 ```bash
 cd backend/src/IabConnect.Api
 dotnet run
 ```
 
 **Wait for indicators:**
+
 - "Hangfire Server started"
 - "Application started. Press Ctrl+C to shut down"
 - "Listening on: http://localhost:5000"
@@ -451,6 +489,7 @@ dotnet run
 ### Phase 4: Frontend Startup (2 minutes)
 
 **Step 4.1: Open New Terminal**
+
 ```bash
 cd frontend
 npm install  # Only if node_modules missing or package.json changed
@@ -458,12 +497,14 @@ npm run dev
 ```
 
 **Wait for indicators:**
+
 - "Ready in X.XXs"
 - "Local: http://localhost:3000"
 
 ### Phase 5: Verification (2 minutes)
 
 **Step 5.1: Verify Backend Health**
+
 ```bash
 # In PowerShell
 Invoke-WebRequest -Uri http://localhost:5000/health
@@ -471,6 +512,7 @@ Invoke-WebRequest -Uri http://localhost:5000/health
 ```
 
 **Step 5.2: Verify Frontend Loads**
+
 ```bash
 # Open browser
 http://localhost:3000
@@ -480,6 +522,7 @@ http://localhost:3000
 ```
 
 **Step 5.3: Login Test**
+
 ```
 Credentials:
 - Email: admin@iabconnect.ch
@@ -501,6 +544,7 @@ curl http://localhost:5000/health/detailed
 ```
 
 **Expected responses:**
+
 - Status: 200 OK
 - Body: `{"status":"Healthy"}`
 
@@ -535,6 +579,7 @@ Browser DevTools → Network tab:
 ### Enable Verbose Logging
 
 **Backend (.NET Core):**
+
 ```json
 {
   "Logging": {
@@ -548,6 +593,7 @@ Browser DevTools → Network tab:
 ```
 
 **Frontend (Next.js):**
+
 ```bash
 # Run with debug output
 set DEBUG=* && npm run dev
@@ -667,6 +713,7 @@ taskkill /F /PID [PID]         # Windows
 ---
 
 **Need Help?**
+
 1. Check this guide thoroughly
 2. Review logs in `backend/bin/Debug/net10.0/` and frontend terminal
 3. Check GitHub Issues for similar problems

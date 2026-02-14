@@ -116,6 +116,7 @@
           "centralPackageVersions": {
             "AspNetCore.HealthChecks.NpgSql": "8.0.2",
             "AspNetCore.HealthChecks.Redis": "8.0.1",
+            "AWSSDK.S3": "3.7.305.22",
             "coverlet.collector": "6.0.4",
             "FluentAssertions": "8.8.0",
             "FluentValidation": "11.11.0",
@@ -128,12 +129,12 @@
             "Microsoft.AspNetCore.Mvc.Testing": "10.0.2",
             "Microsoft.EntityFrameworkCore": "10.0.2",
             "Microsoft.EntityFrameworkCore.Design": "10.0.2",
+            "Microsoft.EntityFrameworkCore.Relational": "10.0.2",
             "Microsoft.EntityFrameworkCore.Tools": "10.0.2",
             "Microsoft.Extensions.Logging.Abstractions": "10.0.2",
             "Microsoft.NET.Test.Sdk": "18.0.0",
             "Microsoft.OpenApi": "1.6.14",
             "Microsoft.SourceLink.GitHub": "8.0.0",
-            "Minio": "6.0.4",
             "Moq": "4.20.72",
             "Npgsql.EntityFrameworkCore.PostgreSQL": "10.0.0",
             "Serilog.AspNetCore": "10.0.0",
@@ -662,6 +663,7 @@
           "centralPackageVersions": {
             "AspNetCore.HealthChecks.NpgSql": "8.0.2",
             "AspNetCore.HealthChecks.Redis": "8.0.1",
+            "AWSSDK.S3": "3.7.305.22",
             "coverlet.collector": "6.0.4",
             "FluentAssertions": "8.8.0",
             "FluentValidation": "11.11.0",
@@ -674,12 +676,12 @@
             "Microsoft.AspNetCore.Mvc.Testing": "10.0.2",
             "Microsoft.EntityFrameworkCore": "10.0.2",
             "Microsoft.EntityFrameworkCore.Design": "10.0.2",
+            "Microsoft.EntityFrameworkCore.Relational": "10.0.2",
             "Microsoft.EntityFrameworkCore.Tools": "10.0.2",
             "Microsoft.Extensions.Logging.Abstractions": "10.0.2",
             "Microsoft.NET.Test.Sdk": "18.0.0",
             "Microsoft.OpenApi": "1.6.14",
             "Microsoft.SourceLink.GitHub": "8.0.0",
-            "Minio": "6.0.4",
             "Moq": "4.20.72",
             "Npgsql.EntityFrameworkCore.PostgreSQL": "10.0.0",
             "Serilog.AspNetCore": "10.0.0",
@@ -1041,6 +1043,7 @@
           "centralPackageVersions": {
             "AspNetCore.HealthChecks.NpgSql": "8.0.2",
             "AspNetCore.HealthChecks.Redis": "8.0.1",
+            "AWSSDK.S3": "3.7.305.22",
             "coverlet.collector": "6.0.4",
             "FluentAssertions": "8.8.0",
             "FluentValidation": "11.11.0",
@@ -1053,12 +1056,12 @@
             "Microsoft.AspNetCore.Mvc.Testing": "10.0.2",
             "Microsoft.EntityFrameworkCore": "10.0.2",
             "Microsoft.EntityFrameworkCore.Design": "10.0.2",
+            "Microsoft.EntityFrameworkCore.Relational": "10.0.2",
             "Microsoft.EntityFrameworkCore.Tools": "10.0.2",
             "Microsoft.Extensions.Logging.Abstractions": "10.0.2",
             "Microsoft.NET.Test.Sdk": "18.0.0",
             "Microsoft.OpenApi": "1.6.14",
             "Microsoft.SourceLink.GitHub": "8.0.0",
-            "Minio": "6.0.4",
             "Moq": "4.20.72",
             "Npgsql.EntityFrameworkCore.PostgreSQL": "10.0.0",
             "Serilog.AspNetCore": "10.0.0",
@@ -1417,6 +1420,11 @@
         "net10.0": {
           "targetAlias": "net10.0",
           "dependencies": {
+            "AWSSDK.S3": {
+              "target": "Package",
+              "version": "[3.7.305.22, )",
+              "versionCentrallyManaged": true
+            },
             "Hangfire": {
               "target": "Package",
               "version": "[1.8.22, )",
@@ -1445,11 +1453,6 @@
               "version": "[8.0.0, )",
               "versionCentrallyManaged": true
             },
-            "Minio": {
-              "target": "Package",
-              "version": "[6.0.4, )",
-              "versionCentrallyManaged": true
-            },
             "Npgsql.EntityFrameworkCore.PostgreSQL": {
               "target": "Package",
               "version": "[10.0.0, )",
@@ -1459,6 +1462,7 @@
           "centralPackageVersions": {
             "AspNetCore.HealthChecks.NpgSql": "8.0.2",
             "AspNetCore.HealthChecks.Redis": "8.0.1",
+            "AWSSDK.S3": "3.7.305.22",
             "coverlet.collector": "6.0.4",
             "FluentAssertions": "8.8.0",
             "FluentValidation": "11.11.0",
@@ -1471,12 +1475,12 @@
             "Microsoft.AspNetCore.Mvc.Testing": "10.0.2",
             "Microsoft.EntityFrameworkCore": "10.0.2",
             "Microsoft.EntityFrameworkCore.Design": "10.0.2",
+            "Microsoft.EntityFrameworkCore.Relational": "10.0.2",
             "Microsoft.EntityFrameworkCore.Tools": "10.0.2",
             "Microsoft.Extensions.Logging.Abstractions": "10.0.2",
             "Microsoft.NET.Test.Sdk": "18.0.0",
             "Microsoft.OpenApi": "1.6.14",
             "Microsoft.SourceLink.GitHub": "8.0.0",
-            "Minio": "6.0.4",
             "Moq": "4.20.72",
             "Npgsql.EntityFrameworkCore.PostgreSQL": "10.0.0",
             "Serilog.AspNetCore": "10.0.0",
@@ -1887,6 +1891,7 @@
           "centralPackageVersions": {
             "AspNetCore.HealthChecks.NpgSql": "8.0.2",
             "AspNetCore.HealthChecks.Redis": "8.0.1",
+            "AWSSDK.S3": "3.7.305.22",
             "coverlet.collector": "6.0.4",
             "FluentAssertions": "8.8.0",
             "FluentValidation": "11.11.0",
@@ -1899,12 +1904,12 @@
             "Microsoft.AspNetCore.Mvc.Testing": "10.0.2",
             "Microsoft.EntityFrameworkCore": "10.0.2",
             "Microsoft.EntityFrameworkCore.Design": "10.0.2",
+            "Microsoft.EntityFrameworkCore.Relational": "10.0.2",
             "Microsoft.EntityFrameworkCore.Tools": "10.0.2",
             "Microsoft.Extensions.Logging.Abstractions": "10.0.2",
             "Microsoft.NET.Test.Sdk": "18.0.0",
             "Microsoft.OpenApi": "1.6.14",
             "Microsoft.SourceLink.GitHub": "8.0.0",
-            "Minio": "6.0.4",
             "Moq": "4.20.72",
             "Npgsql.EntityFrameworkCore.PostgreSQL": "10.0.0",
             "Serilog.AspNetCore": "10.0.0",

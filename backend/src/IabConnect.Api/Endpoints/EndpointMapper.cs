@@ -26,7 +26,7 @@ public static class EndpointMapper
         app.MapEmailTemplateEndpoints(); // REQ-027: Email Template Editor
         app.MapSettingsEndpoints(); // REQ-059: System Settings
         app.MapCustomRoleEndpoints(); // REQ-003: Custom Roles
-        api.MapDocumentEndpoints();
+        app.MapDocumentEndpoints(); // REQ-034..037: Documents
         api.MapCommunicationEndpoints();
         api.MapFinanceEndpoints();
         api.MapReportingEndpoints();
@@ -48,41 +48,6 @@ public static class EndpointMapper
     // Identity endpoints moved to IdentityEndpoints.cs
     // Member endpoints moved to MemberEndpoints.cs
     // Event endpoints moved to EventEndpoints.cs
-
-    private static RouteGroupBuilder MapDocumentEndpoints(this RouteGroupBuilder group)
-    {
-        var documents = group.MapGroup("/documents")
-            .WithTags("Documents")
-            .RequireAuthorization("RequireMember");
-
-        // REQ-034: Document management
-        documents.MapGet("/", () =>
-        {
-            // TODO: Implement - returns document list
-            return Results.Ok(new { Message = "Not implemented" });
-        })
-        .WithName("GetDocuments")
-        .WithDescription("REQ-034: Dokumentenliste");
-
-        documents.MapPost("/", () =>
-        {
-            // TODO: Implement - uploads document
-            return Results.Ok(new { Message = "Not implemented" });
-        })
-        .RequireAuthorization("RequireVorstand")
-        .WithName("UploadDocument")
-        .WithDescription("REQ-034: Dokument hochladen");
-
-        documents.MapGet("/{id:guid}/download", (Guid id) =>
-        {
-            // TODO: Implement - downloads document
-            return Results.Ok(new { Message = "Not implemented" });
-        })
-        .WithName("DownloadDocument")
-        .WithDescription("REQ-034: Dokument herunterladen");
-
-        return group;
-    }
 
     private static RouteGroupBuilder MapCommunicationEndpoints(this RouteGroupBuilder group)
     {

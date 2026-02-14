@@ -39,7 +39,6 @@ email unique
 Validierungen
 email muss gültig sein
 
-
 Name
 Role
 
@@ -59,7 +58,6 @@ name unique
 
 Validierungen
 name ist nicht leer
-
 
 Name
 AuditEntry
@@ -81,7 +79,6 @@ AuditEntry zu User
 
 Indizes
 timestamp
-
 
 Name
 Member
@@ -110,7 +107,6 @@ last_name
 Validierungen
 email optional aber falls vorhanden gültig
 
-
 Name
 Membership
 
@@ -130,7 +126,6 @@ Membership zu Member
 
 Indizes
 member_id
-
 
 Name
 Event
@@ -154,7 +149,6 @@ Event zu Registration
 Indizes
 start_at
 
-
 Name
 Registration
 
@@ -176,7 +170,6 @@ Indizes
 event_id
 member_id
 
-
 Name
 EmailTemplate
 
@@ -192,7 +185,6 @@ is_active
 
 Indizes
 name unique
-
 
 Name
 Document
@@ -213,7 +205,6 @@ Document zu DocumentVersion
 Indizes
 category
 
-
 Name
 DocumentVersion
 
@@ -232,7 +223,6 @@ Indizes
 document_id
 version_number unique pro document
 
-
 Name
 Sponsor
 
@@ -249,7 +239,6 @@ amount
 Indizes
 name
 
-
 Name
 Vendor
 
@@ -264,7 +253,6 @@ service_type
 
 Indizes
 name
-
 
 Name
 Invoice
@@ -286,7 +274,6 @@ Indizes
 invoice_number unique
 due_date
 
-
 Name
 Payment
 
@@ -303,7 +290,6 @@ note
 
 Indizes
 invoice_id
-
 
 Name
 LedgerEntry
@@ -324,3 +310,145 @@ vendor_id optional
 Indizes
 date
 category
+
+Document Management Entities
+
+Name
+DocumentFolder
+
+Beschreibung
+Hierarchischer Ordner zur Organisation von Dokumenten. Unterstützt verschachtelte Ordnerstruktur über parent_folder_id.
+
+Wichtige Felder
+id
+name
+description
+parent_folder_id
+sort_order
+created_at
+updated_at
+deleted_at
+
+Beziehungen
+DocumentFolder zu DocumentFolder self-referencing über parent_folder_id
+DocumentFolder zu Document
+DocumentFolder zu FolderPermission
+
+Indizes
+parent_folder_id
+name unique pro parent_folder_id
+
+Validierungen
+name ist nicht leer
+sort_order >= 0
+
+Name
+FolderPermission
+
+Beschreibung
+Rollenbasierte Zugriffsberechtigung pro Ordner.
+
+Wichtige Felder
+id
+folder_id
+role
+permission_type
+
+Beziehungen
+FolderPermission zu DocumentFolder
+
+Indizes
+folder_id
+folder_id + role unique
+
+Validierungen
+role ist nicht leer
+permission_type ist Read, Write oder Manage
+
+Name
+Document
+
+Beschreibung
+Dokument mit Metadaten, Kategorie, Status und Ordnerzuordnung. Unterstützt Freigabe-Workflow und Soft Delete.
+
+Wichtige Felder
+id
+name
+description
+category
+status
+folder_id
+content_type
+file_size
+expires_at
+reviewed_by
+reviewed_at
+published_by
+published_at
+created_at
+updated_at
+deleted_at
+
+Beziehungen
+Document zu DocumentFolder
+Document zu DocumentVersion
+Document zu DocumentTag
+
+Indizes
+folder_id
+category
+status
+name
+
+Validierungen
+name ist nicht leer
+status ist Draft, UnderReview, Published oder Archived
+
+Name
+DocumentVersion
+
+Beschreibung
+Version eines Dokuments mit Storage-Referenz. Jeder Upload erzeugt eine neue Version.
+
+Wichtige Felder
+id
+document_id
+version_number
+storage_key
+file_size
+content_type
+comment
+uploaded_at
+uploaded_by
+
+Beziehungen
+DocumentVersion zu Document
+
+Indizes
+document_id
+document_id + version_number unique
+
+Validierungen
+version_number > 0
+storage_key ist nicht leer
+
+Name
+DocumentTag
+
+Beschreibung
+Schlagwort zur flexiblen Kategorisierung eines Dokuments.
+
+Wichtige Felder
+id
+document_id
+name
+
+Beziehungen
+DocumentTag zu Document
+
+Indizes
+document_id
+document_id + name unique
+
+Validierungen
+name ist nicht leer

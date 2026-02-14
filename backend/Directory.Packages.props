@@ -17,6 +17,7 @@
     <!-- Entity Framework Core -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.2" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.2" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
     <!-- Logging -->
     <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
@@ -30,8 +31,8 @@
     <!-- Background Jobs -->
     <PackageVersion Include="Hangfire" Version="1.8.22" />
     <PackageVersion Include="Hangfire.PostgreSql" Version="1.20.10" />
-    <!-- File Storage -->
-    <PackageVersion Include="Minio" Version="6.0.4" />
+    <!-- File Storage (S3-compatible) -->
+    <PackageVersion Include="AWSSDK.S3" Version="3.7.305.22" />
     <!-- Health Checks -->
     <PackageVersion Include="AspNetCore.HealthChecks.NpgSql" Version="8.0.2" />
     <PackageVersion Include="AspNetCore.HealthChecks.Redis" Version="8.0.1" />

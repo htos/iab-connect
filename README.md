@@ -71,6 +71,7 @@ Built with modern technologies and following industry best practices, IAB Connec
 ## ✨ Features
 
 ### 👥 Member Management
+
 - **Self-Registration Portal** with admin approval workflow
 - **Member Profiles** with customizable fields and privacy settings
 - **Membership Types**: Regular, Student, Family, and Honorary memberships
@@ -79,6 +80,7 @@ Built with modern technologies and following industry best practices, IAB Connec
 - **Member Directory**: Searchable, filterable member listings with privacy controls
 
 ### 📅 Event Management
+
 - **Event Creation & Scheduling** with rich text descriptions
 - **Event Categories**: Cultural, Social, Educational, Sports, Religious, Meeting, Other
 - **Registration System**: RSVP tracking with capacity limits and waitlists
@@ -87,6 +89,7 @@ Built with modern technologies and following industry best practices, IAB Connec
 - **Event Statistics**: Attendance tracking and analytics
 
 ### 📧 Email Campaigns
+
 - **Campaign Builder**: Visual rich-text editor for HTML emails
 - **Recipient Segmentation**: Target specific member groups
 - **Email Templates**: Reusable templates with variable placeholders
@@ -95,6 +98,7 @@ Built with modern technologies and following industry best practices, IAB Connec
 - **Bounce Handling**: Automatic bounce and unsubscribe management
 
 ### 🔐 Security & Privacy
+
 - **Role-Based Access Control (RBAC)**: Admin, Board Member, Member roles
 - **Permission System**: Granular permissions for all operations
 - **Audit Logging**: Complete audit trail for compliance
@@ -103,6 +107,7 @@ Built with modern technologies and following industry best practices, IAB Connec
 - **Session Management**: Secure session handling with token refresh
 
 ### 👤 User Management
+
 - **Identity Integration**: Keycloak-based user management
 - **Role Assignment**: Flexible role and permission management
 - **Account Lifecycle**: Account creation, suspension, and deletion
@@ -110,6 +115,7 @@ Built with modern technologies and following industry best practices, IAB Connec
 - **Login History**: Track user access patterns
 
 ### 📊 Dashboard & Analytics
+
 - **Admin Dashboard**: Overview of key metrics and activities
 - **Member Statistics**: Membership trends and demographics
 - **Event Analytics**: Event participation and engagement metrics
@@ -120,37 +126,40 @@ Built with modern technologies and following industry best practices, IAB Connec
 ## 🛠️ Tech Stack
 
 ### Backend
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **.NET** | 10.0 | Application framework |
-| **ASP.NET Core** | 10.0 | Web API framework |
-| **Entity Framework Core** | 10.0 | ORM and database access |
-| **MediatR** | 12.x | CQRS and mediator pattern |
-| **FluentValidation** | 11.x | Input validation |
-| **Hangfire** | 1.8.x | Background job processing |
-| **Serilog** | 4.x | Structured logging |
-| **Seq** | - | Log aggregation and search |
+
+| Technology                | Version | Purpose                    |
+| ------------------------- | ------- | -------------------------- |
+| **.NET**                  | 10.0    | Application framework      |
+| **ASP.NET Core**          | 10.0    | Web API framework          |
+| **Entity Framework Core** | 10.0    | ORM and database access    |
+| **MediatR**               | 12.x    | CQRS and mediator pattern  |
+| **FluentValidation**      | 11.x    | Input validation           |
+| **Hangfire**              | 1.8.x   | Background job processing  |
+| **Serilog**               | 4.x     | Structured logging         |
+| **Seq**                   | -       | Log aggregation and search |
 
 ### Frontend
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Next.js** | 16.1.6 | React framework with App Router |
-| **React** | 19.x | UI component library |
-| **TypeScript** | 5.x | Type-safe JavaScript |
-| **Tailwind CSS** | 4.x | Utility-first CSS framework |
-| **next-intl** | 4.x | Internationalization |
-| **Zustand** | 5.x | State management |
-| **TipTap** | 2.x | Rich text editor |
+
+| Technology       | Version | Purpose                         |
+| ---------------- | ------- | ------------------------------- |
+| **Next.js**      | 16.1.6  | React framework with App Router |
+| **React**        | 19.x    | UI component library            |
+| **TypeScript**   | 5.x     | Type-safe JavaScript            |
+| **Tailwind CSS** | 4.x     | Utility-first CSS framework     |
+| **next-intl**    | 4.x     | Internationalization            |
+| **Zustand**      | 5.x     | State management                |
+| **TipTap**       | 2.x     | Rich text editor                |
 
 ### Infrastructure
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **PostgreSQL** | 17 | Primary database |
-| **Keycloak** | 26.5.2 | Identity and access management |
-| **MinIO** | Latest | S3-compatible object storage |
-| **MailHog** | Latest | Email testing (development) |
-| **Docker** | Latest | Containerization |
-| **Docker Compose** | Latest | Container orchestration |
+
+| Technology         | Version | Purpose                        |
+| ------------------ | ------- | ------------------------------ |
+| **PostgreSQL**     | 17      | Primary database               |
+| **Keycloak**       | 26.5.2  | Identity and access management |
+| **RustFS**         | Latest  | S3-compatible object storage   |
+| **MailHog**        | Latest  | Email testing (development)    |
+| **Docker**         | Latest  | Containerization               |
+| **Docker Compose** | Latest  | Container orchestration        |
 
 ---
 
@@ -202,35 +211,38 @@ IAB Connect follows **Clean Architecture** principles combined with **Domain-Dri
 
 Ensure you have the following installed on your development machine:
 
-| Requirement | Version | Installation |
-|-------------|---------|--------------|
-| **Docker Desktop** | Latest | [Download](https://www.docker.com/products/docker-desktop) |
-| **.NET SDK** | 10.0+ | [Download](https://dotnet.microsoft.com/download) |
-| **Node.js** | 20+ | [Download](https://nodejs.org/) |
-| **Git** | Latest | [Download](https://git-scm.com/) |
+| Requirement        | Version | Installation                                               |
+| ------------------ | ------- | ---------------------------------------------------------- |
+| **Docker Desktop** | Latest  | [Download](https://www.docker.com/products/docker-desktop) |
+| **.NET SDK**       | 10.0+   | [Download](https://dotnet.microsoft.com/download)          |
+| **Node.js**        | 20+     | [Download](https://nodejs.org/)                            |
+| **Git**            | Latest  | [Download](https://git-scm.com/)                           |
 
 ### Installation
 
 1. **Clone the Repository**
+
    ```bash
    git clone https://github.com/htos/iab-connect.git
    cd iab-connect
    ```
 
 2. **Start Infrastructure Services**
+
    ```bash
    # Ensure Docker Desktop is running
    docker-compose -f infra/docker-compose.yml up -d
-   
+
    # Wait 20-30 seconds for services to initialize
    # Verify all containers are running
    docker-compose -f infra/docker-compose.yml ps
    ```
 
 3. **Set Up the Database**
+
    ```bash
    cd backend
-   
+
    # Apply database migrations
    dotnet ef database update \
      --project src/IabConnect.Infrastructure \
@@ -291,6 +303,7 @@ NEXT_PUBLIC_KEYCLOAK_CLIENT_ID=iab-connect-frontend
 #### Option 1: Development Mode (Recommended)
 
 **Terminal 1 - Backend:**
+
 ```bash
 cd backend/src/IabConnect.Api
 dotnet run
@@ -298,6 +311,7 @@ dotnet run
 ```
 
 **Terminal 2 - Frontend:**
+
 ```bash
 cd frontend
 npm run dev
@@ -312,13 +326,13 @@ npm run dev
 
 ### Default Credentials
 
-| Service | URL | Username | Password |
-|---------|-----|----------|----------|
-| **Application** | http://localhost:3000 | admin@iabconnect.ch | Admin-Dev-2026! |
-| **Keycloak Admin** | http://localhost:8080 | admin | admin-dev-2026 |
-| **MailHog** | http://localhost:1080 | - | - |
-| **Seq Logs** | http://localhost:5341 | - | - |
-| **MinIO Console** | http://localhost:9001 | minioadmin | minioadmin123 |
+| Service            | URL                   | Username            | Password        |
+| ------------------ | --------------------- | ------------------- | --------------- |
+| **Application**    | http://localhost:3000 | admin@iabconnect.ch | Admin-Dev-2026! |
+| **Keycloak Admin** | http://localhost:8080 | admin               | admin-dev-2026  |
+| **MailHog**        | http://localhost:1080 | -                   | -               |
+| **Seq Logs**       | http://localhost:5341 | -                   | -               |
+| **RustFS Console** | http://localhost:9001 | rustfsadmin         | rustfsadmin     |
 
 ---
 
@@ -406,10 +420,12 @@ iab-connect/
 ## 📡 API Documentation
 
 ### API Base URL
+
 - **Development**: `http://localhost:5000/api/v1`
 - **Production**: `https://api.iabconnect.ch/api/v1`
 
 ### Authentication
+
 All API endpoints (except health checks) require Bearer token authentication:
 
 ```http
@@ -419,52 +435,57 @@ Authorization: Bearer <access_token>
 ### Core Endpoints
 
 #### Members
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/members` | List all members (paginated) |
-| `GET` | `/members/{id}` | Get member by ID |
-| `GET` | `/members/me` | Get current user's profile |
-| `POST` | `/members` | Create new member |
-| `PUT` | `/members/{id}` | Update member |
-| `DELETE` | `/members/{id}` | Delete member (soft delete) |
-| `GET` | `/members/statistics` | Get member statistics |
+
+| Method   | Endpoint              | Description                  |
+| -------- | --------------------- | ---------------------------- |
+| `GET`    | `/members`            | List all members (paginated) |
+| `GET`    | `/members/{id}`       | Get member by ID             |
+| `GET`    | `/members/me`         | Get current user's profile   |
+| `POST`   | `/members`            | Create new member            |
+| `PUT`    | `/members/{id}`       | Update member                |
+| `DELETE` | `/members/{id}`       | Delete member (soft delete)  |
+| `GET`    | `/members/statistics` | Get member statistics        |
 
 #### Events
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/events` | List all events (paginated) |
-| `GET` | `/events/{id}` | Get event by ID |
-| `POST` | `/events` | Create new event |
-| `PUT` | `/events/{id}` | Update event |
-| `DELETE` | `/events/{id}` | Delete event |
-| `POST` | `/events/{id}/publish` | Publish event |
-| `POST` | `/events/{id}/cancel` | Cancel event |
-| `GET` | `/events/statistics` | Get event statistics |
+
+| Method   | Endpoint               | Description                 |
+| -------- | ---------------------- | --------------------------- |
+| `GET`    | `/events`              | List all events (paginated) |
+| `GET`    | `/events/{id}`         | Get event by ID             |
+| `POST`   | `/events`              | Create new event            |
+| `PUT`    | `/events/{id}`         | Update event                |
+| `DELETE` | `/events/{id}`         | Delete event                |
+| `POST`   | `/events/{id}/publish` | Publish event               |
+| `POST`   | `/events/{id}/cancel`  | Cancel event                |
+| `GET`    | `/events/statistics`   | Get event statistics        |
 
 #### Email Campaigns
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/email-campaigns` | List campaigns |
-| `GET` | `/email-campaigns/{id}` | Get campaign details |
-| `POST` | `/email-campaigns` | Create campaign |
-| `PUT` | `/email-campaigns/{id}` | Update campaign |
-| `DELETE` | `/email-campaigns/{id}` | Delete campaign |
-| `POST` | `/email-campaigns/{id}/send` | Send campaign |
-| `GET` | `/email-campaigns/{id}/statistics` | Campaign statistics |
+
+| Method   | Endpoint                           | Description          |
+| -------- | ---------------------------------- | -------------------- |
+| `GET`    | `/email-campaigns`                 | List campaigns       |
+| `GET`    | `/email-campaigns/{id}`            | Get campaign details |
+| `POST`   | `/email-campaigns`                 | Create campaign      |
+| `PUT`    | `/email-campaigns/{id}`            | Update campaign      |
+| `DELETE` | `/email-campaigns/{id}`            | Delete campaign      |
+| `POST`   | `/email-campaigns/{id}/send`       | Send campaign        |
+| `GET`    | `/email-campaigns/{id}/statistics` | Campaign statistics  |
 
 #### Users (Admin)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/users` | List Keycloak users |
-| `GET` | `/users/{id}` | Get user details |
-| `POST` | `/users/{id}/roles` | Assign roles |
-| `DELETE` | `/users/{id}/roles/{role}` | Remove role |
+
+| Method   | Endpoint                   | Description         |
+| -------- | -------------------------- | ------------------- |
+| `GET`    | `/users`                   | List Keycloak users |
+| `GET`    | `/users/{id}`              | Get user details    |
+| `POST`   | `/users/{id}/roles`        | Assign roles        |
+| `DELETE` | `/users/{id}/roles/{role}` | Remove role         |
 
 ### Response Format
 
 All API responses follow a consistent format:
 
 **Success Response:**
+
 ```json
 {
   "data": { ... },
@@ -474,6 +495,7 @@ All API responses follow a consistent format:
 ```
 
 **Paginated Response:**
+
 ```json
 {
   "items": [ ... ],
@@ -487,6 +509,7 @@ All API responses follow a consistent format:
 ```
 
 **Error Response:**
+
 ```json
 {
   "type": "ValidationError",
@@ -544,13 +567,15 @@ IAB Connect uses **OpenID Connect (OIDC)** with Keycloak for authentication:
 ### Authorization Model
 
 #### Roles
-| Role | Description | Permissions |
-|------|-------------|-------------|
-| **Admin** | Full system access | All permissions |
-| **Board Member** | Association management | Manage events, view members, send emails |
-| **Member** | Regular member access | View own profile, view public events, RSVP |
+
+| Role             | Description            | Permissions                                |
+| ---------------- | ---------------------- | ------------------------------------------ |
+| **Admin**        | Full system access     | All permissions                            |
+| **Board Member** | Association management | Manage events, view members, send emails   |
+| **Member**       | Regular member access  | View own profile, view public events, RSVP |
 
 #### Permissions
+
 ```csharp
 public static class Permissions
 {
@@ -558,17 +583,17 @@ public static class Permissions
     public const string MembersRead = "members:read";
     public const string MembersWrite = "members:write";
     public const string MembersDelete = "members:delete";
-    
+
     // Event permissions
     public const string EventsRead = "events:read";
     public const string EventsWrite = "events:write";
     public const string EventsPublish = "events:publish";
-    
+
     // Email permissions
     public const string EmailCampaignsRead = "email-campaigns:read";
     public const string EmailCampaignsWrite = "email-campaigns:write";
     public const string EmailCampaignsSend = "email-campaigns:send";
-    
+
     // Admin permissions
     public const string UsersManage = "users:manage";
     public const string AuditRead = "audit:read";
@@ -747,12 +772,14 @@ For detailed troubleshooting instructions, see [STARTUP_TROUBLESHOOTING.md](docs
 ### Quick Fixes
 
 **PostgreSQL Port Conflict:**
+
 ```powershell
 # Stop local PostgreSQL service (Windows)
 net stop postgresql-x64-17
 ```
 
 **Keycloak Authentication Issues:**
+
 ```bash
 # Verify realm import
 docker logs iabconnect-keycloak | grep -i "realm"
@@ -763,6 +790,7 @@ docker-compose -f infra/docker-compose.yml up -d
 ```
 
 **Database Migration Issues:**
+
 ```bash
 cd backend
 dotnet ef database update \
@@ -774,16 +802,16 @@ dotnet ef database update \
 
 ## 📚 Documentation
 
-| Document | Description |
-|----------|-------------|
-| [Requirements](docs/01_requirements.md) | Functional and non-functional requirements |
-| [Architecture](docs/02_architecture.md) | System architecture and design decisions |
-| [API Contracts](docs/03_api_contracts.md) | API endpoint specifications |
-| [Data Model](docs/04_data_model.md) | Database schema and relationships |
-| [Security & Privacy](docs/05_security_privacy.md) | Security guidelines and GDPR compliance |
-| [Development Workflow](docs/06_dev_workflow.md) | Git workflow and coding standards |
-| [Do's and Don'ts](docs/07_dos_donts.md) | Coding guidelines and best practices |
-| [Troubleshooting](docs/STARTUP_TROUBLESHOOTING.md) | Common issues and solutions |
+| Document                                           | Description                                |
+| -------------------------------------------------- | ------------------------------------------ |
+| [Requirements](docs/01_requirements.md)            | Functional and non-functional requirements |
+| [Architecture](docs/02_architecture.md)            | System architecture and design decisions   |
+| [API Contracts](docs/03_api_contracts.md)          | API endpoint specifications                |
+| [Data Model](docs/04_data_model.md)                | Database schema and relationships          |
+| [Security & Privacy](docs/05_security_privacy.md)  | Security guidelines and GDPR compliance    |
+| [Development Workflow](docs/06_dev_workflow.md)    | Git workflow and coding standards          |
+| [Do's and Don'ts](docs/07_dos_donts.md)            | Coding guidelines and best practices       |
+| [Troubleshooting](docs/STARTUP_TROUBLESHOOTING.md) | Common issues and solutions                |
 
 ---
 
@@ -825,11 +853,11 @@ Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
 
 ## 📄 License
 
-This project is **proprietary software** developed exclusively for the Indian Association Berne (IAB).
+This project is **proprietary software** developed exclusively for private uses.
 
-**© 2026 Indian Association Berne. All Rights Reserved.**
+**© 2026 Harwinder Singh. All Rights Reserved.**
 
-Unauthorized copying, modification, distribution, or use of this software is strictly prohibited without explicit written permission from the Indian Association Berne.
+Unauthorized copying, modification, distribution, or use of this software is strictly prohibited without explicit written permission from Hawinder Singh.
 
 ---
 
@@ -842,7 +870,7 @@ Unauthorized copying, modification, distribution, or use of this software is str
 ---
 
 <p align="center">
-  Made with ❤️ for the Indian Association Berne
+  Made with ❤️ for all Associations by Harwinder and Claude ;)
 </p>
 
 <p align="center">
