@@ -46,9 +46,9 @@ Haupt Entities Sponsor, Vendor, ContactInteraction
 API Bereiche sponsors, vendors
 
 Finance
-Verantwortlichkeit Buchungen, Rechnungen, Zahlungen, Mahnungen, Kostenstellen
-Haupt Entities LedgerEntry, Invoice, Payment, CostCenter, Receipt
-API Bereiche finance, invoices, payments
+Verantwortlichkeit Buchungen, Rechnungen, Zahlungen, Mahnungen, Belege, Steuercodes, Finanzprofil, PDF-Generierung
+Haupt Entities Account, Category, Transaction, Invoice, InvoiceItem, Payment, BankImport, BankImportItem, DunningNotice, Receipt, TaxCode, FinanceProfile
+API Bereiche finance/accounts, finance/categories, finance/transactions, finance/invoices, finance/payments, finance/bank-imports, finance/dunning, finance/receipts, finance/exports, finance/profile, finance/tax-codes
 
 Reporting
 Verantwortlichkeit Dashboards und Exporte

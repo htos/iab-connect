@@ -5,7 +5,7 @@ namespace IabConnect.Domain.Finance;
 /// <summary>
 /// REQ-038: Financial account (Konto) for categorizing transactions.
 /// </summary>
-public class Account : Entity
+public class Account : Entity, ISoftDeletable
 {
     public string Name { get; private set; } = string.Empty;
     public string Number { get; private set; } = string.Empty;
@@ -17,6 +17,9 @@ public class Account : Entity
     public string CreatedBy { get; private set; } = string.Empty;
     public DateTime? UpdatedAt { get; private set; }
     public string? UpdatedBy { get; private set; }
+    public bool IsDeleted { get; private set; }
+    public DateTime? DeletedAt { get; private set; }
+    public string? DeletedBy { get; private set; }
 
     private Account() { }
 
@@ -61,4 +64,18 @@ public class Account : Entity
 
     public void Activate() => IsActive = true;
     public void Deactivate() => IsActive = false;
+
+    public void SoftDelete(string? deletedBy = null)
+    {
+        IsDeleted = true;
+        DeletedAt = DateTime.UtcNow;
+        DeletedBy = deletedBy;
+    }
+
+    public void Restore()
+    {
+        IsDeleted = false;
+        DeletedAt = null;
+        DeletedBy = null;
+    }
 }

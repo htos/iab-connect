@@ -47,6 +47,22 @@ public sealed class BankImportConfiguration : IEntityTypeConfiguration<BankImpor
         builder.Navigation(b => b.Items)
             .UsePropertyAccessMode(PropertyAccessMode.Field);
 
+        builder.Property(b => b.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasDefaultValue(false);
+
+        builder.Property(b => b.DeletedAt)
+            .HasColumnName("deleted_at");
+
+        builder.Property(b => b.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasMaxLength(200);
+
+        builder.HasQueryFilter(b => !b.IsDeleted);
+
+        builder.HasIndex(b => b.IsDeleted)
+            .HasDatabaseName("ix_bank_imports_is_deleted");
+
         builder.Ignore(b => b.DomainEvents);
     }
 }

@@ -9,19 +9,21 @@ Alle Versionen wurden am 30.01.2026 aus den offiziellen Quellen recherchiert.
 
 ## Backend (.NET / C#)
 
-| Technologie                                           | Version | LTS/Stable | Support bis   | Quelle                                                                                        |
-| ----------------------------------------------------- | ------- | ---------- | ------------- | --------------------------------------------------------------------------------------------- |
-| **.NET**                                              | 10.0.2  | LTS        | November 2028 | [dotnet.microsoft.com](https://dotnet.microsoft.com/download/dotnet/10.0)                     |
-| **ASP.NET Core**                                      | 10.0    | LTS        | November 2028 | [dotnet.microsoft.com](https://dotnet.microsoft.com/download/dotnet/10.0)                     |
-| **Entity Framework Core**                             | 10.0.2  | LTS        | November 2028 | [nuget.org](https://www.nuget.org/packages/Microsoft.EntityFrameworkCore)                     |
-| **Npgsql.EntityFrameworkCore.PostgreSQL**             | 10.0.x  | Stable     | -             | [nuget.org](https://www.nuget.org/packages/Npgsql.EntityFrameworkCore.PostgreSQL)             |
-| **Microsoft.AspNetCore.Authentication.JwtBearer**     | 10.0.2  | LTS        | November 2028 | [nuget.org](https://www.nuget.org/packages/Microsoft.AspNetCore.Authentication.JwtBearer)     |
-| **Microsoft.AspNetCore.Authentication.OpenIdConnect** | 10.0.2  | LTS        | November 2028 | [nuget.org](https://www.nuget.org/packages/Microsoft.AspNetCore.Authentication.OpenIdConnect) |
-| **Swashbuckle.AspNetCore**                            | 10.1.0  | Stable     | -             | [nuget.org](https://www.nuget.org/packages/Swashbuckle.AspNetCore)                            |
-| **Serilog.AspNetCore**                                | 10.0.0  | Stable     | -             | [nuget.org](https://www.nuget.org/packages/Serilog.AspNetCore)                                |
-| **Hangfire**                                          | 1.8.22  | Stable     | -             | [nuget.org](https://www.nuget.org/packages/Hangfire)                                          |
-| **MediatR**                                           | 12.x    | Stable     | -             | [nuget.org](https://www.nuget.org/packages/MediatR)                                           |
-| **FluentValidation**                                  | 11.x    | Stable     | -             | [nuget.org](https://www.nuget.org/packages/FluentValidation)                                  |
+| Technologie                                           | Version  | LTS/Stable | Support bis   | Quelle                                                                                        |
+| ----------------------------------------------------- | -------- | ---------- | ------------- | --------------------------------------------------------------------------------------------- |
+| **.NET**                                              | 10.0.2   | LTS        | November 2028 | [dotnet.microsoft.com](https://dotnet.microsoft.com/download/dotnet/10.0)                     |
+| **ASP.NET Core**                                      | 10.0     | LTS        | November 2028 | [dotnet.microsoft.com](https://dotnet.microsoft.com/download/dotnet/10.0)                     |
+| **Entity Framework Core**                             | 10.0.2   | LTS        | November 2028 | [nuget.org](https://www.nuget.org/packages/Microsoft.EntityFrameworkCore)                     |
+| **Npgsql.EntityFrameworkCore.PostgreSQL**             | 10.0.x   | Stable     | -             | [nuget.org](https://www.nuget.org/packages/Npgsql.EntityFrameworkCore.PostgreSQL)             |
+| **Microsoft.AspNetCore.Authentication.JwtBearer**     | 10.0.2   | LTS        | November 2028 | [nuget.org](https://www.nuget.org/packages/Microsoft.AspNetCore.Authentication.JwtBearer)     |
+| **Microsoft.AspNetCore.Authentication.OpenIdConnect** | 10.0.2   | LTS        | November 2028 | [nuget.org](https://www.nuget.org/packages/Microsoft.AspNetCore.Authentication.OpenIdConnect) |
+| **Swashbuckle.AspNetCore**                            | 10.1.0   | Stable     | -             | [nuget.org](https://www.nuget.org/packages/Swashbuckle.AspNetCore)                            |
+| **Serilog.AspNetCore**                                | 10.0.0   | Stable     | -             | [nuget.org](https://www.nuget.org/packages/Serilog.AspNetCore)                                |
+| **Hangfire**                                          | 1.8.22   | Stable     | -             | [nuget.org](https://www.nuget.org/packages/Hangfire)                                          |
+| **MediatR**                                           | 12.x     | Stable     | -             | [nuget.org](https://www.nuget.org/packages/MediatR)                                           |
+| **FluentValidation**                                  | 11.x     | Stable     | -             | [nuget.org](https://www.nuget.org/packages/FluentValidation)                                  |
+| **QuestPDF**                                          | 2025.1.1 | Stable     | -             | [nuget.org](https://www.nuget.org/packages/QuestPDF)                                          |
+| **Codecrete.SwissQRBill.Generator**                   | 3.3.0    | Stable     | -             | [nuget.org](https://www.nuget.org/packages/Codecrete.SwissQRBill.Generator)                   |
 
 ### Testing (Backend)
 
@@ -130,4 +132,4 @@ Alle Versionen wurden am 30.01.2026 aus den offiziellen Quellen recherchiert.
 
 ---
 
-_Letzte Aktualisierung: 2026-01-30_
+_Letzte Aktualisierung: 2026-02-15_

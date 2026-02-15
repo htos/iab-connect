@@ -71,6 +71,22 @@ public sealed class PaymentConfiguration : IEntityTypeConfiguration<Payment>
             .HasColumnName("updated_by")
             .HasMaxLength(200);
 
+        builder.Property(p => p.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasDefaultValue(false);
+
+        builder.Property(p => p.DeletedAt)
+            .HasColumnName("deleted_at");
+
+        builder.Property(p => p.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasMaxLength(200);
+
+        builder.HasQueryFilter(p => !p.IsDeleted);
+
+        builder.HasIndex(p => p.IsDeleted)
+            .HasDatabaseName("ix_payments_is_deleted");
+
         builder.Ignore(p => p.DomainEvents);
     }
 }

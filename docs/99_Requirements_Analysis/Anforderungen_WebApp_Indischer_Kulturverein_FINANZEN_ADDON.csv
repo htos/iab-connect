@@ -1,0 +1,38 @@
+ID,Bereich,Anforderung,Beschreibung,Funktionalitäten,Priorität,Zielrollen,Daten/Objekte,Akzeptanzkriterien,Abhängigkeiten,Hinweise/Risiken
+REQ-060,Finanzen,"Finanz-Setup: Land/Profil, Währung, Geschäftsjahr","Konfigurierbares Finanzprofil pro Verein (Schweiz oder EU). Steuert Währung, Geschäftsjahr, VAT/MWST-Flags, Nummernkreise und Zahlungs-Defaults.","• FinanceProfile: CH oder EU (optional EU-Land-Code)
+• Default currency (CHF/EUR) + Rundungsregeln
+• Geschäftsjahr Start/Ende, Perioden
+• Invoice numbering pattern pro Profil
+• VAT/MWST Registrierung (ja/nein), VAT-ID/MWST-Nr. optional",Must,"Admin, Kassier",FinanceSettings,Finanzprofil ist änderbar (mit Audit). Neue Rechnungen/Buchungen verwenden Profil-Defaults; bestehende Daten bleiben unverändert.,"REQ-059 (Konfiguration), REQ-004 (Access Control)",Profilwechsel beeinflusst Anzeige/Exporte; Migration/Backfill muss bewusst gesteuert werden.
+REQ-061,Finanzen,"Beleg- und Finanzdokumente: Storage, Integrität, Aufbewahrung","Finanzbelege und Rechnungs-PDFs werden als Dateien im Object Storage (RustFS) gespeichert, inkl. Integritätsmerkmalen und Retention-Strategie.","• Upload/Download von Receipt-Dateien (PDF/JPG/PNG) in RustFS
+• Automatische Speicherung von Rechnungs-PDFs (und optional Mahnungs-PDFs)
+• Checksum/Hash pro Datei zur Integritätsprüfung
+• Retention Policy: finanzrelevante Dokumente werden nicht gelöscht, sondern archiviert",Must,"Kassier, Auditor, Admin","Receipt, InvoicePDF, FinanceDocument",Beleg-Download liefert die ursprünglich hochgeladene Datei; Hash-Check ist reproduzierbar; Löschen ist als Archive/Soft-Delete umgesetzt.,"REQ-057 (Datenaufbewahrung), Storage (RustFS)",Rechtliche Aufbewahrungspflichten variieren; Storage Lifecycle Policies müssen sauber dokumentiert werden.
+REQ-062,Finanzen,"VAT/MWST: Steuercodes, Netto/Brutto, Auswertung und Export","Transaktionen und Rechnungspositionen unterstützen VAT/MWST-Codes (steuerbar, befreit, reduziert), Netto/Brutto-Beträge und VAT-Auswertungen.","• Konfigurierbare TaxCodes pro Profil (Rate, Beschreibung, steuerbar flag)
+• InvoiceItem: net_amount, vat_rate, vat_amount, gross_amount
+• VAT Summary Report (Zeitraum) + Export (CSV)
+• Schwellwert-Tracking (z.B. CH MWST-Umsatzgrenze konfigurierbar) mit Warnung",Should,"Kassier, Auditor","TaxCode, VATSummary",VAT Summary entspricht den gebuchten TaxCodes; Export ist konsistent und prüfbar (Summe der Positionen = Rechnungstotal).,"REQ-045 (Export), REQ-060 (Profil)",Steuerlogik ist fehleranfällig; benötigt Tests und klare Rundungsregeln.
+REQ-063,Finanzen,Rechnungs-PDF mit Schweizer QR-Zahlteil,"Für das CH-Profil kann das System Rechnungs-PDFs erzeugen, die einen QR-Zahlteil (QR-bill) enthalten.","• PDF-Generierung für Invoice (Download + Archiv)
+• Option: QR-Zahlteil mit IBAN/QR-IBAN, Referenz, Betrag, Empfänger
+• QR-Code-Generierung gemäss QR-Rechnung Spezifikation
+• Fallback: klassische Rechnung ohne QR, wenn nicht konfiguriert",Should,Kassier,"Invoice, InvoicePDF",QR-Zahlteil ist in Banking-Apps scanbar; PDF enthält Pflichtfelder und ist wiederholbar erzeugbar (idempotent).,"REQ-039 (Rechnungsstellung), REQ-060 (Profil), REQ-061 (Storage)",QR-Spezifikation ändert sich; regelmässige Updates/Tests nötig.
+REQ-064,Finanzen,EU-Rechnungs-Compliance: Pflichtfelder und Templates je Profil,"Für EU-Profil(e) werden Rechnungstemplates so erweitert, dass Pflichtfelder und Hinweise (VAT-ID, Steuerbefreiung, Reverse Charge etc.) je Land/Profil abbildbar sind.","• Template-Engine für Invoice PDFs (Logo, Adresse, VAT-ID, Zahlungsbedingungen)
+• Konfigurierbare Pflichtfelder je Profil
+• Mehrsprachige Rechnungstexte via i18n Keys",Should,"Kassier, Admin",InvoiceTemplate,Admin kann Template-Felder konfigurieren; bei fehlenden Pflichtfeldern blockiert das System den Versand (Validation).,"REQ-039, REQ-060, i18n Guidelines",EU-Länder unterscheiden sich stark; Start mit EU-Baseline + per Land erweiterbar.
+REQ-065,Finanzen,eInvoicing-Readiness (EN 16931/Peppol) als Erweiterungspunkt,"Die Datenmodelle und Exporte sind so gestaltet, dass später strukturierte eInvoices (EN 16931) exportiert oder via Provider versendet werden können.","• EInvoice Export Endpunkt (z.B. EN16931/UBL/CII) – optional/feature-flag
+• Mapping von Invoice/Items/Taxes/Parties auf eInvoicing Datenmodell
+• CIUS/Länderspezifische Extensions als Plugin-Konzept",Could,"Admin, Kassier",EInvoiceExport,Eine Beispielrechnung kann in ein strukturiertes Format exportiert werden und enthält konsistente Tax/Party Daten.,"REQ-060, REQ-062, REQ-064",Hoher Aufwand; braucht klare Country-Roadmap und evtl. externen Provider.
+REQ-066,Finanzen,Periodenabschluss & Locking (Jahresabschluss light),"Unterstützung für Geschäftsjahr-Perioden, Abschluss und Sperrung, damit nach dem Abschluss keine stillen Änderungen möglich sind.","• Fiscal periods (Monat/Quartal/Jahr) basierend auf FinanceSettings
+• Lock/Unlock (nur Admin) mit Audit
+• Korrekturen nur via Storno-/Korrekturbuchung nach Lock
+• Carry-forward von Salden (optional) oder Export für Treuhand",Should,"Kassier, Auditor","FiscalPeriod, ClosingEntry",Nach Lock können Buchungen in der Periode nicht mehr geändert/gelöscht werden; Korrekturen erzeugen neue Entries.,"REQ-011 (Audit), REQ-038/039/040",Erfordert saubere Domain-Events und Tests; UI muss verständlich sein.
+REQ-067,Finanzen,Freigabe-Workflow für Zahlungen/Spesen (Vier-Augen-Prinzip),"Unterstützung für Freigaben bei Auszahlungen (Lieferanten, Spesen) mit Schwellenwerten und Rollen.","• Payment status: Draft -> Submitted -> Approved -> Paid
+• Schwellenwerte: ab Betrag X braucht Vorstand-Freigabe
+• Audit-Log: wer hat wann freigegeben
+• Optional: Spesen-Claim Workflow (Member submits, Kassier prüft, Vorstand freigibt)",Should,"Kassier, Vorstand, Auditor","PaymentApproval, ExpenseClaim",Zahlungen über Schwelle können ohne Freigabe nicht als Paid markiert werden; alle Schritte sind im Audit sichtbar.,"REQ-004 (Access Control), REQ-011 (Audit), REQ-040 (Zahlungen)",Prozess-Komplexität; sollte per Verein konfigurierbar sein.
+REQ-068,Finanzen,Sparte/Projekt-Zuordnung für steuerliche und interne Auswertungen,Optionaler Dimension-Tag (Sparte/Projekt) auf Buchungen und Rechnungspositionen für Auswertungen (z.B. Mitgliedschaft vs Eventbetrieb).,"• ActivityArea auf Transaction und InvoiceItem (enum oder definierbar)
+• Reports: P&L nach Sparte/Projekt
+• Export inklusive Sparte/Projekt-Spalte",Could,"Kassier, Vorstand, Auditor","ActivityArea, CostCenter",Sparte ist filterbar; Report zeigt Summen pro Sparte; Export enthält Sparte.,"REQ-044 (Kostenstellen), REQ-045 (Export)",Tax-Interpretation pro Kanton/Land; als optionales Feature bauen.
+REQ-069,Finanzen,Banking-Import Upgrade: ISO 20022 (camt) und SEPA-Referenzen,"Zusätzlich zum CSV-Import können standardisierte Bankformate (ISO 20022 camt.053/054) importiert werden, inkl. Referenzen für Matching.","• Import camt.053/054 (XML) optional
+• Erkennung/Parsing von Referenzen (z.B. QR-Referenz, End-to-End-ID)
+• Matching-Verbesserungen: automatische Zuordnung zu offenen Rechnungen",Could,Kassier,BankStatementImport,Ein camt-File kann importiert werden; System erstellt ImportItems mit Datum/Betrag/Referenz; Matching-Vorschläge funktionieren.,"REQ-041 (Bankimport), REQ-040 (Zahlungen)",Parsing/Edge Cases je Bank; ggf. Bibliothek nötig.

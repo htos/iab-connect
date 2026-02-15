@@ -5,7 +5,7 @@ namespace IabConnect.Domain.Finance;
 /// <summary>
 /// REQ-040: Payment record (Zahlung) linked to an invoice.
 /// </summary>
-public class Payment : Entity
+public class Payment : Entity, ISoftDeletable
 {
     public DateTime Date { get; private set; }
     public decimal Amount { get; private set; }
@@ -20,6 +20,9 @@ public class Payment : Entity
     public string CreatedBy { get; private set; } = string.Empty;
     public DateTime? UpdatedAt { get; private set; }
     public string? UpdatedBy { get; private set; }
+    public bool IsDeleted { get; private set; }
+    public DateTime? DeletedAt { get; private set; }
+    public string? DeletedBy { get; private set; }
 
     private Payment() { }
 
@@ -38,7 +41,7 @@ public class Payment : Entity
 
         return new Payment
         {
-            Date = date,
+            Date = DateTime.SpecifyKind(date, DateTimeKind.Utc),
             Amount = amount,
             Method = method,
             Reference = reference?.Trim(),
@@ -60,7 +63,7 @@ public class Payment : Entity
         string? notes,
         string updatedBy)
     {
-        Date = date;
+        Date = DateTime.SpecifyKind(date, DateTimeKind.Utc);
         Amount = amount;
         Method = method;
         Reference = reference?.Trim();
@@ -69,5 +72,19 @@ public class Payment : Entity
         Notes = notes?.Trim();
         UpdatedAt = DateTime.UtcNow;
         UpdatedBy = updatedBy;
+    }
+
+    public void SoftDelete(string? deletedBy = null)
+    {
+        IsDeleted = true;
+        DeletedAt = DateTime.UtcNow;
+        DeletedBy = deletedBy;
+    }
+
+    public void Restore()
+    {
+        IsDeleted = false;
+        DeletedAt = null;
+        DeletedBy = null;
     }
 }

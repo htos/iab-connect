@@ -1,9 +1,7 @@
 using System.Security.Claims;
-using IabConnect.Application.Audit;
-using IabConnect.Application.Finance;
-using IabConnect.Domain.Audit;
-using IabConnect.Domain.Finance;
-using IabConnect.Infrastructure.Persistence;
+using IabConnect.Application.Finance.BankImports.Commands;
+using IabConnect.Application.Finance.BankImports.Queries;
+using MediatR;
 
 namespace IabConnect.Api.Endpoints;
 
@@ -48,131 +46,61 @@ public static class BankImportEndpoints
             .WithDescription("REQ-041: Marks a bank import item as ignored.");
     }
 
-    private static async Task<IResult> GetAll(
-        IBankImportRepository repository,
-        CancellationToken ct)
+    private static string GetUserName(HttpContext ctx) =>
+        ctx.User.FindFirst("preferred_username")?.Value
+        ?? ctx.User.FindFirst(ClaimTypes.Email)?.Value
+        ?? "system";
+
+    private static async Task<IResult> GetAll(ISender sender, CancellationToken ct)
     {
-        var imports = await repository.GetAllAsync(ct);
-        return Results.Ok(imports.Select(MapToResponse).ToList());
+        var imports = await sender.Send(new GetBankImportsQuery(), ct);
+        return Results.Ok(imports);
     }
 
     private static async Task<IResult> Upload(
-        UploadBankImportRequest request,
-        IBankImportRepository repository,
-        IUnitOfWork unitOfWork,
-        IAuditService auditService,
-        HttpContext httpContext,
-        CancellationToken ct)
+        UploadBankImportRequest request, ISender sender,
+        HttpContext httpContext, CancellationToken ct)
     {
-        var userName = httpContext.User.FindFirst("preferred_username")?.Value
-            ?? httpContext.User.FindFirst(ClaimTypes.Email)?.Value;
-
-        var bankImport = BankImport.Create(request.FileName, userName ?? "system");
-
-        foreach (var row in request.Rows)
+        var dto = await sender.Send(new ImportBankFileCommand
         {
-            var item = BankImportItem.Create(
-                bankImport.Id, row.TransactionDate, row.Description,
-                row.Amount, row.Iban, row.Reference);
-            bankImport.AddItem(item);
-        }
-
-        await repository.AddAsync(bankImport, ct);
-        await unitOfWork.SaveChangesAsync(ct);
-
-        await auditService.LogActionAsync(
-            AuditEventType.FinanceCreated,
-            $"Bank import '{bankImport.FileName}' uploaded with {request.Rows.Count} rows",
-            entityType: "BankImport",
-            entityId: bankImport.Id.ToString(),
-            ct: ct);
-
-        return Results.Created($"/api/v1/finance/bank-imports/{bankImport.Id}",
-            MapToResponse(bankImport));
+            FileName = request.FileName,
+            Rows = request.Rows.Select(r => new BankImportRowInput(
+                r.TransactionDate, r.Description, r.Amount, r.Iban, r.Reference)).ToList(),
+            UserName = GetUserName(httpContext)
+        }, ct);
+        return Results.Created($"/api/v1/finance/bank-imports/{dto.Id}", dto);
     }
 
-    private static async Task<IResult> GetById(
-        Guid id,
-        IBankImportRepository repository,
-        CancellationToken ct)
+    private static async Task<IResult> GetById(Guid id, ISender sender, CancellationToken ct)
     {
-        var bankImport = await repository.GetByIdAsync(id, ct);
-        if (bankImport is null)
-            return Results.NotFound(new { Message = "Bank import not found." });
-
-        return Results.Ok(MapToResponse(bankImport));
+        var dto = await sender.Send(new GetBankImportByIdQuery(id), ct);
+        return dto is null
+            ? Results.NotFound(new { Message = "Bank import not found." })
+            : Results.Ok(dto);
     }
 
     private static async Task<IResult> MatchItem(
-        Guid id,
-        Guid itemId,
-        MatchItemRequest request,
-        IBankImportRepository repository,
-        IUnitOfWork unitOfWork,
-        CancellationToken ct)
+        Guid id, Guid itemId, MatchItemRequest request,
+        ISender sender, CancellationToken ct)
     {
-        var bankImport = await repository.GetByIdAsync(id, ct);
-        if (bankImport is null)
-            return Results.NotFound(new { Message = "Bank import not found." });
-
-        var item = bankImport.Items.FirstOrDefault(i => i.Id == itemId);
-        if (item is null)
-            return Results.NotFound(new { Message = "Bank import item not found." });
-
-        item.MatchToPayment(request.PaymentId);
-
-        // Check if all items are processed
-        if (bankImport.Items.All(i => i.Status != BankImportItemStatus.Unmatched))
-            bankImport.MarkAsProcessed();
-
-        await repository.UpdateAsync(bankImport, ct);
-        await unitOfWork.SaveChangesAsync(ct);
-
-        return Results.Ok(MapItemResponse(item));
+        var dto = await sender.Send(new MatchBankImportItemCommand(id, itemId, request.PaymentId), ct);
+        return dto is null
+            ? Results.NotFound(new { Message = "Bank import or item not found." })
+            : Results.Ok(dto);
     }
 
     private static async Task<IResult> IgnoreItem(
-        Guid id,
-        Guid itemId,
-        IBankImportRepository repository,
-        IUnitOfWork unitOfWork,
-        CancellationToken ct)
+        Guid id, Guid itemId, ISender sender, CancellationToken ct)
     {
-        var bankImport = await repository.GetByIdAsync(id, ct);
-        if (bankImport is null)
-            return Results.NotFound(new { Message = "Bank import not found." });
-
-        var item = bankImport.Items.FirstOrDefault(i => i.Id == itemId);
-        if (item is null)
-            return Results.NotFound(new { Message = "Bank import item not found." });
-
-        item.Ignore();
-
-        // Check if all items are processed
-        if (bankImport.Items.All(i => i.Status != BankImportItemStatus.Unmatched))
-            bankImport.MarkAsProcessed();
-
-        await repository.UpdateAsync(bankImport, ct);
-        await unitOfWork.SaveChangesAsync(ct);
-
-        return Results.Ok(MapItemResponse(item));
+        var dto = await sender.Send(new IgnoreBankImportItemCommand(id, itemId), ct);
+        return dto is null
+            ? Results.NotFound(new { Message = "Bank import or item not found." })
+            : Results.Ok(dto);
     }
-
-    private static BankImportResponse MapToResponse(BankImport bi) =>
-        new(bi.Id, bi.ImportDate, bi.FileName, bi.Status.ToString(), bi.ImportedBy,
-            bi.Items.Select(MapItemResponse).ToList());
-
-    private static BankImportItemResponse MapItemResponse(BankImportItem item) =>
-        new(item.Id, item.TransactionDate, item.Description, item.Amount,
-            item.Iban, item.Reference, item.Status.ToString(), item.MatchedPaymentId);
 
     // DTOs
     public sealed record UploadBankImportRequest(string FileName, List<BankImportRowRequest> Rows);
     public sealed record BankImportRowRequest(DateTime TransactionDate, string Description,
         decimal Amount, string? Iban, string? Reference);
     public sealed record MatchItemRequest(Guid PaymentId);
-    public sealed record BankImportResponse(Guid Id, DateTime ImportDate, string FileName,
-        string Status, string ImportedBy, List<BankImportItemResponse> Items);
-    public sealed record BankImportItemResponse(Guid Id, DateTime TransactionDate, string Description,
-        decimal Amount, string? Iban, string? Reference, string Status, Guid? MatchedPaymentId);
 }

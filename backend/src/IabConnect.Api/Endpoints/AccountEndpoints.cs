@@ -1,9 +1,7 @@
 using System.Security.Claims;
-using IabConnect.Application.Audit;
-using IabConnect.Application.Finance;
-using IabConnect.Domain.Audit;
-using IabConnect.Domain.Finance;
-using IabConnect.Infrastructure.Persistence;
+using IabConnect.Application.Finance.Accounts.Commands;
+using IabConnect.Application.Finance.Accounts.Queries;
+using MediatR;
 
 namespace IabConnect.Api.Endpoints;
 
@@ -42,116 +40,60 @@ public static class AccountEndpoints
             .WithDescription("REQ-038: Deletes a financial account. Audited.");
     }
 
-    private static async Task<IResult> GetAll(
-        IAccountRepository repository,
-        CancellationToken ct)
+    private static string GetUserName(HttpContext ctx) =>
+        ctx.User.FindFirst("preferred_username")?.Value
+        ?? ctx.User.FindFirst(ClaimTypes.Email)?.Value
+        ?? "system";
+
+    private static async Task<IResult> GetAll(ISender sender, CancellationToken ct)
     {
-        var accounts = await repository.GetAllAsync(ct);
-        var response = accounts.Select(a => new AccountResponse(
-            a.Id, a.Name, a.Number, a.Type.ToString(), a.Description,
-            a.IsActive, a.SortOrder, a.CreatedAt, a.CreatedBy, a.UpdatedAt, a.UpdatedBy));
-        return Results.Ok(response);
+        var accounts = await sender.Send(new GetAccountsQuery(), ct);
+        return Results.Ok(accounts);
     }
 
     private static async Task<IResult> Create(
-        CreateAccountRequest request,
-        IAccountRepository repository,
-        IUnitOfWork unitOfWork,
-        IAuditService auditService,
-        HttpContext httpContext,
-        CancellationToken ct)
+        CreateAccountRequest request, ISender sender,
+        HttpContext httpContext, CancellationToken ct)
     {
-        var userName = httpContext.User.FindFirst("preferred_username")?.Value
-            ?? httpContext.User.FindFirst(ClaimTypes.Email)?.Value;
-
-        if (!Enum.TryParse<AccountType>(request.Type, true, out var accountType))
-            return Results.BadRequest(new { Message = $"Invalid account type '{request.Type}'." });
-
-        var account = Account.Create(
-            request.Name, request.Number, accountType,
-            request.Description, request.SortOrder, userName ?? "system");
-
-        await repository.AddAsync(account, ct);
-        await unitOfWork.SaveChangesAsync(ct);
-
-        await auditService.LogActionAsync(
-            AuditEventType.FinanceCreated,
-            $"Account '{account.Name}' ({account.Number}) created",
-            entityType: "Account",
-            entityId: account.Id.ToString(),
-            ct: ct);
-
-        return Results.Created($"/api/v1/finance/accounts/{account.Id}",
-            new AccountResponse(account.Id, account.Name, account.Number, account.Type.ToString(),
-                account.Description, account.IsActive, account.SortOrder,
-                account.CreatedAt, account.CreatedBy, account.UpdatedAt, account.UpdatedBy));
+        var dto = await sender.Send(new CreateAccountCommand
+        {
+            Name = request.Name,
+            Number = request.Number,
+            Type = request.Type,
+            Description = request.Description,
+            SortOrder = request.SortOrder,
+            UserName = GetUserName(httpContext)
+        }, ct);
+        return Results.Created($"/api/v1/finance/accounts/{dto.Id}", dto);
     }
 
     private static async Task<IResult> Update(
-        Guid id,
-        UpdateAccountRequest request,
-        IAccountRepository repository,
-        IUnitOfWork unitOfWork,
-        IAuditService auditService,
-        HttpContext httpContext,
-        CancellationToken ct)
+        Guid id, UpdateAccountRequest request, ISender sender,
+        HttpContext httpContext, CancellationToken ct)
     {
-        var account = await repository.GetByIdAsync(id, ct);
-        if (account is null)
-            return Results.NotFound(new { Message = "Account not found." });
-
-        var userName = httpContext.User.FindFirst("preferred_username")?.Value
-            ?? httpContext.User.FindFirst(ClaimTypes.Email)?.Value;
-
-        if (!Enum.TryParse<AccountType>(request.Type, true, out var accountType))
-            return Results.BadRequest(new { Message = $"Invalid account type '{request.Type}'." });
-
-        account.Update(request.Name, request.Number, accountType,
-            request.Description, request.SortOrder, userName ?? "system");
-
-        await repository.UpdateAsync(account, ct);
-        await unitOfWork.SaveChangesAsync(ct);
-
-        await auditService.LogActionAsync(
-            AuditEventType.FinanceUpdated,
-            $"Account '{account.Name}' ({account.Number}) updated",
-            entityType: "Account",
-            entityId: account.Id.ToString(),
-            ct: ct);
-
-        return Results.Ok(new AccountResponse(account.Id, account.Name, account.Number,
-            account.Type.ToString(), account.Description, account.IsActive, account.SortOrder,
-            account.CreatedAt, account.CreatedBy, account.UpdatedAt, account.UpdatedBy));
+        var dto = await sender.Send(new UpdateAccountCommand
+        {
+            Id = id,
+            Name = request.Name,
+            Number = request.Number,
+            Type = request.Type,
+            Description = request.Description,
+            SortOrder = request.SortOrder,
+            UserName = GetUserName(httpContext)
+        }, ct);
+        return dto is null
+            ? Results.NotFound(new { Message = "Account not found." })
+            : Results.Ok(dto);
     }
 
     private static async Task<IResult> Delete(
-        Guid id,
-        IAccountRepository repository,
-        IUnitOfWork unitOfWork,
-        IAuditService auditService,
-        CancellationToken ct)
+        Guid id, ISender sender, HttpContext httpContext, CancellationToken ct)
     {
-        var account = await repository.GetByIdAsync(id, ct);
-        if (account is null)
-            return Results.NotFound(new { Message = "Account not found." });
-
-        var accountName = account.Name;
-        await repository.DeleteAsync(id, ct);
-        await unitOfWork.SaveChangesAsync(ct);
-
-        await auditService.LogActionAsync(
-            AuditEventType.FinanceDeleted,
-            $"Account '{accountName}' deleted",
-            entityType: "Account",
-            entityId: id.ToString(),
-            ct: ct);
-
-        return Results.NoContent();
+        var found = await sender.Send(new DeleteAccountCommand(id, GetUserName(httpContext)), ct);
+        return found ? Results.NoContent() : Results.NotFound(new { Message = "Account not found." });
     }
 
     // DTOs
     public sealed record CreateAccountRequest(string Name, string Number, string Type, string? Description, int SortOrder);
     public sealed record UpdateAccountRequest(string Name, string Number, string Type, string? Description, int SortOrder);
-    public sealed record AccountResponse(Guid Id, string Name, string Number, string Type, string? Description,
-        bool IsActive, int SortOrder, DateTime CreatedAt, string CreatedBy, DateTime? UpdatedAt, string? UpdatedBy);
 }

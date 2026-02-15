@@ -58,6 +58,22 @@ public sealed class DunningNoticeConfiguration : IEntityTypeConfiguration<Dunnin
             .HasMaxLength(200)
             .IsRequired();
 
+        builder.Property(d => d.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasDefaultValue(false);
+
+        builder.Property(d => d.DeletedAt)
+            .HasColumnName("deleted_at");
+
+        builder.Property(d => d.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasMaxLength(200);
+
+        builder.HasQueryFilter(d => !d.IsDeleted);
+
+        builder.HasIndex(d => d.IsDeleted)
+            .HasDatabaseName("ix_dunning_notices_is_deleted");
+
         builder.Ignore(d => d.DomainEvents);
     }
 }

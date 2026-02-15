@@ -47,6 +47,7 @@ public interface IInvoiceRepository
 {
     Task<List<Invoice>> GetAllAsync(InvoiceStatus? status = null, CancellationToken ct = default);
     Task<Invoice?> GetByIdAsync(Guid id, CancellationToken ct = default);
+    Task<Invoice?> GetByIdIncludingDeletedAsync(Guid id, CancellationToken ct = default);
     Task<Invoice?> GetByNumberAsync(string invoiceNumber, CancellationToken ct = default);
     Task AddAsync(Invoice invoice, CancellationToken ct = default);
     Task UpdateAsync(Invoice invoice, CancellationToken ct = default);
@@ -99,5 +100,30 @@ public interface IReceiptRepository
     Task<List<Receipt>> GetAllAsync(CancellationToken ct = default);
     Task<Receipt?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task AddAsync(Receipt receipt, CancellationToken ct = default);
+    Task UpdateAsync(Receipt receipt, CancellationToken ct = default);
+    Task DeleteAsync(Guid id, CancellationToken ct = default);
+}
+
+/// <summary>
+/// REQ-060: Repository for finance profiles
+/// </summary>
+public interface IFinanceProfileRepository
+{
+    Task<FinanceProfile?> GetActiveProfileAsync(CancellationToken ct = default);
+    Task<FinanceProfile?> GetByIdAsync(Guid id, CancellationToken ct = default);
+    Task AddAsync(FinanceProfile profile, CancellationToken ct = default);
+    Task UpdateAsync(FinanceProfile profile, CancellationToken ct = default);
+}
+
+/// <summary>
+/// REQ-062: Repository for tax codes (MWST/VAT)
+/// </summary>
+public interface ITaxCodeRepository
+{
+    Task<List<TaxCode>> GetAllActiveAsync(CancellationToken ct = default);
+    Task<TaxCode?> GetByIdAsync(Guid id, CancellationToken ct = default);
+    Task<TaxCode?> GetByCodeAsync(string code, CancellationToken ct = default);
+    Task AddAsync(TaxCode taxCode, CancellationToken ct = default);
+    Task UpdateAsync(TaxCode taxCode, CancellationToken ct = default);
     Task DeleteAsync(Guid id, CancellationToken ct = default);
 }

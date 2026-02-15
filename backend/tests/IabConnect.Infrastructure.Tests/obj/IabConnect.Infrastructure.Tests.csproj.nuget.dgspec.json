@@ -85,6 +85,7 @@
             "AspNetCore.HealthChecks.NpgSql": "8.0.2",
             "AspNetCore.HealthChecks.Redis": "8.0.1",
             "AWSSDK.S3": "3.7.305.22",
+            "Codecrete.SwissQRBill.Generator": "3.3.0",
             "coverlet.collector": "6.0.4",
             "FluentAssertions": "8.8.0",
             "FluentValidation": "11.11.0",
@@ -105,6 +106,7 @@
             "Microsoft.SourceLink.GitHub": "8.0.0",
             "Moq": "4.20.72",
             "Npgsql.EntityFrameworkCore.PostgreSQL": "10.0.0",
+            "QuestPDF": "2025.1.1",
             "Serilog.AspNetCore": "10.0.0",
             "Serilog.Sinks.Console": "6.1.1",
             "Serilog.Sinks.Seq": "8.0.0",
@@ -465,6 +467,7 @@
             "AspNetCore.HealthChecks.NpgSql": "8.0.2",
             "AspNetCore.HealthChecks.Redis": "8.0.1",
             "AWSSDK.S3": "3.7.305.22",
+            "Codecrete.SwissQRBill.Generator": "3.3.0",
             "coverlet.collector": "6.0.4",
             "FluentAssertions": "8.8.0",
             "FluentValidation": "11.11.0",
@@ -485,6 +488,7 @@
             "Microsoft.SourceLink.GitHub": "8.0.0",
             "Moq": "4.20.72",
             "Npgsql.EntityFrameworkCore.PostgreSQL": "10.0.0",
+            "QuestPDF": "2025.1.1",
             "Serilog.AspNetCore": "10.0.0",
             "Serilog.Sinks.Console": "6.1.1",
             "Serilog.Sinks.Seq": "8.0.0",
@@ -846,6 +850,11 @@
               "version": "[3.7.305.22, )",
               "versionCentrallyManaged": true
             },
+            "Codecrete.SwissQRBill.Generator": {
+              "target": "Package",
+              "version": "[3.3.0, )",
+              "versionCentrallyManaged": true
+            },
             "Hangfire": {
               "target": "Package",
               "version": "[1.8.22, )",
@@ -878,12 +887,18 @@
               "target": "Package",
               "version": "[10.0.0, )",
               "versionCentrallyManaged": true
+            },
+            "QuestPDF": {
+              "target": "Package",
+              "version": "[2025.1.1, )",
+              "versionCentrallyManaged": true
             }
           },
           "centralPackageVersions": {
             "AspNetCore.HealthChecks.NpgSql": "8.0.2",
             "AspNetCore.HealthChecks.Redis": "8.0.1",
             "AWSSDK.S3": "3.7.305.22",
+            "Codecrete.SwissQRBill.Generator": "3.3.0",
             "coverlet.collector": "6.0.4",
             "FluentAssertions": "8.8.0",
             "FluentValidation": "11.11.0",
@@ -904,6 +919,7 @@
             "Microsoft.SourceLink.GitHub": "8.0.0",
             "Moq": "4.20.72",
             "Npgsql.EntityFrameworkCore.PostgreSQL": "10.0.0",
+            "QuestPDF": "2025.1.1",
             "Serilog.AspNetCore": "10.0.0",
             "Serilog.Sinks.Console": "6.1.1",
             "Serilog.Sinks.Seq": "8.0.0",
@@ -1308,6 +1324,7 @@
             "AspNetCore.HealthChecks.NpgSql": "8.0.2",
             "AspNetCore.HealthChecks.Redis": "8.0.1",
             "AWSSDK.S3": "3.7.305.22",
+            "Codecrete.SwissQRBill.Generator": "3.3.0",
             "coverlet.collector": "6.0.4",
             "FluentAssertions": "8.8.0",
             "FluentValidation": "11.11.0",
@@ -1328,6 +1345,7 @@
             "Microsoft.SourceLink.GitHub": "8.0.0",
             "Moq": "4.20.72",
             "Npgsql.EntityFrameworkCore.PostgreSQL": "10.0.0",
+            "QuestPDF": "2025.1.1",
             "Serilog.AspNetCore": "10.0.0",
             "Serilog.Sinks.Console": "6.1.1",
             "Serilog.Sinks.Seq": "8.0.0",

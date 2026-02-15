@@ -44,6 +44,22 @@ public sealed class CategoryConfiguration : IEntityTypeConfiguration<Category>
             .HasColumnName("created_by")
             .HasMaxLength(200);
 
+        builder.Property(c => c.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasDefaultValue(false);
+
+        builder.Property(c => c.DeletedAt)
+            .HasColumnName("deleted_at");
+
+        builder.Property(c => c.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasMaxLength(200);
+
+        builder.HasQueryFilter(c => !c.IsDeleted);
+
+        builder.HasIndex(c => c.IsDeleted)
+            .HasDatabaseName("ix_categories_is_deleted");
+
         builder.Ignore(c => c.DomainEvents);
     }
 }

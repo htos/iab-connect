@@ -137,3 +137,108 @@ MinIO beibehalten, Azure Blob Storage, lokales Filesystem.
 
 Auswirkung
 Docker Compose verwendet RustFS-Image statt MinIO. Backend nutzt AWSSDK.S3 statt Minio .NET SDK. Konfiguration unter DocumentStorage Section statt Minio Section. IDocumentStorage Abstraktion ermöglicht späteren Storage-Wechsel ohne Code-Änderung.
+
+Datum
+2026 02 15
+
+Entscheidung
+Finance Modul auf CQRS/MediatR Pattern refaktorisiert. War das einzige Modul, das von der Standard-Architektur abwich.
+
+Begründung
+Konsistenz aller Module im Application Layer. CQRS mit MediatR und FluentValidation ermöglicht klare Trennung von Commands/Queries, automatische Validierung und Pipeline Behaviors. 126 Dateien wurden refaktorisiert.
+
+Alternativen
+Finance weiterhin als Ausnahme mit direkten Service-Klassen belassen.
+
+Auswirkung
+Alle Module verwenden nun denselben Application Layer Aufbau mit Commands, Queries, Handlers und Validators. Thin Endpoints delegieren an MediatR. 210 Finance Unit Tests sichern die Funktionalität.
+
+Datum
+2026 02 15
+
+Entscheidung
+QuestPDF für Invoice PDF-Generierung gewählt (MIT Lizenz, Community Edition, .NET native).
+
+Begründung
+Fluent C# API, kein externer Prozess nötig, aktive Community, gute Dokumentation. Community Edition ist kostenlos für Organisationen unter 1M USD Umsatz.
+
+Alternativen
+iTextSharp (AGPL/kommerziell), PdfSharp (weniger Features), wkhtmltopdf (externer Prozess).
+
+Auswirkung
+Invoice PDFs werden serverseitig generiert. Template-Pattern ermöglicht erweiterbare PDF-Layouts. NuGet-Paket QuestPDF 2025.1.1 hinzugefügt.
+
+Datum
+2026 02 15
+
+Entscheidung
+Codecrete.SwissQRBill.Generator für Swiss QR-bill PDF (SIX Group Spezifikation).
+
+Begründung
+.NET Bibliothek, die den Swiss QR-bill Standard der SIX Group vollständig implementiert. Generiert QR-Code und Zahlteil gemäss Spezifikation.
+
+Alternativen
+Eigene QR-Code Generierung, Net.Codecrete.QrCodeGenerator direkt.
+
+Auswirkung
+CH-Profil Rechnungen enthalten einen scanbaren QR-Zahlteil. NuGet-Paket Codecrete.SwissQRBill.Generator 3.3.0 hinzugefügt.
+
+Datum
+2026 02 15
+
+Entscheidung
+Soft-Delete mit ISoftDeletable Interface für alle Finance Entities (Compliance-Anforderung).
+
+Begründung
+Finanzdaten dürfen gemäss Aufbewahrungspflichten nicht physisch gelöscht werden. ISoftDeletable (IsDeleted, DeletedAt) als gemeinsames Interface. Global Query Filter in EF Core filtert gelöschte Einträge automatisch.
+
+Alternativen
+Hard Delete mit Archivtabellen, nur logisches Flag ohne Interface.
+
+Auswirkung
+Alle 9 Finance Entities (Account, Category, Transaction, Invoice, Payment, BankImport, DunningNotice, Receipt, TaxCode) implementieren ISoftDeletable. DELETE Endpoints führen Soft-Delete aus.
+
+Datum
+2026 02 15
+
+Entscheidung
+Invoice Cancellation (Storno) mit Reversal Transaction statt Delete für Sent/Overdue Rechnungen.
+
+Begründung
+Versandte oder überfällige Rechnungen dürfen nicht gelöscht werden. Stattdessen wird eine Storno-Buchung erzeugt, die den ursprünglichen Betrag ausgleicht. Audit-Trail bleibt vollständig.
+
+Alternativen
+Rechnung auf Status Cancelled setzen ohne Gegenbuchung.
+
+Auswirkung
+Invoice.Cancel() setzt CancellationReason und CancelledAt. Eine automatische Reversal-Transaction wird im selben Vorgang erzeugt. Nur Draft-Rechnungen können direkt gelöscht werden.
+
+Datum
+2026 02 15
+
+Entscheidung
+Factory Pattern für jurisdiktionsbasierte PDF-Generator Auswahl (IInvoicePdfGeneratorFactory).
+
+Begründung
+CH-Profil benötigt QR-bill Zahlteil, EU-Profil benötigt andere Pflichtfelder. Factory wählt zur Laufzeit den passenden Generator basierend auf dem FinanceProfile.
+
+Alternativen
+If/Switch im Generator, Strategy Pattern ohne Factory.
+
+Auswirkung
+IInvoicePdfGeneratorFactory und IInvoicePdfGenerator Interfaces. ChInvoicePdfGenerator nutzt QuestPDF und SwissQRBill. Neue Generatoren können per DI registriert werden.
+
+Datum
+2026 02 15
+
+Entscheidung
+Konfigurierbares TaxCode Entity statt hardcodierte VAT-Sätze.
+
+Begründung
+CH und EU haben unterschiedliche Steuersätze, die sich ändern können. TaxCode Entity ermöglicht Verwaltung über Admin UI ohne Code-Änderungen. Jeder TaxCode hat Code, Label, Rate und IsDefault.
+
+Alternativen
+Enum für Steuersätze, hardcodierte Werte im Code.
+
+Auswirkung
+TaxCode CRUD Endpoints. InvoiceItem und Transaction referenzieren optional einen TaxCode. VAT Summary Export aggregiert nach TaxCode.

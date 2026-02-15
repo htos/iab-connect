@@ -5,7 +5,7 @@ namespace IabConnect.Domain.Finance;
 /// <summary>
 /// REQ-042: Dunning notice (Mahnung) for overdue invoices.
 /// </summary>
-public class DunningNotice : Entity
+public class DunningNotice : Entity, ISoftDeletable
 {
     public Guid InvoiceId { get; private set; }
     public Invoice Invoice { get; private set; } = null!;
@@ -16,6 +16,9 @@ public class DunningNotice : Entity
     public DateTime? SentAt { get; private set; }
     public string? Notes { get; private set; }
     public string CreatedBy { get; private set; } = string.Empty;
+    public bool IsDeleted { get; private set; }
+    public DateTime? DeletedAt { get; private set; }
+    public string? DeletedBy { get; private set; }
 
     private DunningNotice() { }
 
@@ -34,7 +37,7 @@ public class DunningNotice : Entity
             InvoiceId = invoiceId,
             Level = level,
             Date = DateTime.UtcNow,
-            DueDate = dueDate,
+            DueDate = DateTime.SpecifyKind(dueDate, DateTimeKind.Utc),
             Notes = notes?.Trim(),
             CreatedBy = createdBy
         };
@@ -44,5 +47,19 @@ public class DunningNotice : Entity
     {
         Status = DunningStatus.Sent;
         SentAt = DateTime.UtcNow;
+    }
+
+    public void SoftDelete(string? deletedBy = null)
+    {
+        IsDeleted = true;
+        DeletedAt = DateTime.UtcNow;
+        DeletedBy = deletedBy;
+    }
+
+    public void Restore()
+    {
+        IsDeleted = false;
+        DeletedAt = null;
+        DeletedBy = null;
     }
 }

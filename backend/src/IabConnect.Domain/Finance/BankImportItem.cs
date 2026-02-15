@@ -29,7 +29,7 @@ public class BankImportItem : Entity
         return new BankImportItem
         {
             BankImportId = bankImportId,
-            TransactionDate = transactionDate,
+            TransactionDate = DateTime.SpecifyKind(transactionDate, DateTimeKind.Utc),
             Description = description,
             Amount = amount,
             Iban = iban,

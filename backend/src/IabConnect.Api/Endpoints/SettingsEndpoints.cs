@@ -4,6 +4,7 @@ using IabConnect.Application.Audit;
 using IabConnect.Application.Common;
 using IabConnect.Domain.Audit;
 using IabConnect.Infrastructure.Persistence;
+using IUnitOfWork = IabConnect.Infrastructure.Persistence.IUnitOfWork;
 
 namespace IabConnect.Api.Endpoints;
 

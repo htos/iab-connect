@@ -14,6 +14,7 @@ using IabConnect.Domain.Members;
 using IabConnect.Domain.Privacy;
 using IabConnect.Infrastructure.Audit;
 using IabConnect.Infrastructure.Email;
+using IabConnect.Infrastructure.Finance;
 using IabConnect.Infrastructure.Identity;
 using IabConnect.Infrastructure.Persistence;
 using IabConnect.Infrastructure.Persistence.Repositories;
@@ -21,6 +22,7 @@ using IabConnect.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using QuestPDF.Infrastructure;
 
 namespace IabConnect.Infrastructure;
 
@@ -47,7 +49,9 @@ public static class DependencyInjection
         });
 
         // Unit of Work
-        services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<Persistence.IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IabConnect.Application.Common.IUnitOfWork>(sp =>
+            sp.GetRequiredService<Persistence.IUnitOfWork>());
 
         // Repositories
         services.AddScoped<IMemberRepository, MemberRepository>();
@@ -72,6 +76,8 @@ public static class DependencyInjection
         services.AddScoped<IBankImportRepository, BankImportRepository>();
         services.AddScoped<IDunningNoticeRepository, DunningNoticeRepository>();
         services.AddScoped<IReceiptRepository, ReceiptRepository>();
+        services.AddScoped<IFinanceProfileRepository, FinanceProfileRepository>();
+        services.AddScoped<ITaxCodeRepository, TaxCodeRepository>();
 
         // REQ-034..037: Documents repositories
         services.AddScoped<IDocumentRepository, DocumentRepository>();
@@ -121,6 +127,19 @@ public static class DependencyInjection
             return new AmazonS3Client(storageSettings.AccessKey, storageSettings.SecretKey, config);
         });
         services.AddScoped<IDocumentStorage, S3DocumentStorage>();
+
+        // REQ-061: Finance document storage (receipts)
+        services.AddScoped<IFinanceDocumentStorage, FinanceDocumentStorage>();
+
+        // REQ-039: Invoice PDF generation (QuestPDF)
+        QuestPDF.Settings.License = LicenseType.Community;
+        services.Configure<InvoiceSettings>(configuration.GetSection(InvoiceSettings.SectionName));
+        services.AddScoped<QuestPdfInvoiceGenerator>();
+        services.AddScoped<IInvoicePdfGenerator>(sp => sp.GetRequiredService<QuestPdfInvoiceGenerator>());
+
+        // REQ-063: Swiss QR-bill invoice generator + factory
+        services.AddScoped<SwissQrBillInvoiceGenerator>();
+        services.AddScoped<IInvoicePdfGeneratorFactory, InvoicePdfGeneratorFactory>();
 
         // TODO: Add caching (Redis)
 

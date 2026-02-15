@@ -1,9 +1,7 @@
 using System.Security.Claims;
-using IabConnect.Application.Audit;
-using IabConnect.Application.Finance;
-using IabConnect.Domain.Audit;
-using IabConnect.Domain.Finance;
-using IabConnect.Infrastructure.Persistence;
+using IabConnect.Application.Finance.Transactions.Commands;
+using IabConnect.Application.Finance.Transactions.Queries;
+using MediatR;
 
 namespace IabConnect.Api.Endpoints;
 
@@ -52,149 +50,122 @@ public static class TransactionEndpoints
             .WithName("DeleteTransaction")
             .WithSummary("Delete a transaction")
             .WithDescription("REQ-038: Deletes a financial transaction. Audited.");
+
+        group.MapPost("/{id:guid}/receipt", AttachReceipt)
+            .RequireAuthorization("RequireFinanceWrite")
+            .WithName("AttachReceiptToTransaction")
+            .WithSummary("Attach a receipt to a transaction")
+            .WithDescription("REQ-061: Attaches an existing receipt to a transaction. Audited.");
+
+        group.MapDelete("/{id:guid}/receipt", DetachReceipt)
+            .RequireAuthorization("RequireFinanceWrite")
+            .WithName("DetachReceiptFromTransaction")
+            .WithSummary("Detach receipt from a transaction")
+            .WithDescription("REQ-061: Removes the receipt link from a transaction. Audited.");
     }
 
-    private static async Task<IResult> GetAll(
-        ITransactionRepository repository,
-        DateTime? from, DateTime? to, string? type,
-        CancellationToken ct)
-    {
-        TransactionType? txType = null;
-        if (!string.IsNullOrEmpty(type) && Enum.TryParse<TransactionType>(type, true, out var parsed))
-            txType = parsed;
+    private static string GetUserName(HttpContext ctx) =>
+        ctx.User.FindFirst("preferred_username")?.Value
+        ?? ctx.User.FindFirst(ClaimTypes.Email)?.Value
+        ?? "system";
 
-        var transactions = await repository.GetAllAsync(from, to, txType, ct);
-        var response = transactions.Select(MapToResponse);
-        return Results.Ok(response);
+    private static async Task<IResult> GetAll(
+        ISender sender, DateTime? from, DateTime? to, string? type, CancellationToken ct)
+    {
+        var transactions = await sender.Send(new GetTransactionsQuery { From = from, To = to, Type = type }, ct);
+        return Results.Ok(transactions);
     }
 
     private static async Task<IResult> GetSummary(
-        ITransactionRepository repository,
-        DateTime? from, DateTime? to,
-        CancellationToken ct)
+        ISender sender, DateTime? from, DateTime? to, CancellationToken ct)
     {
-        var (totalIncome, totalExpense) = await repository.GetSummaryAsync(from, to, ct);
-        return Results.Ok(new TransactionSummaryResponse(totalIncome, totalExpense, totalIncome - totalExpense));
+        var summary = await sender.Send(new GetTransactionSummaryQuery { From = from, To = to }, ct);
+        return Results.Ok(summary);
     }
 
-    private static async Task<IResult> GetById(
-        Guid id,
-        ITransactionRepository repository,
-        CancellationToken ct)
+    private static async Task<IResult> GetById(Guid id, ISender sender, CancellationToken ct)
     {
-        var transaction = await repository.GetByIdAsync(id, ct);
-        if (transaction is null)
-            return Results.NotFound(new { Message = "Transaction not found." });
-
-        return Results.Ok(MapToResponse(transaction));
+        var dto = await sender.Send(new GetTransactionByIdQuery(id), ct);
+        return dto is null
+            ? Results.NotFound(new { Message = "Transaction not found." })
+            : Results.Ok(dto);
     }
 
     private static async Task<IResult> Create(
-        CreateTransactionRequest request,
-        ITransactionRepository repository,
-        IUnitOfWork unitOfWork,
-        IAuditService auditService,
-        HttpContext httpContext,
-        CancellationToken ct)
+        CreateTransactionRequest request, ISender sender,
+        HttpContext httpContext, CancellationToken ct)
     {
-        var userName = httpContext.User.FindFirst("preferred_username")?.Value
-            ?? httpContext.User.FindFirst(ClaimTypes.Email)?.Value;
-
-        if (!Enum.TryParse<TransactionType>(request.Type, true, out var txType))
-            return Results.BadRequest(new { Message = $"Invalid transaction type '{request.Type}'." });
-
-        var transaction = Transaction.Create(
-            request.Date, request.Description, request.Amount, txType,
-            request.AccountId, request.CategoryId, request.Reference,
-            request.Notes, userName ?? "system");
-
-        await repository.AddAsync(transaction, ct);
-        await unitOfWork.SaveChangesAsync(ct);
-
-        await auditService.LogActionAsync(
-            AuditEventType.FinanceCreated,
-            $"Transaction '{transaction.Description}' ({transaction.Amount:N2}) created",
-            entityType: "Transaction",
-            entityId: transaction.Id.ToString(),
-            ct: ct);
-
-        return Results.Created($"/api/v1/finance/transactions/{transaction.Id}", MapToResponse(transaction));
+        var dto = await sender.Send(new CreateTransactionCommand
+        {
+            Date = request.Date,
+            Description = request.Description,
+            Amount = request.Amount,
+            Type = request.Type,
+            AccountId = request.AccountId,
+            CategoryId = request.CategoryId,
+            Reference = request.Reference,
+            Notes = request.Notes,
+            TaxCodeId = request.TaxCodeId,
+            TaxRate = request.TaxRate,
+            UserName = GetUserName(httpContext)
+        }, ct);
+        return Results.Created($"/api/v1/finance/transactions/{dto.Id}", dto);
     }
 
     private static async Task<IResult> Update(
-        Guid id,
-        UpdateTransactionRequest request,
-        ITransactionRepository repository,
-        IUnitOfWork unitOfWork,
-        IAuditService auditService,
-        HttpContext httpContext,
-        CancellationToken ct)
+        Guid id, UpdateTransactionRequest request, ISender sender,
+        HttpContext httpContext, CancellationToken ct)
     {
-        var transaction = await repository.GetByIdAsync(id, ct);
-        if (transaction is null)
-            return Results.NotFound(new { Message = "Transaction not found." });
-
-        var userName = httpContext.User.FindFirst("preferred_username")?.Value
-            ?? httpContext.User.FindFirst(ClaimTypes.Email)?.Value;
-
-        if (!Enum.TryParse<TransactionType>(request.Type, true, out var txType))
-            return Results.BadRequest(new { Message = $"Invalid transaction type '{request.Type}'." });
-
-        transaction.Update(
-            request.Date, request.Description, request.Amount, txType,
-            request.AccountId, request.CategoryId, request.Reference,
-            request.Notes, userName ?? "system");
-
-        await repository.UpdateAsync(transaction, ct);
-        await unitOfWork.SaveChangesAsync(ct);
-
-        await auditService.LogActionAsync(
-            AuditEventType.FinanceUpdated,
-            $"Transaction '{transaction.Description}' updated",
-            entityType: "Transaction",
-            entityId: transaction.Id.ToString(),
-            ct: ct);
-
-        return Results.Ok(MapToResponse(transaction));
+        var dto = await sender.Send(new UpdateTransactionCommand
+        {
+            Id = id,
+            Date = request.Date,
+            Description = request.Description,
+            Amount = request.Amount,
+            Type = request.Type,
+            AccountId = request.AccountId,
+            CategoryId = request.CategoryId,
+            Reference = request.Reference,
+            Notes = request.Notes,
+            TaxCodeId = request.TaxCodeId,
+            TaxRate = request.TaxRate,
+            UserName = GetUserName(httpContext)
+        }, ct);
+        return dto is null
+            ? Results.NotFound(new { Message = "Transaction not found." })
+            : Results.Ok(dto);
     }
 
     private static async Task<IResult> Delete(
-        Guid id,
-        ITransactionRepository repository,
-        IUnitOfWork unitOfWork,
-        IAuditService auditService,
-        CancellationToken ct)
+        Guid id, ISender sender, HttpContext httpContext, CancellationToken ct)
     {
-        var transaction = await repository.GetByIdAsync(id, ct);
-        if (transaction is null)
-            return Results.NotFound(new { Message = "Transaction not found." });
-
-        var description = transaction.Description;
-        await repository.DeleteAsync(id, ct);
-        await unitOfWork.SaveChangesAsync(ct);
-
-        await auditService.LogActionAsync(
-            AuditEventType.FinanceDeleted,
-            $"Transaction '{description}' deleted",
-            entityType: "Transaction",
-            entityId: id.ToString(),
-            ct: ct);
-
-        return Results.NoContent();
+        var found = await sender.Send(new DeleteTransactionCommand(id, GetUserName(httpContext)), ct);
+        return found ? Results.NoContent() : Results.NotFound(new { Message = "Transaction not found." });
     }
 
-    private static TransactionResponse MapToResponse(Transaction t) =>
-        new(t.Id, t.Date, t.Description, t.Amount, t.Type.ToString(),
-            t.AccountId, t.CategoryId, t.Reference, t.Notes, t.ReceiptId,
-            t.CreatedAt, t.CreatedBy, t.UpdatedAt, t.UpdatedBy);
+    private static async Task<IResult> AttachReceipt(
+        Guid id, AttachReceiptRequest request, ISender sender, CancellationToken ct)
+    {
+        var dto = await sender.Send(new AttachReceiptToTransactionCommand(id, request.ReceiptId), ct);
+        return dto is null
+            ? Results.NotFound(new { Message = "Transaction or receipt not found." })
+            : Results.Ok(dto);
+    }
+
+    private static async Task<IResult> DetachReceipt(Guid id, ISender sender, CancellationToken ct)
+    {
+        var dto = await sender.Send(new DetachReceiptFromTransactionCommand(id), ct);
+        return dto is null
+            ? Results.NotFound(new { Message = "Transaction not found." })
+            : Results.Ok(dto);
+    }
 
     // DTOs
     public sealed record CreateTransactionRequest(DateTime Date, string Description, decimal Amount,
-        string Type, Guid AccountId, Guid? CategoryId, string? Reference, string? Notes);
+        string Type, Guid AccountId, Guid? CategoryId, string? Reference, string? Notes,
+        Guid? TaxCodeId = null, decimal? TaxRate = null);
     public sealed record UpdateTransactionRequest(DateTime Date, string Description, decimal Amount,
-        string Type, Guid AccountId, Guid? CategoryId, string? Reference, string? Notes);
-    public sealed record TransactionResponse(Guid Id, DateTime Date, string Description, decimal Amount,
-        string Type, Guid AccountId, Guid? CategoryId, string? Reference, string? Notes, Guid? ReceiptId,
-        DateTime CreatedAt, string CreatedBy, DateTime? UpdatedAt, string? UpdatedBy);
-    public sealed record TransactionSummaryResponse(decimal TotalIncome, decimal TotalExpense, decimal Balance);
+        string Type, Guid AccountId, Guid? CategoryId, string? Reference, string? Notes,
+        Guid? TaxCodeId = null, decimal? TaxRate = null);
+    public sealed record AttachReceiptRequest(Guid ReceiptId);
 }

@@ -227,6 +227,11 @@ const navItems: NavItem[] = [
         href: "/finance/exports",
         icon: <></>,
       },
+      {
+        labelKey: "nav.financeSettings",
+        href: "/finance/settings",
+        icon: <></>,
+      },
     ],
   },
   {

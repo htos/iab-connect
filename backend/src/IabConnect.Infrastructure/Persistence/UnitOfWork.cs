@@ -1,11 +1,10 @@
 namespace IabConnect.Infrastructure.Persistence;
 
 /// <summary>
-/// Unit of Work interface
+/// Unit of Work interface (infrastructure-level, kept for backward compatibility)
 /// </summary>
-public interface IUnitOfWork
+public interface IUnitOfWork : IabConnect.Application.Common.IUnitOfWork
 {
-    Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>

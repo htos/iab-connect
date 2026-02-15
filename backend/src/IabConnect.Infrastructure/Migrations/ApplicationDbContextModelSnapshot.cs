@@ -588,7 +588,6 @@ namespace IabConnect.Infrastructure.Migrations
             modelBuilder.Entity("IabConnect.Domain.Documents.Document", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -702,7 +701,6 @@ namespace IabConnect.Infrastructure.Migrations
             modelBuilder.Entity("IabConnect.Domain.Documents.DocumentFolder", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -771,7 +769,6 @@ namespace IabConnect.Infrastructure.Migrations
             modelBuilder.Entity("IabConnect.Domain.Documents.DocumentTag", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -800,7 +797,6 @@ namespace IabConnect.Infrastructure.Migrations
             modelBuilder.Entity("IabConnect.Domain.Documents.DocumentVersion", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -856,7 +852,6 @@ namespace IabConnect.Infrastructure.Migrations
             modelBuilder.Entity("IabConnect.Domain.Documents.FolderPermission", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -1266,6 +1261,15 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("created_by");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("DeletedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("deleted_by");
+
                     b.Property<string>("Description")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
@@ -1274,6 +1278,12 @@ namespace IabConnect.Infrastructure.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -1308,6 +1318,9 @@ namespace IabConnect.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("IsDeleted")
+                        .HasDatabaseName("ix_accounts_is_deleted");
+
                     b.HasIndex("Number")
                         .IsUnique()
                         .HasDatabaseName("ix_accounts_number");
@@ -1320,6 +1333,15 @@ namespace IabConnect.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("DeletedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("deleted_by");
 
                     b.Property<string>("FileName")
                         .IsRequired()
@@ -1337,6 +1359,12 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("imported_by");
 
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -1344,6 +1372,9 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasColumnName("status");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("IsDeleted")
+                        .HasDatabaseName("ix_bank_imports_is_deleted");
 
                     b.ToTable("bank_imports", (string)null);
                 });
@@ -1422,9 +1453,24 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("created_by");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("DeletedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("deleted_by");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -1439,6 +1485,9 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasColumnName("type");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("IsDeleted")
+                        .HasDatabaseName("ix_categories_is_deleted");
 
                     b.ToTable("categories", (string)null);
                 });
@@ -1459,6 +1508,15 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("date");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("DeletedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("deleted_by");
+
                     b.Property<DateTime>("DueDate")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("due_date");
@@ -1466,6 +1524,12 @@ namespace IabConnect.Infrastructure.Migrations
                     b.Property<Guid>("InvoiceId")
                         .HasColumnType("uuid")
                         .HasColumnName("invoice_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
 
                     b.Property<int>("Level")
                         .HasColumnType("integer")
@@ -1489,7 +1553,137 @@ namespace IabConnect.Infrastructure.Migrations
 
                     b.HasIndex("InvoiceId");
 
+                    b.HasIndex("IsDeleted")
+                        .HasDatabaseName("ix_dunning_notices_is_deleted");
+
                     b.ToTable("dunning_notices", (string)null);
+                });
+
+            modelBuilder.Entity("IabConnect.Domain.Finance.FinanceProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BankBic")
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)")
+                        .HasColumnName("bank_bic");
+
+                    b.Property<string>("BankIban")
+                        .HasMaxLength(34)
+                        .HasColumnType("character varying(34)")
+                        .HasColumnName("bank_iban");
+
+                    b.Property<string>("BankName")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("bank_name");
+
+                    b.Property<string>("CountryCode")
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)")
+                        .HasColumnName("country_code");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("currency");
+
+                    b.Property<int>("FiscalYearStartMonth")
+                        .HasColumnType("integer")
+                        .HasColumnName("fiscal_year_start_month");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Jurisdiction")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("jurisdiction");
+
+                    b.Property<string>("OrganizationAddress")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("organization_address");
+
+                    b.Property<string>("OrganizationCity")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("organization_city");
+
+                    b.Property<string>("OrganizationCountry")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)")
+                        .HasColumnName("organization_country");
+
+                    b.Property<string>("OrganizationEmail")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("organization_email");
+
+                    b.Property<string>("OrganizationName")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("organization_name");
+
+                    b.Property<string>("OrganizationPhone")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("organization_phone");
+
+                    b.Property<string>("OrganizationPostalCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("organization_postal_code");
+
+                    b.Property<string>("OrganizationUid")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("organization_uid");
+
+                    b.Property<string>("OrganizationWebsite")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("organization_website");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("VatNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("vat_number");
+
+                    b.Property<string>("VatStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("NotRegistered")
+                        .HasColumnName("vat_status");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsActive")
+                        .IsUnique()
+                        .HasDatabaseName("ix_finance_profiles_is_active_unique")
+                        .HasFilter("is_active = true");
+
+                    b.ToTable("finance_profiles", (string)null);
                 });
 
             modelBuilder.Entity("IabConnect.Domain.Finance.Invoice", b =>
@@ -1497,6 +1691,15 @@ namespace IabConnect.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<string>("CancellationReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("cancellation_reason");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cancelled_at");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -1512,6 +1715,15 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("date");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("DeletedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("deleted_by");
+
                     b.Property<DateTime>("DueDate")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("due_date");
@@ -1521,6 +1733,12 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("invoice_number");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
 
                     b.Property<string>("Notes")
                         .HasColumnType("text")
@@ -1558,6 +1776,11 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("sub_total");
 
+                    b.Property<decimal>("SubtotalNet")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("subtotal_net");
+
                     b.Property<decimal>("TaxAmount")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
@@ -1573,6 +1796,16 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("total");
 
+                    b.Property<decimal>("TotalGross")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("total_gross");
+
+                    b.Property<decimal>("TotalTax")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("total_tax");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
@@ -1587,6 +1820,9 @@ namespace IabConnect.Infrastructure.Migrations
                     b.HasIndex("InvoiceNumber")
                         .IsUnique()
                         .HasDatabaseName("ix_invoices_invoice_number");
+
+                    b.HasIndex("IsDeleted")
+                        .HasDatabaseName("ix_invoices_is_deleted");
 
                     b.ToTable("invoices", (string)null);
                 });
@@ -1608,14 +1844,44 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("description");
 
+                    b.Property<decimal?>("GrossAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("gross_amount");
+
                     b.Property<Guid>("InvoiceId")
                         .HasColumnType("uuid")
                         .HasColumnName("invoice_id");
+
+                    b.Property<bool>("IsGrossEntry")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_gross_entry");
+
+                    b.Property<decimal?>("NetAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("net_amount");
 
                     b.Property<decimal>("Quantity")
                         .HasPrecision(18, 4)
                         .HasColumnType("numeric(18,4)")
                         .HasColumnName("quantity");
+
+                    b.Property<decimal?>("TaxAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("tax_amount");
+
+                    b.Property<Guid?>("TaxCodeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tax_code_id");
+
+                    b.Property<decimal?>("TaxRate")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)")
+                        .HasColumnName("tax_rate");
 
                     b.Property<decimal>("UnitPrice")
                         .HasPrecision(18, 2)
@@ -1654,9 +1920,24 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("date");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("DeletedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("deleted_by");
+
                     b.Property<Guid?>("InvoiceId")
                         .HasColumnType("uuid")
                         .HasColumnName("invoice_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
 
                     b.Property<string>("Method")
                         .IsRequired()
@@ -1690,6 +1971,9 @@ namespace IabConnect.Infrastructure.Migrations
 
                     b.HasIndex("InvoiceId");
 
+                    b.HasIndex("IsDeleted")
+                        .HasDatabaseName("ix_payments_is_deleted");
+
                     b.HasIndex("TransactionId");
 
                     b.ToTable("payments", (string)null);
@@ -1707,6 +1991,20 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("content_type");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("DeletedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<string>("FileHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("file_hash");
+
                     b.Property<string>("FileName")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -1722,6 +2020,12 @@ namespace IabConnect.Infrastructure.Migrations
                     b.Property<long>("FileSize")
                         .HasColumnType("bigint")
                         .HasColumnName("file_size");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
 
                     b.Property<string>("Notes")
                         .HasColumnType("text")
@@ -1739,7 +2043,119 @@ namespace IabConnect.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("IsDeleted")
+                        .HasDatabaseName("ix_receipts_is_deleted");
+
                     b.ToTable("receipts", (string)null);
+                });
+
+            modelBuilder.Entity("IabConnect.Domain.Finance.TaxCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDefault")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_default");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("label");
+
+                    b.Property<decimal>("Rate")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)")
+                        .HasColumnName("rate");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("ix_tax_codes_code_unique_active")
+                        .HasFilter("is_deleted = false");
+
+                    b.ToTable("tax_codes", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("a0000000-0000-0000-0000-000000000001"),
+                            Code = "MWST_NORMAL",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            IsDefault = true,
+                            IsDeleted = false,
+                            Label = "8.1% MWST (Normal)",
+                            Rate = 0.081m
+                        },
+                        new
+                        {
+                            Id = new Guid("a0000000-0000-0000-0000-000000000002"),
+                            Code = "MWST_REDUCED",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            IsDefault = false,
+                            IsDeleted = false,
+                            Label = "2.6% MWST (Reduziert)",
+                            Rate = 0.026m
+                        },
+                        new
+                        {
+                            Id = new Guid("a0000000-0000-0000-0000-000000000003"),
+                            Code = "MWST_ACCOMMODATION",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            IsDefault = false,
+                            IsDeleted = false,
+                            Label = "3.8% MWST (Beherbergung)",
+                            Rate = 0.038m
+                        },
+                        new
+                        {
+                            Id = new Guid("a0000000-0000-0000-0000-000000000004"),
+                            Code = "MWST_EXEMPT",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            IsDefault = false,
+                            IsDeleted = false,
+                            Label = "0% MWST (Befreit)",
+                            Rate = 0m
+                        });
                 });
 
             modelBuilder.Entity("IabConnect.Domain.Finance.Transaction", b =>
@@ -1775,11 +2191,31 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("date");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("DeletedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("deleted_by");
+
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
                         .HasColumnName("description");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<decimal?>("NetAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("net_amount");
 
                     b.Property<string>("Notes")
                         .HasColumnType("text")
@@ -1793,6 +2229,20 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("reference");
+
+                    b.Property<decimal?>("TaxAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("tax_amount");
+
+                    b.Property<Guid?>("TaxCodeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tax_code_id");
+
+                    b.Property<decimal?>("TaxRate")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)")
+                        .HasColumnName("tax_rate");
 
                     b.Property<string>("Type")
                         .IsRequired()
@@ -1814,6 +2264,9 @@ namespace IabConnect.Infrastructure.Migrations
                     b.HasIndex("AccountId");
 
                     b.HasIndex("CategoryId");
+
+                    b.HasIndex("IsDeleted")
+                        .HasDatabaseName("ix_transactions_is_deleted");
 
                     b.HasIndex("ReceiptId");
 

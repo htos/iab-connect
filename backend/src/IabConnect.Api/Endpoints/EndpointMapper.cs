@@ -41,6 +41,8 @@ public static class EndpointMapper
         app.MapDunningEndpoints();
         app.MapReceiptEndpoints();
         app.MapFinanceExportEndpoints();
+        app.MapFinanceProfileEndpoints();
+        app.MapTaxCodeEndpoints();
 
         return app;
     }

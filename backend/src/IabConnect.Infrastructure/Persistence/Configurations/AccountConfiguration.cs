@@ -63,6 +63,22 @@ public sealed class AccountConfiguration : IEntityTypeConfiguration<Account>
             .HasColumnName("updated_by")
             .HasMaxLength(200);
 
+        builder.Property(a => a.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasDefaultValue(false);
+
+        builder.Property(a => a.DeletedAt)
+            .HasColumnName("deleted_at");
+
+        builder.Property(a => a.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasMaxLength(200);
+
+        builder.HasQueryFilter(a => !a.IsDeleted);
+
+        builder.HasIndex(a => a.IsDeleted)
+            .HasDatabaseName("ix_accounts_is_deleted");
+
         builder.Ignore(a => a.DomainEvents);
     }
 }

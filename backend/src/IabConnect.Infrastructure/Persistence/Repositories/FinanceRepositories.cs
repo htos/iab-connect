@@ -54,7 +54,7 @@ public sealed class AccountRepository : IAccountRepository
         var account = await _context.Accounts.FindAsync([id], ct);
         if (account is not null)
         {
-            _context.Accounts.Remove(account);
+            account.SoftDelete();
             await _context.SaveChangesAsync(ct);
         }
     }
@@ -103,7 +103,7 @@ public sealed class CategoryRepository : ICategoryRepository
         var category = await _context.Categories.FindAsync([id], ct);
         if (category is not null)
         {
-            _context.Categories.Remove(category);
+            category.SoftDelete();
             await _context.SaveChangesAsync(ct);
         }
     }
@@ -168,7 +168,7 @@ public sealed class TransactionRepository : ITransactionRepository
         var transaction = await _context.Transactions.FindAsync([id], ct);
         if (transaction is not null)
         {
-            _context.Transactions.Remove(transaction);
+            transaction.SoftDelete();
             await _context.SaveChangesAsync(ct);
         }
     }
@@ -253,7 +253,7 @@ public sealed class InvoiceRepository : IInvoiceRepository
         var invoice = await _context.Invoices.FindAsync([id], ct);
         if (invoice is not null)
         {
-            _context.Invoices.Remove(invoice);
+            invoice.SoftDelete();
             await _context.SaveChangesAsync(ct);
         }
     }
@@ -275,6 +275,7 @@ public sealed class InvoiceRepository : IInvoiceRepository
 
         var lastNumber = await _context.Invoices
             .AsNoTracking()
+            .IgnoreQueryFilters()
             .Where(i => i.InvoiceNumber.StartsWith(prefix))
             .OrderByDescending(i => i.InvoiceNumber)
             .Select(i => i.InvoiceNumber)
@@ -290,6 +291,14 @@ public sealed class InvoiceRepository : IInvoiceRepository
         }
 
         return $"{prefix}{nextSequence:D4}";
+    }
+
+    public async Task<Invoice?> GetByIdIncludingDeletedAsync(Guid id, CancellationToken ct = default)
+    {
+        return await _context.Invoices
+            .IgnoreQueryFilters()
+            .Include(i => i.Items)
+            .FirstOrDefaultAsync(i => i.Id == id, ct);
     }
 }
 
@@ -348,7 +357,7 @@ public sealed class PaymentRepository : IPaymentRepository
         var payment = await _context.Payments.FindAsync([id], ct);
         if (payment is not null)
         {
-            _context.Payments.Remove(payment);
+            payment.SoftDelete();
             await _context.SaveChangesAsync(ct);
         }
     }
@@ -478,12 +487,113 @@ public sealed class ReceiptRepository : IReceiptRepository
         await _context.SaveChangesAsync(ct);
     }
 
+    public async Task UpdateAsync(Receipt receipt, CancellationToken ct = default)
+    {
+        _context.Receipts.Update(receipt);
+        await _context.SaveChangesAsync(ct);
+    }
+
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
         var receipt = await _context.Receipts.FindAsync([id], ct);
         if (receipt is not null)
         {
-            _context.Receipts.Remove(receipt);
+            receipt.SoftDelete();
+            await _context.SaveChangesAsync(ct);
+        }
+    }
+}
+
+/// <summary>
+/// REQ-060: Finance profile repository implementation
+/// </summary>
+public sealed class FinanceProfileRepository : IFinanceProfileRepository
+{
+    private readonly ApplicationDbContext _context;
+
+    public FinanceProfileRepository(ApplicationDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<FinanceProfile?> GetActiveProfileAsync(CancellationToken ct = default)
+    {
+        return await _context.FinanceProfiles
+            .AsNoTracking()
+            .FirstOrDefaultAsync(fp => fp.IsActive, ct);
+    }
+
+    public async Task<FinanceProfile?> GetByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        return await _context.FinanceProfiles
+            .FirstOrDefaultAsync(fp => fp.Id == id, ct);
+    }
+
+    public async Task AddAsync(FinanceProfile profile, CancellationToken ct = default)
+    {
+        await _context.FinanceProfiles.AddAsync(profile, ct);
+        await _context.SaveChangesAsync(ct);
+    }
+
+    public async Task UpdateAsync(FinanceProfile profile, CancellationToken ct = default)
+    {
+        _context.FinanceProfiles.Update(profile);
+        await _context.SaveChangesAsync(ct);
+    }
+}
+
+/// <summary>
+/// REQ-062: Tax code repository implementation
+/// </summary>
+public sealed class TaxCodeRepository : ITaxCodeRepository
+{
+    private readonly ApplicationDbContext _context;
+
+    public TaxCodeRepository(ApplicationDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<List<TaxCode>> GetAllActiveAsync(CancellationToken ct = default)
+    {
+        return await _context.TaxCodes
+            .AsNoTracking()
+            .Where(tc => tc.IsActive)
+            .OrderBy(tc => tc.Code)
+            .ToListAsync(ct);
+    }
+
+    public async Task<TaxCode?> GetByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        return await _context.TaxCodes
+            .FirstOrDefaultAsync(tc => tc.Id == id, ct);
+    }
+
+    public async Task<TaxCode?> GetByCodeAsync(string code, CancellationToken ct = default)
+    {
+        return await _context.TaxCodes
+            .AsNoTracking()
+            .FirstOrDefaultAsync(tc => tc.Code == code, ct);
+    }
+
+    public async Task AddAsync(TaxCode taxCode, CancellationToken ct = default)
+    {
+        await _context.TaxCodes.AddAsync(taxCode, ct);
+        await _context.SaveChangesAsync(ct);
+    }
+
+    public async Task UpdateAsync(TaxCode taxCode, CancellationToken ct = default)
+    {
+        _context.TaxCodes.Update(taxCode);
+        await _context.SaveChangesAsync(ct);
+    }
+
+    public async Task DeleteAsync(Guid id, CancellationToken ct = default)
+    {
+        var taxCode = await _context.TaxCodes.FindAsync([id], ct);
+        if (taxCode is not null)
+        {
+            taxCode.SoftDelete();
             await _context.SaveChangesAsync(ct);
         }
     }

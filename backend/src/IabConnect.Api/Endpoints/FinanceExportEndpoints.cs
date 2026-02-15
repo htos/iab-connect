@@ -1,8 +1,5 @@
-using System.Globalization;
-using System.Text;
-using IabConnect.Application.Audit;
-using IabConnect.Application.Finance;
-using IabConnect.Domain.Audit;
+using IabConnect.Application.Finance.Exports.Queries;
+using MediatR;
 
 namespace IabConnect.Api.Endpoints;
 
@@ -27,82 +24,31 @@ public static class FinanceExportEndpoints
             .WithName("ExportOpenItems")
             .WithSummary("Export open invoices as CSV")
             .WithDescription("REQ-044: Exports all open invoices (Sent/Overdue) as CSV. Audited.");
+
+        group.MapGet("/vat-summary", ExportVatSummary)
+            .RequireAuthorization("RequireFinanceRead")
+            .WithName("ExportVatSummary")
+            .WithSummary("Export VAT summary as CSV")
+            .WithDescription("REQ-062: Exports VAT summary grouped by tax code for a date range. Audited.");
     }
 
     private static async Task<IResult> ExportJournal(
-        ITransactionRepository repository,
-        IAuditService auditService,
-        DateTime? from, DateTime? to,
-        CancellationToken ct)
+        ISender sender, DateTime? from, DateTime? to, CancellationToken ct)
     {
-        var transactions = await repository.GetAllAsync(from, to, ct: ct);
-
-        var sb = new StringBuilder();
-        sb.AppendLine("Date;Description;Amount;Type;AccountId;CategoryId;Reference;Notes");
-
-        foreach (var t in transactions)
-        {
-            sb.AppendLine(string.Join(";",
-                t.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                EscapeCsv(t.Description),
-                t.Amount.ToString("F2", CultureInfo.InvariantCulture),
-                t.Type.ToString(),
-                t.AccountId,
-                t.CategoryId?.ToString() ?? "",
-                EscapeCsv(t.Reference),
-                EscapeCsv(t.Notes)));
-        }
-
-        var bytes = Encoding.UTF8.GetBytes(sb.ToString());
-        var fileName = $"journal_{(from?.ToString("yyyyMMdd") ?? "all")}_{(to?.ToString("yyyyMMdd") ?? "now")}.csv";
-
-        await auditService.LogActionAsync(
-            AuditEventType.FinanceExported,
-            $"Transaction journal exported ({transactions.Count} records)",
-            entityType: "Transaction",
-            details: $"from={from?.ToString("yyyy-MM-dd")}, to={to?.ToString("yyyy-MM-dd")}",
-            ct: ct);
-
-        return Results.File(bytes, "text/csv", fileName);
+        var result = await sender.Send(new ExportJournalQuery(from, to), ct);
+        return Results.File(result.Content, result.ContentType, result.FileName);
     }
 
-    private static async Task<IResult> ExportOpenItems(
-        IInvoiceRepository repository,
-        IAuditService auditService,
-        CancellationToken ct)
+    private static async Task<IResult> ExportOpenItems(ISender sender, CancellationToken ct)
     {
-        var invoices = await repository.GetOpenItemsAsync(ct);
-
-        var sb = new StringBuilder();
-        sb.AppendLine("InvoiceNumber;Date;DueDate;Status;RecipientName;Total");
-
-        foreach (var inv in invoices)
-        {
-            sb.AppendLine(string.Join(";",
-                EscapeCsv(inv.InvoiceNumber),
-                inv.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                inv.DueDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                inv.Status.ToString(),
-                EscapeCsv(inv.RecipientName),
-                inv.Total.ToString("F2", CultureInfo.InvariantCulture)));
-        }
-
-        var bytes = Encoding.UTF8.GetBytes(sb.ToString());
-
-        await auditService.LogActionAsync(
-            AuditEventType.FinanceExported,
-            $"Open items exported ({invoices.Count} invoices)",
-            entityType: "Invoice",
-            ct: ct);
-
-        return Results.File(bytes, "text/csv", "open_items.csv");
+        var result = await sender.Send(new ExportOpenItemsQuery(), ct);
+        return Results.File(result.Content, result.ContentType, result.FileName);
     }
 
-    private static string EscapeCsv(string? value)
+    private static async Task<IResult> ExportVatSummary(
+        ISender sender, DateTime? from, DateTime? to, CancellationToken ct)
     {
-        if (string.IsNullOrEmpty(value)) return "";
-        if (value.Contains(';') || value.Contains('"') || value.Contains('\n'))
-            return $"\"{value.Replace("\"", "\"\"")}\"";
-        return value;
+        var result = await sender.Send(new ExportVatSummaryQuery(from, to), ct);
+        return Results.File(result.Content, result.ContentType, result.FileName);
     }
 }

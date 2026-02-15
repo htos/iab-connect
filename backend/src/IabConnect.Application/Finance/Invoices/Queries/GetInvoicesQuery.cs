@@ -1,0 +1,31 @@
+using MediatR;
+
+namespace IabConnect.Application.Finance.Invoices.Queries;
+
+/// <summary>
+/// Shared DTOs for invoice data
+/// </summary>
+public sealed record InvoiceListDto(
+    Guid Id, string InvoiceNumber, DateTime Date, DateTime DueDate,
+    string Status, string RecipientType, string RecipientName, decimal Total,
+    decimal SubtotalNet, decimal TotalTax, decimal TotalGross,
+    DateTime CreatedAt, string CreatedBy);
+
+public sealed record InvoiceDetailDto(
+    Guid Id, string InvoiceNumber, DateTime Date, DateTime DueDate,
+    string Status, string RecipientType, Guid? RecipientId, string RecipientName,
+    string? RecipientAddress, decimal SubTotal, decimal TaxRate, decimal TaxAmount, decimal Total,
+    decimal SubtotalNet, decimal TotalTax, decimal TotalGross,
+    string? Notes, string? CancellationReason, DateTime? CancelledAt,
+    List<InvoiceItemDto> Items,
+    DateTime CreatedAt, string CreatedBy, DateTime? UpdatedAt, string? UpdatedBy);
+
+public sealed record InvoiceItemDto(
+    Guid Id, string Description, decimal Quantity, decimal UnitPrice, decimal Amount,
+    Guid? TaxCodeId, decimal? TaxRate, decimal? TaxAmount, decimal? NetAmount,
+    decimal? GrossAmount, bool IsGrossEntry);
+
+/// <summary>
+/// Query to get invoices with optional status filter (REQ-039)
+/// </summary>
+public sealed record GetInvoicesQuery(string? Status) : IRequest<List<InvoiceListDto>>;

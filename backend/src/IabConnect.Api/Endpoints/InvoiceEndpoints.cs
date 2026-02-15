@@ -1,14 +1,13 @@
 using System.Security.Claims;
-using IabConnect.Application.Audit;
-using IabConnect.Application.Finance;
-using IabConnect.Domain.Audit;
-using IabConnect.Domain.Finance;
-using IabConnect.Infrastructure.Persistence;
+using IabConnect.Application.Common;
+using IabConnect.Application.Finance.Invoices.Commands;
+using IabConnect.Application.Finance.Invoices.Queries;
+using MediatR;
 
 namespace IabConnect.Api.Endpoints;
 
 /// <summary>
-/// API endpoints for invoice management (REQ-039)
+/// API endpoints for invoice management (REQ-039, REQ-062)
 /// </summary>
 public static class InvoiceEndpoints
 {
@@ -58,212 +57,145 @@ public static class InvoiceEndpoints
             .WithName("SendInvoice")
             .WithSummary("Mark invoice as sent")
             .WithDescription("REQ-039: Marks a draft invoice as sent. Audited.");
+
+        group.MapPost("/{id:guid}/cancel", CancelInvoice)
+            .RequireAuthorization("RequireFinanceWrite")
+            .WithName("CancelInvoice")
+            .WithSummary("Cancel (storno) an invoice")
+            .WithDescription("REQ-039: Cancels a sent/overdue invoice with storno reversal transaction. Audited.");
+
+        group.MapGet("/{id:guid}/pdf", DownloadPdf)
+            .RequireAuthorization("RequireFinanceRead")
+            .WithName("DownloadInvoicePdf")
+            .WithSummary("Download invoice as PDF")
+            .WithDescription("REQ-039: Generates and returns a PDF for a non-draft invoice.")
+            .Produces(200, contentType: "application/pdf")
+            .ProducesProblem(400)
+            .ProducesProblem(404);
     }
 
-    private static async Task<IResult> GetAll(
-        IInvoiceRepository repository,
-        string? status,
-        CancellationToken ct)
-    {
-        InvoiceStatus? invoiceStatus = null;
-        if (!string.IsNullOrEmpty(status) && Enum.TryParse<InvoiceStatus>(status, true, out var parsed))
-            invoiceStatus = parsed;
+    private static string GetUserName(HttpContext ctx) =>
+        ctx.User.FindFirst("preferred_username")?.Value
+        ?? ctx.User.FindFirst(ClaimTypes.Email)?.Value
+        ?? "system";
 
-        var invoices = await repository.GetAllAsync(invoiceStatus, ct);
-        var response = invoices.Select(MapToListResponse);
-        return Results.Ok(response);
+    private static async Task<IResult> GetAll(ISender sender, string? status, CancellationToken ct)
+    {
+        var invoices = await sender.Send(new GetInvoicesQuery(status), ct);
+        return Results.Ok(invoices);
     }
 
-    private static async Task<IResult> GetOpenItems(
-        IInvoiceRepository repository,
-        CancellationToken ct)
+    private static async Task<IResult> GetOpenItems(ISender sender, CancellationToken ct)
     {
-        var invoices = await repository.GetOpenItemsAsync(ct);
-        var response = invoices.Select(MapToListResponse);
-        return Results.Ok(response);
+        var invoices = await sender.Send(new GetOpenInvoicesQuery(), ct);
+        return Results.Ok(invoices);
     }
 
-    private static async Task<IResult> GetById(
-        Guid id,
-        IInvoiceRepository repository,
-        CancellationToken ct)
+    private static async Task<IResult> GetById(Guid id, ISender sender, CancellationToken ct)
     {
-        var invoice = await repository.GetByIdAsync(id, ct);
-        if (invoice is null)
-            return Results.NotFound(new { Message = "Invoice not found." });
-
-        return Results.Ok(MapToDetailResponse(invoice));
+        var dto = await sender.Send(new GetInvoiceByIdQuery(id), ct);
+        return dto is null
+            ? Results.NotFound(new { Message = "Invoice not found." })
+            : Results.Ok(dto);
     }
 
     private static async Task<IResult> Create(
-        CreateInvoiceRequest request,
-        IInvoiceRepository repository,
-        IUnitOfWork unitOfWork,
-        IAuditService auditService,
-        HttpContext httpContext,
-        CancellationToken ct)
+        CreateInvoiceRequest request, ISender sender,
+        HttpContext httpContext, CancellationToken ct)
     {
-        var userName = httpContext.User.FindFirst("preferred_username")?.Value
-            ?? httpContext.User.FindFirst(ClaimTypes.Email)?.Value;
-
-        if (!Enum.TryParse<RecipientType>(request.RecipientType, true, out var recipientType))
-            return Results.BadRequest(new { Message = $"Invalid recipient type '{request.RecipientType}'." });
-
-        var invoiceNumber = await repository.GetNextInvoiceNumberAsync(ct);
-
-        var invoice = Invoice.Create(
-            invoiceNumber, request.Date, request.DueDate,
-            recipientType, request.RecipientId, request.RecipientName,
-            request.RecipientAddress, request.TaxRate, request.Notes,
-            userName ?? "system");
-
-        foreach (var item in request.Items)
+        var dto = await sender.Send(new CreateInvoiceCommand
         {
-            invoice.AddItem(item.Description, item.Quantity, item.UnitPrice);
-        }
-
-        await repository.AddAsync(invoice, ct);
-        await unitOfWork.SaveChangesAsync(ct);
-
-        await auditService.LogActionAsync(
-            AuditEventType.FinanceCreated,
-            $"Invoice '{invoice.InvoiceNumber}' created for {invoice.RecipientName} ({invoice.Total:N2})",
-            entityType: "Invoice",
-            entityId: invoice.Id.ToString(),
-            ct: ct);
-
-        return Results.Created($"/api/v1/finance/invoices/{invoice.Id}", MapToDetailResponse(invoice));
+            Date = request.Date,
+            DueDate = request.DueDate,
+            RecipientType = request.RecipientType,
+            RecipientId = request.RecipientId,
+            RecipientName = request.RecipientName,
+            RecipientAddress = request.RecipientAddress,
+            TaxRate = request.TaxRate,
+            Notes = request.Notes,
+            Items = request.Items.Select(i => new CreateInvoiceItemInput(
+                i.Description, i.Quantity, i.UnitPrice, i.TaxCodeId, i.IsGrossEntry)).ToList(),
+            UserName = GetUserName(httpContext)
+        }, ct);
+        return Results.Created($"/api/v1/finance/invoices/{dto.Id}", dto);
     }
 
     private static async Task<IResult> Update(
-        Guid id,
-        UpdateInvoiceRequest request,
-        IInvoiceRepository repository,
-        IUnitOfWork unitOfWork,
-        IAuditService auditService,
-        HttpContext httpContext,
-        CancellationToken ct)
+        Guid id, UpdateInvoiceRequest request, ISender sender,
+        HttpContext httpContext, CancellationToken ct)
     {
-        var invoice = await repository.GetByIdAsync(id, ct);
-        if (invoice is null)
-            return Results.NotFound(new { Message = "Invoice not found." });
-
-        var userName = httpContext.User.FindFirst("preferred_username")?.Value
-            ?? httpContext.User.FindFirst(ClaimTypes.Email)?.Value;
-
-        if (!Enum.TryParse<RecipientType>(request.RecipientType, true, out var recipientType))
-            return Results.BadRequest(new { Message = $"Invalid recipient type '{request.RecipientType}'." });
-
-        invoice.Update(
-            request.Date, request.DueDate, recipientType,
-            request.RecipientId, request.RecipientName,
-            request.RecipientAddress, request.TaxRate, request.Notes,
-            userName ?? "system");
-
-        // Replace items
-        var newItems = request.Items
-            .Select(i => InvoiceItem.Create(invoice.Id, i.Description, i.Quantity, i.UnitPrice))
-            .ToList();
-        invoice.SetItems(newItems);
-
-        await repository.UpdateAsync(invoice, ct);
-        await unitOfWork.SaveChangesAsync(ct);
-
-        await auditService.LogActionAsync(
-            AuditEventType.FinanceUpdated,
-            $"Invoice '{invoice.InvoiceNumber}' updated",
-            entityType: "Invoice",
-            entityId: invoice.Id.ToString(),
-            ct: ct);
-
-        return Results.Ok(MapToDetailResponse(invoice));
+        var dto = await sender.Send(new UpdateInvoiceCommand
+        {
+            Id = id,
+            Date = request.Date,
+            DueDate = request.DueDate,
+            RecipientType = request.RecipientType,
+            RecipientId = request.RecipientId,
+            RecipientName = request.RecipientName,
+            RecipientAddress = request.RecipientAddress,
+            TaxRate = request.TaxRate,
+            Notes = request.Notes,
+            Items = request.Items.Select(i => new CreateInvoiceItemInput(
+                i.Description, i.Quantity, i.UnitPrice, i.TaxCodeId, i.IsGrossEntry)).ToList(),
+            UserName = GetUserName(httpContext)
+        }, ct);
+        return dto is null
+            ? Results.NotFound(new { Message = "Invoice not found." })
+            : Results.Ok(dto);
     }
 
     private static async Task<IResult> Delete(
-        Guid id,
-        IInvoiceRepository repository,
-        IUnitOfWork unitOfWork,
-        IAuditService auditService,
-        CancellationToken ct)
+        Guid id, ISender sender, HttpContext httpContext, CancellationToken ct)
     {
-        var invoice = await repository.GetByIdAsync(id, ct);
-        if (invoice is null)
-            return Results.NotFound(new { Message = "Invoice not found." });
-
-        var invoiceNumber = invoice.InvoiceNumber;
-        await repository.DeleteAsync(id, ct);
-        await unitOfWork.SaveChangesAsync(ct);
-
-        await auditService.LogActionAsync(
-            AuditEventType.FinanceDeleted,
-            $"Invoice '{invoiceNumber}' deleted",
-            entityType: "Invoice",
-            entityId: id.ToString(),
-            ct: ct);
-
+        var result = await sender.Send(new DeleteInvoiceCommand(id, GetUserName(httpContext)), ct);
+        if (!result.IsSuccess)
+            return Results.BadRequest(new { Message = result.Error });
         return Results.NoContent();
     }
 
     private static async Task<IResult> MarkAsSent(
-        Guid id,
-        IInvoiceRepository repository,
-        IUnitOfWork unitOfWork,
-        IAuditService auditService,
-        HttpContext httpContext,
-        CancellationToken ct)
+        Guid id, ISender sender, HttpContext httpContext, CancellationToken ct)
     {
-        var invoice = await repository.GetByIdAsync(id, ct);
-        if (invoice is null)
-            return Results.NotFound(new { Message = "Invoice not found." });
-
-        var userName = httpContext.User.FindFirst("preferred_username")?.Value
-            ?? httpContext.User.FindFirst(ClaimTypes.Email)?.Value;
-
-        invoice.MarkAsSent(userName ?? "system");
-
-        await repository.UpdateAsync(invoice, ct);
-        await unitOfWork.SaveChangesAsync(ct);
-
-        await auditService.LogActionAsync(
-            AuditEventType.FinanceStatusChanged,
-            $"Invoice '{invoice.InvoiceNumber}' marked as sent",
-            entityType: "Invoice",
-            entityId: invoice.Id.ToString(),
-            ct: ct);
-
-        return Results.Ok(MapToDetailResponse(invoice));
+        var dto = await sender.Send(new SendInvoiceCommand(id, GetUserName(httpContext)), ct);
+        return dto is null
+            ? Results.NotFound(new { Message = "Invoice not found." })
+            : Results.Ok(dto);
     }
 
-    private static InvoiceListResponse MapToListResponse(Invoice inv) =>
-        new(inv.Id, inv.InvoiceNumber, inv.Date, inv.DueDate, inv.Status.ToString(),
-            inv.RecipientType.ToString(), inv.RecipientName, inv.Total,
-            inv.CreatedAt, inv.CreatedBy);
+    private static async Task<IResult> CancelInvoice(
+        Guid id, CancelInvoiceRequest request, ISender sender,
+        HttpContext httpContext, CancellationToken ct)
+    {
+        var result = await sender.Send(new CancelInvoiceCommand
+        {
+            Id = id,
+            Reason = request.Reason,
+            AccountId = request.AccountId,
+            UserName = GetUserName(httpContext)
+        }, ct);
+        if (!result.IsSuccess)
+            return Results.BadRequest(new { Message = result.Error });
+        return Results.Ok(result.Value);
+    }
 
-    private static InvoiceDetailResponse MapToDetailResponse(Invoice inv) =>
-        new(inv.Id, inv.InvoiceNumber, inv.Date, inv.DueDate, inv.Status.ToString(),
-            inv.RecipientType.ToString(), inv.RecipientId, inv.RecipientName,
-            inv.RecipientAddress, inv.SubTotal, inv.TaxRate, inv.TaxAmount, inv.Total,
-            inv.Notes, inv.Items.Select(i => new InvoiceItemResponse(
-                i.Id, i.Description, i.Quantity, i.UnitPrice, i.Amount)).ToList(),
-            inv.CreatedAt, inv.CreatedBy, inv.UpdatedAt, inv.UpdatedBy);
+    private static async Task<IResult> DownloadPdf(Guid id, ISender sender, CancellationToken ct)
+    {
+        var result = await sender.Send(new GenerateInvoicePdfQuery(id), ct);
+        if (result is null)
+            return Results.NotFound(new { Message = "Invoice not found or is in draft status." });
+        return Results.File(result.PdfBytes, contentType: "application/pdf", fileDownloadName: result.FileName);
+    }
 
     // DTOs
     public sealed record CreateInvoiceRequest(DateTime Date, DateTime DueDate,
         string RecipientType, Guid? RecipientId, string RecipientName,
         string? RecipientAddress, decimal TaxRate, string? Notes,
         List<CreateInvoiceItemRequest> Items);
-    public sealed record CreateInvoiceItemRequest(string Description, decimal Quantity, decimal UnitPrice);
+    public sealed record CreateInvoiceItemRequest(string Description, decimal Quantity, decimal UnitPrice,
+        Guid? TaxCodeId = null, bool IsGrossEntry = false);
     public sealed record UpdateInvoiceRequest(DateTime Date, DateTime DueDate,
         string RecipientType, Guid? RecipientId, string RecipientName,
         string? RecipientAddress, decimal TaxRate, string? Notes,
         List<CreateInvoiceItemRequest> Items);
-    public sealed record InvoiceListResponse(Guid Id, string InvoiceNumber, DateTime Date, DateTime DueDate,
-        string Status, string RecipientType, string RecipientName, decimal Total,
-        DateTime CreatedAt, string CreatedBy);
-    public sealed record InvoiceDetailResponse(Guid Id, string InvoiceNumber, DateTime Date, DateTime DueDate,
-        string Status, string RecipientType, Guid? RecipientId, string RecipientName,
-        string? RecipientAddress, decimal SubTotal, decimal TaxRate, decimal TaxAmount, decimal Total,
-        string? Notes, List<InvoiceItemResponse> Items,
-        DateTime CreatedAt, string CreatedBy, DateTime? UpdatedAt, string? UpdatedBy);
-    public sealed record InvoiceItemResponse(Guid Id, string Description, decimal Quantity, decimal UnitPrice, decimal Amount);
+    public sealed record CancelInvoiceRequest(string Reason, Guid AccountId);
 }

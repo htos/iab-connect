@@ -4,8 +4,9 @@ namespace IabConnect.Domain.Finance;
 
 /// <summary>
 /// REQ-039: Invoice (Rechnung) for members, sponsors, vendors.
+/// REQ-062: Extended with per-item VAT totals.
 /// </summary>
-public class Invoice : Entity
+public class Invoice : Entity, ISoftDeletable
 {
     public string InvoiceNumber { get; private set; } = string.Empty;
     public DateTime Date { get; private set; }
@@ -20,6 +21,13 @@ public class Invoice : Entity
     public decimal TaxAmount { get; private set; }
     public decimal Total { get; private set; }
     public string? Notes { get; private set; }
+    public string? CancellationReason { get; private set; }
+    public DateTime? CancelledAt { get; private set; }
+
+    // REQ-062: VAT aggregate totals
+    public decimal SubtotalNet { get; private set; }
+    public decimal TotalTax { get; private set; }
+    public decimal TotalGross { get; private set; }
 
     private readonly List<InvoiceItem> _items = [];
     public IReadOnlyList<InvoiceItem> Items => _items.AsReadOnly();
@@ -28,6 +36,9 @@ public class Invoice : Entity
     public string CreatedBy { get; private set; } = string.Empty;
     public DateTime? UpdatedAt { get; private set; }
     public string? UpdatedBy { get; private set; }
+    public bool IsDeleted { get; private set; }
+    public DateTime? DeletedAt { get; private set; }
+    public string? DeletedBy { get; private set; }
 
     private Invoice() { }
 
@@ -51,8 +62,8 @@ public class Invoice : Entity
         return new Invoice
         {
             InvoiceNumber = invoiceNumber.Trim(),
-            Date = date,
-            DueDate = dueDate,
+            Date = DateTime.SpecifyKind(date, DateTimeKind.Utc),
+            DueDate = DateTime.SpecifyKind(dueDate, DateTimeKind.Utc),
             RecipientType = recipientType,
             RecipientId = recipientId,
             RecipientName = recipientName.Trim(),
@@ -78,8 +89,8 @@ public class Invoice : Entity
         if (Status != InvoiceStatus.Draft)
             throw new InvalidOperationException("Only draft invoices can be edited.");
 
-        Date = date;
-        DueDate = dueDate;
+        Date = DateTime.SpecifyKind(date, DateTimeKind.Utc);
+        DueDate = DateTime.SpecifyKind(dueDate, DateTimeKind.Utc);
         RecipientType = recipientType;
         RecipientId = recipientId;
         RecipientName = recipientName.Trim();
@@ -97,6 +108,22 @@ public class Invoice : Entity
             throw new InvalidOperationException("Only draft invoices can be modified.");
 
         var item = InvoiceItem.Create(Id, description, quantity, unitPrice);
+        _items.Add(item);
+        RecalculateTotals();
+    }
+
+    public void AddItemWithTax(
+        string description,
+        decimal quantity,
+        decimal unitPrice,
+        Guid? taxCodeId,
+        decimal? taxRate,
+        bool isGrossEntry)
+    {
+        if (Status != InvoiceStatus.Draft)
+            throw new InvalidOperationException("Only draft invoices can be modified.");
+
+        var item = InvoiceItem.CreateWithTax(Id, description, quantity, unitPrice, taxCodeId, taxRate, isGrossEntry);
         _items.Add(item);
         RecalculateTotals();
     }
@@ -154,20 +181,46 @@ public class Invoice : Entity
         UpdatedBy = updatedBy;
     }
 
-    public void Cancel(string updatedBy)
+    public void Cancel(string reason, string updatedBy)
     {
-        if (Status == InvoiceStatus.Paid)
-            throw new InvalidOperationException("Cannot cancel a paid invoice.");
+        if (Status is not (InvoiceStatus.Sent or InvoiceStatus.Overdue))
+            throw new InvalidOperationException("Only sent or overdue invoices can be cancelled. Use delete for draft invoices.");
+
+        if (string.IsNullOrWhiteSpace(reason))
+            throw new ArgumentException("Cancellation reason is required.", nameof(reason));
 
         Status = InvoiceStatus.Cancelled;
+        CancellationReason = reason.Trim();
+        CancelledAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
         UpdatedBy = updatedBy;
+    }
+
+    public void SoftDelete(string? deletedBy = null)
+    {
+        IsDeleted = true;
+        DeletedAt = DateTime.UtcNow;
+        DeletedBy = deletedBy;
+    }
+
+    public void Restore()
+    {
+        IsDeleted = false;
+        DeletedAt = null;
+        DeletedBy = null;
     }
 
     private void RecalculateTotals()
     {
         SubTotal = _items.Sum(i => i.Amount);
         TaxAmount = Math.Round(SubTotal * TaxRate / 100, 2);
-        Total = SubTotal + TaxAmount;
+
+        // REQ-062: Compute VAT aggregate totals from per-item tax data
+        SubtotalNet = _items.Sum(i => i.NetAmount ?? i.Amount);
+        TotalTax = _items.Sum(i => i.TaxAmount ?? 0m);
+        TotalGross = _items.Sum(i => i.GrossAmount ?? i.Amount);
+
+        // Total equals TotalGross when per-item tax is used, otherwise legacy calculation
+        Total = TotalGross > 0 ? TotalGross : SubTotal + TaxAmount;
     }
 }

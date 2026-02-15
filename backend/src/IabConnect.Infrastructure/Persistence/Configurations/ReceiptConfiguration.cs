@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace IabConnect.Infrastructure.Persistence.Configurations;
 
 /// <summary>
-/// REQ-043: EF Core configuration for Receipt entity
+/// REQ-043 / REQ-061: EF Core configuration for Receipt entity
 /// </summary>
 public sealed class ReceiptConfiguration : IEntityTypeConfiguration<Receipt>
 {
@@ -38,6 +38,10 @@ public sealed class ReceiptConfiguration : IEntityTypeConfiguration<Receipt>
             .HasColumnName("file_size")
             .IsRequired();
 
+        builder.Property(r => r.FileHash)
+            .HasColumnName("file_hash")
+            .HasMaxLength(64);
+
         builder.Property(r => r.UploadedAt)
             .HasColumnName("uploaded_at");
 
@@ -48,6 +52,22 @@ public sealed class ReceiptConfiguration : IEntityTypeConfiguration<Receipt>
 
         builder.Property(r => r.Notes)
             .HasColumnName("notes");
+
+        builder.Property(r => r.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasDefaultValue(false);
+
+        builder.Property(r => r.DeletedAt)
+            .HasColumnName("deleted_at");
+
+        builder.Property(r => r.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasMaxLength(200);
+
+        builder.HasQueryFilter(r => !r.IsDeleted);
+
+        builder.HasIndex(r => r.IsDeleted)
+            .HasDatabaseName("ix_receipts_is_deleted");
 
         builder.Ignore(r => r.DomainEvents);
     }

@@ -64,6 +64,22 @@ public sealed class TransactionConfiguration : IEntityTypeConfiguration<Transact
         builder.Property(t => t.Notes)
             .HasColumnName("notes");
 
+        // REQ-062: Tax fields
+        builder.Property(t => t.TaxCodeId)
+            .HasColumnName("tax_code_id");
+
+        builder.Property(t => t.TaxRate)
+            .HasColumnName("tax_rate")
+            .HasPrecision(18, 6);
+
+        builder.Property(t => t.TaxAmount)
+            .HasColumnName("tax_amount")
+            .HasPrecision(18, 2);
+
+        builder.Property(t => t.NetAmount)
+            .HasColumnName("net_amount")
+            .HasPrecision(18, 2);
+
         builder.Property(t => t.ReceiptId)
             .HasColumnName("receipt_id");
 
@@ -85,6 +101,22 @@ public sealed class TransactionConfiguration : IEntityTypeConfiguration<Transact
         builder.Property(t => t.UpdatedBy)
             .HasColumnName("updated_by")
             .HasMaxLength(200);
+
+        builder.Property(t => t.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasDefaultValue(false);
+
+        builder.Property(t => t.DeletedAt)
+            .HasColumnName("deleted_at");
+
+        builder.Property(t => t.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasMaxLength(200);
+
+        builder.HasQueryFilter(t => !t.IsDeleted);
+
+        builder.HasIndex(t => t.IsDeleted)
+            .HasDatabaseName("ix_transactions_is_deleted");
 
         builder.Ignore(t => t.DomainEvents);
     }

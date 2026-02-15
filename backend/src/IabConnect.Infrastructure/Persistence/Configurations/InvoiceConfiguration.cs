@@ -76,8 +76,28 @@ public sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
             .HasColumnName("total")
             .HasPrecision(18, 2);
 
+        // REQ-062: VAT aggregate totals
+        builder.Property(i => i.SubtotalNet)
+            .HasColumnName("subtotal_net")
+            .HasPrecision(18, 2);
+
+        builder.Property(i => i.TotalTax)
+            .HasColumnName("total_tax")
+            .HasPrecision(18, 2);
+
+        builder.Property(i => i.TotalGross)
+            .HasColumnName("total_gross")
+            .HasPrecision(18, 2);
+
         builder.Property(i => i.Notes)
             .HasColumnName("notes");
+
+        builder.Property(i => i.CancellationReason)
+            .HasColumnName("cancellation_reason")
+            .HasMaxLength(1000);
+
+        builder.Property(i => i.CancelledAt)
+            .HasColumnName("cancelled_at");
 
         builder.HasMany(i => i.Items)
             .WithOne()
@@ -100,6 +120,22 @@ public sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.Property(i => i.UpdatedBy)
             .HasColumnName("updated_by")
             .HasMaxLength(200);
+
+        builder.Property(i => i.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasDefaultValue(false);
+
+        builder.Property(i => i.DeletedAt)
+            .HasColumnName("deleted_at");
+
+        builder.Property(i => i.DeletedBy)
+            .HasColumnName("deleted_by")
+            .HasMaxLength(200);
+
+        builder.HasQueryFilter(i => !i.IsDeleted);
+
+        builder.HasIndex(i => i.IsDeleted)
+            .HasDatabaseName("ix_invoices_is_deleted");
 
         builder.Ignore(i => i.DomainEvents);
     }

@@ -482,3 +482,83 @@ Owner: Implementation Agent
 SprintOderRelease: Sprint 2
 TicketLink:
 Notizen: Admin-Konfiguration implementiert. Backend: SystemSettings Entity (ApplicationName, LogoText, LogoBackgroundColor, LogoTextColor), SettingsEndpoints (GET/PUT + Public GET), CustomRole Entity mit CRUD. Frontend: /admin/settings mit zwei Tabs (Allgemein + Benutzerdefinierte Rollen), AppSettingsProvider Context für dynamisches Branding in Header/Sidebar/Navigation.
+
+ID: REQ-060
+Status: InProgress
+StatusSeit: 2026 02 15
+Owner: Implementation Agent
+SprintOderRelease: Sprint 3
+TicketLink:
+Notizen: FinanceProfile Entity (CH/EU Jurisdiktion, Waehrung, Org-Details). Backend + Frontend implemented, pending integration test.
+
+ID: REQ-061
+Status: InProgress
+StatusSeit: 2026 02 15
+Owner: Implementation Agent
+SprintOderRelease: Sprint 3
+TicketLink:
+Notizen: Receipt-Storage via S3/RustFS mit SHA256-Integrity und File-Type-Validation. Backend + Frontend implemented, pending integration test.
+
+ID: REQ-062
+Status: InProgress
+StatusSeit: 2026 02 15
+Owner: Implementation Agent
+SprintOderRelease: Sprint 3
+TicketLink:
+Notizen: VAT/MWST mit konfigurierbaren TaxCodes, Per-Item-Tax, VAT-Export. Backend + Frontend implemented, pending integration test.
+
+ID: REQ-063
+Status: InProgress
+StatusSeit: 2026 02 15
+Owner: Implementation Agent
+SprintOderRelease: Sprint 3
+TicketLink:
+Notizen: Swiss QR-Zahlteil PDF-Generator via Codecrete.SwissQRBill. Backend + Frontend implemented, pending integration test with real IBAN.
+
+ID: REQ-064
+Status: Backlog
+StatusSeit: 2026 02 15
+Owner:
+SprintOderRelease:
+TicketLink:
+Notizen:
+
+ID: REQ-065
+Status: Backlog
+StatusSeit: 2026 02 15
+Owner:
+SprintOderRelease:
+TicketLink:
+Notizen:
+
+ID: REQ-066
+Status: Backlog
+StatusSeit: 2026 02 15
+Owner:
+SprintOderRelease:
+TicketLink:
+Notizen:
+
+ID: REQ-067
+Status: Backlog
+StatusSeit: 2026 02 15
+Owner:
+SprintOderRelease:
+TicketLink:
+Notizen:
+
+ID: REQ-068
+Status: Backlog
+StatusSeit: 2026 02 15
+Owner:
+SprintOderRelease:
+TicketLink:
+Notizen:
+
+ID: REQ-069
+Status: Backlog
+StatusSeit: 2026 02 15
+Owner:
+SprintOderRelease:
+TicketLink:
+Notizen:

@@ -44,6 +44,8 @@ public sealed class ApplicationDbContext : DbContext
     public DbSet<BankImportItem> BankImportItems => Set<BankImportItem>();
     public DbSet<DunningNotice> DunningNotices => Set<DunningNotice>();
     public DbSet<Receipt> Receipts => Set<Receipt>();
+    public DbSet<FinanceProfile> FinanceProfiles => Set<FinanceProfile>();
+    public DbSet<TaxCode> TaxCodes => Set<TaxCode>();
 
     // Documents (REQ-034..037)
     public DbSet<DocumentFolder> DocumentFolders => Set<DocumentFolder>();

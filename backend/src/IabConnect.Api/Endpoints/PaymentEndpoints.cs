@@ -1,9 +1,7 @@
 using System.Security.Claims;
-using IabConnect.Application.Audit;
-using IabConnect.Application.Finance;
-using IabConnect.Domain.Audit;
-using IabConnect.Domain.Finance;
-using IabConnect.Infrastructure.Persistence;
+using IabConnect.Application.Finance.Payments.Commands;
+using IabConnect.Application.Finance.Payments.Queries;
+using MediatR;
 
 namespace IabConnect.Api.Endpoints;
 
@@ -42,137 +40,66 @@ public static class PaymentEndpoints
             .WithDescription("REQ-040: Deletes a payment record. Audited.");
     }
 
-    private static async Task<IResult> GetAll(
-        IPaymentRepository repository,
-        CancellationToken ct)
+    private static string GetUserName(HttpContext ctx) =>
+        ctx.User.FindFirst("preferred_username")?.Value
+        ?? ctx.User.FindFirst(ClaimTypes.Email)?.Value
+        ?? "system";
+
+    private static async Task<IResult> GetAll(ISender sender, CancellationToken ct)
     {
-        var payments = await repository.GetAllAsync(ct);
-        var response = payments.Select(MapToResponse);
-        return Results.Ok(response);
+        var payments = await sender.Send(new GetPaymentsQuery(), ct);
+        return Results.Ok(payments);
     }
 
     private static async Task<IResult> Create(
-        CreatePaymentRequest request,
-        IPaymentRepository paymentRepo,
-        IInvoiceRepository invoiceRepo,
-        IUnitOfWork unitOfWork,
-        IAuditService auditService,
-        HttpContext httpContext,
-        CancellationToken ct)
+        CreatePaymentRequest request, ISender sender,
+        HttpContext httpContext, CancellationToken ct)
     {
-        var userName = httpContext.User.FindFirst("preferred_username")?.Value
-            ?? httpContext.User.FindFirst(ClaimTypes.Email)?.Value;
-
-        if (!Enum.TryParse<PaymentMethod>(request.Method, true, out var method))
-            return Results.BadRequest(new { Message = $"Invalid payment method '{request.Method}'." });
-
-        var payment = Payment.Create(
-            request.Date, request.Amount, method, request.Reference,
-            request.InvoiceId, request.TransactionId, request.Notes,
-            userName ?? "system");
-
-        await paymentRepo.AddAsync(payment, ct);
-
-        // Check if linked invoice is now fully paid
-        if (request.InvoiceId.HasValue)
+        var dto = await sender.Send(new CreatePaymentCommand
         {
-            var invoice = await invoiceRepo.GetByIdAsync(request.InvoiceId.Value, ct);
-            if (invoice is not null && invoice.Status is InvoiceStatus.Sent or InvoiceStatus.Overdue)
-            {
-                var allPayments = await paymentRepo.GetByInvoiceIdAsync(invoice.Id, ct);
-                var totalPaid = allPayments.Sum(p => p.Amount) + request.Amount;
-                if (totalPaid >= invoice.Total)
-                {
-                    invoice.MarkAsPaid(userName ?? "system");
-                    await invoiceRepo.UpdateAsync(invoice, ct);
-                }
-            }
-        }
-
-        await unitOfWork.SaveChangesAsync(ct);
-
-        await auditService.LogActionAsync(
-            AuditEventType.FinanceCreated,
-            $"Payment of {payment.Amount:N2} recorded ({payment.Method})",
-            entityType: "Payment",
-            entityId: payment.Id.ToString(),
-            ct: ct);
-
-        return Results.Created($"/api/v1/finance/payments/{payment.Id}", MapToResponse(payment));
+            Date = request.Date,
+            Amount = request.Amount,
+            Method = request.Method,
+            Reference = request.Reference,
+            InvoiceId = request.InvoiceId,
+            TransactionId = request.TransactionId,
+            Notes = request.Notes,
+            UserName = GetUserName(httpContext)
+        }, ct);
+        return Results.Created($"/api/v1/finance/payments/{dto.Id}", dto);
     }
 
     private static async Task<IResult> Update(
-        Guid id,
-        UpdatePaymentRequest request,
-        IPaymentRepository repository,
-        IUnitOfWork unitOfWork,
-        IAuditService auditService,
-        HttpContext httpContext,
-        CancellationToken ct)
+        Guid id, UpdatePaymentRequest request, ISender sender,
+        HttpContext httpContext, CancellationToken ct)
     {
-        var payment = await repository.GetByIdAsync(id, ct);
-        if (payment is null)
-            return Results.NotFound(new { Message = "Payment not found." });
-
-        var userName = httpContext.User.FindFirst("preferred_username")?.Value
-            ?? httpContext.User.FindFirst(ClaimTypes.Email)?.Value;
-
-        if (!Enum.TryParse<PaymentMethod>(request.Method, true, out var method))
-            return Results.BadRequest(new { Message = $"Invalid payment method '{request.Method}'." });
-
-        payment.Update(
-            request.Date, request.Amount, method, request.Reference,
-            request.InvoiceId, request.TransactionId, request.Notes,
-            userName ?? "system");
-
-        await repository.UpdateAsync(payment, ct);
-        await unitOfWork.SaveChangesAsync(ct);
-
-        await auditService.LogActionAsync(
-            AuditEventType.FinanceUpdated,
-            $"Payment {payment.Id} updated ({payment.Amount:N2})",
-            entityType: "Payment",
-            entityId: payment.Id.ToString(),
-            ct: ct);
-
-        return Results.Ok(MapToResponse(payment));
+        var dto = await sender.Send(new UpdatePaymentCommand
+        {
+            Id = id,
+            Date = request.Date,
+            Amount = request.Amount,
+            Method = request.Method,
+            Reference = request.Reference,
+            InvoiceId = request.InvoiceId,
+            TransactionId = request.TransactionId,
+            Notes = request.Notes,
+            UserName = GetUserName(httpContext)
+        }, ct);
+        return dto is null
+            ? Results.NotFound(new { Message = "Payment not found." })
+            : Results.Ok(dto);
     }
 
     private static async Task<IResult> Delete(
-        Guid id,
-        IPaymentRepository repository,
-        IUnitOfWork unitOfWork,
-        IAuditService auditService,
-        CancellationToken ct)
+        Guid id, ISender sender, HttpContext httpContext, CancellationToken ct)
     {
-        var payment = await repository.GetByIdAsync(id, ct);
-        if (payment is null)
-            return Results.NotFound(new { Message = "Payment not found." });
-
-        await repository.DeleteAsync(id, ct);
-        await unitOfWork.SaveChangesAsync(ct);
-
-        await auditService.LogActionAsync(
-            AuditEventType.FinanceDeleted,
-            $"Payment deleted ({payment.Amount:N2})",
-            entityType: "Payment",
-            entityId: id.ToString(),
-            ct: ct);
-
-        return Results.NoContent();
+        var found = await sender.Send(new DeletePaymentCommand(id, GetUserName(httpContext)), ct);
+        return found ? Results.NoContent() : Results.NotFound(new { Message = "Payment not found." });
     }
-
-    private static PaymentResponse MapToResponse(Payment p) =>
-        new(p.Id, p.Date, p.Amount, p.Method.ToString(), p.Reference,
-            p.InvoiceId, p.TransactionId, p.Notes,
-            p.CreatedAt, p.CreatedBy, p.UpdatedAt, p.UpdatedBy);
 
     // DTOs
     public sealed record CreatePaymentRequest(DateTime Date, decimal Amount, string Method,
         string? Reference, Guid? InvoiceId, Guid? TransactionId, string? Notes);
     public sealed record UpdatePaymentRequest(DateTime Date, decimal Amount, string Method,
         string? Reference, Guid? InvoiceId, Guid? TransactionId, string? Notes);
-    public sealed record PaymentResponse(Guid Id, DateTime Date, decimal Amount, string Method,
-        string? Reference, Guid? InvoiceId, Guid? TransactionId, string? Notes,
-        DateTime CreatedAt, string CreatedBy, DateTime? UpdatedAt, string? UpdatedBy);
 }

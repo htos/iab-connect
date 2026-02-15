@@ -5,7 +5,7 @@ namespace IabConnect.Domain.Finance;
 /// <summary>
 /// REQ-038: Transaction category for income/expense classification.
 /// </summary>
-public class Category : Entity
+public class Category : Entity, ISoftDeletable
 {
     public string Name { get; private set; } = string.Empty;
     public TransactionType Type { get; private set; }
@@ -13,6 +13,9 @@ public class Category : Entity
     public bool IsActive { get; private set; } = true;
     public DateTime CreatedAt { get; private set; }
     public string CreatedBy { get; private set; } = string.Empty;
+    public bool IsDeleted { get; private set; }
+    public DateTime? DeletedAt { get; private set; }
+    public string? DeletedBy { get; private set; }
 
     private Category() { }
 
@@ -40,4 +43,18 @@ public class Category : Entity
 
     public void Activate() => IsActive = true;
     public void Deactivate() => IsActive = false;
+
+    public void SoftDelete(string? deletedBy = null)
+    {
+        IsDeleted = true;
+        DeletedAt = DateTime.UtcNow;
+        DeletedBy = deletedBy;
+    }
+
+    public void Restore()
+    {
+        IsDeleted = false;
+        DeletedAt = null;
+        DeletedBy = null;
+    }
 }

@@ -5,10 +5,9 @@ namespace IabConnect.Domain.Finance;
 /// </summary>
 public enum AccountType
 {
-    Income,
-    Expense,
-    Asset,
-    Liability
+    Cash,
+    Bank,
+    Other
 }
 
 /// <summary>
@@ -79,4 +78,32 @@ public enum DunningStatus
 {
     Created,
     Sent
+}
+
+/// <summary>
+/// REQ-060: Jurisdiction (country/region baseline for finance setup)
+/// </summary>
+public enum Jurisdiction
+{
+    CH,
+    EU
+}
+
+/// <summary>
+/// REQ-060: Supported currencies for finance profiles
+/// </summary>
+public enum FinanceCurrency
+{
+    CHF,
+    EUR
+}
+
+/// <summary>
+/// REQ-062: VAT registration status of the organization
+/// </summary>
+public enum VatStatus
+{
+    NotRegistered,
+    Registered,
+    SmallBusiness
 }

@@ -27,7 +27,7 @@ interface OpenInvoice {
   paidAmount: number;
 }
 
-type PaymentMethod = "BankTransfer" | "Cash" | "Card" | "Other";
+type PaymentMethod = "Transfer" | "Cash" | "Online";
 
 const formatCHF = (amount: number) =>
   new Intl.NumberFormat("de-CH", { style: "currency", currency: "CHF" }).format(
@@ -58,7 +58,7 @@ export default function PaymentsPage() {
     invoiceId: "",
     date: new Date().toISOString().split("T")[0],
     amount: 0,
-    method: "BankTransfer" as PaymentMethod,
+    method: "Transfer" as PaymentMethod,
     reference: "",
     notes: "",
   });
@@ -103,7 +103,7 @@ export default function PaymentsPage() {
       invoiceId: invoice?.id ?? "",
       date: new Date().toISOString().split("T")[0],
       amount: invoice ? invoice.total - invoice.paidAmount : 0,
-      method: "BankTransfer",
+      method: "Transfer",
       reference: "",
       notes: "",
     });
@@ -157,22 +157,20 @@ export default function PaymentsPage() {
 
   const methodBadge = (method: string) => {
     const colors: Record<string, string> = {
-      BankTransfer: "bg-blue-100 text-blue-800",
+      Transfer: "bg-blue-100 text-blue-800",
       Cash: "bg-green-100 text-green-800",
-      Card: "bg-purple-100 text-purple-800",
-      Other: "bg-gray-100 text-gray-800",
+      Online: "bg-purple-100 text-purple-800",
     };
     const labels: Record<string, () => string> = {
-      BankTransfer: () => tRef.current("bankTransfer"),
+      Transfer: () => tRef.current("bankTransfer"),
       Cash: () => tRef.current("cashPayment"),
-      Card: () => tRef.current("cardPayment"),
-      Other: () => method,
+      Online: () => tRef.current("cardPayment"),
     };
     return (
       <span
-        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${colors[method] ?? colors.Other}`}
+        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${colors[method] ?? "bg-gray-100 text-gray-800"}`}
       >
-        {(labels[method] ?? labels.Other)()}
+        {(labels[method] ?? (() => method))()}
       </span>
     );
   };
@@ -464,7 +462,7 @@ export default function PaymentsPage() {
                   type="number"
                   step="0.01"
                   min="0"
-                  value={formData.amount}
+                  value={formData.amount || ""}
                   onChange={(e) =>
                     setFormData((f) => ({
                       ...f,
@@ -490,10 +488,9 @@ export default function PaymentsPage() {
                   }
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:ring-orange-500"
                 >
-                  <option value="BankTransfer">{t("bankTransfer")}</option>
+                  <option value="Transfer">{t("bankTransfer")}</option>
                   <option value="Cash">{t("cashPayment")}</option>
-                  <option value="Card">{t("cardPayment")}</option>
-                  <option value="Other">Other</option>
+                  <option value="Online">{t("cardPayment")}</option>
                 </select>
               </div>
 

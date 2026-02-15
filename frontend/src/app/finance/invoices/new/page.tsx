@@ -10,12 +10,24 @@ interface InvoiceItemForm {
   description: string;
   quantity: number;
   unitPrice: number;
+  taxCodeId: string;
+  taxRate: number;
+  isGrossEntry: boolean;
 }
 
 interface Member {
   id: string;
   firstName: string;
   lastName: string;
+}
+
+interface TaxCode {
+  id: string;
+  code: string;
+  label: string;
+  rate: number;
+  isDefault: boolean;
+  isActive: boolean;
 }
 
 const formatCHF = (amount: number) =>
@@ -29,10 +41,14 @@ const emptyItem = (): InvoiceItemForm => ({
   description: "",
   quantity: 1,
   unitPrice: 0,
+  taxCodeId: "",
+  taxRate: 0,
+  isGrossEntry: false,
 });
 
 export default function NewInvoicePage() {
   const t = useTranslations("finance");
+  const tv = useTranslations("finance.vat");
   const router = useRouter();
   const { canWriteFinance } = useAuth();
   const api = useApiClient();
@@ -48,15 +64,15 @@ export default function NewInvoicePage() {
 
   const [date, setDate] = useState(toDateInputValue(today));
   const [dueDate, setDueDate] = useState(toDateInputValue(defaultDueDate));
-  const [recipientType, setRecipientType] = useState<"Member" | "External">(
+  const [recipientType, setRecipientType] = useState<"Member" | "Other">(
     "Member"
   );
   const [recipientId, setRecipientId] = useState("");
   const [recipientName, setRecipientName] = useState("");
   const [recipientAddress, setRecipientAddress] = useState("");
-  const [taxRate, setTaxRate] = useState(0);
   const [items, setItems] = useState<InvoiceItemForm[]>([emptyItem()]);
   const [members, setMembers] = useState<Member[]>([]);
+  const [taxCodes, setTaxCodes] = useState<TaxCode[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [membersLoading, setMembersLoading] = useState(false);
@@ -68,12 +84,37 @@ export default function NewInvoicePage() {
     }
   }, [canWriteFinance, router]);
 
+  // Fetch tax codes
+  const fetchTaxCodes = useCallback(async () => {
+    try {
+      const response = await apiRef.current.get<TaxCode[]>(
+        "/api/v1/finance/tax-codes"
+      );
+      if (!response.error && response.data) {
+        setTaxCodes((response.data as TaxCode[]).filter((tc) => tc.isActive));
+      }
+    } catch {
+      // Non-critical
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTaxCodes();
+  }, [fetchTaxCodes]);
+
   const fetchMembers = useCallback(async () => {
     try {
       setMembersLoading(true);
-      const response = await apiRef.current.get("/api/v1/members");
+      const response = await apiRef.current.get<{
+        items: Member[];
+        totalCount: number;
+      }>("/api/v1/members?pageSize=500");
       if (response.error) throw new Error(response.error);
-      setMembers(response.data as Member[]);
+      const data = response.data as {
+        items: Member[];
+        totalCount: number;
+      } | null;
+      setMembers(data?.items ?? []);
     } catch {
       // Non-critical, dropdown will be empty
     } finally {
@@ -87,20 +128,51 @@ export default function NewInvoicePage() {
     }
   }, [recipientType, fetchMembers]);
 
-  const { subTotal, taxAmount, total } = useMemo(() => {
-    const sub = items.reduce(
-      (sum, item) => sum + item.quantity * item.unitPrice,
-      0
-    );
-    const tax = sub * (taxRate / 100);
-    return { subTotal: sub, taxAmount: tax, total: sub + tax };
-  }, [items, taxRate]);
+  // Per-item calculation helpers
+  const calcItemAmounts = useCallback((item: InvoiceItemForm) => {
+    const lineTotal = item.quantity * item.unitPrice;
+    const rate = item.taxRate;
+    if (rate === 0) {
+      return { net: lineTotal, tax: 0, gross: lineTotal };
+    }
+    if (item.isGrossEntry) {
+      const gross = lineTotal;
+      const net = gross / (1 + rate / 100);
+      const tax = gross - net;
+      return { net, tax, gross };
+    } else {
+      const net = lineTotal;
+      const tax = net * (rate / 100);
+      const gross = net + tax;
+      return { net, tax, gross };
+    }
+  }, []);
+
+  const { totalNet, totalTax, totalGross } = useMemo(() => {
+    let totalNet = 0;
+    let totalTax = 0;
+    let totalGross = 0;
+    items.forEach((item) => {
+      const amounts = calcItemAmounts(item);
+      totalNet += amounts.net;
+      totalTax += amounts.tax;
+      totalGross += amounts.gross;
+    });
+    return { totalNet, totalTax, totalGross };
+  }, [items, calcItemAmounts]);
 
   const updateItem = useCallback(
-    (index: number, field: keyof InvoiceItemForm, value: string | number) => {
+    (
+      index: number,
+      field: keyof InvoiceItemForm,
+      value: string | number | boolean
+    ) => {
       setItems((prev) => {
         const updated = [...prev];
-        updated[index] = { ...updated[index], [field]: value };
+        updated[index] = {
+          ...updated[index],
+          [field]: field === "isGrossEntry" ? Boolean(value) : value,
+        };
         return updated;
       });
     },
@@ -136,13 +208,22 @@ export default function NewInvoicePage() {
                 : ""
               : recipientName,
           recipientAddress:
-            recipientType === "External" ? recipientAddress : undefined,
-          taxRate,
-          items: items.map(({ description, quantity, unitPrice }) => ({
-            description,
-            quantity,
-            unitPrice,
-          })),
+            recipientType === "Other" ? recipientAddress : undefined,
+          items: items.map(
+            ({
+              description,
+              quantity,
+              unitPrice,
+              taxCodeId,
+              isGrossEntry,
+            }) => ({
+              description,
+              quantity,
+              unitPrice,
+              taxCodeId: taxCodeId || null,
+              isGrossEntry,
+            })
+          ),
         };
 
         const response = await apiRef.current.post(
@@ -173,7 +254,6 @@ export default function NewInvoicePage() {
       recipientId,
       recipientName,
       recipientAddress,
-      taxRate,
       items,
       members,
       router,
@@ -194,7 +274,7 @@ export default function NewInvoicePage() {
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm text-gray-500">
         <Link href="/finance" className="hover:text-orange-600">
-          {t("finance")}
+          {t("title")}
         </Link>
         <span>/</span>
         <Link href="/finance/invoices" className="hover:text-orange-600">
@@ -247,29 +327,17 @@ export default function NewInvoicePage() {
             <select
               value={recipientType}
               onChange={(e) =>
-                setRecipientType(e.target.value as "Member" | "External")
+                setRecipientType(e.target.value as "Member" | "Other")
               }
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:ring-orange-500"
             >
               <option value="Member">{t("recipientTypeMember")}</option>
-              <option value="External">{t("recipientTypeExternal")}</option>
+              <option value="Other">{t("recipientTypeExternal")}</option>
             </select>
           </div>
 
-          {/* Tax Rate */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              {t("taxRate")} (%)
-            </label>
-            <input
-              type="number"
-              min={0}
-              step={0.1}
-              value={taxRate}
-              onChange={(e) => setTaxRate(parseFloat(e.target.value) || 0)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:ring-orange-500"
-            />
-          </div>
+          {/* Spacer for grid alignment */}
+          <div />
 
           {/* Recipient Selection */}
           {recipientType === "Member" ? (
@@ -342,111 +410,166 @@ export default function NewInvoicePage() {
             <thead>
               <tr className="border-b border-gray-200 text-left text-gray-500">
                 <th className="pb-3 font-medium">{t("description")}</th>
-                <th className="w-28 pb-3 text-right font-medium">
+                <th className="w-20 pb-3 text-right font-medium">
                   {t("quantity")}
                 </th>
-                <th className="w-36 pb-3 text-right font-medium">
+                <th className="w-28 pb-3 text-right font-medium">
                   {t("unitPrice")}
                 </th>
-                <th className="w-36 pb-3 text-right font-medium">
-                  {t("amount")}
+                <th className="w-36 pb-3 font-medium">{tv("taxCode")}</th>
+                <th className="w-20 pb-3 text-center font-medium">
+                  {tv("isGrossEntry")}
+                </th>
+                <th className="w-28 pb-3 text-right font-medium">
+                  {tv("net")}
+                </th>
+                <th className="w-24 pb-3 text-right font-medium">
+                  {tv("tax")}
+                </th>
+                <th className="w-28 pb-3 text-right font-medium">
+                  {tv("gross")}
                 </th>
                 <th className="w-12 pb-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {items.map((item, index) => (
-                <tr key={index}>
-                  <td className="py-2 pr-2">
-                    <input
-                      type="text"
-                      value={item.description}
-                      onChange={(e) =>
-                        updateItem(index, "description", e.target.value)
-                      }
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:ring-orange-500"
-                      placeholder={t("descriptionPlaceholder")}
-                    />
-                  </td>
-                  <td className="py-2 pr-2">
-                    <input
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={item.quantity}
-                      onChange={(e) =>
-                        updateItem(
-                          index,
-                          "quantity",
-                          parseFloat(e.target.value) || 0
-                        )
-                      }
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-right text-sm focus:border-orange-500 focus:ring-orange-500"
-                    />
-                  </td>
-                  <td className="py-2 pr-2">
-                    <input
-                      type="number"
-                      min={0}
-                      step={0.01}
-                      value={item.unitPrice}
-                      onChange={(e) =>
-                        updateItem(
-                          index,
-                          "unitPrice",
-                          parseFloat(e.target.value) || 0
-                        )
-                      }
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-right text-sm focus:border-orange-500 focus:ring-orange-500"
-                    />
-                  </td>
-                  <td className="py-2 pr-2 text-right font-medium text-gray-900">
-                    {formatCHF(item.quantity * item.unitPrice)}
-                  </td>
-                  <td className="py-2 text-center">
-                    <button
-                      type="button"
-                      onClick={() => removeItem(index)}
-                      disabled={items.length <= 1}
-                      className="text-red-500 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-30"
-                      title={t("removeItem")}
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
+              {items.map((item, index) => {
+                const amounts = calcItemAmounts(item);
+                return (
+                  <tr key={index}>
+                    <td className="py-2 pr-2">
+                      <input
+                        type="text"
+                        value={item.description}
+                        onChange={(e) =>
+                          updateItem(index, "description", e.target.value)
+                        }
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:ring-orange-500"
+                        placeholder={t("descriptionPlaceholder")}
+                      />
+                    </td>
+                    <td className="py-2 pr-2">
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={item.quantity}
+                        onChange={(e) =>
+                          updateItem(
+                            index,
+                            "quantity",
+                            parseFloat(e.target.value) || 0
+                          )
+                        }
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-right text-sm focus:border-orange-500 focus:ring-orange-500"
+                      />
+                    </td>
+                    <td className="py-2 pr-2">
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={item.unitPrice}
+                        onChange={(e) =>
+                          updateItem(
+                            index,
+                            "unitPrice",
+                            parseFloat(e.target.value) || 0
+                          )
+                        }
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-right text-sm focus:border-orange-500 focus:ring-orange-500"
+                      />
+                    </td>
+                    <td className="py-2 pr-2">
+                      <select
+                        value={item.taxCodeId}
+                        onChange={(e) => {
+                          const selectedTc = taxCodes.find(
+                            (tc) => tc.id === e.target.value
+                          );
+                          setItems((prev) => {
+                            const updated = [...prev];
+                            updated[index] = {
+                              ...updated[index],
+                              taxCodeId: e.target.value,
+                              taxRate: selectedTc ? selectedTc.rate : 0,
+                            };
+                            return updated;
+                          });
+                        }}
+                        className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-orange-500 focus:ring-orange-500"
                       >
-                        <path
-                          fillRule="evenodd"
-                          d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                        <option value="">{tv("noTaxCode")}</option>
+                        {taxCodes.map((tc) => (
+                          <option key={tc.id} value={tc.id}>
+                            {tc.label} ({tc.rate}%)
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="py-2 pr-2 text-center">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                        checked={item.isGrossEntry}
+                        onChange={(e) =>
+                          updateItem(index, "isGrossEntry", e.target.checked)
+                        }
+                        disabled={!item.taxCodeId}
+                      />
+                    </td>
+                    <td className="py-2 pr-2 text-right text-sm text-gray-700">
+                      {formatCHF(amounts.net)}
+                    </td>
+                    <td className="py-2 pr-2 text-right text-sm text-gray-500">
+                      {amounts.tax > 0 ? formatCHF(amounts.tax) : "—"}
+                    </td>
+                    <td className="py-2 pr-2 text-right font-medium text-gray-900">
+                      {formatCHF(amounts.gross)}
+                    </td>
+                    <td className="py-2 text-center">
+                      <button
+                        type="button"
+                        onClick={() => removeItem(index)}
+                        disabled={items.length <= 1}
+                        className="text-red-500 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-30"
+                        title={t("removeItem")}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-5 w-5"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
 
         {/* Totals Display */}
         <div className="mt-6 flex justify-end">
-          <div className="w-64 space-y-2 text-sm">
+          <div className="w-72 space-y-2 text-sm">
             <div className="flex justify-between text-gray-600">
-              <span>{t("subTotal")}</span>
-              <span>{formatCHF(subTotal)}</span>
+              <span>{tv("totalNet")}</span>
+              <span>{formatCHF(totalNet)}</span>
             </div>
             <div className="flex justify-between text-gray-600">
-              <span>
-                {t("taxRate")} ({taxRate}%)
-              </span>
-              <span>{formatCHF(taxAmount)}</span>
+              <span>{tv("totalTax")}</span>
+              <span>{formatCHF(totalTax)}</span>
             </div>
             <div className="flex justify-between border-t border-gray-200 pt-2 font-bold text-gray-900">
-              <span>{t("total")}</span>
-              <span>{formatCHF(total)}</span>
+              <span>{tv("totalGross")}</span>
+              <span>{formatCHF(totalGross)}</span>
             </div>
           </div>
         </div>

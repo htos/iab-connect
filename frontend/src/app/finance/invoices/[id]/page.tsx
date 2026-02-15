@@ -12,6 +12,13 @@ interface InvoiceItem {
   quantity: number;
   unitPrice: number;
   amount: number;
+  taxCodeCode: string | null;
+  taxCodeLabel: string | null;
+  taxRate: number;
+  isGrossEntry: boolean;
+  netAmount: number;
+  taxAmount: number;
+  grossAmount: number;
 }
 
 interface Invoice {
@@ -27,6 +34,9 @@ interface Invoice {
   taxRate: number;
   taxAmount: number;
   total: number;
+  totalNet: number;
+  totalTax: number;
+  totalGross: number;
   items: InvoiceItem[];
 }
 
@@ -53,6 +63,7 @@ const statusColors: Record<string, string> = {
 
 export default function InvoiceDetailPage() {
   const t = useTranslations("finance");
+  const tv = useTranslations("finance.vat");
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { canReadFinance, canWriteFinance } = useAuth();
@@ -109,7 +120,12 @@ export default function InvoiceDetailPage() {
   const handleSend = useCallback(async () => {
     try {
       setActionLoading(true);
-      await apiRef.current.post(`/api/v1/finance/invoices/${id}/send`, {});
+      setError(null);
+      const res = await apiRef.current.post(
+        `/api/v1/finance/invoices/${id}/send`,
+        {}
+      );
+      if (res.error) throw new Error(res.error);
       await fetchInvoice();
     } catch {
       setError(tRef.current("errorSendingInvoice"));
@@ -121,7 +137,12 @@ export default function InvoiceDetailPage() {
   const handleCancel = useCallback(async () => {
     try {
       setActionLoading(true);
-      await apiRef.current.post(`/api/v1/finance/invoices/${id}/cancel`, {});
+      setError(null);
+      const res = await apiRef.current.post(
+        `/api/v1/finance/invoices/${id}/cancel`,
+        {}
+      );
+      if (res.error) throw new Error(res.error);
       await fetchInvoice();
     } catch {
       setError(tRef.current("errorCancellingInvoice"));
@@ -131,18 +152,59 @@ export default function InvoiceDetailPage() {
   }, [id, fetchInvoice]);
 
   const handleGenerateDunning = useCallback(async () => {
+    if (!invoice) return;
     try {
       setActionLoading(true);
-      await apiRef.current.post(`/api/v1/finance/dunning`, {
+      setError(null);
+      // Auto-determine dunning level (1st, 2nd, or 3rd reminder)
+      const dunningRes = await apiRef.current.get("/api/v1/finance/dunning");
+      const existingDunnings =
+        (dunningRes.data as Array<{ invoiceId: string }>) || [];
+      const invoiceDunnings = existingDunnings.filter(
+        (d) => d.invoiceId === id
+      );
+      const nextLevel = Math.min(invoiceDunnings.length + 1, 3);
+      // Due date: 14 days from now
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 14);
+      const res = await apiRef.current.post(`/api/v1/finance/dunning`, {
         invoiceId: id,
+        level: nextLevel,
+        dueDate: dueDate.toISOString(),
       });
+      if (res.error) throw new Error(res.error);
       await fetchInvoice();
     } catch {
       setError(tRef.current("errorGeneratingDunning"));
     } finally {
       setActionLoading(false);
     }
-  }, [id, fetchInvoice]);
+  }, [id, invoice, fetchInvoice]);
+
+  const handleDownloadPdf = useCallback(async () => {
+    try {
+      setActionLoading(true);
+      setError(null);
+      const res = await apiRef.current.get<Blob>(
+        `/api/v1/finance/invoices/${id}/pdf`
+      );
+      if (res.error) throw new Error(res.error);
+      if (res.data && res.data instanceof Blob) {
+        const url = URL.createObjectURL(res.data);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `invoice-${invoice?.invoiceNumber || id}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch {
+      setError(tRef.current("errorDownloadingPdf"));
+    } finally {
+      setActionLoading(false);
+    }
+  }, [id, invoice]);
 
   if (!canReadFinance) return null;
 
@@ -178,7 +240,7 @@ export default function InvoiceDetailPage() {
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm text-gray-500">
         <Link href="/finance" className="hover:text-orange-600">
-          {t("finance")}
+          {t("title")}
         </Link>
         <span>/</span>
         <Link href="/finance/invoices" className="hover:text-orange-600">
@@ -249,48 +311,130 @@ export default function InvoiceDetailPage() {
                 <th className="pb-3 text-right font-medium">
                   {t("unitPrice")}
                 </th>
-                <th className="pb-3 text-right font-medium">{t("amount")}</th>
+                <th className="pb-3 font-medium">{tv("taxCode")}</th>
+                <th className="pb-3 text-right font-medium">{tv("net")}</th>
+                <th className="pb-3 text-right font-medium">{tv("tax")}</th>
+                <th className="pb-3 text-right font-medium">{tv("gross")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {invoice.items.map((item) => (
-                <tr key={item.id}>
-                  <td className="py-3 text-gray-900">{item.description}</td>
-                  <td className="py-3 text-right text-gray-700">
-                    {item.quantity}
-                  </td>
-                  <td className="py-3 text-right text-gray-700">
-                    {formatCHF(item.unitPrice)}
-                  </td>
-                  <td className="py-3 text-right font-medium text-gray-900">
-                    {formatCHF(item.amount)}
-                  </td>
-                </tr>
-              ))}
+              {invoice.items.map((item) => {
+                const netAmt = item.netAmount ?? item.amount;
+                const taxAmt = item.taxAmount ?? 0;
+                const grossAmt = item.grossAmount ?? item.amount;
+                return (
+                  <tr key={item.id}>
+                    <td className="py-3 text-gray-900">{item.description}</td>
+                    <td className="py-3 text-right text-gray-700">
+                      {item.quantity}
+                    </td>
+                    <td className="py-3 text-right text-gray-700">
+                      {formatCHF(item.unitPrice)}
+                    </td>
+                    <td className="py-3 text-gray-600">
+                      {item.taxCodeLabel
+                        ? `${item.taxCodeLabel} (${item.taxRate}%)`
+                        : "—"}
+                    </td>
+                    <td className="py-3 text-right text-gray-700">
+                      {formatCHF(netAmt)}
+                    </td>
+                    <td className="py-3 text-right text-gray-500">
+                      {taxAmt > 0 ? formatCHF(taxAmt) : "—"}
+                    </td>
+                    <td className="py-3 text-right font-medium text-gray-900">
+                      {formatCHF(grossAmt)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
 
         {/* Totals */}
         <div className="mt-6 flex justify-end">
-          <div className="w-64 space-y-2 text-sm">
+          <div className="w-72 space-y-2 text-sm">
             <div className="flex justify-between text-gray-600">
-              <span>{t("subTotal")}</span>
-              <span>{formatCHF(invoice.subTotal)}</span>
+              <span>{tv("totalNet")}</span>
+              <span>{formatCHF(invoice.totalNet ?? invoice.subTotal)}</span>
             </div>
             <div className="flex justify-between text-gray-600">
-              <span>
-                {t("taxRate")} ({invoice.taxRate}%)
-              </span>
-              <span>{formatCHF(invoice.taxAmount)}</span>
+              <span>{tv("totalTax")}</span>
+              <span>{formatCHF(invoice.totalTax ?? invoice.taxAmount)}</span>
             </div>
             <div className="flex justify-between border-t border-gray-200 pt-2 font-bold text-gray-900">
-              <span>{t("total")}</span>
-              <span>{formatCHF(invoice.total)}</span>
+              <span>{tv("totalGross")}</span>
+              <span>{formatCHF(invoice.totalGross ?? invoice.total)}</span>
             </div>
           </div>
         </div>
       </div>
+
+      {/* VAT Summary */}
+      {(() => {
+        const vatGroups = new Map<
+          number,
+          { rate: number; net: number; tax: number; gross: number }
+        >();
+        invoice.items.forEach((item) => {
+          if (item.taxRate > 0) {
+            const existing = vatGroups.get(item.taxRate) ?? {
+              rate: item.taxRate,
+              net: 0,
+              tax: 0,
+              gross: 0,
+            };
+            existing.net += item.netAmount ?? item.amount;
+            existing.tax += item.taxAmount ?? 0;
+            existing.gross += item.grossAmount ?? item.amount;
+            vatGroups.set(item.taxRate, existing);
+          }
+        });
+        if (vatGroups.size === 0) return null;
+        const groups = Array.from(vatGroups.values()).sort(
+          (a, b) => a.rate - b.rate
+        );
+        return (
+          <div className="rounded-xl bg-white p-6 shadow-sm">
+            <h2 className="mb-4 text-lg font-semibold text-gray-900">
+              {tv("vatSummary")}
+            </h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 text-left text-gray-500">
+                    <th className="pb-3 font-medium">{tv("rate")}</th>
+                    <th className="pb-3 text-right font-medium">{tv("net")}</th>
+                    <th className="pb-3 text-right font-medium">{tv("tax")}</th>
+                    <th className="pb-3 text-right font-medium">
+                      {tv("gross")}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {groups.map((group) => (
+                    <tr key={group.rate}>
+                      <td className="py-3 text-gray-900">
+                        {group.rate.toFixed(2)}%
+                      </td>
+                      <td className="py-3 text-right text-gray-700">
+                        {formatCHF(group.net)}
+                      </td>
+                      <td className="py-3 text-right text-gray-700">
+                        {formatCHF(group.tax)}
+                      </td>
+                      <td className="py-3 text-right font-medium text-gray-900">
+                        {formatCHF(group.gross)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Action Buttons */}
       {canWriteFinance && (
@@ -304,6 +448,13 @@ export default function InvoiceDetailPage() {
               {actionLoading ? t("sending") : t("send")}
             </button>
           )}
+          <button
+            onClick={handleDownloadPdf}
+            disabled={actionLoading}
+            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            {t("downloadPdf")}
+          </button>
           <Link
             href={`/finance/payments?invoiceId=${invoice.id}`}
             className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"

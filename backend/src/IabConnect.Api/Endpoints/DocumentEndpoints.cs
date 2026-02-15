@@ -2,6 +2,7 @@ using IabConnect.Application.Common;
 using IabConnect.Domain.Documents;
 using IabConnect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Mvc;
+using IUnitOfWork = IabConnect.Infrastructure.Persistence.IUnitOfWork;
 
 namespace IabConnect.Api.Endpoints;
 

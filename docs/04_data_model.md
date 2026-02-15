@@ -255,61 +255,392 @@ Indizes
 name
 
 Name
+Account
+
+Beschreibung
+Finanzkonto zur Kategorisierung von Buchungen (Einnahmen, Ausgaben, Vermögen, Verbindlichkeiten).
+
+Wichtige Felder
+id
+name
+number
+type (Income, Expense, Asset, Liability)
+description
+is_active
+sort_order
+created_at
+created_by
+updated_at
+updated_by
+is_deleted (ISoftDeletable)
+deleted_at (ISoftDeletable)
+deleted_by
+
+Beziehungen
+Account zu Transaction
+
+Indizes
+number unique
+name
+
+Validierungen
+name ist nicht leer
+number ist nicht leer
+
+Name
+Category
+
+Beschreibung
+Kategorie für Einnahmen- oder Ausgabenbuchungen.
+
+Wichtige Felder
+id
+name
+type (Income, Expense)
+color
+is_active
+created_at
+created_by
+is_deleted (ISoftDeletable)
+deleted_at (ISoftDeletable)
+deleted_by
+
+Indizes
+name
+
+Validierungen
+name ist nicht leer
+
+Name
+Transaction
+
+Beschreibung
+Buchung in der Mini Buchhaltung (Einnahme oder Ausgabe).
+
+Wichtige Felder
+id
+date
+description
+amount
+type (Income, Expense)
+account_id
+category_id optional
+reference
+notes
+receipt_id optional
+tax_code_id optional (REQ-062)
+tax_rate optional (REQ-062)
+tax_amount optional (REQ-062)
+net_amount optional (REQ-062)
+created_at
+created_by
+updated_at
+updated_by
+is_deleted (ISoftDeletable)
+deleted_at (ISoftDeletable)
+deleted_by
+
+Beziehungen
+Transaction zu Account
+Transaction zu Category optional
+Transaction zu Receipt optional
+Transaction zu TaxCode optional
+
+Indizes
+date
+account_id
+category_id
+
+Validierungen
+description ist nicht leer
+amount ungleich 0
+
+Name
 Invoice
 
 Beschreibung
-Rechnung für Beiträge oder Events.
+Rechnung für Mitgliedsbeiträge, Sponsoring oder andere Leistungen. Unterstützt Storno mit Reversal Transaction.
 
 Wichtige Felder
 id
 invoice_number
-member_id
-amount
+date
 due_date
-status
-reference_type
-reference_id
+status (Draft, Sent, Paid, Overdue, Cancelled)
+recipient_type (Member, Sponsor, Vendor, Other)
+recipient_id optional
+recipient_name
+recipient_address
+sub_total
+tax_rate
+tax_amount
+total
+notes
+cancellation_reason (Storno)
+cancelled_at (Storno)
+subtotal_net (REQ-062 VAT Aggregat)
+total_tax (REQ-062 VAT Aggregat)
+total_gross (REQ-062 VAT Aggregat)
+created_at
+created_by
+updated_at
+updated_by
+is_deleted (ISoftDeletable)
+deleted_at (ISoftDeletable)
+deleted_by
+
+Beziehungen
+Invoice zu InvoiceItem (1:n)
+Invoice zu Payment (1:n)
+Invoice zu DunningNotice (1:n)
 
 Indizes
 invoice_number unique
 due_date
+status
+recipient_id
+
+Validierungen
+invoice_number ist nicht leer
+recipient_name ist nicht leer
+
+Name
+InvoiceItem
+
+Beschreibung
+Rechnungsposition mit optionaler Steuerberechnung (Netto/Brutto).
+
+Wichtige Felder
+id
+invoice_id
+description
+quantity
+unit_price
+amount
+tax_code_id optional (REQ-062)
+tax_rate optional (REQ-062)
+tax_amount optional (REQ-062)
+net_amount optional (REQ-062)
+gross_amount optional (REQ-062)
+is_gross_entry (REQ-062)
+
+Beziehungen
+InvoiceItem zu Invoice
+InvoiceItem zu TaxCode optional
+
+Indizes
+invoice_id
+
+Validierungen
+description ist nicht leer
+quantity > 0
 
 Name
 Payment
 
 Beschreibung
-Zahlung zu einer Rechnung.
+Zahlung zu einer Rechnung oder freistehend.
 
 Wichtige Felder
 id
-invoice_id
+date
 amount
-paid_at
-method
-note
+method (Cash, Transfer, Online)
+reference
+invoice_id optional
+transaction_id optional
+notes
+created_at
+created_by
+updated_at
+updated_by
+is_deleted (ISoftDeletable)
+deleted_at (ISoftDeletable)
+deleted_by
+
+Beziehungen
+Payment zu Invoice optional
+Payment zu Transaction optional
 
 Indizes
 invoice_id
+date
+
+Validierungen
+amount > 0
 
 Name
-LedgerEntry
+BankImport
 
 Beschreibung
-Buchung in der Mini Buchhaltung.
+CSV-Import Batch aus Bankkontoauszügen.
 
 Wichtige Felder
 id
-type
-amount
-date
-category
-cost_center
-invoice_id optional
-vendor_id optional
+import_date
+file_name
+status (Pending, Processed)
+imported_by
+is_deleted (ISoftDeletable)
+deleted_at (ISoftDeletable)
+deleted_by
+
+Beziehungen
+BankImport zu BankImportItem (1:n)
 
 Indizes
+import_date
+
+Validierungen
+file_name ist nicht leer
+
+Name
+BankImportItem
+
+Beschreibung
+Einzelne Zeile aus einem Bank-CSV-Import.
+
+Wichtige Felder
+id
+bank_import_id
+transaction_date
+description
+amount
+iban optional
+reference optional
+status (Unmatched, Matched, Ignored)
+matched_payment_id optional
+
+Beziehungen
+BankImportItem zu BankImport
+BankImportItem zu Payment optional (matched)
+
+Indizes
+bank_import_id
+
+Name
+DunningNotice
+
+Beschreibung
+Mahnung für überfällige Rechnungen (Stufe 1 bis 3).
+
+Wichtige Felder
+id
+invoice_id
+level (1 bis 3)
 date
-category
+due_date
+status (Created, Sent)
+sent_at
+notes
+created_by
+is_deleted (ISoftDeletable)
+deleted_at (ISoftDeletable)
+deleted_by
+
+Beziehungen
+DunningNotice zu Invoice
+
+Indizes
+invoice_id
+date
+
+Validierungen
+level zwischen 1 und 3
+
+Name
+Receipt
+
+Beschreibung
+Beleg-Datei in S3-kompatiblem Storage (RustFS) mit Integritätsprüfung via SHA256.
+
+Wichtige Felder
+id
+file_name
+file_path (Storage Key in RustFS)
+content_type
+file_size
+file_hash (SHA256)
+uploaded_at
+uploaded_by
+notes
+is_deleted (ISoftDeletable)
+deleted_at (ISoftDeletable)
+deleted_by
+
+Beziehungen
+Receipt zu Transaction (über transaction.receipt_id)
+
+Indizes
+file_hash
+
+Validierungen
+file_name ist nicht leer
+file_path ist nicht leer
+
+Name
+TaxCode
+
+Beschreibung
+Konfigurierbarer Steuercode (MWST/VAT) für Buchungen und Rechnungspositionen.
+
+Wichtige Felder
+id
+code (z.B. NORMAL, REDUCED, EXEMPT)
+label
+rate (0 bis 1, z.B. 0.081 für 8.1%)
+is_default
+is_active
+created_at
+updated_at
+is_deleted (ISoftDeletable)
+deleted_at (ISoftDeletable)
+
+Indizes
+code unique
+
+Validierungen
+code ist nicht leer
+label ist nicht leer
+rate zwischen 0 und 1
+
+Name
+FinanceProfile
+
+Beschreibung
+Finanzprofil pro Verein (CH oder EU). Steuert Jurisdiktion, Währung, Geschäftsjahr, Organisationsdaten und Bankverbindung. Nur ein aktives Profil erlaubt.
+
+Wichtige Felder
+id
+jurisdiction (CH, EU)
+country_code optional (für EU)
+currency (CHF, EUR)
+fiscal_year_start_month
+organization_name
+organization_address
+organization_city
+organization_postal_code
+organization_country
+organization_email optional
+organization_phone optional
+organization_website optional
+organization_uid optional (UID/Handelsregister)
+vat_status (NotRegistered, Registered, SmallBusiness) (REQ-062)
+vat_number optional (REQ-062)
+bank_name optional
+bank_iban optional
+bank_bic optional
+is_active
+created_at
+updated_at
+
+Indizes
+is_active
+
+Validierungen
+organization_name ist nicht leer
+organization_address ist nicht leer
+fiscal_year_start_month zwischen 1 und 12
 
 Document Management Entities
 

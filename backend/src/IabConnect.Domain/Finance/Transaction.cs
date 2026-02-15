@@ -4,8 +4,9 @@ namespace IabConnect.Domain.Finance;
 
 /// <summary>
 /// REQ-038: Financial transaction (Buchung) - income or expense entry.
+/// REQ-062: Extended with optional tax code and tax breakdown.
 /// </summary>
-public class Transaction : Entity
+public class Transaction : Entity, ISoftDeletable
 {
     public DateTime Date { get; private set; }
     public string Description { get; private set; } = string.Empty;
@@ -19,10 +20,20 @@ public class Transaction : Entity
     public string? Notes { get; private set; }
     public Guid? ReceiptId { get; private set; }
     public Receipt? Receipt { get; private set; }
+
+    // REQ-062: VAT fields
+    public Guid? TaxCodeId { get; private set; }
+    public decimal? TaxRate { get; private set; }
+    public decimal? TaxAmount { get; private set; }
+    public decimal? NetAmount { get; private set; }
+
     public DateTime CreatedAt { get; private set; }
     public string CreatedBy { get; private set; } = string.Empty;
     public DateTime? UpdatedAt { get; private set; }
     public string? UpdatedBy { get; private set; }
+    public bool IsDeleted { get; private set; }
+    public DateTime? DeletedAt { get; private set; }
+    public string? DeletedBy { get; private set; }
 
     private Transaction() { }
 
@@ -35,16 +46,26 @@ public class Transaction : Entity
         Guid? categoryId,
         string? reference,
         string? notes,
-        string createdBy)
+        string createdBy,
+        Guid? taxCodeId = null,
+        decimal? taxRate = null)
     {
         if (string.IsNullOrWhiteSpace(description))
             throw new ArgumentException("Description is required.", nameof(description));
         if (amount <= 0)
             throw new ArgumentException("Amount must be positive.", nameof(amount));
 
+        decimal? taxAmount = null;
+        decimal? netAmount = null;
+        if (taxRate.HasValue)
+        {
+            taxAmount = Math.Round(amount * taxRate.Value / (1 + taxRate.Value), 2);
+            netAmount = amount - taxAmount.Value;
+        }
+
         return new Transaction
         {
-            Date = date,
+            Date = DateTime.SpecifyKind(date, DateTimeKind.Utc),
             Description = description.Trim(),
             Amount = amount,
             Type = type,
@@ -52,6 +73,10 @@ public class Transaction : Entity
             CategoryId = categoryId,
             Reference = reference?.Trim(),
             Notes = notes?.Trim(),
+            TaxCodeId = taxCodeId,
+            TaxRate = taxRate,
+            TaxAmount = taxAmount,
+            NetAmount = netAmount,
             CreatedAt = DateTime.UtcNow,
             CreatedBy = createdBy
         };
@@ -66,9 +91,11 @@ public class Transaction : Entity
         Guid? categoryId,
         string? reference,
         string? notes,
-        string updatedBy)
+        string updatedBy,
+        Guid? taxCodeId = null,
+        decimal? taxRate = null)
     {
-        Date = date;
+        Date = DateTime.SpecifyKind(date, DateTimeKind.Utc);
         Description = description.Trim();
         Amount = amount;
         Type = type;
@@ -76,6 +103,20 @@ public class Transaction : Entity
         CategoryId = categoryId;
         Reference = reference?.Trim();
         Notes = notes?.Trim();
+        TaxCodeId = taxCodeId;
+        TaxRate = taxRate;
+
+        if (taxRate.HasValue)
+        {
+            TaxAmount = Math.Round(amount * taxRate.Value / (1 + taxRate.Value), 2);
+            NetAmount = amount - TaxAmount.Value;
+        }
+        else
+        {
+            TaxAmount = null;
+            NetAmount = null;
+        }
+
         UpdatedAt = DateTime.UtcNow;
         UpdatedBy = updatedBy;
     }
@@ -88,5 +129,19 @@ public class Transaction : Entity
     public void DetachReceipt()
     {
         ReceiptId = null;
+    }
+
+    public void SoftDelete(string? deletedBy = null)
+    {
+        IsDeleted = true;
+        DeletedAt = DateTime.UtcNow;
+        DeletedBy = deletedBy;
+    }
+
+    public void Restore()
+    {
+        IsDeleted = false;
+        DeletedAt = null;
+        DeletedBy = null;
     }
 }

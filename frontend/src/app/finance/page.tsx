@@ -15,8 +15,13 @@ import { useAuth, useApiClient } from "@/lib/auth";
 
 interface TransactionSummary {
   totalIncome: number;
-  totalExpenses: number;
+  totalExpense: number;
   balance: number;
+}
+
+interface OpenInvoice {
+  id: string;
+  total: number;
 }
 
 interface OpenInvoicesSummary {
@@ -212,9 +217,7 @@ export default function FinanceDashboardPage() {
         apiRef.current.get<TransactionSummary>(
           "/api/v1/finance/transactions/summary"
         ),
-        apiRef.current.get<OpenInvoicesSummary>(
-          "/api/v1/finance/invoices/open"
-        ),
+        apiRef.current.get<OpenInvoice[]>("/api/v1/finance/invoices/open"),
         apiRef.current.get<Transaction[]>("/api/v1/finance/transactions"),
       ]);
 
@@ -225,8 +228,13 @@ export default function FinanceDashboardPage() {
       }
 
       if (summaryRes.data) setSummary(summaryRes.data as TransactionSummary);
-      if (invoicesRes.data)
-        setOpenInvoices(invoicesRes.data as OpenInvoicesSummary);
+      if (invoicesRes.data) {
+        const invoiceList = invoicesRes.data as OpenInvoice[];
+        setOpenInvoices({
+          count: invoiceList.length,
+          totalAmount: invoiceList.reduce((sum, inv) => sum + inv.total, 0),
+        });
+      }
       if (transactionsRes.data)
         setRecentTransactions(
           (transactionsRes.data as Transaction[]).slice(0, 10)
@@ -342,7 +350,7 @@ export default function FinanceDashboardPage() {
               {t("totalExpense")}
             </p>
             <p className="mt-2 text-2xl font-bold text-red-600">
-              {summary ? formatCHF(summary.totalExpenses) : "–"}
+              {summary ? formatCHF(summary.totalExpense) : "–"}
             </p>
           </div>
 
