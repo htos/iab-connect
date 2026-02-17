@@ -11,6 +11,7 @@ public sealed record UpdatePaymentCommand : IRequest<PaymentDto?>
     public required Guid Id { get; init; }
     public required DateTime Date { get; init; }
     public required decimal Amount { get; init; }
+    public required string Direction { get; init; }
     public required string Method { get; init; }
     public string? Reference { get; init; }
     public Guid? InvoiceId { get; init; }

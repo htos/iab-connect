@@ -23,6 +23,13 @@ interface BankImportItem {
   reference: string;
   status: "Unmatched" | "Matched" | "Ignored";
   paymentId: string | null;
+  endToEndId: string | null;
+  creditorReference: string | null;
+  remittanceInfo: string | null;
+  debtorName: string | null;
+  debtorIban: string | null;
+  suggestedInvoiceId: string | null;
+  matchConfidence: number | null;
 }
 
 interface BankImportDetail extends BankImport {
@@ -51,6 +58,8 @@ export default function BankImportPage() {
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const camtInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingCamt, setUploadingCamt] = useState(false);
 
   // Detail view
   const [viewingImport, setViewingImport] = useState<BankImportDetail | null>(
@@ -104,6 +113,24 @@ export default function BankImportPage() {
     }
   }, [selectedFile, fetchImports]);
 
+  const handleCamtUpload = useCallback(async (file: File) => {
+    setUploadingCamt(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      await apiRef.current.upload("/api/v1/finance/bank-imports/camt", formData);
+      if (camtInputRef.current) {
+        camtInputRef.current.value = "";
+      }
+      await fetchImports();
+    } catch {
+      setError("Failed to import camt file");
+    } finally {
+      setUploadingCamt(false);
+    }
+  }, [fetchImports]);
+
   const viewImportItems = useCallback(async (importId: string) => {
     setDetailLoading(true);
     setError(null);
@@ -132,6 +159,40 @@ export default function BankImportPage() {
         }
       } catch {
         setError("Failed to ignore item");
+      }
+    },
+    [viewingImport, viewImportItems]
+  );
+
+  const handleAcceptMatch = useCallback(
+    async (importId: string, itemId: string, invoiceId: string) => {
+      try {
+        await apiRef.current.put(
+          `/api/v1/finance/bank-imports/${importId}/items/${itemId}/accept-match`,
+          { invoiceId }
+        );
+        if (viewingImport) {
+          await viewImportItems(viewingImport.id);
+        }
+      } catch {
+        setError("Failed to accept match");
+      }
+    },
+    [viewingImport, viewImportItems]
+  );
+
+  const handleRejectMatch = useCallback(
+    async (importId: string, itemId: string) => {
+      try {
+        await apiRef.current.put(
+          `/api/v1/finance/bank-imports/${importId}/items/${itemId}/reject-match`,
+          {}
+        );
+        if (viewingImport) {
+          await viewImportItems(viewingImport.id);
+        }
+      } catch {
+        setError("Failed to reject match");
       }
     },
     [viewingImport, viewImportItems]
@@ -213,6 +274,27 @@ export default function BankImportPage() {
     );
   };
 
+  const confidenceBadge = (confidence: number | null) => {
+    if (confidence === null) return <span className="text-xs text-gray-400">{tRef.current("noMatch")}</span>;
+    let cls: string;
+    let label: string;
+    if (confidence >= 0.8) {
+      cls = "bg-green-100 text-green-800";
+      label = tRef.current("highConfidence");
+    } else if (confidence >= 0.5) {
+      cls = "bg-yellow-100 text-yellow-800";
+      label = tRef.current("mediumConfidence");
+    } else {
+      cls = "bg-red-100 text-red-800";
+      label = tRef.current("lowConfidence");
+    }
+    return (
+      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${cls}`}>
+        {label} ({Math.round(confidence * 100)}%)
+      </span>
+    );
+  };
+
   if (!canReadFinance) {
     return (
       <div className="flex h-64 items-center justify-center text-gray-500">
@@ -224,6 +306,14 @@ export default function BankImportPage() {
   return (
     <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
+        {/* Back to Settings */}
+        <Link href="/finance/settings" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          {t("backToSettings")}
+        </Link>
+
         {/* Header */}
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">
@@ -272,6 +362,32 @@ export default function BankImportPage() {
                   t("upload")
                 )}
               </button>
+              <div className="ml-4 border-l border-gray-200 pl-4">
+                <input
+                  ref={camtInputRef}
+                  type="file"
+                  accept=".xml"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleCamtUpload(file);
+                  }}
+                />
+                <button
+                  onClick={() => camtInputRef.current?.click()}
+                  disabled={uploadingCamt}
+                  className="inline-flex items-center rounded-lg border border-orange-600 bg-white px-4 py-2 text-sm font-medium text-orange-600 transition-colors hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {uploadingCamt ? (
+                    <span className="inline-flex items-center">
+                      <span className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-orange-600" />
+                      {t("processing")}
+                    </span>
+                  ) : (
+                    t("importCamt")
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -381,10 +497,16 @@ export default function BankImportPage() {
                         Amount
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                        {t("iban")}
+                        {t("debtorName")}
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                        Reference
+                        {t("endToEndId")}
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                        {t("creditorReference")}
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                        {t("matchSuggestion")}
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
                         Status
@@ -403,16 +525,50 @@ export default function BankImportPage() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-900">
-                          {item.description}
+                          <div>{item.description}</div>
+                          {item.remittanceInfo && item.remittanceInfo !== item.description && (
+                            <div className="text-xs text-gray-400" title={t("remittanceInfo")}>
+                              {item.remittanceInfo}
+                            </div>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-right text-sm text-gray-900">
                           {formatCHF(item.amount)}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-500">
-                          {item.iban}
+                          <div>{item.debtorName ?? "—"}</div>
+                          {item.debtorIban && (
+                            <div className="text-xs text-gray-400">{item.debtorIban}</div>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-500">
-                          {item.reference}
+                          {item.endToEndId ?? "—"}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-500">
+                          {item.creditorReference ?? "—"}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {confidenceBadge(item.matchConfidence)}
+                          {item.suggestedInvoiceId && item.status === "Unmatched" && canWriteFinance && (
+                            <div className="mt-1 flex gap-1">
+                              <button
+                                onClick={() =>
+                                  handleAcceptMatch(viewingImport.id, item.id, item.suggestedInvoiceId!)
+                                }
+                                className="rounded bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 hover:bg-green-100"
+                              >
+                                {t("acceptMatch")}
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleRejectMatch(viewingImport.id, item.id)
+                                }
+                                className="rounded bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 hover:bg-red-100"
+                              >
+                                {t("rejectMatch")}
+                              </button>
+                            </div>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-sm">
                           {statusBadge(item.status)}

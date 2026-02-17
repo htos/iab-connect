@@ -20,11 +20,12 @@ public class PaymentTests
 
         // Act
         var payment = Payment.Create(
-            DateTime.UtcNow, 250m, PaymentMethod.Transfer,
+            DateTime.UtcNow, 250m, PaymentDirection.Income, PaymentMethod.Transfer,
             "REF-001", invoiceId, transactionId, "Payment note", "admin");
 
         // Assert
         payment.Amount.Should().Be(250m);
+        payment.Direction.Should().Be(PaymentDirection.Income);
         payment.Method.Should().Be(PaymentMethod.Transfer);
         payment.Reference.Should().Be("REF-001");
         payment.InvoiceId.Should().Be(invoiceId);
@@ -38,7 +39,7 @@ public class PaymentTests
     {
         // Act
         var payment = Payment.Create(
-            DateTime.UtcNow, 100m, PaymentMethod.Cash, null, null, null, null, "admin");
+            DateTime.UtcNow, 100m, PaymentDirection.Expense, PaymentMethod.Cash, null, null, null, null, "admin");
 
         // Assert
         payment.Id.Should().NotBe(Guid.Empty);
@@ -49,7 +50,7 @@ public class PaymentTests
     {
         // Act & Assert
         var act = () => Payment.Create(
-            DateTime.UtcNow, 0m, PaymentMethod.Cash, null, null, null, null, "admin");
+            DateTime.UtcNow, 0m, PaymentDirection.Expense, PaymentMethod.Cash, null, null, null, null, "admin");
 
         act.Should().Throw<ArgumentException>()
             .WithParameterName("amount");
@@ -60,7 +61,7 @@ public class PaymentTests
     {
         // Act & Assert
         var act = () => Payment.Create(
-            DateTime.UtcNow, -50m, PaymentMethod.Cash, null, null, null, null, "admin");
+            DateTime.UtcNow, -50m, PaymentDirection.Expense, PaymentMethod.Cash, null, null, null, null, "admin");
 
         act.Should().Throw<ArgumentException>()
             .WithParameterName("amount");
@@ -71,7 +72,7 @@ public class PaymentTests
     {
         // Act
         var payment = Payment.Create(
-            DateTime.UtcNow, 100m, PaymentMethod.Cash, null, null, null, null, "admin");
+            DateTime.UtcNow, 100m, PaymentDirection.Expense, PaymentMethod.Cash, null, null, null, null, "admin");
 
         // Assert
         payment.InvoiceId.Should().BeNull();
@@ -86,7 +87,7 @@ public class PaymentTests
     {
         // Act
         var payment = Payment.Create(
-            DateTime.UtcNow, 100m, method, null, null, null, null, "admin");
+            DateTime.UtcNow, 100m, PaymentDirection.Expense, method, null, null, null, null, "admin");
 
         // Assert
         payment.Method.Should().Be(method);
@@ -97,7 +98,7 @@ public class PaymentTests
     {
         // Act
         var payment = Payment.Create(
-            DateTime.UtcNow, 100m, PaymentMethod.Cash,
+            DateTime.UtcNow, 100m, PaymentDirection.Expense, PaymentMethod.Cash,
             "  REF  ", null, null, "  Notes  ", "admin");
 
         // Assert
@@ -114,17 +115,18 @@ public class PaymentTests
     {
         // Arrange
         var payment = Payment.Create(
-            DateTime.UtcNow, 100m, PaymentMethod.Cash, null, null, null, null, "admin");
+            DateTime.UtcNow, 100m, PaymentDirection.Expense, PaymentMethod.Cash, null, null, null, null, "admin");
         var invoiceId = Guid.NewGuid();
         var transactionId = Guid.NewGuid();
 
         // Act
         payment.Update(
-            DateTime.UtcNow, 200m, PaymentMethod.Transfer,
+            DateTime.UtcNow, 200m, PaymentDirection.Income, PaymentMethod.Transfer,
             "NEW-REF", invoiceId, transactionId, "Updated", "editor");
 
         // Assert
         payment.Amount.Should().Be(200m);
+        payment.Direction.Should().Be(PaymentDirection.Income);
         payment.Method.Should().Be(PaymentMethod.Transfer);
         payment.Reference.Should().Be("NEW-REF");
         payment.InvoiceId.Should().Be(invoiceId);
@@ -143,7 +145,7 @@ public class PaymentTests
     {
         // Arrange
         var payment = Payment.Create(
-            DateTime.UtcNow, 100m, PaymentMethod.Cash, null, null, null, null, "admin");
+            DateTime.UtcNow, 100m, PaymentDirection.Expense, PaymentMethod.Cash, null, null, null, null, "admin");
 
         // Act
         payment.SoftDelete("admin");
@@ -159,7 +161,7 @@ public class PaymentTests
     {
         // Arrange
         var payment = Payment.Create(
-            DateTime.UtcNow, 100m, PaymentMethod.Cash, null, null, null, null, "admin");
+            DateTime.UtcNow, 100m, PaymentDirection.Expense, PaymentMethod.Cash, null, null, null, null, "admin");
         payment.SoftDelete("admin");
 
         // Act

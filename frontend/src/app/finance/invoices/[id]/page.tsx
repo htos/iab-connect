@@ -64,6 +64,7 @@ const statusColors: Record<string, string> = {
 export default function InvoiceDetailPage() {
   const t = useTranslations("finance");
   const tv = useTranslations("finance.vat");
+  const tfe = useTranslations("financeErrors");
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { canReadFinance, canWriteFinance } = useAuth();
@@ -78,6 +79,7 @@ export default function InvoiceDetailPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [noProfileError, setNoProfileError] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
   const fetchInvoice = useCallback(async () => {
@@ -206,6 +208,38 @@ export default function InvoiceDetailPage() {
     }
   }, [id, invoice]);
 
+  const handleDownloadEInvoice = useCallback(async () => {
+    try {
+      setActionLoading(true);
+      setError(null);
+      setNoProfileError(false);
+      const res = await apiRef.current.get<Blob>(
+        `/api/v1/finance/invoices/${id}/einvoice?format=ubl`
+      );
+      if (res.error) {
+        if (res.status === 409 && res.error.toLowerCase().includes("finance profile")) {
+          setNoProfileError(true);
+          return;
+        }
+        throw new Error(res.error);
+      }
+      if (res.data && res.data instanceof Blob) {
+        const url = URL.createObjectURL(res.data);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${invoice?.invoiceNumber || id}_einvoice.xml`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch {
+      setError(tRef.current("errorDownloadingEInvoice"));
+    } finally {
+      setActionLoading(false);
+    }
+  }, [id, invoice]);
+
   if (!canReadFinance) return null;
 
   if (loading) {
@@ -230,6 +264,19 @@ export default function InvoiceDetailPage() {
 
   return (
     <div className="space-y-6 p-6">
+      {/* No finance profile error */}
+      {noProfileError && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm font-medium text-amber-800">{tfe("noFinanceProfile")}</p>
+          <Link
+            href="/finance/settings"
+            className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-orange-600 hover:text-orange-700 underline"
+          >
+            {tfe("goToSettings")} →
+          </Link>
+        </div>
+      )}
+
       {/* Error Banner */}
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
@@ -455,6 +502,15 @@ export default function InvoiceDetailPage() {
           >
             {t("downloadPdf")}
           </button>
+          {invoice.status !== "Draft" && (
+            <button
+              onClick={handleDownloadEInvoice}
+              disabled={actionLoading}
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              {actionLoading ? t("generating") : t("downloadEInvoiceXml")}
+            </button>
+          )}
           <Link
             href={`/finance/payments?invoiceId=${invoice.id}`}
             className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"

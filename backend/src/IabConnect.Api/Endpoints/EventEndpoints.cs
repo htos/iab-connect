@@ -87,7 +87,8 @@ public static class EventEndpoints
         IEventRepository eventRepository,
         CancellationToken ct)
     {
-        var events = await eventRepository.GetPublicEventsAsync(from, ct);
+        var utcFrom = from.HasValue ? DateTime.SpecifyKind(from.Value, DateTimeKind.Utc) : (DateTime?)null;
+        var events = await eventRepository.GetPublicEventsAsync(utcFrom, ct);
         return Results.Ok(events.Select(MapToDto));
     }
 
@@ -140,8 +141,8 @@ public static class EventEndpoints
             Status = effectiveStatus,
             Visibility = visibility,
             Category = category,
-            FromDate = fromDate,
-            ToDate = toDate
+            FromDate = fromDate.HasValue ? DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc) : null,
+            ToDate = toDate.HasValue ? DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc) : null
         };
 
         var (items, totalCount) = await eventRepository.GetPagedAsync(filter, page, pageSize, ct);

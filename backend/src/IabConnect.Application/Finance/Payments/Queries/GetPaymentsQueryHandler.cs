@@ -19,7 +19,10 @@ public sealed class GetPaymentsQueryHandler : IRequestHandler<GetPaymentsQuery, 
     }
 
     internal static PaymentDto MapToDto(Payment p) =>
-        new(p.Id, p.Date, p.Amount, p.Method.ToString(), p.Reference,
-            p.InvoiceId, p.TransactionId, p.Notes,
+        new(p.Id, p.Date, p.Amount, p.Direction.ToString(), p.Method.ToString(), p.Reference,
+            p.InvoiceId, p.Invoice?.InvoiceNumber, p.TransactionId, p.Notes,
+            p.Status.ToString(), p.ApprovedBy, p.ApprovedAt, p.ApprovalComment,
+            p.RejectedBy, p.RejectedAt, p.RejectionReason,
+            p.ReceiptId,
             p.CreatedAt, p.CreatedBy, p.UpdatedAt, p.UpdatedBy);
 }

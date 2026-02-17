@@ -13,21 +13,27 @@ public sealed class CreateInvoiceCommandHandler : IRequestHandler<CreateInvoiceC
     private readonly ITaxCodeRepository _taxCodeRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditService _auditService;
+    private readonly IFiscalPeriodService _fiscalPeriodService;
 
     public CreateInvoiceCommandHandler(
         IInvoiceRepository invoiceRepository,
         ITaxCodeRepository taxCodeRepository,
         IUnitOfWork unitOfWork,
-        IAuditService auditService)
+        IAuditService auditService,
+        IFiscalPeriodService fiscalPeriodService)
     {
         _invoiceRepository = invoiceRepository;
         _taxCodeRepository = taxCodeRepository;
         _unitOfWork = unitOfWork;
         _auditService = auditService;
+        _fiscalPeriodService = fiscalPeriodService;
     }
 
     public async Task<InvoiceDetailDto> Handle(CreateInvoiceCommand request, CancellationToken ct)
     {
+        // REQ-066: Check fiscal period locking
+        await _fiscalPeriodService.EnsurePeriodNotLockedAsync(request.Date, ct);
+
         var recipientType = Enum.Parse<RecipientType>(request.RecipientType, ignoreCase: true);
         var invoiceNumber = await _invoiceRepository.GetNextInvoiceNumberAsync(ct);
 
@@ -35,7 +41,7 @@ public sealed class CreateInvoiceCommandHandler : IRequestHandler<CreateInvoiceC
             invoiceNumber, request.Date, request.DueDate,
             recipientType, request.RecipientId, request.RecipientName,
             request.RecipientAddress, request.TaxRate, request.Notes,
-            request.UserName);
+            request.UserName, request.PaymentTerms, request.TemplateId);
 
         foreach (var item in request.Items)
         {
@@ -49,7 +55,7 @@ public sealed class CreateInvoiceCommandHandler : IRequestHandler<CreateInvoiceC
 
             invoice.AddItemWithTax(
                 item.Description, item.Quantity, item.UnitPrice,
-                item.TaxCodeId, snapshotTaxRate, item.IsGrossEntry);
+                item.TaxCodeId, snapshotTaxRate, item.IsGrossEntry, item.ActivityAreaId);
         }
 
         await _invoiceRepository.AddAsync(invoice, ct);

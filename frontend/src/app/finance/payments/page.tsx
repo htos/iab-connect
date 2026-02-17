@@ -2,20 +2,38 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useAuth, useApiClient } from "@/lib/auth";
+
+type PaymentStatus = "Draft" | "Submitted" | "Approved" | "Rejected" | "Paid";
 
 interface Payment {
   id: string;
   date: string;
   amount: number;
+  direction: string;
   method: string;
   reference: string;
   notes: string;
   invoiceId: string;
   invoiceNumber: string;
   transactionId: string | null;
+  receiptId: string | null;
+  status: PaymentStatus;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  approvalComment: string | null;
+  rejectedBy: string | null;
+  rejectedAt: string | null;
+  rejectionReason: string | null;
+}
+
+interface Receipt {
+  id: string;
+  fileName: string;
+  contentType: string;
+  fileSize: number;
+  notes: string;
+  createdAt: string;
 }
 
 interface OpenInvoice {
@@ -28,6 +46,7 @@ interface OpenInvoice {
 }
 
 type PaymentMethod = "Transfer" | "Cash" | "Online";
+type PaymentDirectionType = "Income" | "Expense";
 
 const formatCHF = (amount: number) =>
   new Intl.NumberFormat("de-CH", { style: "currency", currency: "CHF" }).format(
@@ -36,9 +55,9 @@ const formatCHF = (amount: number) =>
 
 export default function PaymentsPage() {
   const t = useTranslations("finance");
-  const { canReadFinance, canWriteFinance } = useAuth();
+  const tp = useTranslations("paymentApproval");
+  const { canReadFinance, canWriteFinance, isVorstand, isAdmin } = useAuth();
   const api = useApiClient();
-  const router = useRouter();
 
   const tRef = useRef(t);
   tRef.current = t;
@@ -58,11 +77,29 @@ export default function PaymentsPage() {
     invoiceId: "",
     date: new Date().toISOString().split("T")[0],
     amount: 0,
+    direction: "Expense" as PaymentDirectionType,
     method: "Transfer" as PaymentMethod,
     reference: "",
     notes: "",
   });
   const [submitting, setSubmitting] = useState(false);
+  const [quickPay, setQuickPay] = useState(false);
+
+  // Reject modal state
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectPaymentId, setRejectPaymentId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+
+  // Receipt attachment state
+  const [receiptModalPayment, setReceiptModalPayment] = useState<Payment | null>(null);
+  const [availableReceipts, setAvailableReceipts] = useState<Receipt[]>([]);
+  const [selectedReceiptId, setSelectedReceiptId] = useState("");
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptNotes, setReceiptNotes] = useState("");
+  const [receiptSaving, setReceiptSaving] = useState(false);
+
+  // Receipt preview state
+  const [previewModal, setPreviewModal] = useState<{ url: string; type: string; name: string } | null>(null);
 
   const fetchOpenInvoices = useCallback(async () => {
     try {
@@ -99,10 +136,12 @@ export default function PaymentsPage() {
 
   const openRecordModal = useCallback((invoice?: OpenInvoice) => {
     setEditingPayment(null);
+    setQuickPay(false);
     setFormData({
       invoiceId: invoice?.id ?? "",
       date: new Date().toISOString().split("T")[0],
       amount: invoice ? invoice.total - invoice.paidAmount : 0,
+      direction: invoice ? "Income" : "Expense",
       method: "Transfer",
       reference: "",
       notes: "",
@@ -116,6 +155,7 @@ export default function PaymentsPage() {
       invoiceId: payment.invoiceId,
       date: payment.date.split("T")[0],
       amount: payment.amount,
+      direction: (payment.direction as PaymentDirectionType) || "Expense",
       method: payment.method as PaymentMethod,
       reference: payment.reference,
       notes: payment.notes,
@@ -132,7 +172,14 @@ export default function PaymentsPage() {
           formData
         );
       } else {
-        await apiRef.current.post("/api/v1/finance/payments", formData);
+        const res = await apiRef.current.post("/api/v1/finance/payments", formData);
+        // Quick-pay: immediately mark the new payment as paid to trigger auto-booking
+        if (quickPay && res.data && (res.data as Payment).id) {
+          await apiRef.current.post(
+            `/api/v1/finance/payments/${(res.data as Payment).id}/mark-paid`,
+            {}
+          );
+        }
       }
       setShowModal(false);
       await loadData();
@@ -141,7 +188,7 @@ export default function PaymentsPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [editingPayment, formData, loadData]);
+  }, [editingPayment, formData, quickPay, loadData]);
 
   const handleDelete = useCallback(
     async (id: string) => {
@@ -154,6 +201,184 @@ export default function PaymentsPage() {
     },
     [loadData]
   );
+
+  // Workflow action handlers
+  const handleSubmitForApproval = useCallback(
+    async (id: string) => {
+      try {
+        await apiRef.current.post(`/api/v1/finance/payments/${id}/submit`, {});
+        await loadData();
+      } catch {
+        setError("Failed to submit payment for approval");
+      }
+    },
+    [loadData]
+  );
+
+  const handleApprove = useCallback(
+    async (id: string) => {
+      try {
+        await apiRef.current.post(`/api/v1/finance/payments/${id}/approve`, {});
+        await loadData();
+      } catch {
+        setError("Failed to approve payment");
+      }
+    },
+    [loadData]
+  );
+
+  const handleReject = useCallback(async () => {
+    if (!rejectPaymentId || !rejectReason.trim()) return;
+    try {
+      await apiRef.current.post(
+        `/api/v1/finance/payments/${rejectPaymentId}/reject`,
+        { reason: rejectReason.trim() }
+      );
+      setShowRejectModal(false);
+      setRejectPaymentId(null);
+      setRejectReason("");
+      await loadData();
+    } catch {
+      setError("Failed to reject payment");
+    }
+  }, [rejectPaymentId, rejectReason, loadData]);
+
+  const handleMarkAsPaid = useCallback(
+    async (id: string) => {
+      try {
+        await apiRef.current.post(`/api/v1/finance/payments/${id}/mark-paid`, {});
+        await loadData();
+      } catch {
+        setError("Failed to mark payment as paid");
+      }
+    },
+    [loadData]
+  );
+
+  const canApproveOrReject = isVorstand || isAdmin;
+
+  // Receipt handlers
+  const fetchReceipts = useCallback(async () => {
+    try {
+      const res = await apiRef.current.get<Receipt[]>("/api/v1/finance/receipts");
+      if (res.data) setAvailableReceipts(res.data as Receipt[]);
+    } catch { /* ignore */ }
+  }, []);
+
+  const openReceiptModal = useCallback(async (payment: Payment) => {
+    setReceiptModalPayment(payment);
+    setSelectedReceiptId("");
+    setReceiptFile(null);
+    setReceiptNotes("");
+    await fetchReceipts();
+  }, [fetchReceipts]);
+
+  const closeReceiptModal = () => {
+    setReceiptModalPayment(null);
+    setSelectedReceiptId("");
+    setReceiptFile(null);
+    setReceiptNotes("");
+  };
+
+  const handleAttachReceipt = useCallback(async () => {
+    if (!receiptModalPayment) return;
+    setReceiptSaving(true);
+    try {
+      let receiptId = selectedReceiptId;
+      if (receiptFile && !selectedReceiptId) {
+        const formData = new FormData();
+        formData.append("file", receiptFile);
+        formData.append("notes", receiptNotes);
+        const uploadRes = await apiRef.current.upload<Receipt>("/api/v1/finance/receipts", formData);
+        if (uploadRes.error || !uploadRes.data) {
+          setError(uploadRes.error || "Upload failed");
+          setReceiptSaving(false);
+          return;
+        }
+        receiptId = (uploadRes.data as Receipt).id;
+      }
+      if (!receiptId) { setReceiptSaving(false); return; }
+      const res = await apiRef.current.post(
+        `/api/v1/finance/payments/${receiptModalPayment.id}/receipt`,
+        { receiptId }
+      );
+      if (res.error) {
+        setError(res.error);
+      } else {
+        closeReceiptModal();
+        await loadData();
+      }
+    } catch {
+      setError("Failed to attach receipt");
+    } finally {
+      setReceiptSaving(false);
+    }
+  }, [receiptModalPayment, selectedReceiptId, receiptFile, receiptNotes, loadData]);
+
+  const handleDetachReceipt = useCallback(async (payment: Payment) => {
+    try {
+      const res = await apiRef.current.delete(
+        `/api/v1/finance/payments/${payment.id}/receipt`
+      );
+      if (res.error) {
+        setError(res.error);
+      } else {
+        await loadData();
+      }
+    } catch {
+      setError("Failed to detach receipt");
+    }
+  }, [loadData]);
+
+  const handleViewReceipt = useCallback(async (receiptId: string) => {
+    try {
+      const infoRes = await apiRef.current.get<Receipt>(`/api/v1/finance/receipts/${receiptId}`);
+      const receipt = infoRes.data as Receipt | null;
+      const contentType = receipt?.contentType ?? "";
+      const fileName = receipt?.fileName ?? "receipt";
+
+      const res = await apiRef.current.get<Blob>(`/api/v1/finance/receipts/${receiptId}/download`);
+      if (res.error || !res.data) return;
+      const blob = res.data as Blob;
+      const url = URL.createObjectURL(blob);
+
+      if (contentType.startsWith("image/") || contentType === "application/pdf") {
+        setPreviewModal({ url, type: contentType, name: fileName });
+      } else {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch {
+      setError("Failed to load receipt");
+    }
+  }, []);
+
+  const closePreviewModal = useCallback(() => {
+    if (previewModal) URL.revokeObjectURL(previewModal.url);
+    setPreviewModal(null);
+  }, [previewModal]);
+
+  const statusBadge = (status: PaymentStatus) => {
+    const colors: Record<PaymentStatus, string> = {
+      Draft: "bg-gray-100 text-gray-800",
+      Submitted: "bg-yellow-100 text-yellow-800",
+      Approved: "bg-blue-100 text-blue-800",
+      Rejected: "bg-red-100 text-red-800",
+      Paid: "bg-green-100 text-green-800",
+    };
+    return (
+      <span
+        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${colors[status] ?? "bg-gray-100 text-gray-800"}`}
+      >
+        {tp(status.toLowerCase() as "draft" | "submitted" | "approved" | "rejected" | "paid")}
+      </span>
+    );
+  };
 
   const methodBadge = (method: string) => {
     const colors: Record<string, string> = {
@@ -171,6 +396,21 @@ export default function PaymentsPage() {
         className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${colors[method] ?? "bg-gray-100 text-gray-800"}`}
       >
         {(labels[method] ?? (() => method))()}
+      </span>
+    );
+  };
+
+  const directionBadge = (direction: string) => {
+    const isIncome = direction === "Income";
+    return (
+      <span
+        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+          isIncome
+            ? "bg-green-100 text-green-800"
+            : "bg-red-100 text-red-800"
+        }`}
+      >
+        {isIncome ? t("directionIncome") : t("directionExpense")}
       </span>
     );
   };
@@ -341,7 +581,13 @@ export default function PaymentsPage() {
                         Amount
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                        {t("direction")}
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
                         {t("method")}
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                        {tp("status")}
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
                         Reference
@@ -349,11 +595,12 @@ export default function PaymentsPage() {
                       <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
                         Invoice #
                       </th>
-                      {canWriteFinance && (
-                        <th className="px-4 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
-                          Actions
-                        </th>
-                      )}
+                      <th className="px-4 py-3 text-center text-xs font-medium tracking-wider text-gray-500 uppercase">
+                        {t("receipt")}
+                      </th>
+                      <th className="px-4 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -366,7 +613,13 @@ export default function PaymentsPage() {
                           {formatCHF(p.amount)}
                         </td>
                         <td className="px-4 py-3 text-sm">
+                          {directionBadge(p.direction)}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
                           {methodBadge(p.method)}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {statusBadge(p.status)}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-500">
                           {p.reference}
@@ -374,22 +627,123 @@ export default function PaymentsPage() {
                         <td className="px-4 py-3 text-sm text-gray-500">
                           {p.invoiceNumber}
                         </td>
-                        {canWriteFinance && (
-                          <td className="space-x-2 px-4 py-3 text-right">
+                        <td className="px-4 py-3 text-center">
+                          {p.receiptId ? (
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => handleViewReceipt(p.receiptId!)}
+                                className="rounded p-0.5 text-orange-600 transition-colors hover:bg-orange-50 hover:text-orange-800"
+                                title={t("viewReceipt")}
+                              >
+                                <svg className="inline h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                                </svg>
+                              </button>
+                              {canWriteFinance && (
+                                <button
+                                  onClick={() => handleDetachReceipt(p)}
+                                  className="rounded p-0.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                                  title={t("detachReceipt")}
+                                >
+                                  <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                </button>
+                              )}
+                            </div>
+                          ) : canWriteFinance ? (
                             <button
-                              onClick={() => openEditModal(p)}
-                              className="text-sm font-medium text-orange-600 hover:text-orange-800"
+                              onClick={() => openReceiptModal(p)}
+                              className="rounded p-1 text-gray-400 transition-colors hover:bg-orange-50 hover:text-orange-600"
+                              title={t("attachReceipt")}
                             >
-                              Edit
+                              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                              </svg>
                             </button>
+                          ) : null}
+                        </td>
+                        <td className="space-x-2 px-4 py-3 text-right whitespace-nowrap">
+                          {/* Draft → Submit or Mark as Paid */}
+                          {p.status === "Draft" && canWriteFinance && (
+                            <>
+                              <button
+                                onClick={() => handleSubmitForApproval(p.id)}
+                                className="text-sm font-medium text-yellow-600 hover:text-yellow-800"
+                                title={tp("submit")}
+                              >
+                                {tp("submit")}
+                              </button>
+                              <button
+                                onClick={() => handleMarkAsPaid(p.id)}
+                                className="text-sm font-medium text-green-600 hover:text-green-800"
+                                title={tp("markPaid")}
+                              >
+                                {tp("markPaid")}
+                              </button>
+                            </>
+                          )}
+                          {/* Submitted → Approve / Reject (Vorstand/Admin only) */}
+                          {p.status === "Submitted" && canApproveOrReject && (
+                            <>
+                              <button
+                                onClick={() => handleApprove(p.id)}
+                                className="text-sm font-medium text-blue-600 hover:text-blue-800"
+                              >
+                                {tp("approve")}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setRejectPaymentId(p.id);
+                                  setRejectReason("");
+                                  setShowRejectModal(true);
+                                }}
+                                className="text-sm font-medium text-red-600 hover:text-red-800"
+                              >
+                                {tp("reject")}
+                              </button>
+                            </>
+                          )}
+                          {/* Approved → Mark as Paid */}
+                          {p.status === "Approved" && canWriteFinance && (
                             <button
-                              onClick={() => handleDelete(p.id)}
-                              className="text-sm font-medium text-red-600 hover:text-red-800"
+                              onClick={() => handleMarkAsPaid(p.id)}
+                              className="text-sm font-medium text-green-600 hover:text-green-800"
                             >
-                              Delete
+                              {tp("markPaid")}
                             </button>
-                          </td>
-                        )}
+                          )}
+                          {/* Paid → show checkmark */}
+                          {p.status === "Paid" && (
+                            <span className="text-sm text-green-600">✓</span>
+                          )}
+                          {/* Rejected → info */}
+                          {p.status === "Rejected" && p.rejectionReason && (
+                            <span
+                              className="cursor-help text-sm text-red-500"
+                              title={`${tp("rejectedBy")}: ${p.rejectedBy}\n${p.rejectionReason}`}
+                            >
+                              ⓘ
+                            </span>
+                          )}
+                          {/* Edit / Delete only for Draft */}
+                          {p.status === "Draft" && canWriteFinance && (
+                            <>
+                              <button
+                                onClick={() => openEditModal(p)}
+                                className="text-sm font-medium text-orange-600 hover:text-orange-800"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDelete(p.id)}
+                                className="text-sm font-medium text-red-600 hover:text-red-800"
+                              >
+                                Delete
+                              </button>
+                            </>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -423,12 +777,13 @@ export default function PaymentsPage() {
                         ...f,
                         invoiceId: e.target.value,
                         amount: inv ? inv.total - inv.paidAmount : f.amount,
+                        direction: e.target.value ? "Income" : f.direction,
                       };
                     })
                   }
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:ring-orange-500"
                 >
-                  <option value="">-- Select Invoice --</option>
+                  <option value="">-- {t("noInvoice")} --</option>
                   {openInvoices.map((inv) => (
                     <option key={inv.id} value={inv.id}>
                       {inv.invoiceNumber} — {inv.recipientName} (
@@ -451,6 +806,26 @@ export default function PaymentsPage() {
                   }
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:ring-orange-500"
                 />
+              </div>
+
+              {/* Direction */}
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  {t("direction")}
+                </label>
+                <select
+                  value={formData.direction}
+                  onChange={(e) =>
+                    setFormData((f) => ({
+                      ...f,
+                      direction: e.target.value as PaymentDirectionType,
+                    }))
+                  }
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:ring-orange-500"
+                >
+                  <option value="Income">{t("directionIncome")}</option>
+                  <option value="Expense">{t("directionExpense")}</option>
+                </select>
               </div>
 
               {/* Amount */}
@@ -524,6 +899,22 @@ export default function PaymentsPage() {
                 />
               </div>
 
+              {/* Quick Pay Option (only when creating, not editing) */}
+              {!editingPayment && (
+                <div className="flex items-center space-x-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2">
+                  <input
+                    type="checkbox"
+                    id="quickPay"
+                    checked={quickPay}
+                    onChange={(e) => setQuickPay(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                  />
+                  <label htmlFor="quickPay" className="text-sm text-green-800">
+                    {tp("markPaid")} — {t("quickPayHint")}
+                  </label>
+                </div>
+              )}
+
               {/* Actions */}
               <div className="flex justify-end space-x-3 pt-2">
                 <button
@@ -534,7 +925,7 @@ export default function PaymentsPage() {
                 </button>
                 <button
                   onClick={handleSubmit}
-                  disabled={submitting || !formData.invoiceId}
+                  disabled={submitting || formData.amount <= 0}
                   className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {submitting ? (
@@ -544,10 +935,176 @@ export default function PaymentsPage() {
                     </span>
                   ) : editingPayment ? (
                     "Save"
+                  ) : quickPay ? (
+                    tp("markPaid")
                   ) : (
                     t("recordPayment")
                   )}
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Reject Payment Modal */}
+        {showRejectModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="w-full max-w-md space-y-4 rounded-xl bg-white p-6 shadow-lg">
+              <h2 className="text-lg font-semibold text-gray-900">
+                {tp("rejectTitle")}
+              </h2>
+              <p className="text-sm text-gray-600">{tp("rejectMessage")}</p>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  {tp("reason")}
+                </label>
+                <textarea
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  rows={3}
+                  placeholder={tp("reasonPlaceholder")}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:ring-red-500"
+                />
+              </div>
+              <div className="flex justify-end space-x-3 pt-2">
+                <button
+                  onClick={() => {
+                    setShowRejectModal(false);
+                    setRejectPaymentId(null);
+                    setRejectReason("");
+                  }}
+                  className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleReject}
+                  disabled={!rejectReason.trim()}
+                  className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {tp("reject")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Receipt Attachment Modal */}
+        {receiptModalPayment && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="w-full max-w-md space-y-4 rounded-xl bg-white p-6 shadow-lg">
+              <h2 className="text-lg font-semibold text-gray-900">
+                {t("attachReceiptToPayment")}
+              </h2>
+              <p className="text-sm text-gray-600">
+                {formatCHF(receiptModalPayment.amount)} — {new Date(receiptModalPayment.date).toLocaleDateString("de-CH")}
+              </p>
+
+              {/* Select existing receipt */}
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  {t("selectExistingReceipt")}
+                </label>
+                <select
+                  value={selectedReceiptId}
+                  onChange={(e) => {
+                    setSelectedReceiptId(e.target.value);
+                    if (e.target.value) setReceiptFile(null);
+                  }}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none"
+                >
+                  <option value="">—</option>
+                  {availableReceipts.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.fileName} ({new Date(r.createdAt).toLocaleDateString("de-CH")})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Or upload new */}
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  {t("orUploadNew")}
+                </label>
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.tiff"
+                  onChange={(e) => {
+                    setReceiptFile(e.target.files?.[0] ?? null);
+                    if (e.target.files?.[0]) setSelectedReceiptId("");
+                  }}
+                  className="w-full text-sm text-gray-500 file:mr-4 file:rounded-lg file:border-0 file:bg-orange-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-orange-700 hover:file:bg-orange-100"
+                />
+                {receiptFile && (
+                  <input
+                    type="text"
+                    placeholder={t("notes")}
+                    value={receiptNotes}
+                    onChange={(e) => setReceiptNotes(e.target.value)}
+                    className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none"
+                  />
+                )}
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-2">
+                <button
+                  onClick={closeReceiptModal}
+                  disabled={receiptSaving}
+                  className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
+                >
+                  {t("cancel")}
+                </button>
+                <button
+                  onClick={handleAttachReceipt}
+                  disabled={receiptSaving || (!selectedReceiptId && !receiptFile)}
+                  className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {receiptSaving ? "…" : t("uploadAndAttach")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Receipt Preview Modal */}
+        {previewModal && (
+          <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 p-4">
+            <div className="relative flex w-full max-w-4xl flex-col rounded-xl bg-white shadow-xl" style={{ maxHeight: "90vh" }}>
+              <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+                <h2 className="truncate text-lg font-semibold text-gray-900">{previewModal.name}</h2>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={previewModal.url}
+                    download={previewModal.name}
+                    className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                  >
+                    {t("downloadReceipt")}
+                  </a>
+                  <button
+                    onClick={closePreviewModal}
+                    className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                  >
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div className="overflow-auto p-4" style={{ maxHeight: "calc(90vh - 5rem)" }}>
+                {previewModal.type.startsWith("image/") ? (
+                  <img
+                    src={previewModal.url}
+                    alt={previewModal.name}
+                    className="mx-auto max-w-full rounded"
+                  />
+                ) : (
+                  <iframe
+                    src={previewModal.url}
+                    title={previewModal.name}
+                    className="h-[70vh] w-full rounded border-0"
+                  />
+                )}
               </div>
             </div>
           </div>

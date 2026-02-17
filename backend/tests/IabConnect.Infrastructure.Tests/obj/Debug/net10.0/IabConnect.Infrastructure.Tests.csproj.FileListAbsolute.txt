@@ -227,3 +227,5 @@ B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Infrastructure.Test
 B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Infrastructure.Tests\bin\Debug\net10.0\runtimes\win-arm64\native\libSkiaSharp.dll
 B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Infrastructure.Tests\bin\Debug\net10.0\runtimes\win-x64\native\libSkiaSharp.dll
 B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Infrastructure.Tests\bin\Debug\net10.0\runtimes\win-x86\native\libSkiaSharp.dll
+B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Infrastructure.Tests\bin\Debug\net10.0\Finance\Fixtures\sample_camt053.xml
+B:\Projects\IAB Connect\iab-connect\backend\tests\IabConnect.Infrastructure.Tests\bin\Debug\net10.0\Finance\Fixtures\sample_camt054.xml

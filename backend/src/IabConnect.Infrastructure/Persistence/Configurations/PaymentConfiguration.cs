@@ -28,6 +28,12 @@ public sealed class PaymentConfiguration : IEntityTypeConfiguration<Payment>
             .HasPrecision(18, 2)
             .IsRequired();
 
+        builder.Property(p => p.Direction)
+            .HasColumnName("direction")
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .IsRequired();
+
         builder.Property(p => p.Method)
             .HasColumnName("method")
             .HasConversion<string>()
@@ -56,6 +62,44 @@ public sealed class PaymentConfiguration : IEntityTypeConfiguration<Payment>
 
         builder.Property(p => p.Notes)
             .HasColumnName("notes");
+
+        // REQ-061: Receipt attachment
+        builder.Property(p => p.ReceiptId)
+            .HasColumnName("receipt_id");
+
+        builder.HasOne(p => p.Receipt)
+            .WithMany()
+            .HasForeignKey(p => p.ReceiptId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // REQ-067: Approval workflow
+        builder.Property(p => p.Status)
+            .HasColumnName("status")
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .IsRequired();
+
+        builder.Property(p => p.ApprovedBy)
+            .HasColumnName("approved_by")
+            .HasMaxLength(200);
+
+        builder.Property(p => p.ApprovedAt)
+            .HasColumnName("approved_at");
+
+        builder.Property(p => p.ApprovalComment)
+            .HasColumnName("approval_comment")
+            .HasMaxLength(1000);
+
+        builder.Property(p => p.RejectedBy)
+            .HasColumnName("rejected_by")
+            .HasMaxLength(200);
+
+        builder.Property(p => p.RejectedAt)
+            .HasColumnName("rejected_at");
+
+        builder.Property(p => p.RejectionReason)
+            .HasColumnName("rejection_reason")
+            .HasMaxLength(1000);
 
         builder.Property(p => p.CreatedAt)
             .HasColumnName("created_at");

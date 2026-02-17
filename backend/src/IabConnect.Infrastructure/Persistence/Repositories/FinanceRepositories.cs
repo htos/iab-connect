@@ -598,3 +598,224 @@ public sealed class TaxCodeRepository : ITaxCodeRepository
         }
     }
 }
+
+/// <summary>
+/// REQ-066: Fiscal period repository implementation
+/// </summary>
+public sealed class FiscalPeriodRepository : IFiscalPeriodRepository
+{
+    private readonly ApplicationDbContext _context;
+
+    public FiscalPeriodRepository(ApplicationDbContext context) => _context = context;
+
+    public async Task<List<FiscalPeriod>> GetAllAsync(int? year = null, CancellationToken ct = default)
+    {
+        var query = _context.FiscalPeriods.AsQueryable();
+        if (year.HasValue)
+            query = query.Where(p => p.Year == year.Value);
+        return await query.OrderBy(p => p.Year).ThenBy(p => p.Month).ToListAsync(ct);
+    }
+
+    public async Task<FiscalPeriod?> GetByIdAsync(Guid id, CancellationToken ct = default)
+        => await _context.FiscalPeriods.FirstOrDefaultAsync(p => p.Id == id, ct);
+
+    public async Task<FiscalPeriod?> GetByYearAndMonthAsync(int year, int month, CancellationToken ct = default)
+        => await _context.FiscalPeriods.FirstOrDefaultAsync(p => p.Year == year && p.Month == month, ct);
+
+    public async Task<FiscalPeriod?> GetByDateAsync(DateTime date, CancellationToken ct = default)
+    {
+        var utcDate = DateTime.SpecifyKind(date.Date, DateTimeKind.Utc);
+        return await _context.FiscalPeriods
+            .FirstOrDefaultAsync(p => utcDate >= p.StartDate && utcDate <= p.EndDate, ct);
+    }
+
+    public async Task AddAsync(FiscalPeriod period, CancellationToken ct = default)
+        => await _context.FiscalPeriods.AddAsync(period, ct);
+
+    public async Task AddRangeAsync(IEnumerable<FiscalPeriod> periods, CancellationToken ct = default)
+        => await _context.FiscalPeriods.AddRangeAsync(periods, ct);
+
+    public Task UpdateAsync(FiscalPeriod period, CancellationToken ct = default)
+    {
+        _context.FiscalPeriods.Update(period);
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>
+/// REQ-067: Expense claim repository implementation
+/// </summary>
+public sealed class ExpenseClaimRepository : IExpenseClaimRepository
+{
+    private readonly ApplicationDbContext _context;
+
+    public ExpenseClaimRepository(ApplicationDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<List<ExpenseClaim>> GetAllAsync(ExpenseClaimStatus? status = null, Guid? claimantId = null, CancellationToken ct = default)
+    {
+        var query = _context.ExpenseClaims
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (status.HasValue)
+            query = query.Where(e => e.Status == status.Value);
+
+        if (claimantId.HasValue)
+            query = query.Where(e => e.ClaimantId == claimantId.Value);
+
+        return await query
+            .OrderByDescending(e => e.Date)
+            .ToListAsync(ct);
+    }
+
+    public async Task<ExpenseClaim?> GetByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        return await _context.ExpenseClaims
+            .FirstOrDefaultAsync(e => e.Id == id, ct);
+    }
+
+    public async Task AddAsync(ExpenseClaim claim, CancellationToken ct = default)
+    {
+        await _context.ExpenseClaims.AddAsync(claim, ct);
+        await _context.SaveChangesAsync(ct);
+    }
+
+    public async Task UpdateAsync(ExpenseClaim claim, CancellationToken ct = default)
+    {
+        _context.ExpenseClaims.Update(claim);
+        await _context.SaveChangesAsync(ct);
+    }
+
+    public async Task DeleteAsync(Guid id, CancellationToken ct = default)
+    {
+        var claim = await _context.ExpenseClaims.FindAsync([id], ct);
+        if (claim is not null)
+        {
+            claim.SoftDelete();
+            await _context.SaveChangesAsync(ct);
+        }
+    }
+}
+
+/// <summary>
+/// REQ-064: Invoice template repository implementation
+/// </summary>
+public sealed class InvoiceTemplateRepository : IInvoiceTemplateRepository
+{
+    private readonly ApplicationDbContext _context;
+
+    public InvoiceTemplateRepository(ApplicationDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<List<InvoiceTemplate>> GetAllAsync(Jurisdiction? jurisdiction = null, CancellationToken ct = default)
+    {
+        var query = _context.InvoiceTemplates
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (jurisdiction.HasValue)
+            query = query.Where(t => t.Jurisdiction == jurisdiction.Value);
+
+        return await query
+            .OrderBy(t => t.Name)
+            .ToListAsync(ct);
+    }
+
+    public async Task<InvoiceTemplate?> GetByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        return await _context.InvoiceTemplates
+            .FirstOrDefaultAsync(t => t.Id == id, ct);
+    }
+
+    public async Task<InvoiceTemplate?> GetDefaultForJurisdictionAsync(Jurisdiction jurisdiction, CancellationToken ct = default)
+    {
+        return await _context.InvoiceTemplates
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Jurisdiction == jurisdiction && t.IsDefault, ct);
+    }
+
+    public async Task AddAsync(InvoiceTemplate template, CancellationToken ct = default)
+    {
+        await _context.InvoiceTemplates.AddAsync(template, ct);
+        await _context.SaveChangesAsync(ct);
+    }
+
+    public async Task UpdateAsync(InvoiceTemplate template, CancellationToken ct = default)
+    {
+        _context.InvoiceTemplates.Update(template);
+        await _context.SaveChangesAsync(ct);
+    }
+
+    public async Task DeleteAsync(Guid id, CancellationToken ct = default)
+    {
+        var template = await _context.InvoiceTemplates.FindAsync([id], ct);
+        if (template is not null)
+        {
+            _context.InvoiceTemplates.Remove(template);
+            await _context.SaveChangesAsync(ct);
+        }
+    }
+}
+
+/// <summary>
+/// REQ-068: Activity area repository implementation
+/// </summary>
+public sealed class ActivityAreaRepository : IActivityAreaRepository
+{
+    private readonly ApplicationDbContext _context;
+
+    public ActivityAreaRepository(ApplicationDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<List<ActivityArea>> GetAllActiveAsync(CancellationToken ct = default)
+    {
+        return await _context.ActivityAreas
+            .AsNoTracking()
+            .Where(a => a.IsActive)
+            .OrderBy(a => a.SortOrder)
+            .ThenBy(a => a.Name)
+            .ToListAsync(ct);
+    }
+
+    public async Task<ActivityArea?> GetByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        return await _context.ActivityAreas
+            .FirstOrDefaultAsync(a => a.Id == id, ct);
+    }
+
+    public async Task<ActivityArea?> GetByCodeAsync(string code, CancellationToken ct = default)
+    {
+        return await _context.ActivityAreas
+            .AsNoTracking()
+            .FirstOrDefaultAsync(a => a.Code == code, ct);
+    }
+
+    public async Task AddAsync(ActivityArea area, CancellationToken ct = default)
+    {
+        await _context.ActivityAreas.AddAsync(area, ct);
+        await _context.SaveChangesAsync(ct);
+    }
+
+    public async Task UpdateAsync(ActivityArea area, CancellationToken ct = default)
+    {
+        _context.ActivityAreas.Update(area);
+        await _context.SaveChangesAsync(ct);
+    }
+
+    public async Task DeleteAsync(Guid id, CancellationToken ct = default)
+    {
+        var area = await _context.ActivityAreas.FindAsync([id], ct);
+        if (area is not null)
+        {
+            area.SoftDelete();
+            await _context.SaveChangesAsync(ct);
+        }
+    }
+}

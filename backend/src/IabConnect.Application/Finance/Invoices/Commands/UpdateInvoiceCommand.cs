@@ -17,6 +17,8 @@ public sealed record UpdateInvoiceCommand : IRequest<InvoiceDetailDto?>
     public string? RecipientAddress { get; init; }
     public decimal TaxRate { get; init; }
     public string? Notes { get; init; }
+    public string? PaymentTerms { get; init; }
+    public Guid? TemplateId { get; init; }
     public required List<CreateInvoiceItemInput> Items { get; init; }
     public required string UserName { get; init; }
 }

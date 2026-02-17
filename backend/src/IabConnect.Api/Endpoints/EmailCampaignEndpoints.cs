@@ -139,26 +139,19 @@ public static class EmailCampaignEndpoints
         if (campaign == null)
             return Results.NotFound();
 
-        try
-        {
-            campaign.Update(
-                request.Name,
-                request.Subject,
-                request.HtmlContent,
-                request.PlainTextContent,
-                request.FromName,
-                request.FromEmail,
-                request.ReplyToEmail);
+        campaign.Update(
+            request.Name,
+            request.Subject,
+            request.HtmlContent,
+            request.PlainTextContent,
+            request.FromName,
+            request.FromEmail,
+            request.ReplyToEmail);
 
-            campaign.SetSegment(request.SegmentType, request.SegmentFilter, request.EventId);
+        campaign.SetSegment(request.SegmentType, request.SegmentFilter, request.EventId);
 
-            await repository.UpdateAsync(campaign);
-            return Results.Ok(MapToDetailDto(campaign));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Results.BadRequest(new { error = ex.Message });
-        }
+        await repository.UpdateAsync(campaign);
+        return Results.Ok(MapToDetailDto(campaign));
     }
 
     /// <summary>
@@ -192,8 +185,6 @@ public static class EmailCampaignEndpoints
         if (campaign == null)
             return Results.NotFound();
 
-        try
-        {
             // Empfänger basierend auf Segment laden
             var recipients = await LoadRecipientsForCampaign(campaign, memberRepository);
             foreach (var recipient in recipients)
@@ -213,11 +204,6 @@ public static class EmailCampaignEndpoints
                 recipientCount = campaign.TotalRecipients,
                 jobId
             });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Results.BadRequest(new { error = ex.Message });
-        }
     }
 
     /// <summary>
@@ -233,22 +219,15 @@ public static class EmailCampaignEndpoints
         if (campaign == null)
             return Results.NotFound();
 
-        try
-        {
-            await emailSender.SendAsync(
-                request.TestEmail,
-                $"[TEST] {campaign.Subject}",
-                campaign.HtmlContent,
-                campaign.PlainTextContent,
-                campaign.FromName,
-                campaign.FromEmail);
+        await emailSender.SendAsync(
+            request.TestEmail,
+            $"[TEST] {campaign.Subject}",
+            campaign.HtmlContent,
+            campaign.PlainTextContent,
+            campaign.FromName,
+            campaign.FromEmail);
 
-            return Results.Ok(new { message = $"Test email sent to {request.TestEmail}" });
-        }
-        catch (Exception ex)
-        {
-            return Results.BadRequest(new { error = $"Failed to send test email: {ex.Message}" });
-        }
+        return Results.Ok(new { message = $"Test email sent to {request.TestEmail}" });
     }
 
     /// <summary>
@@ -265,8 +244,6 @@ public static class EmailCampaignEndpoints
         if (campaign == null)
             return Results.NotFound();
 
-        try
-        {
             // Empfänger vorab laden
             var recipients = await LoadRecipientsForCampaign(campaign, memberRepository);
             foreach (var recipient in recipients)
@@ -289,11 +266,6 @@ public static class EmailCampaignEndpoints
                 totalRecipients = campaign.TotalRecipients,
                 hangfireJobId = jobId
             });
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
-        {
-            return Results.BadRequest(new { error = ex.Message });
-        }
     }
 
     /// <summary>
@@ -307,16 +279,9 @@ public static class EmailCampaignEndpoints
         if (campaign == null)
             return Results.NotFound();
 
-        try
-        {
-            campaign.Cancel();
-            await repository.UpdateAsync(campaign);
-            return Results.Ok(MapToDetailDto(campaign));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Results.BadRequest(new { error = ex.Message });
-        }
+        campaign.Cancel();
+        await repository.UpdateAsync(campaign);
+        return Results.Ok(MapToDetailDto(campaign));
     }
 
     /// <summary>
@@ -334,31 +299,24 @@ public static class EmailCampaignEndpoints
         if (campaign.Status != EmailCampaignStatus.Sent)
             return Results.BadRequest(new { error = "Only sent campaigns can be resent" });
 
-        try
+        // Reset all recipients to pending status
+        foreach (var recipient in campaign.Recipients)
         {
-            // Reset all recipients to pending status
-            foreach (var recipient in campaign.Recipients)
-            {
-                recipient.ResetToPending();
-            }
-
-            campaign.StartResending();
-            await repository.UpdateAsync(campaign);
-
-            // E-Mails via Hangfire im Hintergrund versenden
-            var jobId = jobService.EnqueueCampaignSending(campaign.Id);
-
-            return Results.Ok(new
-            {
-                message = "Campaign resend started",
-                recipientCount = campaign.TotalRecipients,
-                jobId
-            });
+            recipient.ResetToPending();
         }
-        catch (InvalidOperationException ex)
+
+        campaign.StartResending();
+        await repository.UpdateAsync(campaign);
+
+        // E-Mails via Hangfire im Hintergrund versenden
+        var jobId = jobService.EnqueueCampaignSending(campaign.Id);
+
+        return Results.Ok(new
         {
-            return Results.BadRequest(new { error = ex.Message });
-        }
+            message = "Campaign resend started",
+            recipientCount = campaign.TotalRecipients,
+            jobId
+        });
     }
 
     /// <summary>
@@ -383,31 +341,24 @@ public static class EmailCampaignEndpoints
         if (!failedRecipients.Any())
             return Results.BadRequest(new { error = "No failed recipients to resend" });
 
-        try
+        // Reset only failed recipients to pending status
+        foreach (var recipient in failedRecipients)
         {
-            // Reset only failed recipients to pending status
-            foreach (var recipient in failedRecipients)
-            {
-                recipient.ResetToPending();
-            }
-
-            campaign.StartResending();
-            await repository.UpdateAsync(campaign);
-
-            // E-Mails via Hangfire im Hintergrund versenden
-            var jobId = jobService.EnqueueCampaignSending(campaign.Id);
-
-            return Results.Ok(new
-            {
-                message = "Campaign resend for failed recipients started",
-                recipientCount = failedRecipients.Count,
-                jobId
-            });
+            recipient.ResetToPending();
         }
-        catch (InvalidOperationException ex)
+
+        campaign.StartResending();
+        await repository.UpdateAsync(campaign);
+
+        // E-Mails via Hangfire im Hintergrund versenden
+        var jobId = jobService.EnqueueCampaignSending(campaign.Id);
+
+        return Results.Ok(new
         {
-            return Results.BadRequest(new { error = ex.Message });
-        }
+            message = "Campaign resend for failed recipients started",
+            recipientCount = failedRecipients.Count,
+            jobId
+        });
     }
 
     /// <summary>

@@ -103,6 +103,15 @@ public sealed class FinanceProfileConfiguration : IEntityTypeConfiguration<Finan
             .HasColumnName("bank_bic")
             .HasMaxLength(11);
 
+        // REQ-067: Payment approval thresholds
+        builder.Property(fp => fp.ApprovalThresholdChf)
+            .HasColumnName("approval_threshold_chf")
+            .HasPrecision(18, 2);
+
+        builder.Property(fp => fp.ApprovalThresholdEur)
+            .HasColumnName("approval_threshold_eur")
+            .HasPrecision(18, 2);
+
         builder.Property(fp => fp.IsActive)
             .HasColumnName("is_active");
 

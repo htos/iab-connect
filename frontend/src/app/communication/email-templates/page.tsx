@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/lib/auth';
@@ -16,12 +16,7 @@ export default function EmailTemplatesPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    if (!accessToken) return;
-    loadTemplates();
-  }, [accessToken]);
-
-  const loadTemplates = async () => {
+  const loadTemplates = useCallback(async () => {
     if (!accessToken) return;
     try {
       setLoading(true);
@@ -33,7 +28,12 @@ export default function EmailTemplatesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [accessToken, t]);
+
+  useEffect(() => {
+    if (!accessToken) return;
+    loadTemplates();
+  }, [accessToken, loadTemplates]);
 
   const handleDelete = async (id: number) => {
     if (!confirm(t('confirmDelete'))) return;

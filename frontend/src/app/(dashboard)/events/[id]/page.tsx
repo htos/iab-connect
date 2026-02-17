@@ -5,6 +5,7 @@
 'use client';
 
 import { useEffect, useState, use, useRef, useCallback } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -328,7 +329,7 @@ export default function EventPage({ params }: EventPageProps) {
           {/* Event Image */}
           {event.imageUrl ? (
             <div className="h-64 md:h-80 relative">
-              <img src={event.imageUrl} alt={event.imageAltText || event.title} className="w-full h-full object-cover" />
+              <Image src={event.imageUrl} alt={event.imageAltText || event.title} className="w-full h-full object-cover" fill sizes="100vw" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
               <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
                 <div className="flex flex-wrap gap-2 mb-3">

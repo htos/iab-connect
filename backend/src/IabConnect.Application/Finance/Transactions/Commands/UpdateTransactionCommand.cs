@@ -19,5 +19,6 @@ public sealed record UpdateTransactionCommand : IRequest<TransactionDto?>
     public string? Notes { get; init; }
     public Guid? TaxCodeId { get; init; }
     public decimal? TaxRate { get; init; }
+    public Guid? ActivityAreaId { get; init; }
     public required string UserName { get; init; }
 }

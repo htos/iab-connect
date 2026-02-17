@@ -194,9 +194,19 @@ export function useApiClient() {
 
         if (!response.ok) {
           const errorText = await response.text();
+          let errorMessage = errorText || response.statusText;
+          // Try to parse ProblemDetails JSON and extract the detail field
+          try {
+            const parsed = JSON.parse(errorText);
+            if (parsed.detail) {
+              errorMessage = parsed.detail;
+            }
+          } catch {
+            // Not JSON, keep original text
+          }
           return {
             data: null,
-            error: errorText || response.statusText,
+            error: errorMessage,
             status: response.status,
           };
         }
@@ -236,9 +246,18 @@ export function useApiClient() {
         );
         if (!response.ok) {
           const errorText = await response.text();
+          let errorMessage = errorText || response.statusText;
+          try {
+            const parsed = JSON.parse(errorText);
+            if (parsed.detail) {
+              errorMessage = parsed.detail;
+            }
+          } catch {
+            // Not JSON, keep original text
+          }
           return {
             data: null,
-            error: errorText || response.statusText,
+            error: errorMessage,
             status: response.status,
           };
         }

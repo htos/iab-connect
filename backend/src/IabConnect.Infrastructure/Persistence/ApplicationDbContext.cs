@@ -46,6 +46,10 @@ public sealed class ApplicationDbContext : DbContext
     public DbSet<Receipt> Receipts => Set<Receipt>();
     public DbSet<FinanceProfile> FinanceProfiles => Set<FinanceProfile>();
     public DbSet<TaxCode> TaxCodes => Set<TaxCode>();
+    public DbSet<FiscalPeriod> FiscalPeriods => Set<FiscalPeriod>();
+    public DbSet<ExpenseClaim> ExpenseClaims => Set<ExpenseClaim>();
+    public DbSet<InvoiceTemplate> InvoiceTemplates => Set<InvoiceTemplate>();
+    public DbSet<ActivityArea> ActivityAreas => Set<ActivityArea>();
 
     // Documents (REQ-034..037)
     public DbSet<DocumentFolder> DocumentFolders => Set<DocumentFolder>();

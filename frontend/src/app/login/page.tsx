@@ -15,41 +15,30 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated, isLoading } = useAuth();
-  const [isSigningIn, setIsSigningIn] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [showDisabledModal, setShowDisabledModal] = useState(false);
   const t = useTranslations();
 
   const callbackUrl = searchParams.get("callbackUrl") ?? "/";
   const errorParam = searchParams.get("error");
   const errorDescription = searchParams.get("error_description");
 
-  // Handle error from URL
-  useEffect(() => {
-    if (errorParam) {
-      // Check for account disabled error
-      if (errorDescription?.toLowerCase().includes("disabled") ||
-          errorDescription?.toLowerCase().includes("deaktiviert") ||
-          errorParam === "access_denied") {
-        setShowDisabledModal(true);
-        return;
-      }
+  // Derive disabled account state from URL params
+  const isAccountDisabled = !!errorParam && (
+    !!errorDescription?.toLowerCase().includes("disabled") ||
+    !!errorDescription?.toLowerCase().includes("deaktiviert") ||
+    errorParam === "access_denied"
+  );
 
-      switch (errorParam) {
-        case "OAuthCallback":
-          setError(t("auth.signInError"));
-          break;
-        case "OAuthSignin":
-          setError(t("auth.keycloakNotReachable"));
-          break;
-        case "AccessDenied":
-          setError(t("auth.accessDenied"));
-          break;
-        default:
-          setError(t("auth.unknownError"));
-      }
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const [error, setError] = useState<string | null>(() => {
+    if (!errorParam || isAccountDisabled) return null;
+    switch (errorParam) {
+      case "OAuthCallback": return t("auth.signInError");
+      case "OAuthSignin": return t("auth.keycloakNotReachable");
+      case "AccessDenied": return t("auth.accessDenied");
+      default: return t("auth.unknownError");
     }
-  }, [errorParam, errorDescription, t]);
+  });
+  const [showDisabledModal, setShowDisabledModal] = useState(isAccountDisabled);
 
   // Redirect if already authenticated
   useEffect(() => {

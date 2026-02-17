@@ -1,5 +1,7 @@
 using FluentValidation;
 using IabConnect.Application.Authorization;
+using IabConnect.Application.Finance;
+using IabConnect.Application.Finance.FiscalPeriods;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
@@ -29,6 +31,12 @@ public static class DependencyInjection
         // REQ-004: Authorization services
         services.AddScoped<IAuthorizationService, AuthorizationService>();
         services.AddScoped<ISecurityAuditLogger, SecurityAuditLogger>();
+
+        // REQ-066: Fiscal period locking service
+        services.AddScoped<IFiscalPeriodService, FiscalPeriodService>();
+
+        // Auto-booking: create ledger transactions on financial events
+        services.AddScoped<IAutoBookingService, AutoBookingService>();
 
         // Note: IAuditService is registered in Infrastructure layer (requires IHttpContextAccessor)
 

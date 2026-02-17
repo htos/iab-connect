@@ -74,6 +74,7 @@
             "Microsoft.AspNetCore.Mvc.Testing": "10.0.2",
             "Microsoft.EntityFrameworkCore": "10.0.2",
             "Microsoft.EntityFrameworkCore.Design": "10.0.2",
+            "Microsoft.EntityFrameworkCore.InMemory": "10.0.2",
             "Microsoft.EntityFrameworkCore.Relational": "10.0.2",
             "Microsoft.EntityFrameworkCore.Tools": "10.0.2",
             "Microsoft.Extensions.Logging.Abstractions": "10.0.2",

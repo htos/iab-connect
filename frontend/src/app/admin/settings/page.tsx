@@ -61,9 +61,12 @@ export default function SettingsPage() {
 
   // Stable refs for callbacks to avoid infinite loops
   const apiRef = useRef(api);
-  apiRef.current = api;
   const tRef = useRef(t);
-  tRef.current = t;
+
+  useEffect(() => {
+    apiRef.current = api;
+    tRef.current = t;
+  });
 
   const [activeTab, setActiveTab] = useState<Tab>("general");
 
@@ -144,10 +147,30 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (isAuthenticated && isAdmin) {
-      loadSettings();
-      loadRoles();
+      apiRef.current.get<SystemSettings>("/api/v1/settings").then(({ data, error }) => {
+        if (error) {
+          setSettingsMessage({ type: "error", text: tRef.current("loadError") });
+        } else if (data) {
+          setSettings(data);
+          setSettingsForm({
+            applicationName: data.applicationName,
+            logoText: data.logoText,
+            logoBackgroundColor: data.logoBackgroundColor,
+            logoTextColor: data.logoTextColor,
+          });
+        }
+        setSettingsLoading(false);
+      });
+      apiRef.current.get<CustomRole[]>("/api/v1/custom-roles").then(({ data, error }) => {
+        if (error) {
+          setRolesMessage({ type: "error", text: tRef.current("rolesLoadError") });
+        } else if (data) {
+          setRoles(data);
+        }
+        setRolesLoading(false);
+      });
     }
-  }, [isAuthenticated, isAdmin, loadSettings, loadRoles]);
+  }, [isAuthenticated, isAdmin]);
 
   // --- Save settings ---
   const handleSaveSettings = async () => {

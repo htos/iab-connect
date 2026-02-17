@@ -65,6 +65,15 @@ public sealed class InvoiceItemConfiguration : IEntityTypeConfiguration<InvoiceI
             .HasColumnName("is_gross_entry")
             .HasDefaultValue(false);
 
+        // REQ-068: Activity area
+        builder.Property(ii => ii.ActivityAreaId)
+            .HasColumnName("activity_area_id");
+
+        builder.HasOne(ii => ii.ActivityArea)
+            .WithMany()
+            .HasForeignKey(ii => ii.ActivityAreaId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.Ignore(ii => ii.DomainEvents);
     }
 }

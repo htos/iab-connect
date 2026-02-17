@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSession } from 'next-auth/react';
 
 interface AuthContextType {
@@ -28,9 +28,8 @@ const AuthContext = createContext<AuthContextType>({
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
-  const [user, setUser] = useState<AuthContextType['user']>(null);
 
-  useEffect(() => {
+  const user = useMemo<AuthContextType['user']>(() => {
     if (session?.user) {
       const sessionUser = session.user as {
         id?: string;
@@ -38,15 +37,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email?: string;
         roles?: string[];
       };
-      setUser({
+      return {
         id: sessionUser.id,
         name: sessionUser.name || undefined,
         email: sessionUser.email || undefined,
         roles: sessionUser.roles || [],
-      });
-    } else {
-      setUser(null);
+      };
     }
+    return null;
   }, [session]);
 
   const hasRole = (role: string): boolean => {

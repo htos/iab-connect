@@ -92,6 +92,19 @@ public sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.Property(i => i.Notes)
             .HasColumnName("notes");
 
+        // REQ-064: EU compliance fields
+        builder.Property(i => i.PaymentTerms)
+            .HasColumnName("payment_terms")
+            .HasMaxLength(500);
+
+        builder.Property(i => i.TemplateId)
+            .HasColumnName("template_id");
+
+        builder.HasOne<InvoiceTemplate>()
+            .WithMany()
+            .HasForeignKey(i => i.TemplateId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.Property(i => i.CancellationReason)
             .HasColumnName("cancellation_reason")
             .HasMaxLength(1000);

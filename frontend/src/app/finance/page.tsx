@@ -2,7 +2,7 @@
 
 /**
  * Finance Dashboard Page
- * REQ-038: Finance Module Dashboard
+ * REQ-038: Finance overview with KPI cards, open items and recent transactions
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -17,6 +17,24 @@ interface TransactionSummary {
   totalIncome: number;
   totalExpense: number;
   balance: number;
+}
+
+interface FinanceDashboard {
+  totalIncome: number;
+  totalExpense: number;
+  balance: number;
+  invoicesTotalOutstanding: number;
+  invoicesOverdueCount: number;
+  invoicesOverdueAmount: number;
+  invoicesOpenCount: number;
+  paymentsTotalPending: number;
+  paymentsTotalPaid: number;
+  paymentsPendingCount: number;
+  expenseClaimsTotalPending: number;
+  expenseClaimsTotalReimbursed: number;
+  expenseClaimsPendingCount: number;
+  currentFiscalPeriod: string | null;
+  currentPeriodStatus: string | null;
 }
 
 interface OpenInvoice {
@@ -39,142 +57,10 @@ interface Transaction {
   accountName: string;
 }
 
-// --- Icons ---
-
-const HomeIcon = ({ className }: { className?: string }) => (
-  <svg
-    className={className}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1h-2z"
-    />
-  </svg>
-);
-
-const ChevronRightIcon = ({ className }: { className?: string }) => (
-  <svg
-    className={className}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M9 5l7 7-7 7"
-    />
-  </svg>
-);
-
-const TransactionsIcon = ({ className }: { className?: string }) => (
-  <svg
-    className={className}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
-    />
-  </svg>
-);
-
-const InvoicesIcon = ({ className }: { className?: string }) => (
-  <svg
-    className={className}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-    />
-  </svg>
-);
-
-const PaymentsIcon = ({ className }: { className?: string }) => (
-  <svg
-    className={className}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
-    />
-  </svg>
-);
-
-const BankImportIcon = ({ className }: { className?: string }) => (
-  <svg
-    className={className}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-    />
-  </svg>
-);
-
-const AccountsIcon = ({ className }: { className?: string }) => (
-  <svg
-    className={className}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
-    />
-  </svg>
-);
-
-const CategoriesIcon = ({ className }: { className?: string }) => (
-  <svg
-    className={className}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"
-    />
-  </svg>
-);
-
 // --- Helpers ---
 
 const formatCHF = (amount: number) =>
-  new Intl.NumberFormat("de-CH", { style: "currency", currency: "CHF" }).format(
-    amount
-  );
+  new Intl.NumberFormat("de-CH", { style: "currency", currency: "CHF" }).format(amount);
 
 // --- Component ---
 
@@ -184,50 +70,42 @@ export default function FinanceDashboardPage() {
   const { isAuthenticated, isLoading: authLoading, canReadFinance } = useAuth();
   const api = useApiClient();
 
-  // Stable refs for callbacks to avoid infinite loops
   const apiRef = useRef(api);
   apiRef.current = api;
   const tRef = useRef(t);
   tRef.current = t;
 
   const [summary, setSummary] = useState<TransactionSummary | null>(null);
-  const [openInvoices, setOpenInvoices] = useState<OpenInvoicesSummary | null>(
-    null
-  );
-  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>(
-    []
-  );
+  const [dashboard, setDashboard] = useState<FinanceDashboard | null>(null);
+  const [openInvoices, setOpenInvoices] = useState<OpenInvoicesSummary | null>(null);
+  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Redirect if not authorized
   useEffect(() => {
     if (!authLoading && (!isAuthenticated || !canReadFinance)) {
       router.push("/");
     }
   }, [authLoading, isAuthenticated, canReadFinance, router]);
 
-  // Fetch dashboard data
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const [summaryRes, invoicesRes, transactionsRes] = await Promise.all([
-        apiRef.current.get<TransactionSummary>(
-          "/api/v1/finance/transactions/summary"
-        ),
+      const [summaryRes, dashboardRes, invoicesRes, transactionsRes] = await Promise.all([
+        apiRef.current.get<TransactionSummary>("/api/v1/finance/transactions/summary"),
+        apiRef.current.get<FinanceDashboard>("/api/v1/finance/dashboard"),
         apiRef.current.get<OpenInvoice[]>("/api/v1/finance/invoices/open"),
         apiRef.current.get<Transaction[]>("/api/v1/finance/transactions"),
       ]);
 
-      if (summaryRes.error || invoicesRes.error || transactionsRes.error) {
-        setError(
-          summaryRes.error || invoicesRes.error || transactionsRes.error
-        );
+      if (summaryRes.error || dashboardRes.error || invoicesRes.error || transactionsRes.error) {
+        setError(summaryRes.error || dashboardRes.error || invoicesRes.error || transactionsRes.error);
       }
 
       if (summaryRes.data) setSummary(summaryRes.data as TransactionSummary);
+      if (dashboardRes.data) setDashboard(dashboardRes.data as FinanceDashboard);
       if (invoicesRes.data) {
         const invoiceList = invoicesRes.data as OpenInvoice[];
         setOpenInvoices({
@@ -236,9 +114,7 @@ export default function FinanceDashboardPage() {
         });
       }
       if (transactionsRes.data)
-        setRecentTransactions(
-          (transactionsRes.data as Transaction[]).slice(0, 10)
-        );
+        setRecentTransactions((transactionsRes.data as Transaction[]).slice(0, 10));
     } catch {
       setError("Failed to load dashboard data");
     } finally {
@@ -252,7 +128,6 @@ export default function FinanceDashboardPage() {
     }
   }, [isAuthenticated, canReadFinance, fetchDashboardData]);
 
-  // Loading state
   if (authLoading || loading) {
     return (
       <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
@@ -269,229 +144,196 @@ export default function FinanceDashboardPage() {
     return null;
   }
 
-  const quickLinks = [
-    {
-      href: "/finance/transactions",
-      titleKey: "transactions" as const,
-      icon: TransactionsIcon,
-    },
-    {
-      href: "/finance/invoices",
-      titleKey: "invoices" as const,
-      icon: InvoicesIcon,
-    },
-    {
-      href: "/finance/payments",
-      titleKey: "payments" as const,
-      icon: PaymentsIcon,
-    },
-    {
-      href: "/finance/bank-import",
-      titleKey: "bankImport" as const,
-      icon: BankImportIcon,
-    },
-    {
-      href: "/finance/accounts",
-      titleKey: "accounts" as const,
-      icon: AccountsIcon,
-    },
-    {
-      href: "/finance/categories",
-      titleKey: "categories" as const,
-      icon: CategoriesIcon,
-    },
-  ];
-
   return (
     <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-7xl">
-        {/* Breadcrumb */}
-        <nav className="mb-4 flex items-center text-sm text-gray-500">
-          <Link
-            href="/"
-            className="flex items-center gap-1 transition-colors hover:text-orange-600"
-          >
-            <HomeIcon className="h-4 w-4" />
-            <span>Home</span>
-          </Link>
-          <ChevronRightIcon className="mx-2 h-4 w-4" />
-          <span className="font-medium text-gray-900">{t("title")}</span>
-        </nav>
-
+      <div className="mx-auto max-w-7xl space-y-6">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-            {t("dashboard")}
-          </h1>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {t("dashboard")}
+            </h1>
+            <p className="text-gray-600 mt-1">{t("title")}</p>
+          </div>
+          {dashboard?.currentFiscalPeriod && (
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <span>{t("currentFiscalPeriod")}:</span>
+              <span className="font-medium text-gray-900">
+                {dashboard.currentFiscalPeriod}
+              </span>
+              {dashboard.currentPeriodStatus && (
+                <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
+                  {dashboard.currentPeriodStatus}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Error banner */}
         {error && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
           </div>
         )}
 
-        {/* KPI Cards Row */}
-        <div className="mb-6 grid grid-cols-1 gap-6 sm:grid-cols-3">
-          {/* Total Income */}
-          <div className="rounded-xl bg-white p-6 shadow-sm">
-            <p className="text-sm font-medium text-gray-500">
-              {t("totalIncome")}
-            </p>
-            <p className="mt-2 text-2xl font-bold text-green-600">
-              {summary ? formatCHF(summary.totalIncome) : "–"}
+        {/* KPI Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <p className="text-xs text-gray-500 mb-1">{t("totalIncome")}</p>
+            <p className="text-lg font-semibold text-gray-900 tabular-nums">
+              {summary ? formatCHF(summary.totalIncome) : "—"}
             </p>
           </div>
-
-          {/* Total Expenses */}
-          <div className="rounded-xl bg-white p-6 shadow-sm">
-            <p className="text-sm font-medium text-gray-500">
-              {t("totalExpense")}
-            </p>
-            <p className="mt-2 text-2xl font-bold text-red-600">
-              {summary ? formatCHF(summary.totalExpense) : "–"}
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <p className="text-xs text-gray-500 mb-1">{t("totalExpense")}</p>
+            <p className="text-lg font-semibold text-gray-900 tabular-nums">
+              {summary ? formatCHF(summary.totalExpense) : "—"}
             </p>
           </div>
-
-          {/* Balance */}
-          <div className="rounded-xl bg-white p-6 shadow-sm">
-            <p className="text-sm font-medium text-gray-500">{t("balance")}</p>
-            <p className="mt-2 text-2xl font-bold text-orange-600">
-              {summary ? formatCHF(summary.balance) : "–"}
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <p className="text-xs text-gray-500 mb-1">{t("balance")}</p>
+            <p className={`text-lg font-semibold tabular-nums ${
+              (summary?.balance ?? 0) >= 0 ? "text-gray-900" : "text-red-600"
+            }`}>
+              {summary ? formatCHF(summary.balance) : "—"}
+            </p>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <p className="text-xs text-gray-500 mb-1">{t("openInvoices")}</p>
+            <p className="text-lg font-semibold text-gray-900 tabular-nums">
+              {openInvoices ? formatCHF(openInvoices.totalAmount) : "—"}
+            </p>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <p className="text-xs text-gray-500 mb-1">{t("overdueInvoices")}</p>
+            <p className={`text-lg font-semibold tabular-nums ${
+              (dashboard?.invoicesOverdueCount ?? 0) > 0 ? "text-red-600" : "text-gray-900"
+            }`}>
+              {dashboard ? dashboard.invoicesOverdueCount : "—"}
+            </p>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <p className="text-xs text-gray-500 mb-1">{t("pendingPayments")}</p>
+            <p className="text-lg font-semibold text-gray-900 tabular-nums">
+              {dashboard ? dashboard.paymentsPendingCount : "—"}
+            </p>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <p className="text-xs text-gray-500 mb-1">{t("pendingExpenseClaims")}</p>
+            <p className="text-lg font-semibold text-gray-900 tabular-nums">
+              {dashboard ? dashboard.expenseClaimsPendingCount : "—"}
             </p>
           </div>
         </div>
 
-        {/* Open Invoices Card */}
-        <div className="mb-6 rounded-xl bg-white p-6 shadow-sm">
-          <h2 className="mb-2 text-lg font-semibold text-gray-900">
-            {t("openInvoices")}
-          </h2>
-          <p className="mb-3 text-sm text-gray-500">
-            {t("openItemsDescription")}
-          </p>
-          {openInvoices ? (
-            <div className="flex items-center gap-8">
-              <div>
-                <p className="text-3xl font-bold text-orange-600">
-                  {openInvoices.count}
-                </p>
-                <p className="text-sm text-gray-500">{t("openItems")}</p>
-              </div>
-              <div>
-                <p className="text-3xl font-bold text-gray-900">
-                  {formatCHF(openInvoices.totalAmount)}
-                </p>
-                <p className="text-sm text-gray-500">{t("total")}</p>
-              </div>
+        {/* Open Items Card */}
+        {dashboard && (
+          <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">
+                {t("openItemsSection")}
+              </h2>
+              <Link
+                href="/finance/invoices"
+                className="text-sm text-orange-600 hover:text-orange-700 font-medium transition-colors"
+              >
+                {t("invoices")} &rarr;
+              </Link>
             </div>
-          ) : (
-            <p className="text-gray-400">{t("noData")}</p>
-          )}
-        </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-gray-200 bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 font-medium text-gray-700">{t("description")}</th>
+                    <th className="px-4 py-3 font-medium text-gray-700 text-center">{t("count")}</th>
+                    <th className="px-4 py-3 font-medium text-gray-700 text-right">{t("amount")}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  <tr>
+                    <td className="px-4 py-3 text-gray-900">{t("openInvoices")}</td>
+                    <td className="px-4 py-3 text-gray-500 text-center">{dashboard.invoicesOpenCount}</td>
+                    <td className="px-4 py-3 text-right font-medium tabular-nums text-gray-900">
+                      {formatCHF(dashboard.invoicesTotalOutstanding)}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-3 text-gray-900">{t("overdueInvoices")}</td>
+                    <td className="px-4 py-3 text-gray-500 text-center">{dashboard.invoicesOverdueCount}</td>
+                    <td className="px-4 py-3 text-right font-medium tabular-nums text-red-600">
+                      {formatCHF(dashboard.invoicesOverdueAmount)}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-3 text-gray-900">{t("pendingPayments")}</td>
+                    <td className="px-4 py-3 text-gray-500 text-center">{dashboard.paymentsPendingCount}</td>
+                    <td className="px-4 py-3 text-right font-medium tabular-nums text-gray-900">
+                      {formatCHF(dashboard.paymentsTotalPending)}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-3 text-gray-900">{t("pendingExpenseClaims")}</td>
+                    <td className="px-4 py-3 text-gray-500 text-center">{dashboard.expenseClaimsPendingCount}</td>
+                    <td className="px-4 py-3 text-right font-medium tabular-nums text-gray-900">
+                      {formatCHF(dashboard.expenseClaimsTotalPending)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
-        {/* Recent Transactions Table */}
-        <div className="mb-6 rounded-xl bg-white p-6 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
+        {/* Recent Transactions Card */}
+        <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">
               {t("recentTransactions")}
             </h2>
             <Link
               href="/finance/transactions"
-              className="text-sm font-medium text-orange-600 hover:text-orange-700"
+              className="text-sm text-orange-600 hover:text-orange-700 font-medium transition-colors"
             >
-              {t("transactions")} →
+              {t("transactions")} &rarr;
             </Link>
           </div>
-
           {recentTransactions.length > 0 ? (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-200 text-left text-gray-500">
-                    <th className="pr-4 pb-3 font-medium">
-                      {t("transactionDate")}
-                    </th>
-                    <th className="pr-4 pb-3 font-medium">
-                      {t("transactionDescription")}
-                    </th>
-                    <th className="pr-4 pb-3 text-right font-medium">
-                      {t("transactionAmount")}
-                    </th>
-                    <th className="pr-4 pb-3 font-medium">
-                      {t("transactionCategory")}
-                    </th>
-                    <th className="pb-3 font-medium">
-                      {t("transactionAccount")}
-                    </th>
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-gray-200 bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 font-medium text-gray-700">{t("transactionDate")}</th>
+                    <th className="px-4 py-3 font-medium text-gray-700">{t("transactionDescription")}</th>
+                    <th className="px-4 py-3 font-medium text-gray-700">{t("transactionCategory")}</th>
+                    <th className="px-4 py-3 text-right font-medium text-gray-700">{t("transactionAmount")}</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-gray-100">
                   {recentTransactions.map((tx) => (
-                    <tr
-                      key={tx.id}
-                      className="border-b border-gray-100 last:border-0"
-                    >
-                      <td className="py-3 pr-4 text-gray-600">
+                    <tr key={tx.id}>
+                      <td className="px-4 py-3 text-gray-500 tabular-nums whitespace-nowrap">
                         {new Date(tx.date).toLocaleDateString("de-CH")}
                       </td>
-                      <td className="py-3 pr-4 text-gray-900">
+                      <td className="px-4 py-3 text-gray-900">
                         {tx.description}
                       </td>
-                      <td
-                        className={`py-3 pr-4 text-right font-medium ${
-                          tx.type === "Income"
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}
-                      >
-                        {tx.type === "Income" ? "+" : "−"}
-                        {formatCHF(Math.abs(tx.amount))}
-                      </td>
-                      <td className="py-3 pr-4 text-gray-600">
+                      <td className="px-4 py-3 text-gray-500">
                         {tx.categoryName}
                       </td>
-                      <td className="py-3 text-gray-600">{tx.accountName}</td>
+                      <td className="px-4 py-3 text-right font-medium tabular-nums whitespace-nowrap text-gray-900">
+                        {tx.type === "Expense"
+                          ? formatCHF(-Math.abs(tx.amount))
+                          : formatCHF(Math.abs(tx.amount))}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           ) : (
-            <p className="text-gray-400">{t("noData")}</p>
+            <div className="py-12 text-center text-gray-500">{t("noData")}</div>
           )}
-        </div>
-
-        {/* Quick Links */}
-        <div>
-          <h2 className="mb-4 text-lg font-semibold text-gray-900">
-            {t("title")}
-          </h2>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {quickLinks.map((link) => {
-              const IconComponent = link.icon;
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="group rounded-xl bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="rounded-xl bg-orange-100 p-3">
-                      <IconComponent className="h-6 w-6 text-orange-600" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 transition-colors group-hover:text-orange-600">
-                        {t(link.titleKey)}
-                      </h3>
-                    </div>
-                    <ChevronRightIcon className="mt-1 h-5 w-5 flex-shrink-0 text-gray-400 transition-colors group-hover:text-orange-600" />
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
         </div>
       </div>
     </main>

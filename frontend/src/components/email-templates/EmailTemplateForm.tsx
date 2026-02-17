@@ -5,9 +5,19 @@ import { useTranslations } from 'next-intl';
 import { EmailTemplate, EMAIL_TEMPLATE_CATEGORIES, EmailTemplateVariable } from '@/types/email-templates';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 
+interface EmailTemplateFormData {
+  name: string;
+  subject: string;
+  category: string;
+  description: string;
+  htmlContent: string;
+  textContent: string;
+  variables: EmailTemplateVariable[];
+}
+
 interface EmailTemplateFormProps {
   template?: EmailTemplate;
-  onSave: (data: any) => Promise<void>;
+  onSave: (data: EmailTemplateFormData) => Promise<void>;
   isSaving?: boolean;
 }
 

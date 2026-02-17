@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using IabConnect.Api.Authorization;
+using IabConnect.Api.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
@@ -17,7 +18,8 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApiServices(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IWebHostEnvironment environment)
     {
         // Configure JSON serialization to use string enums and camelCase
         services.ConfigureHttpJsonOptions(options =>
@@ -71,7 +73,7 @@ public static class DependencyInjection
             {
                 var frontendUrl = configuration["Frontend:BaseUrl"] ?? "http://localhost:3000";
 
-                if (IsDevEnvironment())
+                if (environment.IsDevelopment() || environment.EnvironmentName == "Testing")
                 {
                     // In development, be more permissive
                     policy
@@ -99,7 +101,7 @@ public static class DependencyInjection
                 var keycloakSection = configuration.GetSection("Keycloak");
                 options.Authority = keycloakSection["Authority"];
                 options.Audience = keycloakSection["ClientId"];
-                options.RequireHttpsMetadata = false; // Allow HTTP in development (Keycloak on localhost)
+                options.RequireHttpsMetadata = !(environment.IsDevelopment() || environment.EnvironmentName == "Testing"); // Only allow HTTP in development/testing
 
                 // Disable automatic claim mapping to preserve original claim names (e.g., "sub")
                 options.MapInboundClaims = false;
@@ -180,6 +182,24 @@ public static class DependencyInjection
 
     public static WebApplication UseApiPipeline(this WebApplication app)
     {
+        // Security headers
+        app.Use(async (context, next) =>
+        {
+            context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+            context.Response.Headers["X-Frame-Options"] = "DENY";
+            context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+            context.Response.Headers["X-Permitted-Cross-Domain-Policies"] = "none";
+            await next();
+        });
+
+        if (!app.Environment.IsDevelopment() && app.Environment.EnvironmentName != "Testing")
+        {
+            app.UseHsts();
+        }
+
+        // Global exception handling
+        app.UseMiddleware<ExceptionHandlingMiddleware>();
+
         // Development
         if (app.Environment.IsDevelopment())
         {
@@ -192,7 +212,7 @@ public static class DependencyInjection
         }
 
         // Security
-        if (!app.Environment.IsDevelopment())
+        if (!app.Environment.IsDevelopment() && app.Environment.EnvironmentName != "Testing")
         {
             app.UseHttpsRedirection();
         }
@@ -214,8 +234,5 @@ public static class DependencyInjection
         return app;
     }
 
-    private static bool IsDevEnvironment()
-    {
-        return Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
-    }
+
 }

@@ -3,6 +3,7 @@ using IabConnect.Application.Common;
 using IabConnect.Application.Finance.Invoices.Commands;
 using IabConnect.Application.Finance.Invoices.Queries;
 using MediatR;
+using Microsoft.Extensions.Configuration;
 
 namespace IabConnect.Api.Endpoints;
 
@@ -72,6 +73,15 @@ public static class InvoiceEndpoints
             .Produces(200, contentType: "application/pdf")
             .ProducesProblem(400)
             .ProducesProblem(404);
+
+        group.MapGet("/{id:guid}/einvoice", DownloadEInvoice)
+            .RequireAuthorization("RequireFinanceRead")
+            .WithName("DownloadEInvoice")
+            .WithSummary("Download invoice as eInvoice XML (EN 16931)")
+            .WithDescription("REQ-065: Generates and returns an EN 16931 compliant UBL XML document. Feature-flagged.")
+            .Produces(200, contentType: "application/xml")
+            .ProducesProblem(400)
+            .ProducesProblem(404);
     }
 
     private static string GetUserName(HttpContext ctx) =>
@@ -113,8 +123,10 @@ public static class InvoiceEndpoints
             RecipientAddress = request.RecipientAddress,
             TaxRate = request.TaxRate,
             Notes = request.Notes,
+            PaymentTerms = request.PaymentTerms,
+            TemplateId = request.TemplateId,
             Items = request.Items.Select(i => new CreateInvoiceItemInput(
-                i.Description, i.Quantity, i.UnitPrice, i.TaxCodeId, i.IsGrossEntry)).ToList(),
+                i.Description, i.Quantity, i.UnitPrice, i.TaxCodeId, i.IsGrossEntry, i.ActivityAreaId)).ToList(),
             UserName = GetUserName(httpContext)
         }, ct);
         return Results.Created($"/api/v1/finance/invoices/{dto.Id}", dto);
@@ -135,8 +147,10 @@ public static class InvoiceEndpoints
             RecipientAddress = request.RecipientAddress,
             TaxRate = request.TaxRate,
             Notes = request.Notes,
+            PaymentTerms = request.PaymentTerms,
+            TemplateId = request.TemplateId,
             Items = request.Items.Select(i => new CreateInvoiceItemInput(
-                i.Description, i.Quantity, i.UnitPrice, i.TaxCodeId, i.IsGrossEntry)).ToList(),
+                i.Description, i.Quantity, i.UnitPrice, i.TaxCodeId, i.IsGrossEntry, i.ActivityAreaId)).ToList(),
             UserName = GetUserName(httpContext)
         }, ct);
         return dto is null
@@ -186,16 +200,31 @@ public static class InvoiceEndpoints
         return Results.File(result.PdfBytes, contentType: "application/pdf", fileDownloadName: result.FileName);
     }
 
+    private static async Task<IResult> DownloadEInvoice(Guid id, ISender sender, IConfiguration configuration, string? format, CancellationToken ct)
+    {
+        // REQ-065: Feature flag check
+        var featureEnabled = configuration.GetValue<bool>("Features:EInvoiceExport");
+        if (!featureEnabled)
+            return Results.BadRequest(new { Message = "eInvoice export is not enabled. Set Features:EInvoiceExport to true in configuration." });
+
+        var result = await sender.Send(new GenerateEInvoiceQuery(id, format ?? "UBL"), ct);
+        if (result is null)
+            return Results.NotFound(new { Message = "Invoice not found or is in draft status." });
+        return Results.File(result.XmlBytes, contentType: result.ContentType, fileDownloadName: result.FileName);
+    }
+
     // DTOs
     public sealed record CreateInvoiceRequest(DateTime Date, DateTime DueDate,
         string RecipientType, Guid? RecipientId, string RecipientName,
         string? RecipientAddress, decimal TaxRate, string? Notes,
+        string? PaymentTerms, Guid? TemplateId,
         List<CreateInvoiceItemRequest> Items);
     public sealed record CreateInvoiceItemRequest(string Description, decimal Quantity, decimal UnitPrice,
-        Guid? TaxCodeId = null, bool IsGrossEntry = false);
+        Guid? TaxCodeId = null, bool IsGrossEntry = false, Guid? ActivityAreaId = null);
     public sealed record UpdateInvoiceRequest(DateTime Date, DateTime DueDate,
         string RecipientType, Guid? RecipientId, string RecipientName,
         string? RecipientAddress, decimal TaxRate, string? Notes,
+        string? PaymentTerms, Guid? TemplateId,
         List<CreateInvoiceItemRequest> Items);
     public sealed record CancelInvoiceRequest(string Reason, Guid AccountId);
 }

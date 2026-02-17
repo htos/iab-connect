@@ -29,6 +29,10 @@ public class Invoice : Entity, ISoftDeletable
     public decimal TotalTax { get; private set; }
     public decimal TotalGross { get; private set; }
 
+    // REQ-064: EU compliance fields
+    public string? PaymentTerms { get; private set; }
+    public Guid? TemplateId { get; private set; }
+
     private readonly List<InvoiceItem> _items = [];
     public IReadOnlyList<InvoiceItem> Items => _items.AsReadOnly();
 
@@ -52,7 +56,9 @@ public class Invoice : Entity, ISoftDeletable
         string? recipientAddress,
         decimal taxRate,
         string? notes,
-        string createdBy)
+        string createdBy,
+        string? paymentTerms = null,
+        Guid? templateId = null)
     {
         if (string.IsNullOrWhiteSpace(invoiceNumber))
             throw new ArgumentException("Invoice number is required.", nameof(invoiceNumber));
@@ -70,6 +76,8 @@ public class Invoice : Entity, ISoftDeletable
             RecipientAddress = recipientAddress?.Trim(),
             TaxRate = taxRate,
             Notes = notes?.Trim(),
+            PaymentTerms = paymentTerms?.Trim(),
+            TemplateId = templateId,
             CreatedAt = DateTime.UtcNow,
             CreatedBy = createdBy
         };
@@ -84,7 +92,9 @@ public class Invoice : Entity, ISoftDeletable
         string? recipientAddress,
         decimal taxRate,
         string? notes,
-        string updatedBy)
+        string updatedBy,
+        string? paymentTerms = null,
+        Guid? templateId = null)
     {
         if (Status != InvoiceStatus.Draft)
             throw new InvalidOperationException("Only draft invoices can be edited.");
@@ -97,6 +107,8 @@ public class Invoice : Entity, ISoftDeletable
         RecipientAddress = recipientAddress?.Trim();
         TaxRate = taxRate;
         Notes = notes?.Trim();
+        PaymentTerms = paymentTerms?.Trim();
+        TemplateId = templateId;
         UpdatedAt = DateTime.UtcNow;
         UpdatedBy = updatedBy;
         RecalculateTotals();
@@ -118,12 +130,13 @@ public class Invoice : Entity, ISoftDeletable
         decimal unitPrice,
         Guid? taxCodeId,
         decimal? taxRate,
-        bool isGrossEntry)
+        bool isGrossEntry,
+        Guid? activityAreaId = null)
     {
         if (Status != InvoiceStatus.Draft)
             throw new InvalidOperationException("Only draft invoices can be modified.");
 
-        var item = InvoiceItem.CreateWithTax(Id, description, quantity, unitPrice, taxCodeId, taxRate, isGrossEntry);
+        var item = InvoiceItem.CreateWithTax(Id, description, quantity, unitPrice, taxCodeId, taxRate, isGrossEntry, activityAreaId);
         _items.Add(item);
         RecalculateTotals();
     }
@@ -179,6 +192,35 @@ public class Invoice : Entity, ISoftDeletable
         Status = InvoiceStatus.Overdue;
         UpdatedAt = DateTime.UtcNow;
         UpdatedBy = updatedBy;
+    }
+
+    /// <summary>
+    /// Recalculates the payment status based on total paid amount.
+    /// Used when payments are deleted or updated to maintain invoice-payment consistency.
+    /// </summary>
+    public void RecalculatePaymentStatus(decimal totalPaidAmount, string updatedBy)
+    {
+        if (Status is InvoiceStatus.Draft or InvoiceStatus.Cancelled)
+            return; // Don't touch draft or cancelled invoices
+
+        if (totalPaidAmount >= Total)
+        {
+            if (Status is not InvoiceStatus.Paid)
+            {
+                Status = InvoiceStatus.Paid;
+                UpdatedAt = DateTime.UtcNow;
+                UpdatedBy = updatedBy;
+            }
+        }
+        else
+        {
+            if (Status is InvoiceStatus.Paid)
+            {
+                Status = InvoiceStatus.Sent;
+                UpdatedAt = DateTime.UtcNow;
+                UpdatedBy = updatedBy;
+            }
+        }
     }
 
     public void Cancel(string reason, string updatedBy)

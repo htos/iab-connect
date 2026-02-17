@@ -54,6 +54,34 @@ public sealed class BankImportItemConfiguration : IEntityTypeConfiguration<BankI
         builder.Property(bi => bi.MatchedPaymentId)
             .HasColumnName("matched_payment_id");
 
+        // REQ-069: ISO 20022 reference fields
+        builder.Property(bi => bi.EndToEndId)
+            .HasColumnName("end_to_end_id")
+            .HasMaxLength(200);
+
+        builder.Property(bi => bi.CreditorReference)
+            .HasColumnName("creditor_reference")
+            .HasMaxLength(200);
+
+        builder.Property(bi => bi.RemittanceInfo)
+            .HasColumnName("remittance_info")
+            .HasMaxLength(1000);
+
+        builder.Property(bi => bi.DebtorName)
+            .HasColumnName("debtor_name")
+            .HasMaxLength(200);
+
+        builder.Property(bi => bi.DebtorIban)
+            .HasColumnName("debtor_iban")
+            .HasMaxLength(34);
+
+        builder.Property(bi => bi.SuggestedInvoiceId)
+            .HasColumnName("suggested_invoice_id");
+
+        builder.Property(bi => bi.MatchConfidence)
+            .HasColumnName("match_confidence")
+            .HasPrecision(5, 4);
+
         builder.Ignore(bi => bi.DomainEvents);
     }
 }

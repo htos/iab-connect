@@ -14,17 +14,20 @@ public sealed class CancelInvoiceCommandHandler
     private readonly ITransactionRepository _transactionRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditService _auditService;
+    private readonly IFiscalPeriodService _fiscalPeriodService;
 
     public CancelInvoiceCommandHandler(
         IInvoiceRepository invoiceRepository,
         ITransactionRepository transactionRepository,
         IUnitOfWork unitOfWork,
-        IAuditService auditService)
+        IAuditService auditService,
+        IFiscalPeriodService fiscalPeriodService)
     {
         _invoiceRepository = invoiceRepository;
         _transactionRepository = transactionRepository;
         _unitOfWork = unitOfWork;
         _auditService = auditService;
+        _fiscalPeriodService = fiscalPeriodService;
     }
 
     public async Task<Result<InvoiceDetailDto>> Handle(CancelInvoiceCommand request, CancellationToken ct)
@@ -32,6 +35,9 @@ public sealed class CancelInvoiceCommandHandler
         var invoice = await _invoiceRepository.GetByIdAsync(request.Id, ct);
         if (invoice is null)
             return Result<InvoiceDetailDto>.Failure("Invoice not found.");
+
+        // REQ-066: Check fiscal period locking
+        await _fiscalPeriodService.EnsurePeriodNotLockedAsync(invoice.Date, ct);
 
         try
         {

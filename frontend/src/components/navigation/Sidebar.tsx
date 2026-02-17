@@ -208,11 +208,6 @@ const navItems: NavItem[] = [
         icon: <></>,
       },
       {
-        labelKey: "nav.bankImport",
-        href: "/finance/bank-import",
-        icon: <></>,
-      },
-      {
         labelKey: "nav.dunning",
         href: "/finance/dunning",
         icon: <></>,
@@ -223,8 +218,13 @@ const navItems: NavItem[] = [
         icon: <></>,
       },
       {
-        labelKey: "nav.exports",
-        href: "/finance/exports",
+        labelKey: "nav.expenseClaims",
+        href: "/finance/expense-claims",
+        icon: <></>,
+      },
+      {
+        labelKey: "nav.fiscalPeriods",
+        href: "/finance/fiscal-periods",
         icon: <></>,
       },
       {
@@ -287,7 +287,7 @@ interface SidebarItemProps {
   isActive: boolean;
   isOpen: boolean;
   onNavigate: () => void;
-  t: any;
+  t: (key: string) => string;
   roles: string[];
 }
 

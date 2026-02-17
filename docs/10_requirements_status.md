@@ -484,81 +484,81 @@ TicketLink:
 Notizen: Admin-Konfiguration implementiert. Backend: SystemSettings Entity (ApplicationName, LogoText, LogoBackgroundColor, LogoTextColor), SettingsEndpoints (GET/PUT + Public GET), CustomRole Entity mit CRUD. Frontend: /admin/settings mit zwei Tabs (Allgemein + Benutzerdefinierte Rollen), AppSettingsProvider Context für dynamisches Branding in Header/Sidebar/Navigation.
 
 ID: REQ-060
-Status: InProgress
-StatusSeit: 2026 02 15
+Status: Done
+StatusSeit: 2026 02 16
 Owner: Implementation Agent
 SprintOderRelease: Sprint 3
 TicketLink:
-Notizen: FinanceProfile Entity (CH/EU Jurisdiktion, Waehrung, Org-Details). Backend + Frontend implemented, pending integration test.
+Notizen: FinanceProfile Entity (CH/EU Jurisdiktion, Waehrung, Org-Details). Backend: CQRS-Handlers, API-Endpoints, EF-Config. Frontend: Finance Settings Seite. 17 Unit-Tests. Migration AddFinanceProfile.
 
 ID: REQ-061
-Status: InProgress
-StatusSeit: 2026 02 15
+Status: Done
+StatusSeit: 2026 02 16
 Owner: Implementation Agent
 SprintOderRelease: Sprint 3
 TicketLink:
-Notizen: Receipt-Storage via S3/RustFS mit SHA256-Integrity und File-Type-Validation. Backend + Frontend implemented, pending integration test.
+Notizen: Receipt-Storage via S3/RustFS mit SHA256-Integrity und File-Type-Validation. Backend: 5 CQRS-Handlers, 5 API-Endpoints. Frontend: Receipt Upload/Download UI. 14 Unit-Tests. Migration AddReceiptStorage.
 
 ID: REQ-062
-Status: InProgress
-StatusSeit: 2026 02 15
+Status: Done
+StatusSeit: 2026 02 16
 Owner: Implementation Agent
 SprintOderRelease: Sprint 3
 TicketLink:
-Notizen: VAT/MWST mit konfigurierbaren TaxCodes, Per-Item-Tax, VAT-Export. Backend + Frontend implemented, pending integration test.
+Notizen: VAT/MWST mit konfigurierbaren TaxCodes, Per-Item-Tax auf InvoiceItem, VAT-Summary im PDF und Export. Backend: TaxCode CRUD, InvoiceItem Erweiterung, QuestPDF VAT-Section. Frontend: Tax Codes Settings, Invoice Item Tax-Felder. 25 Unit-Tests. Migration AddTaxCodes.
 
 ID: REQ-063
-Status: InProgress
-StatusSeit: 2026 02 15
+Status: Done
+StatusSeit: 2026 02 16
 Owner: Implementation Agent
 SprintOderRelease: Sprint 3
 TicketLink:
-Notizen: Swiss QR-Zahlteil PDF-Generator via Codecrete.SwissQRBill. Backend + Frontend implemented, pending integration test with real IBAN.
+Notizen: Swiss QR-Zahlteil PDF via Codecrete.SwissQRBill + QuestPDF. Backend: SwissQrBillInvoiceGenerator extends QuestPdfInvoiceGenerator, InvoicePdfGeneratorFactory. Frontend: PDF Download Button. QR-Slip appended auf Rechnungs-PDF wenn CH-Jurisdiktion und IBAN vorhanden.
 
 ID: REQ-064
-Status: Backlog
-StatusSeit: 2026 02 15
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 02 16
+Owner: Implementation Agent
+SprintOderRelease: Sprint 4
 TicketLink:
-Notizen:
+Notizen: EU-Rechnungskonformitaet implementiert. InvoiceTemplate Entity mit EU-Pflichtfeldern (VAT-ID, Steuerbefreiung, Reverse Charge, Zahlungsbedingungen, Rechtshinweise). EU-Validierung beim Senden (VAT-Nr, Tax-Codes). QuestPDF Erweiterung fuer EU-Compliance-Abschnitte. Backend: 6 CQRS-Handlers, CRUD API-Endpoints. Frontend: Invoice Templates Settings Seite. 18 Unit-Tests. Migration AddInvoiceTemplates.
 
 ID: REQ-065
-Status: Backlog
-StatusSeit: 2026 02 15
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 02 16
+Owner: Implementation Agent
+SprintOderRelease: Sprint 4
 TicketLink:
-Notizen:
+Notizen: eInvoice Export (EN 16931/UBL 2.1) implementiert. Feature-flagged Endpoint (Features:EInvoiceExport). IEInvoiceExporter Strategy-Interface fuer Format-Erweiterung. UblInvoiceExporter generiert EN 16931-konformes UBL 2.1 XML (keine externen Abhaengigkeiten, System.Xml.Linq). Mapping: Seller/Buyer Parties (BG-4/7), VAT-Breakdown (BG-23), MonetaryTotals (BG-22), InvoiceLines (BG-25), PaymentMeans (BG-16). Backend: Query + Handler + Exporter. Frontend: Download eInvoice XML Button auf Rechnungsdetail. 40 Unit-Tests (33 UBL-Exporter, 7 Handler).
 
 ID: REQ-066
-Status: Backlog
-StatusSeit: 2026 02 15
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 02 16
+Owner: Implementation Agent
+SprintOderRelease: Sprint 4
 TicketLink:
-Notizen:
+Notizen: Geschaeftsperioden und Periodensperren implementiert. FiscalPeriod Entity mit Status (Open/Closed/Locked). Monatliche Perioden, automatische Generierung per Geschaeftsjahr. IFiscalPeriodService erzwingt Sperren in 10 bestehenden Command-Handlers (Transaction/Invoice/Payment CRUD). Lock nur Admin, Unlock nur Admin. Backend: 16 CQRS-Dateien, FiscalPeriodService, 5 API-Endpoints. Frontend: Fiscal Periods Seite mit Jahr-Selektor, Generate/Lock/Unlock Aktionen, Status-Badges. 55 Unit-Tests. Migration AddFiscalPeriods.
 
 ID: REQ-067
-Status: Backlog
-StatusSeit: 2026 02 15
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 02 16
+Owner: Implementation Agent
+SprintOderRelease: Sprint 4
 TicketLink:
-Notizen:
+Notizen: Zahlungs-Freigabe-Workflow und Spesenabrechnung implementiert. Payment erweitert mit PaymentStatus (Draft/Submitted/Approved/Rejected/Paid) und Approval-Workflow. FinanceProfile erweitert mit ApprovalThresholdChf/Eur (getrennt pro Waehrung). ExpenseClaim Entity mit vollem Lebenszyklus (Draft bis Reimbursed). Backend: 31 CQRS-Dateien, 4 Payment-Approval-Endpoints, 10 ExpenseClaim-Endpoints. Frontend: Expense Claims Seite mit CRUD, Status-Filter, rollenbasierte Aktionen. 65 Unit-Tests. Migration AddPaymentApprovalAndExpenseClaims.
 
 ID: REQ-068
-Status: Backlog
-StatusSeit: 2026 02 15
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 02 16
+Owner: Implementation Agent
+SprintOderRelease: Sprint 4
 TicketLink:
-Notizen:
+Notizen: ActivityArea Dimension-Tagging implementiert. Admin-verwaltbare ActivityArea Entity (Name, Code, Description, Color, SortOrder). Nullable FK auf Transaction und InvoiceItem. P&L-Report pro ActivityArea. Export-Spalte im Journal-CSV. Backend: CRUD + Report CQRS, 5 API-Endpoints. Frontend: Admin-Seite fuer ActivityArea-Verwaltung, Report-Seite mit Datumfilter. 14 Unit-Tests. Migration AddActivityAreas.
 
 ID: REQ-069
-Status: Backlog
-StatusSeit: 2026 02 15
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 02 16
+Owner: Implementation Agent
+SprintOderRelease: Sprint 4
 TicketLink:
-Notizen:
+Notizen: camt Import (ISO 20022) und Referenz-Matching implementiert. CamtParser fuer camt.053 und camt.054 XML (System.Xml.Linq, keine externen Abhaengigkeiten). BankImportMatcher mit 5-stufiger Matching-Strategie (InvoiceNumber exact, Structured/Unstructured Reference, Amount+Date, Amount-only). BankImport erweitert mit Format und OriginalFileStoragePath. BankImportItem erweitert mit 7 Referenzfeldern. Backend: ImportCamtCommand + Handler + Validator. Frontend: camt Upload Button, Referenz-Spalten, Match-Confidence Badges. 28 Unit-Tests (16 Parser, 8 Matcher, 4 Validator). Sample-Fixtures fuer camt.053/054.

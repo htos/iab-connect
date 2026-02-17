@@ -21,6 +21,12 @@ public static class AccountEndpoints
             .WithSummary("List all financial accounts")
             .WithDescription("REQ-038: Returns all financial accounts.");
 
+        group.MapGet("/{id:guid}", GetById)
+            .RequireAuthorization("RequireFinanceRead")
+            .WithName("GetAccountById")
+            .WithSummary("Get a financial account by ID")
+            .WithDescription("REQ-038: Returns a single financial account by its ID.");
+
         group.MapPost("/", Create)
             .RequireAuthorization("RequireFinanceWrite")
             .WithName("CreateAccount")
@@ -49,6 +55,14 @@ public static class AccountEndpoints
     {
         var accounts = await sender.Send(new GetAccountsQuery(), ct);
         return Results.Ok(accounts);
+    }
+
+    private static async Task<IResult> GetById(Guid id, ISender sender, CancellationToken ct)
+    {
+        var account = await sender.Send(new GetAccountByIdQuery(id), ct);
+        return account is null
+            ? Results.NotFound(new { Message = "Account not found." })
+            : Results.Ok(account);
     }
 
     private static async Task<IResult> Create(

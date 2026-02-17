@@ -43,6 +43,15 @@ public enum RecipientType
 }
 
 /// <summary>
+/// REQ-040: Payment direction — distinguishes income (Einnahme) from expense (Ausgabe)
+/// </summary>
+public enum PaymentDirection
+{
+    Income,
+    Expense
+}
+
+/// <summary>
 /// REQ-040: Payment methods
 /// </summary>
 public enum PaymentMethod
@@ -69,6 +78,16 @@ public enum BankImportItemStatus
     Unmatched,
     Matched,
     Ignored
+}
+
+/// <summary>
+/// REQ-069: Bank import file format
+/// </summary>
+public enum BankImportFormat
+{
+    Csv,
+    Camt053,
+    Camt054
 }
 
 /// <summary>
@@ -106,4 +125,42 @@ public enum VatStatus
     NotRegistered,
     Registered,
     SmallBusiness
+}
+
+/// <summary>
+/// REQ-066: Fiscal period locking status
+/// Open = period is active, mutations allowed
+/// Closed = soft-closed (warning but still editable by admin)
+/// Locked = hard-locked, no mutations allowed (only admin can unlock)
+/// </summary>
+public enum FiscalPeriodStatus
+{
+    Open,
+    Closed,
+    Locked
+}
+
+/// <summary>
+/// REQ-067: Payment approval workflow status
+/// </summary>
+public enum PaymentStatus
+{
+    Draft,
+    Submitted,
+    Approved,
+    Rejected,
+    Paid
+}
+
+/// <summary>
+/// REQ-067: Expense claim workflow status
+/// </summary>
+public enum ExpenseClaimStatus
+{
+    Draft,
+    Submitted,
+    UnderReview,
+    Approved,
+    Rejected,
+    Reimbursed
 }

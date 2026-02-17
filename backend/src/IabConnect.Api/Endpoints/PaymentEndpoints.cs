@@ -38,6 +38,25 @@ public static class PaymentEndpoints
             .WithName("DeletePayment")
             .WithSummary("Delete a payment")
             .WithDescription("REQ-040: Deletes a payment record. Audited.");
+
+        // REQ-067: Payment approval workflow
+        group.MapPost("/{id:guid}/submit", SubmitPayment).RequireAuthorization("RequireFinanceWrite");
+        group.MapPost("/{id:guid}/approve", ApprovePayment).RequireAuthorization("RequireVorstand");
+        group.MapPost("/{id:guid}/reject", RejectPayment).RequireAuthorization("RequireVorstand");
+        group.MapPost("/{id:guid}/mark-paid", MarkAsPaid).RequireAuthorization("RequireFinanceWrite");
+
+        // REQ-061: Receipt attachment
+        group.MapPost("/{id:guid}/receipt", AttachReceipt)
+            .RequireAuthorization("RequireFinanceWrite")
+            .WithName("AttachReceiptToPayment")
+            .WithSummary("Attach a receipt to a payment")
+            .WithDescription("REQ-061: Attaches an existing receipt to a payment. Audited.");
+
+        group.MapDelete("/{id:guid}/receipt", DetachReceipt)
+            .RequireAuthorization("RequireFinanceWrite")
+            .WithName("DetachReceiptFromPayment")
+            .WithSummary("Detach receipt from a payment")
+            .WithDescription("REQ-061: Removes the receipt link from a payment. Audited.");
     }
 
     private static string GetUserName(HttpContext ctx) =>
@@ -59,6 +78,7 @@ public static class PaymentEndpoints
         {
             Date = request.Date,
             Amount = request.Amount,
+            Direction = request.Direction,
             Method = request.Method,
             Reference = request.Reference,
             InvoiceId = request.InvoiceId,
@@ -78,6 +98,7 @@ public static class PaymentEndpoints
             Id = id,
             Date = request.Date,
             Amount = request.Amount,
+            Direction = request.Direction,
             Method = request.Method,
             Reference = request.Reference,
             InvoiceId = request.InvoiceId,
@@ -97,9 +118,58 @@ public static class PaymentEndpoints
         return found ? Results.NoContent() : Results.NotFound(new { Message = "Payment not found." });
     }
 
+    // REQ-067: Payment approval workflow handlers
+    private static async Task<IResult> SubmitPayment(Guid id, HttpContext ctx, ISender sender, CancellationToken ct)
+    {
+        var command = new SubmitPaymentCommand(id, GetUserName(ctx));
+        await sender.Send(command, ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> ApprovePayment(Guid id, ApprovePaymentRequest? request, HttpContext ctx, ISender sender, CancellationToken ct)
+    {
+        var command = new ApprovePaymentCommand(id, request?.Comment, GetUserName(ctx));
+        await sender.Send(command, ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> RejectPayment(Guid id, RejectPaymentRequest request, HttpContext ctx, ISender sender, CancellationToken ct)
+    {
+        var command = new RejectPaymentCommand(id, request.Reason, GetUserName(ctx));
+        await sender.Send(command, ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> MarkAsPaid(Guid id, HttpContext ctx, ISender sender, CancellationToken ct)
+    {
+        var command = new MarkPaymentAsPaidCommand(id, GetUserName(ctx));
+        await sender.Send(command, ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> AttachReceipt(
+        Guid id, AttachReceiptRequest request, ISender sender, CancellationToken ct)
+    {
+        var dto = await sender.Send(new AttachReceiptToPaymentCommand(id, request.ReceiptId), ct);
+        return dto is null
+            ? Results.NotFound(new { Message = "Payment or receipt not found." })
+            : Results.Ok(dto);
+    }
+
+    private static async Task<IResult> DetachReceipt(Guid id, ISender sender, CancellationToken ct)
+    {
+        var dto = await sender.Send(new DetachReceiptFromPaymentCommand(id), ct);
+        return dto is null
+            ? Results.NotFound(new { Message = "Payment not found." })
+            : Results.Ok(dto);
+    }
+
     // DTOs
-    public sealed record CreatePaymentRequest(DateTime Date, decimal Amount, string Method,
+    public sealed record CreatePaymentRequest(DateTime Date, decimal Amount, string Direction, string Method,
         string? Reference, Guid? InvoiceId, Guid? TransactionId, string? Notes);
-    public sealed record UpdatePaymentRequest(DateTime Date, decimal Amount, string Method,
+    public sealed record UpdatePaymentRequest(DateTime Date, decimal Amount, string Direction, string Method,
         string? Reference, Guid? InvoiceId, Guid? TransactionId, string? Notes);
+    public sealed record ApprovePaymentRequest(string? Comment);
+    public sealed record RejectPaymentRequest(string Reason);
+    public sealed record AttachReceiptRequest(Guid ReceiptId);
 }

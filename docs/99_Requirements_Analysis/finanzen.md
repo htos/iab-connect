@@ -1,6 +1,6 @@
 # Finanzen-Modul — Detaillierte Übersicht
 
-> Stand: 15.02.2026 | Autor: Requirements-Engineering-Analyse
+> Stand: 16.02.2026 | Autor: Requirements-Engineering-Analyse
 > Scope: Backend (Domain, Application, API, Infrastructure), Frontend (Pages, Components, API-Client), Dokumentation
 
 ---
@@ -22,19 +22,25 @@
 
 ## 1. Zusammenfassung
 
-Das Finanzmodul ist das umfangreichste Feature des Projekts. 7 von 8 Kern-Finanz-Requirements sind Done (REQ-038 bis REQ-043, REQ-045), 4 weitere sind InProgress (REQ-060 bis REQ-063). Es umfasst:
+Das Finanzmodul ist das umfangreichste Feature des Projekts. 7 von 8 Kern-Finanz-Requirements sind Done (REQ-038 bis REQ-043, REQ-045), alle 10 erweiterten Finanz-Requirements sind Done (REQ-060 bis REQ-069). Es umfasst:
 
-- 12 Domain-Entities (Account, Category, Transaction, Invoice, InvoiceItem, Payment, BankImport, BankImportItem, DunningNotice, Receipt, FinanceProfile, TaxCode)
-- 126 CQRS-Dateien (Commands, Queries, Handlers, Validators via MediatR + FluentValidation)
+- 16 Domain-Entities (Account, Category, Transaction, Invoice, InvoiceItem, Payment, BankImport, BankImportItem, DunningNotice, Receipt, FinanceProfile, TaxCode, ActivityArea, FiscalPeriod, ExpenseClaim, InvoiceTemplate)
+- ~210 CQRS-Dateien (Commands, Queries, Handlers, Validators via MediatR + FluentValidation)
 - API-Endpunkte fuer alle Finance-Bereiche
-- 12 Frontend-Seiten unter /finance
+- 12+ Frontend-Seiten unter /finance
 - ~130 i18n-Keys in DE und EN
-- 210 Finance-Unit-Tests
+- 420+ Finance-Unit-Tests
 - Soft-Delete/Storno auf allen Entities implementiert
 - Receipt-File-Storage via S3/RustFS mit SHA256-Integrity
 - Invoice-PDF via QuestPDF, Swiss QR-Zahlteil via Codecrete.SwissQRBill
 - FinanceProfile (CH/EU Jurisdiktion, Waehrung, Org-Details)
 - VAT/MWST (konfigurierbare TaxCodes, Per-Item-Tax, VAT-Export)
+- EU-Rechnungskonformitaet mit InvoiceTemplate (VAT-ID, Reverse Charge, Rechtshinweise)
+- eInvoice Export (EN 16931/UBL 2.1) mit Feature-Flag
+- Geschaeftsperioden (FiscalPeriod) mit Open/Closed/Locked und Periodensperre
+- Zahlungs-Freigabe-Workflow und Spesenabrechnung (ExpenseClaim)
+- ActivityArea Dimension-Tagging mit P&L-Report
+- camt Import (ISO 20022 camt.053/054) mit 5-stufigem Referenz-Matching
 
 ### Bewertung
 
@@ -44,7 +50,7 @@ Das Finanzmodul ist das umfangreichste Feature des Projekts. 7 von 8 Kern-Finanz
 | Application Layer | CQRS/MediatR vollstaendig refactored, FluentValidation   |
 | API-Endpunkte     | Funktional, CQRS-basiert                                 |
 | Frontend-Seiten   | Alle vorhanden                                           |
-| Tests             | 210 Finance-Unit-Tests                                   |
+| Tests             | 420+ Finance-Unit-Tests                                  |
 | Dokumentation     | Aktualisiert                                             |
 
 ---
@@ -63,6 +69,21 @@ Das Finanzmodul ist das umfangreichste Feature des Projekts. 7 von 8 Kern-Finanz
 | **REQ-043** | Belegmanagement                  | Should have | ✅ Done    | Sprint 2 |
 | **REQ-044** | Budget und Kostenstellen         | Could have  | ❌ Backlog | —        |
 | **REQ-045** | Export für Steuer/Buchhaltung    | Must have   | ✅ Done    | Sprint 2 |
+
+### Erweiterte Finanz-Requirements
+
+| ID          | Titel                                    | Prio        | Status     | Sprint   |
+| ----------- | ---------------------------------------- | ----------- | ---------- | -------- |
+| **REQ-060** | FinanceProfile (Jurisdiktion/Waehrung)   | Must have   | ✅ Done    | Sprint 3 |
+| **REQ-061** | Receipt-Storage (S3/RustFS)              | Must have   | ✅ Done    | Sprint 3 |
+| **REQ-062** | VAT/MWST TaxCodes                        | Must have   | ✅ Done    | Sprint 3 |
+| **REQ-063** | Swiss QR-Zahlteil                        | Should have | ✅ Done    | Sprint 3 |
+| **REQ-064** | EU-Rechnungskonformitaet                 | Should have | ✅ Done    | Sprint 4 |
+| **REQ-065** | eInvoice Export (UBL 2.1)                | Should have | ✅ Done    | Sprint 4 |
+| **REQ-066** | Geschaeftsperioden / Periodensperren     | Must have   | ✅ Done    | Sprint 4 |
+| **REQ-067** | Zahlungs-Freigabe / Spesenabrechnung     | Should have | ✅ Done    | Sprint 4 |
+| **REQ-068** | ActivityArea Dimension-Tagging           | Could have  | ✅ Done    | Sprint 4 |
+| **REQ-069** | camt Import (ISO 20022)                  | Should have | ✅ Done    | Sprint 4 |
 
 ### Finanz-abhängige Requirements (andere Bereiche)
 
@@ -86,7 +107,7 @@ Das Finanzmodul ist das umfangreichste Feature des Projekts. 7 von 8 Kern-Finanz
 
 | ID      | Beschreibung                                  |
 | ------- | --------------------------------------------- |
-| REQ-061 | Finanzen: Eigener Bucket für Bilder/Dokumente |
+| —       | (keine offenen Vorschlaege)                   |
 
 ---
 
@@ -106,6 +127,12 @@ Das Finanzmodul ist das umfangreichste Feature des Projekts. 7 von 8 Kern-Finanz
 | **BankImportItem** | `Domain/Finance/BankImportItem.cs` | REQ-041 | Einzelne Import-Zeilen, Match/Ignore/Unmatch                                                   |
 | **DunningNotice**  | `Domain/Finance/DunningNotice.cs`  | REQ-042 | Mahnungen Stufe 1-3, Draft→Sent Workflow                                                       |
 | **Receipt**        | `Domain/Finance/Receipt.cs`        | REQ-043 | Belegerfassung (nur Metadaten, kein echter File-Upload!)                                       |
+| **FinanceProfile** | `Domain/Finance/FinanceProfile.cs` | REQ-060 | CH/EU Jurisdiktion, Waehrung, Org-Details                                                      |
+| **TaxCode**        | `Domain/Finance/TaxCode.cs`        | REQ-062 | Konfigurierbare Steuercodes (Name, Rate, Code), Per-Item-Tax                                   |
+| **InvoiceTemplate**| `Domain/Finance/InvoiceTemplate.cs`| REQ-064 | EU-Pflichtfelder (VAT-ID, Steuerbefreiung, Reverse Charge, Zahlungsbedingungen)                |
+| **FiscalPeriod**   | `Domain/Finance/FiscalPeriod.cs`   | REQ-066 | Geschaeftsperioden mit Status (Open/Closed/Locked), monatliche Perioden                        |
+| **ExpenseClaim**   | `Domain/Finance/ExpenseClaim.cs`   | REQ-067 | Spesenabrechnung mit Lebenszyklus (Draft bis Reimbursed)                                       |
+| **ActivityArea**   | `Domain/Finance/ActivityArea.cs`   | REQ-068 | Dimension-Tagging (Name, Code, Color, SortOrder), FK auf Transaction/InvoiceItem               |
 
 ### 3.2 Enums
 
@@ -122,11 +149,14 @@ Das Finanzmodul ist das umfangreichste Feature des Projekts. 7 von 8 Kern-Finanz
 
 ### 3.3 Application Layer
 
-- 126 CQRS-Dateien: Commands, Queries, Handlers, Validators via MediatR
+- ~210 CQRS-Dateien: Commands, Queries, Handlers, Validators via MediatR
 - FluentValidation fuer alle Create/Update-Commands
 - Repository-Interfaces in Application/Finance/IFinanceRepositories.cs
 - IFinanceDocumentStorage Interface fuer S3-basierte Beleg-Speicherung
 - IInvoicePdfGenerator und IInvoicePdfGeneratorFactory fuer PDF-Generierung
+- IEInvoiceExporter Strategy-Interface mit UblInvoiceExporter (EN 16931/UBL 2.1)
+- IFiscalPeriodService fuer Periodensperren in 10 Command-Handlers
+- CamtParser fuer camt.053/054, BankImportMatcher mit 5-stufiger Strategie
 - Business-Logik aus Endpoints in Handler extrahiert (Clean Architecture)
 
 ### 3.4 API-Endpunkte (implementiert)
@@ -194,8 +224,14 @@ Das Finanzmodul ist das umfangreichste Feature des Projekts. 7 von 8 Kern-Finanz
 | Invoice-PDF    | QuestPDF-basierte PDF-Generierung                            | Erledigt |
 | QR-Bill        | Swiss QR-Zahlteil via Codecrete.SwissQRBill                  | Erledigt |
 | Soft-Delete    | Alle Entities mit IsDeleted/DeletedAt/DeletedBy              | Erledigt |
-| CQRS/MediatR   | 126 Dateien refactored                                       | Erledigt |
-| Tests          | 210 Finance-Unit-Tests                                       | Erledigt |
+| CQRS/MediatR   | ~210 Dateien refactored                                      | Erledigt |
+| Tests          | 420+ Finance-Unit-Tests                                      | Erledigt |
+| EU-Compliance  | InvoiceTemplate, EU-Validierung, QuestPDF EU-Abschnitte      | Erledigt |
+| eInvoice       | UBL 2.1 Export (EN 16931), Feature-flagged                   | Erledigt |
+| FiscalPeriods  | Geschaeftsperioden mit Sperren, 10 Handler integriert        | Erledigt |
+| ExpenseClaims  | Spesenabrechnung mit Approval-Workflow                       | Erledigt |
+| ActivityAreas  | Dimension-Tagging mit P&L-Report                             | Erledigt |
+| camt Import    | ISO 20022 Parser + 5-stufiges Referenz-Matching              | Erledigt |
 
 ### 5.2 Fehlende API-Endpunkte (Domain-Methoden existieren, aber kein Endpunkt)
 
@@ -224,7 +260,7 @@ Das Finanzmodul ist das umfangreichste Feature des Projekts. 7 von 8 Kern-Finanz
 | Scheduled Job: Ueberfaellig    | Kein automatisches Markieren ueberfaelliger Rechnungen | Mittel     |
 | Server-seitiges CSV-Parsing    | Bankimport erwartet Client-parsed Daten                | Niedrig    |
 | Budget/Kostenstellen (REQ-044) | Noch nicht umgesetzt                                   | Backlog    |
-| Integration-Tests              | REQ-060 bis REQ-063 benoetigen End-to-End-Verifikation | Hoch       |
+| Integration-Tests              | End-to-End-Verifikation fuer neue Features             | Mittel     |
 
 ### 5.4 Dokumentations-Abweichungen
 
@@ -323,11 +359,11 @@ Erledigt:
 | #   | Ziel                          | Status                                             |
 | --- | ----------------------------- | -------------------------------------------------- |
 | 17  | REQ-044: Budget/Kostenstellen | Backlog                                            |
-| 18  | REQ-061: Receipt-Storage      | InProgress (S3 implementiert, E2E-Test ausstehend) |
+| 18  | REQ-061: Receipt-Storage      | Erledigt (S3 implementiert, Unit-Tests vorhanden)  |
 | 19  | Finanz-Reporting Dashboard    | Offen                                              |
 | 20  | Server-seitiges CSV-Parsing   | Offen                                              |
 | 21  | Cross-Modul-Integration       | Offen                                              |
-| 22  | Dokumentation aktualisieren   | Teilweise erledigt                                 |
+| 22  | Dokumentation aktualisieren   | Erledigt                                           |
 
 ---
 
@@ -489,4 +525,4 @@ Erledigt:
 
 ---
 
-> Fazit: Das Finanzmodul ist funktional breit aufgestellt. Die frueheren Qualitaetsluecken (fehlende Tests, Validierung, Soft-Delete, kein CQRS) sind behoben. 210 Unit-Tests, FluentValidation, Soft-Delete auf allen Entities, CQRS/MediatR mit 126 Dateien. Naechste Schritte: Integration-Tests fuer REQ-060 bis REQ-063, Paginierung, Mahnungs-E-Mail-Versand.
+> Fazit: Das Finanzmodul ist funktional breit aufgestellt. Alle 10 erweiterten Finanz-Requirements (REQ-060 bis REQ-069) sind Done. 420+ Unit-Tests, FluentValidation, Soft-Delete auf allen Entities, CQRS/MediatR mit ~210 Dateien, 16 Domain-Entities. Naechste Schritte: Paginierung, Mahnungs-E-Mail-Versand, Integration-Tests.

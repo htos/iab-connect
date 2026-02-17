@@ -43,7 +43,6 @@ export default function AdminDocumentsPage() {
   }, [authLoading, isAuthenticated, isAdmin, router]);
 
   const fetchFolders = useCallback(async () => {
-    setLoading(true);
     const result = await getFolders();
     if (result.success) {
       setFolders(result.data);
@@ -54,8 +53,17 @@ export default function AdminDocumentsPage() {
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated && isAdmin) fetchFolders();
-  }, [isAuthenticated, isAdmin, fetchFolders]);
+    if (isAuthenticated && isAdmin) {
+      getFolders().then(result => {
+        if (result.success) {
+          setFolders(result.data);
+        } else {
+          setError(result.error || "Error loading folders");
+        }
+        setLoading(false);
+      });
+    }
+  }, [isAuthenticated, isAdmin]);
 
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return;
@@ -70,6 +78,7 @@ export default function AdminDocumentsPage() {
       setNewFolderDesc("");
       setNewFolderParent("");
       setSuccess(t("documents.folderCreated"));
+      setLoading(true);
       fetchFolders();
       setTimeout(() => setSuccess(null), 3000);
     } else {
@@ -82,6 +91,7 @@ export default function AdminDocumentsPage() {
     const result = await deleteFolder(id);
     if (result.success) {
       setSuccess(t("documents.folderDeleted"));
+      setLoading(true);
       fetchFolders();
       setTimeout(() => setSuccess(null), 3000);
     } else {
@@ -111,6 +121,7 @@ export default function AdminDocumentsPage() {
     if (result.success) {
       setShowPermissions(false);
       setSuccess(t("documents.permissionsSaved"));
+      setLoading(true);
       fetchFolders();
       setTimeout(() => setSuccess(null), 3000);
     } else {

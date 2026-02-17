@@ -22,15 +22,18 @@ try
         .ReadFrom.Services(services)
         .Enrich.FromLogContext());
 
+    // Suppress Server header (SEC-012)
+    builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
+
     // Add services
     builder.Services
-        .AddApiServices(builder.Configuration)
+        .AddApiServices(builder.Configuration, builder.Environment)
         .AddApplicationServices()
         .AddInfrastructureServices(builder.Configuration);
 
     var app = builder.Build();
 
-    // Apply migrations automatically
+    // Apply migrations automatically (skip in Testing environment)
     try
     {
         using (var scope = app.Services.CreateScope())
@@ -40,7 +43,12 @@ try
 
             Log.Information("Environment: {Environment}", env.EnvironmentName);
 
-            if (env.IsDevelopment())
+            if (env.EnvironmentName == "Testing")
+            {
+                Log.Information("Testing environment detected — skipping migrations");
+                await db.Database.EnsureCreatedAsync();
+            }
+            else if (env.IsDevelopment())
             {
                 Log.Information("Using migrations for development (shared database with Keycloak)");
                 // Always use migrations because EnsureCreated doesn't work when Keycloak
@@ -80,9 +88,10 @@ try
 
     app.Run();
 }
-catch (Exception ex)
+catch (Exception ex) when (ex is not HostAbortedException)
 {
     Log.Fatal(ex, "Application terminated unexpectedly");
+    throw;
 }
 finally
 {

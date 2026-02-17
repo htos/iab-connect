@@ -53,15 +53,34 @@ export function EventTicket({
     // Note: In production, use a library like 'qrcode' or 'qrcode.react'
     // This is a placeholder that shows the token
     const container = qrRef.current;
-    container.innerHTML = `
-      <div class="w-48 h-48 bg-white border-2 border-gray-200 rounded-lg flex items-center justify-center p-4">
-        <div class="text-center">
-          <p class="text-xs text-gray-500 mb-2">QR-Code Token:</p>
-          <p class="text-xs font-mono break-all">${registration.qrCodeToken.substring(0, 32)}...</p>
-          <p class="text-xs text-gray-400 mt-2">Verwenden Sie eine QR-Code-Bibliothek</p>
-        </div>
-      </div>
-    `;
+    // Clear previous content safely
+    while (container.firstChild) {
+      container.removeChild(container.firstChild);
+    }
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'w-48 h-48 bg-white border-2 border-gray-200 rounded-lg flex items-center justify-center p-4';
+
+    const inner = document.createElement('div');
+    inner.className = 'text-center';
+
+    const label = document.createElement('p');
+    label.className = 'text-xs text-gray-500 mb-2';
+    label.textContent = 'QR-Code Token:';
+
+    const token = document.createElement('p');
+    token.className = 'text-xs font-mono break-all';
+    token.textContent = `${registration.qrCodeToken.substring(0, 32)}...`;
+
+    const hint = document.createElement('p');
+    hint.className = 'text-xs text-gray-400 mt-2';
+    hint.textContent = 'Verwenden Sie eine QR-Code-Bibliothek';
+
+    inner.appendChild(label);
+    inner.appendChild(token);
+    inner.appendChild(hint);
+    wrapper.appendChild(inner);
+    container.appendChild(wrapper);
   }, [registration.qrCodeToken]);
 
   const startDate = new Date(eventStartDate);

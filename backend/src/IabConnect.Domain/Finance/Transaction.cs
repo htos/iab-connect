@@ -21,6 +21,10 @@ public class Transaction : Entity, ISoftDeletable
     public Guid? ReceiptId { get; private set; }
     public Receipt? Receipt { get; private set; }
 
+    // REQ-068: Activity area tagging
+    public Guid? ActivityAreaId { get; private set; }
+    public ActivityArea? ActivityArea { get; private set; }
+
     // REQ-062: VAT fields
     public Guid? TaxCodeId { get; private set; }
     public decimal? TaxRate { get; private set; }
@@ -48,7 +52,8 @@ public class Transaction : Entity, ISoftDeletable
         string? notes,
         string createdBy,
         Guid? taxCodeId = null,
-        decimal? taxRate = null)
+        decimal? taxRate = null,
+        Guid? activityAreaId = null)
     {
         if (string.IsNullOrWhiteSpace(description))
             throw new ArgumentException("Description is required.", nameof(description));
@@ -77,6 +82,7 @@ public class Transaction : Entity, ISoftDeletable
             TaxRate = taxRate,
             TaxAmount = taxAmount,
             NetAmount = netAmount,
+            ActivityAreaId = activityAreaId,
             CreatedAt = DateTime.UtcNow,
             CreatedBy = createdBy
         };
@@ -93,7 +99,8 @@ public class Transaction : Entity, ISoftDeletable
         string? notes,
         string updatedBy,
         Guid? taxCodeId = null,
-        decimal? taxRate = null)
+        decimal? taxRate = null,
+        Guid? activityAreaId = null)
     {
         Date = DateTime.SpecifyKind(date, DateTimeKind.Utc);
         Description = description.Trim();
@@ -105,6 +112,7 @@ public class Transaction : Entity, ISoftDeletable
         Notes = notes?.Trim();
         TaxCodeId = taxCodeId;
         TaxRate = taxRate;
+        ActivityAreaId = activityAreaId;
 
         if (taxRate.HasValue)
         {

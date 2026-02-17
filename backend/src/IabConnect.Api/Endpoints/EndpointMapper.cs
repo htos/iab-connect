@@ -43,6 +43,11 @@ public static class EndpointMapper
         app.MapFinanceExportEndpoints();
         app.MapFinanceProfileEndpoints();
         app.MapTaxCodeEndpoints();
+        app.MapFiscalPeriodEndpoints(); // REQ-066: Fiscal Periods
+        app.MapExpenseClaimEndpoints(); // REQ-067: Expense Claims
+        app.MapInvoiceTemplateEndpoints(); // REQ-064: Invoice Templates
+        app.MapActivityAreaEndpoints(); // REQ-068: Activity Areas
+        app.MapDashboardEndpoints(); // Finance Dashboard overview
 
         return app;
     }

@@ -19,13 +19,14 @@ public class CreateInvoiceCommandHandlerTests
     private readonly Mock<ITaxCodeRepository> _taxCodeRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IAuditService> _auditService = new();
+    private readonly Mock<IFiscalPeriodService> _fiscalPeriodService = new();
     private readonly CreateInvoiceCommandHandler _handler;
 
     public CreateInvoiceCommandHandlerTests()
     {
         _handler = new CreateInvoiceCommandHandler(
             _invoiceRepo.Object, _taxCodeRepo.Object,
-            _unitOfWork.Object, _auditService.Object);
+            _unitOfWork.Object, _auditService.Object, _fiscalPeriodService.Object);
     }
 
     private static CreateInvoiceCommand CreateValidCommand() => new()

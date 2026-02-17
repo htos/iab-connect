@@ -13,17 +13,20 @@ public sealed class UpdateInvoiceCommandHandler : IRequestHandler<UpdateInvoiceC
     private readonly ITaxCodeRepository _taxCodeRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditService _auditService;
+    private readonly IFiscalPeriodService _fiscalPeriodService;
 
     public UpdateInvoiceCommandHandler(
         IInvoiceRepository invoiceRepository,
         ITaxCodeRepository taxCodeRepository,
         IUnitOfWork unitOfWork,
-        IAuditService auditService)
+        IAuditService auditService,
+        IFiscalPeriodService fiscalPeriodService)
     {
         _invoiceRepository = invoiceRepository;
         _taxCodeRepository = taxCodeRepository;
         _unitOfWork = unitOfWork;
         _auditService = auditService;
+        _fiscalPeriodService = fiscalPeriodService;
     }
 
     public async Task<InvoiceDetailDto?> Handle(UpdateInvoiceCommand request, CancellationToken ct)
@@ -31,13 +34,17 @@ public sealed class UpdateInvoiceCommandHandler : IRequestHandler<UpdateInvoiceC
         var invoice = await _invoiceRepository.GetByIdAsync(request.Id, ct);
         if (invoice is null) return null;
 
+        // REQ-066: Check fiscal period locking (old and new dates)
+        await _fiscalPeriodService.EnsurePeriodNotLockedAsync(invoice.Date, ct);
+        await _fiscalPeriodService.EnsurePeriodNotLockedAsync(request.Date, ct);
+
         var recipientType = Enum.Parse<RecipientType>(request.RecipientType, ignoreCase: true);
 
         invoice.Update(
             request.Date, request.DueDate, recipientType,
             request.RecipientId, request.RecipientName,
             request.RecipientAddress, request.TaxRate, request.Notes,
-            request.UserName);
+            request.UserName, request.PaymentTerms, request.TemplateId);
 
         var newItems = new List<InvoiceItem>();
         foreach (var i in request.Items)
@@ -51,7 +58,7 @@ public sealed class UpdateInvoiceCommandHandler : IRequestHandler<UpdateInvoiceC
             }
             newItems.Add(InvoiceItem.CreateWithTax(
                 invoice.Id, i.Description, i.Quantity, i.UnitPrice,
-                i.TaxCodeId, snapshotTaxRate, i.IsGrossEntry));
+                i.TaxCodeId, snapshotTaxRate, i.IsGrossEntry, i.ActivityAreaId));
         }
         invoice.SetItems(newItems);
 

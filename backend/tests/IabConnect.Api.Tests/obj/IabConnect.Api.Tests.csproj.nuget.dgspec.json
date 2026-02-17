@@ -130,6 +130,7 @@
             "Microsoft.AspNetCore.Mvc.Testing": "10.0.2",
             "Microsoft.EntityFrameworkCore": "10.0.2",
             "Microsoft.EntityFrameworkCore.Design": "10.0.2",
+            "Microsoft.EntityFrameworkCore.InMemory": "10.0.2",
             "Microsoft.EntityFrameworkCore.Relational": "10.0.2",
             "Microsoft.EntityFrameworkCore.Tools": "10.0.2",
             "Microsoft.Extensions.Logging.Abstractions": "10.0.2",
@@ -679,6 +680,7 @@
             "Microsoft.AspNetCore.Mvc.Testing": "10.0.2",
             "Microsoft.EntityFrameworkCore": "10.0.2",
             "Microsoft.EntityFrameworkCore.Design": "10.0.2",
+            "Microsoft.EntityFrameworkCore.InMemory": "10.0.2",
             "Microsoft.EntityFrameworkCore.Relational": "10.0.2",
             "Microsoft.EntityFrameworkCore.Tools": "10.0.2",
             "Microsoft.Extensions.Logging.Abstractions": "10.0.2",
@@ -1061,6 +1063,7 @@
             "Microsoft.AspNetCore.Mvc.Testing": "10.0.2",
             "Microsoft.EntityFrameworkCore": "10.0.2",
             "Microsoft.EntityFrameworkCore.Design": "10.0.2",
+            "Microsoft.EntityFrameworkCore.InMemory": "10.0.2",
             "Microsoft.EntityFrameworkCore.Relational": "10.0.2",
             "Microsoft.EntityFrameworkCore.Tools": "10.0.2",
             "Microsoft.Extensions.Logging.Abstractions": "10.0.2",
@@ -1492,6 +1495,7 @@
             "Microsoft.AspNetCore.Mvc.Testing": "10.0.2",
             "Microsoft.EntityFrameworkCore": "10.0.2",
             "Microsoft.EntityFrameworkCore.Design": "10.0.2",
+            "Microsoft.EntityFrameworkCore.InMemory": "10.0.2",
             "Microsoft.EntityFrameworkCore.Relational": "10.0.2",
             "Microsoft.EntityFrameworkCore.Tools": "10.0.2",
             "Microsoft.Extensions.Logging.Abstractions": "10.0.2",
@@ -1864,6 +1868,11 @@
               "version": "[10.0.2, )",
               "versionCentrallyManaged": true
             },
+            "Microsoft.EntityFrameworkCore.InMemory": {
+              "target": "Package",
+              "version": "[10.0.2, )",
+              "versionCentrallyManaged": true
+            },
             "Microsoft.NET.Test.Sdk": {
               "target": "Package",
               "version": "[18.0.0, )",
@@ -1923,6 +1932,7 @@
             "Microsoft.AspNetCore.Mvc.Testing": "10.0.2",
             "Microsoft.EntityFrameworkCore": "10.0.2",
             "Microsoft.EntityFrameworkCore.Design": "10.0.2",
+            "Microsoft.EntityFrameworkCore.InMemory": "10.0.2",
             "Microsoft.EntityFrameworkCore.Relational": "10.0.2",
             "Microsoft.EntityFrameworkCore.Tools": "10.0.2",
             "Microsoft.Extensions.Logging.Abstractions": "10.0.2",

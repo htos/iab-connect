@@ -5,7 +5,7 @@
  * Shows a user's event registrations.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import {
@@ -63,10 +63,7 @@ export function MyRegistrations({ showUpcomingOnly = true, limit }: MyRegistrati
   const [selectedRegistration, setSelectedRegistration] = useState<EventRegistrationDto | null>(null);
   const [cancelReason, setCancelReason] = useState('');
 
-  const loadRegistrations = async () => {
-    setIsLoading(true);
-    setError(null);
-
+  const loadRegistrations = useCallback(async () => {
     const result = await getMyRegistrations();
 
     if (result.success) {
@@ -90,11 +87,32 @@ export function MyRegistrations({ showUpcomingOnly = true, limit }: MyRegistrati
     }
 
     setIsLoading(false);
-  };
+  }, [showUpcomingOnly, limit, t]);
 
   useEffect(() => {
-    loadRegistrations();
-  }, [showUpcomingOnly, limit]);
+    getMyRegistrations().then(result => {
+      if (result.success) {
+        let data = result.data;
+        if (showUpcomingOnly) {
+          const now = new Date();
+          data = data.filter((r) => {
+            if (r.eventStartDate) {
+              return new Date(r.eventStartDate) >= now;
+            }
+            return true;
+          });
+        }
+        if (limit) {
+          data = data.slice(0, limit);
+        }
+        setRegistrations(data);
+      } else {
+        setError(result.error || t('registration.loadFailed'));
+      }
+
+      setIsLoading(false);
+    });
+  }, [showUpcomingOnly, limit, t]);
 
   const handleCancelClick = (registration: EventRegistrationDto) => {
     setSelectedRegistration(registration);
@@ -118,6 +136,8 @@ export function MyRegistrations({ showUpcomingOnly = true, limit }: MyRegistrati
     setCancelDialogOpen(false);
 
     if (result.success) {
+      setIsLoading(true);
+      setError(null);
       loadRegistrations();
     } else {
       setError(result.error || t('registration.cancelFailed'));

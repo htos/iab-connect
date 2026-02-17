@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
@@ -23,11 +23,7 @@ export default function EditEmailTemplatePage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (id && accessToken) loadTemplate();
-  }, [id, accessToken]);
-
-  const loadTemplate = async () => {
+  const loadTemplate = useCallback(async () => {
     if (!accessToken) return;
     try {
       setLoading(true);
@@ -39,7 +35,11 @@ export default function EditEmailTemplatePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, accessToken, t]);
+
+  useEffect(() => {
+    if (id && accessToken) loadTemplate();
+  }, [id, accessToken, loadTemplate]);
 
   const handleSave = async (data: UpdateEmailTemplateRequest) => {
     if (!accessToken) return;

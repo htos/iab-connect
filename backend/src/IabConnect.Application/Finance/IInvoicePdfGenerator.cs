@@ -16,4 +16,10 @@ public interface IInvoicePdfGenerator
     /// The invoice must include its line items.
     /// </summary>
     Task<byte[]> GenerateInvoicePdfAsync(Invoice invoice);
+
+    /// <summary>
+    /// REQ-064: Generates a PDF byte array using a specific invoice template
+    /// for EU compliance fields and presentation settings.
+    /// </summary>
+    Task<byte[]> GenerateInvoicePdfAsync(Invoice invoice, InvoiceTemplate? template);
 }

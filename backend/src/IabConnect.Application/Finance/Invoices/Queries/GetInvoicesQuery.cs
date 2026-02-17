@@ -16,14 +16,15 @@ public sealed record InvoiceDetailDto(
     string Status, string RecipientType, Guid? RecipientId, string RecipientName,
     string? RecipientAddress, decimal SubTotal, decimal TaxRate, decimal TaxAmount, decimal Total,
     decimal SubtotalNet, decimal TotalTax, decimal TotalGross,
-    string? Notes, string? CancellationReason, DateTime? CancelledAt,
+    string? Notes, string? PaymentTerms, Guid? TemplateId,
+    string? CancellationReason, DateTime? CancelledAt,
     List<InvoiceItemDto> Items,
     DateTime CreatedAt, string CreatedBy, DateTime? UpdatedAt, string? UpdatedBy);
 
 public sealed record InvoiceItemDto(
     Guid Id, string Description, decimal Quantity, decimal UnitPrice, decimal Amount,
     Guid? TaxCodeId, decimal? TaxRate, decimal? TaxAmount, decimal? NetAmount,
-    decimal? GrossAmount, bool IsGrossEntry);
+    decimal? GrossAmount, bool IsGrossEntry, Guid? ActivityAreaId);
 
 /// <summary>
 /// Query to get invoices with optional status filter (REQ-039)

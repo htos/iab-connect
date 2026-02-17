@@ -103,8 +103,8 @@ public static class AuditEndpoints
     {
         var filter = new AuditEventFilter
         {
-            FromDate = fromDate,
-            ToDate = toDate,
+            FromDate = fromDate.HasValue ? DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc) : null,
+            ToDate = toDate.HasValue ? DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc) : null,
             EventType = eventType,
             Category = category,
             Severity = severity,
@@ -145,8 +145,8 @@ public static class AuditEndpoints
     {
         var filter = new AuditEventFilter
         {
-            FromDate = fromDate ?? DateTime.UtcNow.AddMonths(-1),
-            ToDate = toDate ?? DateTime.UtcNow,
+            FromDate = fromDate.HasValue ? DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddMonths(-1),
+            ToDate = toDate.HasValue ? DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc) : DateTime.UtcNow,
             EventType = eventType,
             Category = category,
             Severity = severity,

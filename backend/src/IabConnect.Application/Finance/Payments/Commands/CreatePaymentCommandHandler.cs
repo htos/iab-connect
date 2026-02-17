@@ -13,25 +13,32 @@ public sealed class CreatePaymentCommandHandler : IRequestHandler<CreatePaymentC
     private readonly IInvoiceRepository _invoiceRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditService _auditService;
+    private readonly IFiscalPeriodService _fiscalPeriodService;
 
     public CreatePaymentCommandHandler(
         IPaymentRepository paymentRepository,
         IInvoiceRepository invoiceRepository,
         IUnitOfWork unitOfWork,
-        IAuditService auditService)
+        IAuditService auditService,
+        IFiscalPeriodService fiscalPeriodService)
     {
         _paymentRepository = paymentRepository;
         _invoiceRepository = invoiceRepository;
         _unitOfWork = unitOfWork;
         _auditService = auditService;
+        _fiscalPeriodService = fiscalPeriodService;
     }
 
     public async Task<PaymentDto> Handle(CreatePaymentCommand request, CancellationToken ct)
     {
+        // REQ-066: Check fiscal period locking
+        await _fiscalPeriodService.EnsurePeriodNotLockedAsync(request.Date, ct);
+
+        var direction = Enum.Parse<PaymentDirection>(request.Direction, ignoreCase: true);
         var method = Enum.Parse<PaymentMethod>(request.Method, ignoreCase: true);
 
         var payment = Payment.Create(
-            request.Date, request.Amount, method, request.Reference,
+            request.Date, request.Amount, direction, method, request.Reference,
             request.InvoiceId, request.TransactionId, request.Notes,
             request.UserName);
 

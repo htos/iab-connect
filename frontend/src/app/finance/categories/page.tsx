@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useAuth, useApiClient } from "@/lib/auth";
 
@@ -154,6 +155,14 @@ export default function CategoriesPage() {
   return (
     <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
+        {/* Back to Settings */}
+        <Link href="/finance/settings" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          {t("backToSettings")}
+        </Link>
+
         {/* Header */}
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">

@@ -10,21 +10,27 @@ public sealed class DeleteTransactionCommandHandler : IRequestHandler<DeleteTran
     private readonly ITransactionRepository _repository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditService _auditService;
+    private readonly IFiscalPeriodService _fiscalPeriodService;
 
     public DeleteTransactionCommandHandler(
         ITransactionRepository repository,
         IUnitOfWork unitOfWork,
-        IAuditService auditService)
+        IAuditService auditService,
+        IFiscalPeriodService fiscalPeriodService)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _auditService = auditService;
+        _fiscalPeriodService = fiscalPeriodService;
     }
 
     public async Task<bool> Handle(DeleteTransactionCommand request, CancellationToken ct)
     {
         var transaction = await _repository.GetByIdAsync(request.Id, ct);
         if (transaction is null) return false;
+
+        // REQ-066: Check fiscal period locking
+        await _fiscalPeriodService.EnsurePeriodNotLockedAsync(transaction.Date, ct);
 
         transaction.SoftDelete(request.UserName);
         await _repository.UpdateAsync(transaction, ct);

@@ -6,6 +6,7 @@ using IabConnect.Application.Authorization;
 using IabConnect.Application.Common;
 using IabConnect.Application.Communication;
 using IabConnect.Application.Finance;
+using IabConnect.Application.Finance.Invoices;
 using IabConnect.Domain.Audit;
 using IabConnect.Domain.Communication;
 using IabConnect.Domain.Documents;
@@ -74,10 +75,21 @@ public static class DependencyInjection
         services.AddScoped<IInvoiceRepository, InvoiceRepository>();
         services.AddScoped<IPaymentRepository, PaymentRepository>();
         services.AddScoped<IBankImportRepository, BankImportRepository>();
+
+        // REQ-069: Camt parser and bank import matcher
+        services.AddScoped<IabConnect.Application.Finance.BankImports.ICamtParser, CamtParser>();
+        services.AddScoped<IabConnect.Application.Finance.BankImports.IBankImportMatcher, BankImportMatcher>();
         services.AddScoped<IDunningNoticeRepository, DunningNoticeRepository>();
         services.AddScoped<IReceiptRepository, ReceiptRepository>();
         services.AddScoped<IFinanceProfileRepository, FinanceProfileRepository>();
         services.AddScoped<ITaxCodeRepository, TaxCodeRepository>();
+        services.AddScoped<IFiscalPeriodRepository, FiscalPeriodRepository>();
+        services.AddScoped<IExpenseClaimRepository, ExpenseClaimRepository>();
+        services.AddScoped<IInvoiceTemplateRepository, InvoiceTemplateRepository>();
+        services.AddScoped<IActivityAreaRepository, ActivityAreaRepository>();
+
+        // REQ-065: eInvoice export (EN 16931 UBL)
+        services.AddScoped<IEInvoiceExporter, UblInvoiceExporter>();
 
         // REQ-034..037: Documents repositories
         services.AddScoped<IDocumentRepository, DocumentRepository>();

@@ -19,13 +19,14 @@ public class CancelInvoiceCommandHandlerTests
     private readonly Mock<ITransactionRepository> _transactionRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IAuditService> _auditService = new();
+    private readonly Mock<IFiscalPeriodService> _fiscalPeriodService = new();
     private readonly CancelInvoiceCommandHandler _handler;
 
     public CancelInvoiceCommandHandlerTests()
     {
         _handler = new CancelInvoiceCommandHandler(
             _invoiceRepo.Object, _transactionRepo.Object,
-            _unitOfWork.Object, _auditService.Object);
+            _unitOfWork.Object, _auditService.Object, _fiscalPeriodService.Object);
     }
 
     private static Invoice CreateSentInvoice()

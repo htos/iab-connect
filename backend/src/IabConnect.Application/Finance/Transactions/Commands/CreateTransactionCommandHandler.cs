@@ -12,26 +12,32 @@ public sealed class CreateTransactionCommandHandler : IRequestHandler<CreateTran
     private readonly ITransactionRepository _repository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditService _auditService;
+    private readonly IFiscalPeriodService _fiscalPeriodService;
 
     public CreateTransactionCommandHandler(
         ITransactionRepository repository,
         IUnitOfWork unitOfWork,
-        IAuditService auditService)
+        IAuditService auditService,
+        IFiscalPeriodService fiscalPeriodService)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _auditService = auditService;
+        _fiscalPeriodService = fiscalPeriodService;
     }
 
     public async Task<TransactionDto> Handle(CreateTransactionCommand request, CancellationToken ct)
     {
+        // REQ-066: Check fiscal period locking
+        await _fiscalPeriodService.EnsurePeriodNotLockedAsync(request.Date, ct);
+
         var txType = Enum.Parse<TransactionType>(request.Type, ignoreCase: true);
 
         var transaction = Transaction.Create(
             request.Date, request.Description, request.Amount, txType,
             request.AccountId, request.CategoryId, request.Reference,
             request.Notes, request.UserName,
-            request.TaxCodeId, request.TaxRate);
+            request.TaxCodeId, request.TaxRate, request.ActivityAreaId);
 
         await _repository.AddAsync(transaction, ct);
         await _unitOfWork.SaveChangesAsync(ct);

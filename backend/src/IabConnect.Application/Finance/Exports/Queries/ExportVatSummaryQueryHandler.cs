@@ -22,7 +22,10 @@ public sealed class ExportVatSummaryQueryHandler : IRequestHandler<ExportVatSumm
 
     public async Task<ExportFileResult> Handle(ExportVatSummaryQuery request, CancellationToken ct)
     {
-        var transactions = await _transactionRepository.GetAllAsync(request.From, request.To, ct: ct);
+        var from = request.From.HasValue ? DateTime.SpecifyKind(request.From.Value, DateTimeKind.Utc) : (DateTime?)null;
+        var to = request.To.HasValue ? DateTime.SpecifyKind(request.To.Value, DateTimeKind.Utc) : (DateTime?)null;
+
+        var transactions = await _transactionRepository.GetAllAsync(from, to, ct: ct);
         var taxedTransactions = transactions.Where(t => t.TaxCodeId.HasValue && t.TaxRate.HasValue).ToList();
 
         var groups = taxedTransactions

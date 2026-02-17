@@ -107,6 +107,7 @@ public static class TransactionEndpoints
             Notes = request.Notes,
             TaxCodeId = request.TaxCodeId,
             TaxRate = request.TaxRate,
+            ActivityAreaId = request.ActivityAreaId,
             UserName = GetUserName(httpContext)
         }, ct);
         return Results.Created($"/api/v1/finance/transactions/{dto.Id}", dto);
@@ -129,6 +130,7 @@ public static class TransactionEndpoints
             Notes = request.Notes,
             TaxCodeId = request.TaxCodeId,
             TaxRate = request.TaxRate,
+            ActivityAreaId = request.ActivityAreaId,
             UserName = GetUserName(httpContext)
         }, ct);
         return dto is null
@@ -163,9 +165,9 @@ public static class TransactionEndpoints
     // DTOs
     public sealed record CreateTransactionRequest(DateTime Date, string Description, decimal Amount,
         string Type, Guid AccountId, Guid? CategoryId, string? Reference, string? Notes,
-        Guid? TaxCodeId = null, decimal? TaxRate = null);
+        Guid? TaxCodeId = null, decimal? TaxRate = null, Guid? ActivityAreaId = null);
     public sealed record UpdateTransactionRequest(DateTime Date, string Description, decimal Amount,
         string Type, Guid AccountId, Guid? CategoryId, string? Reference, string? Notes,
-        Guid? TaxCodeId = null, decimal? TaxRate = null);
+        Guid? TaxCodeId = null, decimal? TaxRate = null, Guid? ActivityAreaId = null);
     public sealed record AttachReceiptRequest(Guid ReceiptId);
 }

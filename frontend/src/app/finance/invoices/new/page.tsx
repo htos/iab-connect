@@ -13,6 +13,7 @@ interface InvoiceItemForm {
   taxCodeId: string;
   taxRate: number;
   isGrossEntry: boolean;
+  activityAreaId: string;
 }
 
 interface Member {
@@ -30,6 +31,14 @@ interface TaxCode {
   isActive: boolean;
 }
 
+interface ActivityArea {
+  id: string;
+  name: string;
+  code: string;
+  isActive: boolean;
+  sortOrder: number;
+}
+
 const formatCHF = (amount: number) =>
   new Intl.NumberFormat("de-CH", { style: "currency", currency: "CHF" }).format(
     amount
@@ -44,6 +53,7 @@ const emptyItem = (): InvoiceItemForm => ({
   taxCodeId: "",
   taxRate: 0,
   isGrossEntry: false,
+  activityAreaId: "",
 });
 
 export default function NewInvoicePage() {
@@ -73,6 +83,7 @@ export default function NewInvoicePage() {
   const [items, setItems] = useState<InvoiceItemForm[]>([emptyItem()]);
   const [members, setMembers] = useState<Member[]>([]);
   const [taxCodes, setTaxCodes] = useState<TaxCode[]>([]);
+  const [activityAreas, setActivityAreas] = useState<ActivityArea[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [membersLoading, setMembersLoading] = useState(false);
@@ -101,6 +112,25 @@ export default function NewInvoicePage() {
   useEffect(() => {
     fetchTaxCodes();
   }, [fetchTaxCodes]);
+
+  // Fetch activity areas
+  const fetchActivityAreas = useCallback(async () => {
+    try {
+      const response = await apiRef.current.get<ActivityArea[]>(
+        "/api/v1/finance/activity-areas"
+      );
+      if (!response.error && response.data) {
+        const active = (response.data as ActivityArea[]).filter((a) => a.isActive).sort((a, b) => a.sortOrder - b.sortOrder);
+        setActivityAreas(active);
+      }
+    } catch {
+      // Non-critical
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchActivityAreas();
+  }, [fetchActivityAreas]);
 
   const fetchMembers = useCallback(async () => {
     try {
@@ -216,12 +246,14 @@ export default function NewInvoicePage() {
               unitPrice,
               taxCodeId,
               isGrossEntry,
+              activityAreaId,
             }) => ({
               description,
               quantity,
               unitPrice,
               taxCodeId: taxCodeId || null,
               isGrossEntry,
+              activityAreaId: activityAreaId || null,
             })
           ),
         };
@@ -420,6 +452,9 @@ export default function NewInvoicePage() {
                 <th className="w-20 pb-3 text-center font-medium">
                   {tv("isGrossEntry")}
                 </th>
+                <th className="w-36 pb-3 font-medium">
+                  {t("activityArea")}
+                </th>
                 <th className="w-28 pb-3 text-right font-medium">
                   {tv("net")}
                 </th>
@@ -517,6 +552,22 @@ export default function NewInvoicePage() {
                         }
                         disabled={!item.taxCodeId}
                       />
+                    </td>
+                    <td className="py-2 pr-2">
+                      <select
+                        value={item.activityAreaId}
+                        onChange={(e) =>
+                          updateItem(index, "activityAreaId", e.target.value)
+                        }
+                        className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-orange-500 focus:ring-orange-500"
+                      >
+                        <option value="">—</option>
+                        {activityAreas.map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {a.code}
+                          </option>
+                        ))}
+                      </select>
                     </td>
                     <td className="py-2 pr-2 text-right text-sm text-gray-700">
                       {formatCHF(amounts.net)}

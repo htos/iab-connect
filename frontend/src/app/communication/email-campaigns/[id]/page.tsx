@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth";
 import { useRouter, useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useState, useCallback } from "react";
+import DOMPurify from "dompurify";
 import Link from "next/link";
 import {
   EmailCampaignDto,
@@ -76,7 +77,7 @@ export default function EmailCampaignDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, baseUrl, campaignId]);
+  }, [accessToken, baseUrl, campaignId, t]);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -421,7 +422,7 @@ export default function EmailCampaignDetailPage() {
             <div className="max-h-[500px] overflow-auto bg-white">
               <div
                 className="p-6 prose prose-base max-w-none"
-                dangerouslySetInnerHTML={{ __html: campaign.htmlContent }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(campaign.htmlContent) }}
               />
             </div>
 

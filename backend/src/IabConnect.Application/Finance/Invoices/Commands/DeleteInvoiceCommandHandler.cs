@@ -11,15 +11,18 @@ public sealed class DeleteInvoiceCommandHandler : IRequestHandler<DeleteInvoiceC
     private readonly IInvoiceRepository _repository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditService _auditService;
+    private readonly IFiscalPeriodService _fiscalPeriodService;
 
     public DeleteInvoiceCommandHandler(
         IInvoiceRepository repository,
         IUnitOfWork unitOfWork,
-        IAuditService auditService)
+        IAuditService auditService,
+        IFiscalPeriodService fiscalPeriodService)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _auditService = auditService;
+        _fiscalPeriodService = fiscalPeriodService;
     }
 
     public async Task<Result> Handle(DeleteInvoiceCommand request, CancellationToken ct)
@@ -27,6 +30,9 @@ public sealed class DeleteInvoiceCommandHandler : IRequestHandler<DeleteInvoiceC
         var invoice = await _repository.GetByIdAsync(request.Id, ct);
         if (invoice is null)
             return Result.Failure("Invoice not found.");
+
+        // REQ-066: Check fiscal period locking
+        await _fiscalPeriodService.EnsurePeriodNotLockedAsync(invoice.Date, ct);
 
         if (invoice.Status is InvoiceStatus.Sent or InvoiceStatus.Overdue)
             return Result.Failure("Sent or overdue invoices must be cancelled using the cancel endpoint.");

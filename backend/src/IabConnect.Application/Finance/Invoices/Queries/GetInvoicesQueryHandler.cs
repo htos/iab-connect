@@ -33,9 +33,10 @@ public sealed class GetInvoicesQueryHandler : IRequestHandler<GetInvoicesQuery, 
             inv.RecipientType.ToString(), inv.RecipientId, inv.RecipientName,
             inv.RecipientAddress, inv.SubTotal, inv.TaxRate, inv.TaxAmount, inv.Total,
             inv.SubtotalNet, inv.TotalTax, inv.TotalGross,
-            inv.Notes, inv.CancellationReason, inv.CancelledAt,
+            inv.Notes, inv.PaymentTerms, inv.TemplateId,
+            inv.CancellationReason, inv.CancelledAt,
             inv.Items.Select(i => new InvoiceItemDto(
                 i.Id, i.Description, i.Quantity, i.UnitPrice, i.Amount,
-                i.TaxCodeId, i.TaxRate, i.TaxAmount, i.NetAmount, i.GrossAmount, i.IsGrossEntry)).ToList(),
+                i.TaxCodeId, i.TaxRate, i.TaxAmount, i.NetAmount, i.GrossAmount, i.IsGrossEntry, i.ActivityAreaId)).ToList(),
             inv.CreatedAt, inv.CreatedBy, inv.UpdatedAt, inv.UpdatedBy);
 }

@@ -10,6 +10,7 @@ public sealed record TransactionDto(
     string Type, Guid AccountId, Guid? CategoryId, string? Reference,
     string? Notes, Guid? ReceiptId,
     Guid? TaxCodeId, decimal? TaxRate, decimal? TaxAmount, decimal? NetAmount,
+    Guid? ActivityAreaId, string? ActivityAreaName, string? ActivityAreaCode,
     DateTime CreatedAt, string CreatedBy, DateTime? UpdatedAt, string? UpdatedBy);
 
 /// <summary>

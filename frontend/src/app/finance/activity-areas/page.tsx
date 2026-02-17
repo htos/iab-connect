@@ -1,0 +1,824 @@
+"use client";
+
+/**
+ * Activity Areas Management Page
+ * REQ-068: Activity Area / Project Dimension Tagging — CRUD + Report
+ */
+
+import { useState, useEffect, useCallback, useRef } from "react";
+import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { useAuth, useApiClient } from "@/lib/auth";
+
+// --- Types ---
+
+interface ActivityArea {
+  id: string;
+  name: string;
+  code: string;
+  description: string | null;
+  color: string | null;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+interface ActivityAreaForm {
+  name: string;
+  code: string;
+  description: string;
+  color: string;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+interface ActivityAreaReportRow {
+  activityAreaId: string | null;
+  activityAreaName: string | null;
+  activityAreaCode: string | null;
+  totalIncome: number;
+  totalExpense: number;
+  balance: number;
+}
+
+const DEFAULT_FORM: ActivityAreaForm = {
+  name: "",
+  code: "",
+  description: "",
+  color: "",
+  sortOrder: 0,
+  isActive: true,
+};
+
+// --- Predefined colors ---
+
+const PRESET_COLORS = [
+  "#ef4444", "#f97316", "#f59e0b", "#eab308", "#84cc16",
+  "#22c55e", "#14b8a6", "#06b6d4", "#3b82f6", "#6366f1",
+  "#8b5cf6", "#a855f7", "#d946ef", "#ec4899", "#f43f5e",
+  "#78716c",
+];
+
+// --- Icons ---
+
+const PlusIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+  </svg>
+);
+
+const PencilIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+  </svg>
+);
+
+const TrashIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+  </svg>
+);
+
+const XIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+  </svg>
+);
+
+// --- Helpers ---
+
+function formatCurrency(value: number): string {
+  return value.toLocaleString("de-CH", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+// --- Component ---
+
+export default function ActivityAreasPage() {
+  const t = useTranslations("activityAreas");
+  const tf = useTranslations("finance");
+  const tr = useTranslations("activityAreas.report");
+  const tc = useTranslations("common");
+  const tn = useTranslations("nav");
+  const { canReadFinance, canWriteFinance, isLoading: authLoading } = useAuth();
+  const api = useApiClient();
+
+  const apiRef = useRef(api);
+  apiRef.current = api;
+
+  // --- Management state ---
+
+  const [areas, setAreas] = useState<ActivityArea[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  // Dialog state
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<ActivityAreaForm>(DEFAULT_FORM);
+  const [saving, setSaving] = useState(false);
+
+  // Delete confirmation
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // --- Report state ---
+
+  const [activeTab, setActiveTab] = useState<"manage" | "report">("manage");
+  const [reportFrom, setReportFrom] = useState(
+    new Date(new Date().getFullYear(), 0, 1).toISOString().split("T")[0]
+  );
+  const [reportTo, setReportTo] = useState(new Date().toISOString().split("T")[0]);
+  const [reportRows, setReportRows] = useState<ActivityAreaReportRow[]>([]);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportFetched, setReportFetched] = useState(false);
+
+  // --- Data fetching ---
+
+  const fetchAreas = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await apiRef.current.get<ActivityArea[]>(
+        "/api/v1/finance/activity-areas"
+      );
+      if (response.error) {
+        setError(response.error);
+      } else if (response.data) {
+        const sorted = (response.data as ActivityArea[]).sort(
+          (a, b) => a.sortOrder - b.sortOrder
+        );
+        setAreas(sorted);
+      }
+    } catch {
+      setError("Failed to load activity areas");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!authLoading && canReadFinance) {
+      fetchAreas();
+    }
+  }, [authLoading, canReadFinance, fetchAreas]);
+
+  const fetchReport = useCallback(async () => {
+    setReportLoading(true);
+    setError(null);
+    try {
+      const response = await apiRef.current.get<ActivityAreaReportRow[]>(
+        `/api/v1/finance/activity-areas/report?from=${reportFrom}&to=${reportTo}`
+      );
+      if (response.error) {
+        setError(response.error);
+      } else if (response.data) {
+        setReportRows(response.data as ActivityAreaReportRow[]);
+      }
+      setReportFetched(true);
+    } catch {
+      setError("Failed to load report");
+    } finally {
+      setReportLoading(false);
+    }
+  }, [reportFrom, reportTo]);
+
+  // --- Dialog handlers ---
+
+  const openCreate = () => {
+    setEditingId(null);
+    setForm(DEFAULT_FORM);
+    setDialogOpen(true);
+  };
+
+  const openEdit = (area: ActivityArea) => {
+    setEditingId(area.id);
+    setForm({
+      name: area.name,
+      code: area.code,
+      description: area.description ?? "",
+      color: area.color ?? "",
+      sortOrder: area.sortOrder,
+      isActive: area.isActive,
+    });
+    setDialogOpen(true);
+  };
+
+  const closeDialog = () => {
+    setDialogOpen(false);
+    setEditingId(null);
+    setForm(DEFAULT_FORM);
+  };
+
+  const handleSave = async () => {
+    if (!canWriteFinance) return;
+    setSaving(true);
+    setError(null);
+    setSuccess(null);
+
+    const payload = {
+      name: form.name,
+      code: form.code,
+      description: form.description || null,
+      color: form.color || null,
+      sortOrder: form.sortOrder,
+      ...(editingId ? { isActive: form.isActive } : {}),
+    };
+
+    try {
+      if (editingId) {
+        const response = await apiRef.current.put(
+          `/api/v1/finance/activity-areas/${editingId}`,
+          payload
+        );
+        if (response.error) throw new Error(response.error);
+        setSuccess(t("updateSuccess"));
+      } else {
+        const response = await apiRef.current.post(
+          "/api/v1/finance/activity-areas",
+          payload
+        );
+        if (response.error) throw new Error(response.error);
+        setSuccess(t("createSuccess"));
+      }
+      closeDialog();
+      await fetchAreas();
+    } catch {
+      setError("Failed to save activity area");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // --- Toggle active handler ---
+
+  const handleToggleActive = async (area: ActivityArea) => {
+    if (!canWriteFinance) return;
+    setError(null);
+    setSuccess(null);
+
+    const payload = {
+      name: area.name,
+      code: area.code,
+      description: area.description,
+      color: area.color,
+      sortOrder: area.sortOrder,
+      isActive: !area.isActive,
+    };
+
+    try {
+      const response = await apiRef.current.put(
+        `/api/v1/finance/activity-areas/${area.id}`,
+        payload
+      );
+      if (response.error) throw new Error(response.error);
+      setSuccess(t("updateSuccess"));
+      await fetchAreas();
+    } catch {
+      setError("Failed to toggle activity area status");
+    }
+  };
+
+  // --- Delete handler ---
+
+  const handleDelete = async (id: string) => {
+    if (!canWriteFinance) return;
+    setDeleting(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await apiRef.current.delete(
+        `/api/v1/finance/activity-areas/${id}`
+      );
+      if (response.error) throw new Error(response.error);
+      setSuccess(t("deleteSuccess"));
+      setConfirmDeleteId(null);
+      await fetchAreas();
+    } catch {
+      setError("Failed to delete activity area");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // --- Report totals ---
+
+  const totalIncome = reportRows.reduce((sum, r) => sum + r.totalIncome, 0);
+  const totalExpense = reportRows.reduce((sum, r) => sum + r.totalExpense, 0);
+  const totalBalance = reportRows.reduce((sum, r) => sum + r.balance, 0);
+
+  // --- Render ---
+
+  if (authLoading || loading) {
+    return (
+      <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
+        <div className="mx-auto max-w-6xl">
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 w-48 rounded bg-gray-200" />
+            <div className="h-64 rounded-xl bg-gray-200" />
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (!canReadFinance) {
+    return null;
+  }
+
+  return (
+    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
+      <div className="mx-auto max-w-6xl space-y-6">
+        {/* Back to Settings */}
+        <Link href="/finance/settings" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          {tf("backToSettings")}
+        </Link>
+
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{t("title")}</h1>
+            <p className="mt-1 text-sm text-gray-500">{t("subtitle")}</p>
+          </div>
+          {canWriteFinance && activeTab === "manage" && (
+            <button
+              onClick={openCreate}
+              className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-700"
+            >
+              <PlusIcon className="h-4 w-4" />
+              {t("addActivityArea")}
+            </button>
+          )}
+        </div>
+
+        {/* Tabs */}
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex gap-6">
+            <button
+              onClick={() => setActiveTab("manage")}
+              className={`border-b-2 pb-3 text-sm font-medium transition-colors ${
+                activeTab === "manage"
+                  ? "border-orange-500 text-orange-600"
+                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+              }`}
+            >
+              {t("manageActivityAreas")}
+            </button>
+            <button
+              onClick={() => setActiveTab("report")}
+              className={`border-b-2 pb-3 text-sm font-medium transition-colors ${
+                activeTab === "report"
+                  ? "border-orange-500 text-orange-600"
+                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+              }`}
+            >
+              {tr("title")}
+            </button>
+          </nav>
+        </div>
+
+        {/* Messages */}
+        {error && (
+          <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="rounded-lg bg-green-50 p-4 text-sm text-green-700">
+            {success}
+          </div>
+        )}
+
+        {/* ====== MANAGE TAB ====== */}
+        {activeTab === "manage" && (
+          <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+            {areas.length === 0 ? (
+              <div className="p-12 text-center">
+                <p className="text-lg font-medium text-gray-900">
+                  {t("noActivityAreas")}
+                </p>
+                <p className="mt-1 text-sm text-gray-500">
+                  {t("noActivityAreasDescription")}
+                </p>
+              </div>
+            ) : (
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                      {t("code")}
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                      {t("name")}
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                      {t("description")}
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                      {t("color")}
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                      {t("sortOrder")}
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                      {t("isActive")}
+                    </th>
+                    {canWriteFinance && (
+                      <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                        {tc("actions")}
+                      </th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 bg-white">
+                  {areas.map((area) => (
+                    <tr key={area.id} className={`hover:bg-gray-50 ${!area.isActive ? "opacity-60" : ""}`}>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm font-mono font-medium text-gray-900">
+                        {area.code}
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                        {area.name}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {area.description ?? "—"}
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                        {area.color ? (
+                          <span className="inline-flex items-center gap-2">
+                            <span
+                              className="inline-block h-4 w-4 rounded"
+                              style={{ backgroundColor: area.color }}
+                            />
+                            <span className="font-mono text-xs">{area.color}</span>
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                        {area.sortOrder}
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm">
+                        {canWriteFinance ? (
+                          <button
+                            onClick={() => handleToggleActive(area)}
+                            className={`inline-flex cursor-pointer rounded-full px-2 text-xs font-semibold leading-5 transition-colors ${
+                              area.isActive
+                                ? "bg-green-100 text-green-800 hover:bg-green-200"
+                                : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                            }`}
+                            title={area.isActive ? t("deactivate") : t("activate")}
+                          >
+                            {area.isActive ? tc("yes") : tc("no")}
+                          </button>
+                        ) : (
+                          <span
+                            className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
+                              area.isActive
+                                ? "bg-green-100 text-green-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {area.isActive ? tc("yes") : tc("no")}
+                          </span>
+                        )}
+                      </td>
+                      {canWriteFinance && (
+                        <td className="whitespace-nowrap px-6 py-4 text-right text-sm">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => openEdit(area)}
+                              className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-orange-600"
+                              title={tc("edit")}
+                            >
+                              <PencilIcon className="h-4 w-4" />
+                            </button>
+                            {confirmDeleteId === area.id ? (
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => handleDelete(area.id)}
+                                  disabled={deleting}
+                                  className="rounded bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700 disabled:opacity-50"
+                                >
+                                  {tc("confirm")}
+                                </button>
+                                <button
+                                  onClick={() => setConfirmDeleteId(null)}
+                                  className="rounded bg-gray-200 px-2 py-1 text-xs text-gray-700 hover:bg-gray-300"
+                                >
+                                  {tc("cancel")}
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setConfirmDeleteId(area.id)}
+                                className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-red-600"
+                                title={tc("delete")}
+                              >
+                                <TrashIcon className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+
+        {/* ====== REPORT TAB ====== */}
+        {activeTab === "report" && (
+          <>
+            {/* Filter */}
+            <div className="rounded-xl bg-white p-4 shadow-sm">
+              <div className="flex flex-wrap items-end gap-4">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    {tr("from")}
+                  </label>
+                  <input
+                    type="date"
+                    value={reportFrom}
+                    onChange={(e) => setReportFrom(e.target.value)}
+                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    {tr("to")}
+                  </label>
+                  <input
+                    type="date"
+                    value={reportTo}
+                    onChange={(e) => setReportTo(e.target.value)}
+                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                  />
+                </div>
+                <button
+                  onClick={fetchReport}
+                  disabled={reportLoading}
+                  className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-700 disabled:opacity-50"
+                >
+                  {reportLoading ? tc("loading") : tr("filter")}
+                </button>
+              </div>
+            </div>
+
+            {/* Report Table */}
+            {reportFetched && (
+              <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+                {reportRows.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <p className="text-lg font-medium text-gray-900">
+                      {tr("noData")}
+                    </p>
+                  </div>
+                ) : (
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                          {tr("activityArea")}
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                          {tr("income")}
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                          {tr("expense")}
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                          {tr("balance")}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 bg-white">
+                      {reportRows.map((row, idx) => (
+                        <tr key={row.activityAreaId ?? `unassigned-${idx}`} className="hover:bg-gray-50">
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                            {row.activityAreaCode ? (
+                              <span>
+                                <span className="font-mono font-medium">
+                                  {row.activityAreaCode}
+                                </span>
+                                {" — "}
+                                {row.activityAreaName}
+                              </span>
+                            ) : (
+                              <span className="italic text-gray-500">
+                                {tr("unassigned")}
+                              </span>
+                            )}
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4 text-right text-sm text-green-700">
+                            {formatCurrency(row.totalIncome)}
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4 text-right text-sm text-red-700">
+                            {formatCurrency(row.totalExpense)}
+                          </td>
+                          <td
+                            className={`whitespace-nowrap px-6 py-4 text-right text-sm font-semibold ${
+                              row.balance >= 0 ? "text-green-700" : "text-red-700"
+                            }`}
+                          >
+                            {formatCurrency(row.balance)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="border-t-2 border-gray-300 bg-gray-50">
+                      <tr className="font-semibold">
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                          {tr("total")}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-right text-sm text-green-700">
+                          {formatCurrency(totalIncome)}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-right text-sm text-red-700">
+                          {formatCurrency(totalExpense)}
+                        </td>
+                        <td
+                          className={`whitespace-nowrap px-6 py-4 text-right text-sm ${
+                            totalBalance >= 0 ? "text-green-700" : "text-red-700"
+                          }`}
+                        >
+                          {formatCurrency(totalBalance)}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                )}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Create/Edit Dialog */}
+        {dialogOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  {editingId ? t("editActivityArea") : t("addActivityArea")}
+                </h2>
+                <button
+                  onClick={closeDialog}
+                  className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                >
+                  <XIcon className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Name */}
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    {t("name")} *
+                  </label>
+                  <input
+                    type="text"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    placeholder={t("namePlaceholder")}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                  />
+                </div>
+
+                {/* Code */}
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    {t("code")} *
+                  </label>
+                  <input
+                    type="text"
+                    value={form.code}
+                    onChange={(e) => setForm({ ...form, code: e.target.value })}
+                    placeholder={t("codePlaceholder")}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono uppercase focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                  />
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    {t("description")}
+                  </label>
+                  <input
+                    type="text"
+                    value={form.description}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    placeholder={t("descriptionPlaceholder")}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                  />
+                </div>
+
+                {/* Color */}
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    {t("color")}
+                  </label>
+                  <div className="space-y-2">
+                    {/* Preset color swatches */}
+                    <div className="flex flex-wrap gap-1.5">
+                      {PRESET_COLORS.map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setForm({ ...form, color: c })}
+                          className={`h-6 w-6 rounded border-2 transition-transform hover:scale-110 ${
+                            form.color === c ? "border-gray-800 ring-2 ring-orange-400" : "border-gray-200"
+                          }`}
+                          style={{ backgroundColor: c }}
+                          title={c}
+                        />
+                      ))}
+                    </div>
+                    {/* Custom color inputs */}
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={form.color || "#ea580c"}
+                        onChange={(e) => setForm({ ...form, color: e.target.value })}
+                        className="h-9 w-12 cursor-pointer rounded border border-gray-300"
+                      />
+                      <input
+                        type="text"
+                        value={form.color}
+                        onChange={(e) => setForm({ ...form, color: e.target.value })}
+                        placeholder={t("colorPlaceholder")}
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sort Order + Active toggle row */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">
+                      {t("sortOrder")}
+                    </label>
+                    <input
+                      type="number"
+                      value={form.sortOrder}
+                      onChange={(e) =>
+                        setForm({ ...form, sortOrder: parseInt(e.target.value) || 0 })
+                      }
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                    />
+                  </div>
+                  {editingId && (
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-gray-700">
+                        {t("isActive")}
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setForm({ ...form, isActive: !form.isActive })}
+                        className={`mt-0.5 relative inline-flex h-9 w-16 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 ${
+                          form.isActive ? "bg-green-500" : "bg-gray-300"
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-7 w-7 transform rounded-full bg-white shadow-sm transition-transform ${
+                            form.isActive ? "translate-x-8" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  onClick={closeDialog}
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                >
+                  {tc("cancel")}
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={saving || !form.name || !form.code}
+                  className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-700 disabled:opacity-50"
+                >
+                  {saving ? tc("saving") : tc("save")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}

@@ -97,7 +97,7 @@ export default function EditEmailCampaignPage() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, baseUrl, campaignId]);
+  }, [accessToken, baseUrl, campaignId, t]);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {

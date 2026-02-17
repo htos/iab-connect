@@ -84,9 +84,6 @@ export function EventParticipantsList({ event }: EventParticipantsListProps) {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
     const [registrationsResult, statsResult] = await Promise.all([
       getEventRegistrations(event.id, {
         status: statusFilter !== 'all' ? (statusFilter as RegistrationStatus) : undefined,
@@ -109,9 +106,34 @@ export function EventParticipantsList({ event }: EventParticipantsListProps) {
     setIsLoading(false);
   }, [event.id, statusFilter, searchQuery]);
 
-  useEffect(() => {
+  const refreshData = useCallback(() => {
+    setIsLoading(true);
+    setError(null);
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    Promise.all([
+      getEventRegistrations(event.id, {
+        status: statusFilter !== 'all' ? (statusFilter as RegistrationStatus) : undefined,
+        searchTerm: searchQuery || undefined,
+        pageSize: 100,
+      }),
+      getEventRegistrationStatistics(event.id),
+    ]).then(([registrationsResult, statsResult]) => {
+      if (registrationsResult.success) {
+        setRegistrations(registrationsResult.data.items);
+      } else {
+        setError(registrationsResult.error || 'Fehler beim Laden der Anmeldungen.');
+      }
+
+      if (statsResult.success) {
+        setStatistics(statsResult.data);
+      }
+
+      setIsLoading(false);
+    });
+  }, [event.id, statusFilter, searchQuery]);
 
   const handleAction = async (
     registrationId: string,
@@ -142,7 +164,7 @@ export function EventParticipantsList({ event }: EventParticipantsListProps) {
     setActionLoading(null);
 
     if (result.success) {
-      loadData();
+      refreshData();
     } else {
       setError(result.error || 'Aktion fehlgeschlagen.');
     }
@@ -185,7 +207,7 @@ export function EventParticipantsList({ event }: EventParticipantsListProps) {
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={loadData}>
+            <Button variant="outline" size="sm" onClick={refreshData}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Aktualisieren
             </Button>

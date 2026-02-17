@@ -39,6 +39,18 @@ public sealed class BankImportConfiguration : IEntityTypeConfiguration<BankImpor
             .HasMaxLength(200)
             .IsRequired();
 
+        // REQ-069: Import format and original file storage
+        builder.Property(b => b.Format)
+            .HasColumnName("format")
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .HasDefaultValue(BankImportFormat.Csv)
+            .IsRequired();
+
+        builder.Property(b => b.OriginalFileStoragePath)
+            .HasColumnName("original_file_storage_path")
+            .HasMaxLength(1000);
+
         builder.HasMany(b => b.Items)
             .WithOne()
             .HasForeignKey(item => item.BankImportId)

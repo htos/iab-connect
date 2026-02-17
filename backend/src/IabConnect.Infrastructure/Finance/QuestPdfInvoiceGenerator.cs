@@ -38,6 +38,7 @@ public class QuestPdfInvoiceGenerator : IInvoicePdfGenerator
     protected string _currency = string.Empty;
     protected string _paymentInstructions = string.Empty;
     protected FinanceProfile? _activeProfile;
+    protected InvoiceTemplate? _template;
 
     // Design constants
     private static readonly string PrimaryColor = "#2C3E50";
@@ -71,6 +72,12 @@ public class QuestPdfInvoiceGenerator : IInvoicePdfGenerator
 
     public async Task<byte[]> GenerateInvoicePdfAsync(Invoice invoice)
     {
+        return await GenerateInvoicePdfAsync(invoice, null);
+    }
+
+    public async Task<byte[]> GenerateInvoicePdfAsync(Invoice invoice, InvoiceTemplate? template)
+    {
+        _template = template;
         _logger.LogInformation("Generating PDF for invoice {InvoiceNumber}", invoice.InvoiceNumber);
 
         // REQ-060: Prefer FinanceProfile over InvoiceSettings
@@ -401,78 +408,145 @@ public class QuestPdfInvoiceGenerator : IInvoicePdfGenerator
     /// <summary>
     /// Hook point for additional sections.
     /// REQ-062: Renders VAT summary grouped by tax rate when items have tax data.
+    /// REQ-064: Renders EU compliance fields from InvoiceTemplate.
     /// Override to add Swiss QR-bill (REQ-063), jurisdiction-specific blocks (REQ-064), etc.
     /// </summary>
     protected virtual void ComposeAdditionalSections(IContainer container, Invoice invoice)
     {
-        // REQ-062: VAT summary breakdown grouped by tax rate
-        var taxGroups = invoice.Items
-            .Where(i => i.TaxRate.HasValue)
-            .GroupBy(i => i.TaxRate!.Value)
-            .Select(g => new
-            {
-                Rate = g.Key,
-                Net = g.Sum(i => i.NetAmount ?? i.Amount),
-                Tax = g.Sum(i => i.TaxAmount ?? 0m),
-                Gross = g.Sum(i => i.GrossAmount ?? i.Amount)
-            })
-            .OrderBy(g => g.Rate)
-            .ToList();
-
-        if (taxGroups.Count == 0)
-            return;
-
-        container.Column(col =>
+        container.Column(outerCol =>
         {
-            col.Item().Text("VAT Summary (MWST-Zusammenfassung)").Bold().FontSize(10).FontColor(PrimaryColor);
+            // REQ-062: VAT summary breakdown grouped by tax rate
+            var taxGroups = invoice.Items
+                .Where(i => i.TaxRate.HasValue)
+                .GroupBy(i => i.TaxRate!.Value)
+                .Select(g => new
+                {
+                    Rate = g.Key,
+                    Net = g.Sum(i => i.NetAmount ?? i.Amount),
+                    Tax = g.Sum(i => i.TaxAmount ?? 0m),
+                    Gross = g.Sum(i => i.GrossAmount ?? i.Amount)
+                })
+                .OrderBy(g => g.Rate)
+                .ToList();
 
-            col.Item().PaddingTop(5).Table(table =>
+            if (taxGroups.Count > 0)
             {
-                table.ColumnsDefinition(columns =>
+                outerCol.Item().Column(col =>
                 {
-                    columns.ConstantColumn(80);  // Rate
-                    columns.ConstantColumn(100); // Net
-                    columns.ConstantColumn(100); // Tax
-                    columns.ConstantColumn(100); // Gross
+                    col.Item().Text("VAT Summary (MWST-Zusammenfassung)").Bold().FontSize(10).FontColor(PrimaryColor);
+
+                    col.Item().PaddingTop(5).Table(table =>
+                    {
+                        table.ColumnsDefinition(columns =>
+                        {
+                            columns.ConstantColumn(80);  // Rate
+                            columns.ConstantColumn(100); // Net
+                            columns.ConstantColumn(100); // Tax
+                            columns.ConstantColumn(100); // Gross
+                        });
+
+                        table.Header(header =>
+                        {
+                            header.Cell().Background(LightGray).Padding(4)
+                                .Text("Tax Rate").Bold().FontSize(8);
+                            header.Cell().Background(LightGray).Padding(4)
+                                .AlignRight().Text("Net Amount").Bold().FontSize(8);
+                            header.Cell().Background(LightGray).Padding(4)
+                                .AlignRight().Text("Tax Amount").Bold().FontSize(8);
+                            header.Cell().Background(LightGray).Padding(4)
+                                .AlignRight().Text("Gross Amount").Bold().FontSize(8);
+                        });
+
+                        foreach (var g in taxGroups)
+                        {
+                            table.Cell().Padding(4)
+                                .Text($"{g.Rate * 100:N1}%").FontSize(8);
+                            table.Cell().Padding(4)
+                                .AlignRight().Text($"{_currency} {g.Net:N2}").FontSize(8);
+                            table.Cell().Padding(4)
+                                .AlignRight().Text($"{_currency} {g.Tax:N2}").FontSize(8);
+                            table.Cell().Padding(4)
+                                .AlignRight().Text($"{_currency} {g.Gross:N2}").FontSize(8);
+                        }
+                    });
+
+                    // Show organization's VAT number if available
+                    if (ShowVatIdOnPdf())
+                    {
+                        col.Item().PaddingTop(5)
+                            .Text($"UID/MWST-Nr: {_activeProfile!.VatNumber}")
+                            .FontSize(8).FontColor(MediumGray);
+                    }
                 });
-
-                table.Header(header =>
-                {
-                    header.Cell().Background(LightGray).Padding(4)
-                        .Text("Tax Rate").Bold().FontSize(8);
-                    header.Cell().Background(LightGray).Padding(4)
-                        .AlignRight().Text("Net Amount").Bold().FontSize(8);
-                    header.Cell().Background(LightGray).Padding(4)
-                        .AlignRight().Text("Tax Amount").Bold().FontSize(8);
-                    header.Cell().Background(LightGray).Padding(4)
-                        .AlignRight().Text("Gross Amount").Bold().FontSize(8);
-                });
-
-                foreach (var g in taxGroups)
-                {
-                    table.Cell().Padding(4)
-                        .Text($"{g.Rate * 100:N1}%").FontSize(8);
-                    table.Cell().Padding(4)
-                        .AlignRight().Text($"{_currency} {g.Net:N2}").FontSize(8);
-                    table.Cell().Padding(4)
-                        .AlignRight().Text($"{_currency} {g.Tax:N2}").FontSize(8);
-                    table.Cell().Padding(4)
-                        .AlignRight().Text($"{_currency} {g.Gross:N2}").FontSize(8);
-                }
-            });
-
-            // Show organization's VAT number if available
-            if (_activeProfile?.VatStatus == VatStatus.Registered && !string.IsNullOrWhiteSpace(_activeProfile.VatNumber))
+            }
+            else if (ShowVatIdOnPdf())
             {
-                col.Item().PaddingTop(5)
-                    .Text($"UID/MWST-Nr: {_activeProfile.VatNumber}")
+                // Show VAT ID even without per-item tax groups if template says so
+                outerCol.Item().PaddingTop(5)
+                    .Text($"VAT-ID: {_activeProfile!.VatNumber}")
                     .FontSize(8).FontColor(MediumGray);
             }
+
+            // REQ-064: EU compliance notes from template
+            ComposeTemplateComplianceNotes(outerCol, invoice);
         });
     }
 
     /// <summary>
-    /// Composes the page footer with payment instructions and organization contact.
+    /// REQ-064: Renders EU compliance notes (tax exemption, reverse charge, payment terms)
+    /// from the associated InvoiceTemplate.
+    /// </summary>
+    protected virtual void ComposeTemplateComplianceNotes(ColumnDescriptor col, Invoice invoice)
+    {
+        if (_template is null) return;
+
+        if (_template.ShowTaxExemptionNote && !string.IsNullOrWhiteSpace(_template.TaxExemptionNote))
+        {
+            col.Item().PaddingTop(8)
+                .Text(_template.TaxExemptionNote)
+                .FontSize(9).Bold().FontColor(MediumGray);
+        }
+
+        if (_template.ShowReverseChargeNote && !string.IsNullOrWhiteSpace(_template.ReverseChargeNote))
+        {
+            col.Item().PaddingTop(4)
+                .Text(_template.ReverseChargeNote)
+                .FontSize(9).Bold().FontColor(MediumGray);
+        }
+
+        // Payment terms: prefer invoice-level, fall back to template default
+        var paymentTerms = invoice.PaymentTerms ?? _template.DefaultPaymentTerms;
+        if (_template.ShowPaymentTerms && !string.IsNullOrWhiteSpace(paymentTerms))
+        {
+            col.Item().PaddingTop(8).Column(ptCol =>
+            {
+                ptCol.Item().Text("Payment Terms").Bold().FontSize(9).FontColor(PrimaryColor);
+                ptCol.Item().PaddingTop(2).Text(paymentTerms).FontSize(9).FontColor(MediumGray);
+            });
+        }
+
+        if (!string.IsNullOrWhiteSpace(_template.LegalNotice))
+        {
+            col.Item().PaddingTop(8)
+                .Text(_template.LegalNotice)
+                .FontSize(8).FontColor(MediumGray);
+        }
+    }
+
+    /// <summary>
+    /// Determines whether to show the VAT ID on the PDF based on template and profile.
+    /// </summary>
+    private bool ShowVatIdOnPdf()
+    {
+        var showFromTemplate = _template?.ShowVatId ?? true;
+        return showFromTemplate
+               && _activeProfile?.VatStatus == VatStatus.Registered
+               && !string.IsNullOrWhiteSpace(_activeProfile.VatNumber);
+    }
+
+    /// <summary>
+    /// Composes the page footer with payment instructions, organization contact,
+    /// and REQ-064 template footer/bank details.
     /// </summary>
     protected virtual void ComposeFooter(IContainer container)
     {
@@ -484,8 +558,41 @@ public class QuestPdfInvoiceGenerator : IInvoicePdfGenerator
             {
                 row.RelativeItem().Column(footerCol =>
                 {
-                    footerCol.Item().Text(_paymentInstructions)
-                        .FontSize(8).FontColor(MediumGray);
+                    // REQ-064: Template footer text takes priority, falls back to payment instructions
+                    var footerText = _template?.FooterText;
+                    if (!string.IsNullOrWhiteSpace(footerText))
+                    {
+                        footerCol.Item().Text(footerText)
+                            .FontSize(8).FontColor(MediumGray);
+                    }
+                    else
+                    {
+                        footerCol.Item().Text(_paymentInstructions)
+                            .FontSize(8).FontColor(MediumGray);
+                    }
+
+                    // REQ-064: Show bank details from profile if template says so
+                    if (_template is { ShowBankDetails: true } && _activeProfile is not null)
+                    {
+                        if (!string.IsNullOrWhiteSpace(_activeProfile.BankIban))
+                        {
+                            footerCol.Item().PaddingTop(2)
+                                .Text($"IBAN: {_activeProfile.BankIban}")
+                                .FontSize(8).FontColor(MediumGray);
+                        }
+                        if (!string.IsNullOrWhiteSpace(_activeProfile.BankBic))
+                        {
+                            footerCol.Item()
+                                .Text($"BIC: {_activeProfile.BankBic}")
+                                .FontSize(8).FontColor(MediumGray);
+                        }
+                        if (!string.IsNullOrWhiteSpace(_activeProfile.BankName))
+                        {
+                            footerCol.Item()
+                                .Text($"Bank: {_activeProfile.BankName}")
+                                .FontSize(8).FontColor(MediumGray);
+                        }
+                    }
                 });
 
                 row.ConstantItem(150).AlignRight().Column(footerCol =>

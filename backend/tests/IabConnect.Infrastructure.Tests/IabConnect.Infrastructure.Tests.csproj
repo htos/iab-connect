@@ -23,4 +23,8 @@
     <ProjectReference Include="..\..\src\IabConnect.Infrastructure\IabConnect.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="Finance\Fixtures\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

@@ -85,10 +85,10 @@ public static class UserEndpoints
 
             return TypedResults.Ok(response);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return TypedResults.Problem(
-                detail: ex.Message,
+                detail: "An internal error occurred. Please try again later.",
                 statusCode: 500,
                 title: "Failed to retrieve users");
         }
@@ -103,10 +103,10 @@ public static class UserEndpoints
             var count = await keycloakAdmin.GetUserCountAsync(ct);
             return TypedResults.Ok(count);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return TypedResults.Problem(
-                detail: ex.Message,
+                detail: "An internal error occurred. Please try again later.",
                 statusCode: 500,
                 title: "Failed to get user count");
         }
@@ -129,10 +129,10 @@ public static class UserEndpoints
 
             return TypedResults.Ok(dto);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return TypedResults.Problem(
-                detail: ex.Message,
+                detail: "An internal error occurred. Please try again later.",
                 statusCode: 500,
                 title: "Failed to retrieve user");
         }
@@ -191,10 +191,10 @@ public static class UserEndpoints
         {
             return TypedResults.Conflict(ex.Message);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return TypedResults.Problem(
-                detail: ex.Message,
+                detail: "An internal error occurred. Please try again later.",
                 statusCode: 500,
                 title: "Failed to create user");
         }
@@ -288,7 +288,7 @@ public static class UserEndpoints
         {
             logger.LogError(ex, "Failed to update user {UserId}", userId);
             return TypedResults.Problem(
-                detail: ex.Message,
+                detail: "An internal error occurred. Please try again later.",
                 statusCode: 500,
                 title: "Failed to update user");
         }
@@ -308,10 +308,10 @@ public static class UserEndpoints
             await keycloakAdmin.DeleteUserAsync(userId, ct);
             return TypedResults.NoContent();
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return TypedResults.Problem(
-                detail: ex.Message,
+                detail: "An internal error occurred. Please try again later.",
                 statusCode: 500,
                 title: "Failed to delete user");
         }
@@ -387,7 +387,7 @@ public static class UserEndpoints
         {
             logger.LogError(ex, "Failed to update user status for {UserId}", userId);
             return TypedResults.Problem(
-                detail: ex.Message,
+                detail: "An internal error occurred. Please try again later.",
                 statusCode: 500,
                 title: "Failed to update user status");
         }
@@ -407,10 +407,10 @@ public static class UserEndpoints
             await keycloakAdmin.SendPasswordResetEmailAsync(userId, ct);
             return TypedResults.NoContent();
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return TypedResults.Problem(
-                detail: ex.Message,
+                detail: "An internal error occurred. Please try again later.",
                 statusCode: 500,
                 title: "Failed to send password reset email");
         }
@@ -430,10 +430,10 @@ public static class UserEndpoints
             var roles = await keycloakAdmin.GetUserRolesAsync(userId, ct);
             return TypedResults.Ok(roles.Select(r => r.Name).ToList());
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return TypedResults.Problem(
-                detail: ex.Message,
+                detail: "An internal error occurred. Please try again later.",
                 statusCode: 500,
                 title: "Failed to get user roles");
         }
@@ -467,10 +467,10 @@ public static class UserEndpoints
             var updatedRoles = await keycloakAdmin.GetUserRolesAsync(userId, ct);
             return TypedResults.Ok(updatedRoles.Select(r => r.Name).ToList());
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return TypedResults.Problem(
-                detail: ex.Message,
+                detail: "An internal error occurred. Please try again later.",
                 statusCode: 500,
                 title: "Failed to update user roles");
         }
@@ -491,10 +491,10 @@ public static class UserEndpoints
 
             return TypedResults.Ok(dtos);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return TypedResults.Problem(
-                detail: ex.Message,
+                detail: "An internal error occurred. Please try again later.",
                 statusCode: 500,
                 title: "Failed to get available roles");
         }

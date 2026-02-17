@@ -10,6 +10,8 @@ public class BankImport : Entity, ISoftDeletable
     public DateTime ImportDate { get; private set; }
     public string FileName { get; private set; } = string.Empty;
     public BankImportStatus Status { get; private set; } = BankImportStatus.Pending;
+    public BankImportFormat Format { get; private set; } = BankImportFormat.Csv;
+    public string? OriginalFileStoragePath { get; private set; }
     public string ImportedBy { get; private set; } = string.Empty;
     public bool IsDeleted { get; private set; }
     public DateTime? DeletedAt { get; private set; }
@@ -27,6 +29,21 @@ public class BankImport : Entity, ISoftDeletable
             ImportDate = DateTime.UtcNow,
             FileName = fileName,
             ImportedBy = importedBy
+        };
+    }
+
+    /// <summary>
+    /// REQ-069: Creates a bank import with a specific format (CSV, camt.053, camt.054).
+    /// </summary>
+    public static BankImport Create(string fileName, string importedBy, BankImportFormat format, string? storagePath = null)
+    {
+        return new BankImport
+        {
+            ImportDate = DateTime.UtcNow,
+            FileName = fileName,
+            ImportedBy = importedBy,
+            Format = format,
+            OriginalFileStoragePath = storagePath
         };
     }
 

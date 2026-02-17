@@ -15,12 +15,12 @@ public class AccountTests
     public void Create_WithValidData_ShouldSetAllProperties()
     {
         // Act
-        var account = Account.Create("Vereinskonto", "1000", AccountType.Asset, "Main account", 1, "admin");
+        var account = Account.Create("Vereinskonto", "1000", AccountType.Other, "Main account", 1, "admin");
 
         // Assert
         account.Name.Should().Be("Vereinskonto");
         account.Number.Should().Be("1000");
-        account.Type.Should().Be(AccountType.Asset);
+        account.Type.Should().Be(AccountType.Other);
         account.Description.Should().Be("Main account");
         account.SortOrder.Should().Be(1);
         account.CreatedBy.Should().Be("admin");
@@ -32,7 +32,7 @@ public class AccountTests
     public void Create_ShouldGenerateNewId()
     {
         // Act
-        var account = Account.Create("Konto", "1001", AccountType.Income, null, 0, "admin");
+        var account = Account.Create("Konto", "1001", AccountType.Cash, null, 0, "admin");
 
         // Assert
         account.Id.Should().NotBe(Guid.Empty);
@@ -45,7 +45,7 @@ public class AccountTests
         var before = DateTime.UtcNow.AddSeconds(-1);
 
         // Act
-        var account = Account.Create("Konto", "1001", AccountType.Income, null, 0, "admin");
+        var account = Account.Create("Konto", "1001", AccountType.Cash, null, 0, "admin");
 
         // Assert
         account.CreatedAt.Should().BeAfter(before).And.BeBefore(DateTime.UtcNow.AddSeconds(1));
@@ -55,7 +55,7 @@ public class AccountTests
     public void Create_ShouldTrimNameAndNumber()
     {
         // Act
-        var account = Account.Create("  Konto  ", "  1001  ", AccountType.Income, "  Desc  ", 0, "admin");
+        var account = Account.Create("  Konto  ", "  1001  ", AccountType.Cash, "  Desc  ", 0, "admin");
 
         // Assert
         account.Name.Should().Be("Konto");
@@ -67,7 +67,7 @@ public class AccountTests
     public void Create_WithEmptyName_ShouldThrowArgumentException()
     {
         // Act & Assert
-        var act = () => Account.Create("", "1000", AccountType.Income, null, 0, "admin");
+        var act = () => Account.Create("", "1000", AccountType.Cash, null, 0, "admin");
         act.Should().Throw<ArgumentException>()
             .WithParameterName("name");
     }
@@ -76,7 +76,7 @@ public class AccountTests
     public void Create_WithWhitespaceOnlyName_ShouldThrowArgumentException()
     {
         // Act & Assert
-        var act = () => Account.Create("   ", "1000", AccountType.Income, null, 0, "admin");
+        var act = () => Account.Create("   ", "1000", AccountType.Cash, null, 0, "admin");
         act.Should().Throw<ArgumentException>()
             .WithParameterName("name");
     }
@@ -85,16 +85,15 @@ public class AccountTests
     public void Create_WithEmptyNumber_ShouldThrowArgumentException()
     {
         // Act & Assert
-        var act = () => Account.Create("Konto", "", AccountType.Income, null, 0, "admin");
+        var act = () => Account.Create("Konto", "", AccountType.Cash, null, 0, "admin");
         act.Should().Throw<ArgumentException>()
             .WithParameterName("number");
     }
 
     [Theory]
-    [InlineData(AccountType.Income)]
-    [InlineData(AccountType.Expense)]
-    [InlineData(AccountType.Asset)]
-    [InlineData(AccountType.Liability)]
+    [InlineData(AccountType.Cash)]
+    [InlineData(AccountType.Bank)]
+    [InlineData(AccountType.Other)]
     public void Create_WithDifferentTypes_ShouldSetCorrectType(AccountType type)
     {
         // Act
@@ -112,15 +111,15 @@ public class AccountTests
     public void Update_ShouldUpdateAllProperties()
     {
         // Arrange
-        var account = Account.Create("Old", "1000", AccountType.Income, null, 0, "admin");
+        var account = Account.Create("Old", "1000", AccountType.Cash, null, 0, "admin");
 
         // Act
-        account.Update("New", "2000", AccountType.Expense, "Updated desc", 5, "editor");
+        account.Update("New", "2000", AccountType.Bank, "Updated desc", 5, "editor");
 
         // Assert
         account.Name.Should().Be("New");
         account.Number.Should().Be("2000");
-        account.Type.Should().Be(AccountType.Expense);
+        account.Type.Should().Be(AccountType.Bank);
         account.Description.Should().Be("Updated desc");
         account.SortOrder.Should().Be(5);
         account.UpdatedBy.Should().Be("editor");
@@ -131,10 +130,10 @@ public class AccountTests
     public void Update_WithEmptyName_ShouldThrowArgumentException()
     {
         // Arrange
-        var account = Account.Create("Konto", "1000", AccountType.Income, null, 0, "admin");
+        var account = Account.Create("Konto", "1000", AccountType.Cash, null, 0, "admin");
 
         // Act & Assert
-        var act = () => account.Update("", "1000", AccountType.Income, null, 0, "admin");
+        var act = () => account.Update("", "1000", AccountType.Cash, null, 0, "admin");
         act.Should().Throw<ArgumentException>()
             .WithParameterName("name");
     }
@@ -147,7 +146,7 @@ public class AccountTests
     public void Deactivate_ShouldSetIsActiveFalse()
     {
         // Arrange
-        var account = Account.Create("Konto", "1000", AccountType.Income, null, 0, "admin");
+        var account = Account.Create("Konto", "1000", AccountType.Cash, null, 0, "admin");
 
         // Act
         account.Deactivate();
@@ -160,7 +159,7 @@ public class AccountTests
     public void Activate_AfterDeactivate_ShouldSetIsActiveTrue()
     {
         // Arrange
-        var account = Account.Create("Konto", "1000", AccountType.Income, null, 0, "admin");
+        var account = Account.Create("Konto", "1000", AccountType.Cash, null, 0, "admin");
         account.Deactivate();
 
         // Act
@@ -178,7 +177,7 @@ public class AccountTests
     public void SoftDelete_ShouldSetIsDeletedTrue()
     {
         // Arrange
-        var account = Account.Create("Konto", "1000", AccountType.Income, null, 0, "admin");
+        var account = Account.Create("Konto", "1000", AccountType.Cash, null, 0, "admin");
 
         // Act
         account.SoftDelete("admin");
@@ -193,7 +192,7 @@ public class AccountTests
     public void Restore_ShouldClearSoftDelete()
     {
         // Arrange
-        var account = Account.Create("Konto", "1000", AccountType.Income, null, 0, "admin");
+        var account = Account.Create("Konto", "1000", AccountType.Cash, null, 0, "admin");
         account.SoftDelete("admin");
 
         // Act

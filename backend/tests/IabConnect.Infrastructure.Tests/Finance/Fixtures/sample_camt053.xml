@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.02">
+  <BkToCstmrStmt>
+    <GrpHdr>
+      <MsgId>MSG-2026-001</MsgId>
+      <CreDtTm>2026-01-15T10:30:00</CreDtTm>
+    </GrpHdr>
+    <Stmt>
+      <Id>STMT-2026-001</Id>
+      <Acct>
+        <Id>
+          <IBAN>CH9300762011623852957</IBAN>
+        </Id>
+      </Acct>
+      <Ntry>
+        <Amt Ccy="CHF">150.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <BookgDt>
+          <Dt>2026-01-10</Dt>
+        </BookgDt>
+        <ValDt>
+          <Dt>2026-01-10</Dt>
+        </ValDt>
+        <AddtlNtryInf>Payment from Test AG</AddtlNtryInf>
+        <NtryDtls>
+          <TxDtls>
+            <Refs>
+              <EndToEndId>INV-2026-001</EndToEndId>
+            </Refs>
+            <RmtInf>
+              <Ustrd>Invoice INV-2026-001 payment</Ustrd>
+            </RmtInf>
+            <RltdPties>
+              <Dbtr>
+                <Nm>Test AG</Nm>
+              </Dbtr>
+              <DbtrAcct>
+                <Id>
+                  <IBAN>CH1234567890123456789</IBAN>
+                </Id>
+              </DbtrAcct>
+            </RltdPties>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <Amt Ccy="CHF">500.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <BookgDt>
+          <Dt>2026-01-12</Dt>
+        </BookgDt>
+        <ValDt>
+          <Dt>2026-01-12</Dt>
+        </ValDt>
+        <AddtlNtryInf>Annual membership fee</AddtlNtryInf>
+        <NtryDtls>
+          <TxDtls>
+            <Refs>
+              <EndToEndId>NOTREF</EndToEndId>
+            </Refs>
+            <RmtInf>
+              <Strd>
+                <CdtrRef>
+                  <Ref>INV-2026-002</Ref>
+                </CdtrRef>
+              </Strd>
+            </RmtInf>
+            <RltdPties>
+              <Dbtr>
+                <Nm>Max Mustermann</Nm>
+              </Dbtr>
+            </RltdPties>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <Amt Ccy="CHF">75.50</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <BookgDt>
+          <Dt>2026-01-14</Dt>
+        </BookgDt>
+        <ValDt>
+          <Dt>2026-01-14</Dt>
+        </ValDt>
+        <AddtlNtryInf>Bank fee January</AddtlNtryInf>
+      </Ntry>
+    </Stmt>
+  </BkToCstmrStmt>
+</Document>

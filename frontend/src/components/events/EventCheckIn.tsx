@@ -5,7 +5,7 @@
  * Scanner for event check-in using QR codes.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -58,7 +58,7 @@ export function EventCheckIn({ event, onCheckIn }: EventCheckInProps) {
   const [cameraActive, setCameraActive] = useState(false);
 
   // Start camera for QR scanning
-  const startCamera = async () => {
+  const startCamera = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment' },
@@ -71,32 +71,54 @@ export function EventCheckIn({ event, onCheckIn }: EventCheckInProps) {
     } catch {
       setCameraError('Kamera konnte nicht gestartet werden. Bitte prüfen Sie die Berechtigungen.');
     }
-  };
+  }, []);
 
   // Stop camera
-  const stopCamera = () => {
+  const stopCamera = useCallback(() => {
     if (videoRef.current?.srcObject) {
       const stream = videoRef.current.srcObject as MediaStream;
       stream.getTracks().forEach((track) => track.stop());
       videoRef.current.srcObject = null;
       setCameraActive(false);
     }
-  };
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       stopCamera();
     };
-  }, []);
+  }, [stopCamera]);
 
-  // Toggle mode
+  // Toggle mode: start/stop camera
   useEffect(() => {
-    if (mode === 'scanner') {
-      startCamera();
-    } else {
-      stopCamera();
-    }
+    if (mode !== 'scanner') return;
+
+    const currentVideo = videoRef.current;
+
+    // Start camera using .then() to keep setState in callback context
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' },
+    }).then((stream) => {
+      if (currentVideo) {
+        currentVideo.srcObject = stream;
+        setCameraActive(true);
+        setCameraError(null);
+      } else {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+    }).catch(() => {
+      setCameraError('Kamera konnte nicht gestartet werden. Bitte prüfen Sie die Berechtigungen.');
+    });
+
+    return () => {
+      if (currentVideo?.srcObject) {
+        const stream = currentVideo.srcObject as MediaStream;
+        stream.getTracks().forEach((track) => track.stop());
+        currentVideo.srcObject = null;
+      }
+      setCameraActive(false);
+    };
   }, [mode]);
 
   const processCheckIn = async (qrCodeToken: string) => {

@@ -15,7 +15,7 @@ public class CreateAccountCommandValidatorTests
     {
         Name = "Vereinskonto",
         Number = "1000",
-        Type = "Income",
+        Type = "Cash",
         Description = "Main account",
         SortOrder = 1,
         UserName = "admin"
@@ -119,10 +119,9 @@ public class CreateAccountCommandValidatorTests
     }
 
     [Theory]
-    [InlineData("Income")]
-    [InlineData("Expense")]
-    [InlineData("Asset")]
-    [InlineData("Liability")]
+    [InlineData("Cash")]
+    [InlineData("Bank")]
+    [InlineData("Other")]
     public void Validate_ValidAccountTypes_ShouldPass(string type)
     {
         // Arrange

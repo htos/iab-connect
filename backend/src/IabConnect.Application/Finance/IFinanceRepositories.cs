@@ -127,3 +127,55 @@ public interface ITaxCodeRepository
     Task UpdateAsync(TaxCode taxCode, CancellationToken ct = default);
     Task DeleteAsync(Guid id, CancellationToken ct = default);
 }
+
+/// <summary>
+/// REQ-066: Repository for fiscal periods
+/// </summary>
+public interface IFiscalPeriodRepository
+{
+    Task<List<FiscalPeriod>> GetAllAsync(int? year = null, CancellationToken ct = default);
+    Task<FiscalPeriod?> GetByIdAsync(Guid id, CancellationToken ct = default);
+    Task<FiscalPeriod?> GetByYearAndMonthAsync(int year, int month, CancellationToken ct = default);
+    Task<FiscalPeriod?> GetByDateAsync(DateTime date, CancellationToken ct = default);
+    Task AddAsync(FiscalPeriod period, CancellationToken ct = default);
+    Task AddRangeAsync(IEnumerable<FiscalPeriod> periods, CancellationToken ct = default);
+    Task UpdateAsync(FiscalPeriod period, CancellationToken ct = default);
+}
+
+/// <summary>
+/// REQ-067: Repository for expense claims
+/// </summary>
+public interface IExpenseClaimRepository
+{
+    Task<List<ExpenseClaim>> GetAllAsync(ExpenseClaimStatus? status = null, Guid? claimantId = null, CancellationToken ct = default);
+    Task<ExpenseClaim?> GetByIdAsync(Guid id, CancellationToken ct = default);
+    Task AddAsync(ExpenseClaim claim, CancellationToken ct = default);
+    Task UpdateAsync(ExpenseClaim claim, CancellationToken ct = default);
+    Task DeleteAsync(Guid id, CancellationToken ct = default);
+}
+
+/// <summary>
+/// REQ-064: Repository for invoice templates
+/// </summary>
+public interface IInvoiceTemplateRepository
+{
+    Task<List<InvoiceTemplate>> GetAllAsync(Jurisdiction? jurisdiction = null, CancellationToken ct = default);
+    Task<InvoiceTemplate?> GetByIdAsync(Guid id, CancellationToken ct = default);
+    Task<InvoiceTemplate?> GetDefaultForJurisdictionAsync(Jurisdiction jurisdiction, CancellationToken ct = default);
+    Task AddAsync(InvoiceTemplate template, CancellationToken ct = default);
+    Task UpdateAsync(InvoiceTemplate template, CancellationToken ct = default);
+    Task DeleteAsync(Guid id, CancellationToken ct = default);
+}
+
+/// <summary>
+/// REQ-068: Repository for activity areas / project dimension tags
+/// </summary>
+public interface IActivityAreaRepository
+{
+    Task<List<ActivityArea>> GetAllActiveAsync(CancellationToken ct = default);
+    Task<ActivityArea?> GetByIdAsync(Guid id, CancellationToken ct = default);
+    Task<ActivityArea?> GetByCodeAsync(string code, CancellationToken ct = default);
+    Task AddAsync(ActivityArea area, CancellationToken ct = default);
+    Task UpdateAsync(ActivityArea area, CancellationToken ct = default);
+    Task DeleteAsync(Guid id, CancellationToken ct = default);
+}

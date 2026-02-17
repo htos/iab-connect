@@ -4,7 +4,7 @@
  */
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState, use, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
@@ -82,13 +82,7 @@ export default function EditEventPage({ params }: EditEventPageProps) {
 
   const [tagsInput, setTagsInput] = useState('');
 
-  useEffect(() => {
-    if (accessToken) {
-      loadEvent();
-    }
-  }, [resolvedParams.id, accessToken]);
-
-  const loadEvent = async () => {
+  const loadEvent = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -148,7 +142,65 @@ export default function EditEventPage({ params }: EditEventPageProps) {
     }
 
     setLoading(false);
-  };
+  }, [resolvedParams.id, accessToken, t]);
+
+  useEffect(() => {
+    if (accessToken) {
+      fetch(`${API_URL}/api/v1/events/${resolvedParams.id}`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }).then(async (response) => {
+        if (response.ok) {
+          const event = await response.json();
+
+          const formatDateForInput = (dateString: string, isAllDay: boolean) => {
+            const date = new Date(dateString);
+            if (isAllDay) {
+              return date.toISOString().split('T')[0];
+            }
+            return date.toISOString().slice(0, 16);
+          };
+
+          setFormData({
+            title: event.title,
+            description: event.description,
+            location: event.location,
+            startDate: formatDateForInput(event.startDate, event.isAllDay),
+            endDate: formatDateForInput(event.endDate, event.isAllDay),
+            shortDescription: event.shortDescription || '',
+            locationAddress: event.locationAddress || '',
+            locationUrl: event.locationUrl || '',
+            isAllDay: event.isAllDay,
+            timeZone: event.timeZone,
+            maxParticipants: event.maxParticipants,
+            registrationRequired: event.registrationRequired,
+            registrationDeadline: event.registrationDeadline
+              ? formatDateForInput(event.registrationDeadline, false)
+              : '',
+            waitlistEnabled: event.waitlistEnabled,
+            visibility: event.visibility,
+            category: event.category,
+            tags: event.tags || [],
+            imageUrl: event.imageUrl || '',
+            imageAltText: event.imageAltText || '',
+            contactEmail: event.contactEmail || '',
+            contactPhone: event.contactPhone || '',
+            cost: event.cost,
+            costDescription: event.costDescription || '',
+          });
+
+          setTagsInput((event.tags || []).join(', '));
+        } else {
+          setError(t('errors.notFound'));
+        }
+        setLoading(false);
+      }).catch(() => {
+        setError(t('errors.loadFailed'));
+        setLoading(false);
+      });
+    }
+  }, [accessToken, resolvedParams.id, t]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>

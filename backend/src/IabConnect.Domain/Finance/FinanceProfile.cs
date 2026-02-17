@@ -34,6 +34,10 @@ public class FinanceProfile : Entity
     public string? BankIban { get; private set; }
     public string? BankBic { get; private set; }
 
+    // REQ-067: Payment approval thresholds
+    public decimal? ApprovalThresholdChf { get; private set; }
+    public decimal? ApprovalThresholdEur { get; private set; }
+
     public bool IsActive { get; private set; } = true;
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
@@ -58,7 +62,9 @@ public class FinanceProfile : Entity
         string? bankIban,
         string? bankBic,
         VatStatus vatStatus = VatStatus.NotRegistered,
-        string? vatNumber = null)
+        string? vatNumber = null,
+        decimal? approvalThresholdChf = null,
+        decimal? approvalThresholdEur = null)
     {
         if (string.IsNullOrWhiteSpace(organizationName))
             throw new ArgumentException("Organization name is required.", nameof(organizationName));
@@ -95,6 +101,8 @@ public class FinanceProfile : Entity
             BankBic = bankBic?.Trim(),
             VatStatus = vatStatus,
             VatNumber = vatNumber?.Trim(),
+            ApprovalThresholdChf = approvalThresholdChf,
+            ApprovalThresholdEur = approvalThresholdEur,
             IsActive = true,
             CreatedAt = now,
             UpdatedAt = now
@@ -119,7 +127,9 @@ public class FinanceProfile : Entity
         string? bankIban,
         string? bankBic,
         VatStatus vatStatus = VatStatus.NotRegistered,
-        string? vatNumber = null)
+        string? vatNumber = null,
+        decimal? approvalThresholdChf = null,
+        decimal? approvalThresholdEur = null)
     {
         if (string.IsNullOrWhiteSpace(organizationName))
             throw new ArgumentException("Organization name is required.", nameof(organizationName));
@@ -152,6 +162,8 @@ public class FinanceProfile : Entity
         BankBic = bankBic?.Trim();
         VatStatus = vatStatus;
         VatNumber = vatNumber?.Trim();
+        ApprovalThresholdChf = approvalThresholdChf;
+        ApprovalThresholdEur = approvalThresholdEur;
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 

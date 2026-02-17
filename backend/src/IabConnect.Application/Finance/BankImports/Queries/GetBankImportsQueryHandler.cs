@@ -20,9 +20,11 @@ public sealed class GetBankImportsQueryHandler : IRequestHandler<GetBankImportsQ
 
     internal static BankImportDto MapToDto(BankImport bi) =>
         new(bi.Id, bi.ImportDate, bi.FileName, bi.Status.ToString(), bi.ImportedBy,
-            bi.Items.Select(MapItemDto).ToList());
+            bi.Format.ToString(), bi.Items.Select(MapItemDto).ToList());
 
     internal static BankImportItemDto MapItemDto(BankImportItem item) =>
         new(item.Id, item.TransactionDate, item.Description, item.Amount,
-            item.Iban, item.Reference, item.Status.ToString(), item.MatchedPaymentId);
+            item.Iban, item.Reference, item.Status.ToString(), item.MatchedPaymentId,
+            item.EndToEndId, item.CreditorReference, item.RemittanceInfo,
+            item.DebtorName, item.DebtorIban, item.SuggestedInvoiceId, item.MatchConfidence);
 }

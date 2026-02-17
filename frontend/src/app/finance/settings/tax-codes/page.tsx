@@ -39,38 +39,6 @@ const DEFAULT_FORM: TaxCodeForm = {
 
 // --- Icons ---
 
-const HomeIcon = ({ className }: { className?: string }) => (
-  <svg
-    className={className}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1h-2z"
-    />
-  </svg>
-);
-
-const ChevronRightIcon = ({ className }: { className?: string }) => (
-  <svg
-    className={className}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M9 5l7 7-7 7"
-    />
-  </svg>
-);
-
 const PlusIcon = ({ className }: { className?: string }) => (
   <svg
     className={className}
@@ -308,28 +276,13 @@ export default function TaxCodesPage() {
   return (
     <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
       <div className="mx-auto max-w-4xl">
-        {/* Breadcrumb */}
-        <nav className="mb-6 flex items-center gap-2 text-sm text-gray-500">
-          <Link href="/" className="transition-colors hover:text-orange-600">
-            <HomeIcon className="h-4 w-4" />
-          </Link>
-          <ChevronRightIcon className="h-3 w-3" />
-          <Link
-            href="/finance"
-            className="transition-colors hover:text-orange-600"
-          >
-            {t("title")}
-          </Link>
-          <ChevronRightIcon className="h-3 w-3" />
-          <Link
-            href="/finance/settings"
-            className="transition-colors hover:text-orange-600"
-          >
-            {t("settings.title")}
-          </Link>
-          <ChevronRightIcon className="h-3 w-3" />
-          <span className="text-gray-900">{ttc("title")}</span>
-        </nav>
+        {/* Back to Settings */}
+        <Link href="/finance/settings" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          {t("backToSettings")}
+        </Link>
 
         {/* Header */}
         <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

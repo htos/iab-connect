@@ -16,7 +16,9 @@ interface SidebarContextType {
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 
 export function SidebarProvider({ children }: { children: ReactNode }) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth >= 1024 : false
+  );
 
   // Close sidebar on window resize to desktop
   useEffect(() => {
@@ -25,11 +27,6 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
         setIsOpen(true); // Keep open on desktop
       }
     };
-
-    // Check initial state
-    if (typeof window !== "undefined") {
-      setIsOpen(window.innerWidth >= 1024);
-    }
 
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);

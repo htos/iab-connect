@@ -22,10 +22,13 @@ public sealed class ExportJournalQueryHandler : IRequestHandler<ExportJournalQue
 
     public async Task<ExportFileResult> Handle(ExportJournalQuery request, CancellationToken ct)
     {
-        var transactions = await _transactionRepository.GetAllAsync(request.From, request.To, ct: ct);
+        var from = request.From.HasValue ? DateTime.SpecifyKind(request.From.Value, DateTimeKind.Utc) : (DateTime?)null;
+        var to = request.To.HasValue ? DateTime.SpecifyKind(request.To.Value, DateTimeKind.Utc) : (DateTime?)null;
+
+        var transactions = await _transactionRepository.GetAllAsync(from, to, ct: ct);
 
         var sb = new StringBuilder();
-        sb.AppendLine("Date;Description;Amount;Type;AccountId;CategoryId;Reference;Notes");
+        sb.AppendLine("Date;Description;Amount;Type;AccountId;CategoryId;Reference;Notes;ActivityAreaId;ActivityAreaCode");
 
         foreach (var t in transactions)
         {
@@ -37,7 +40,9 @@ public sealed class ExportJournalQueryHandler : IRequestHandler<ExportJournalQue
                 t.AccountId,
                 t.CategoryId?.ToString() ?? "",
                 EscapeCsv(t.Reference),
-                EscapeCsv(t.Notes)));
+                EscapeCsv(t.Notes),
+                t.ActivityAreaId?.ToString() ?? "",
+                EscapeCsv(t.ActivityArea?.Code)));
         }
 
         var bytes = Encoding.UTF8.GetBytes(sb.ToString());

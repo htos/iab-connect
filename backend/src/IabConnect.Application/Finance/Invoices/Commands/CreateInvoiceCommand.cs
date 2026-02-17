@@ -8,7 +8,7 @@ namespace IabConnect.Application.Finance.Invoices.Commands;
 /// </summary>
 public sealed record CreateInvoiceItemInput(
     string Description, decimal Quantity, decimal UnitPrice,
-    Guid? TaxCodeId = null, bool IsGrossEntry = false);
+    Guid? TaxCodeId = null, bool IsGrossEntry = false, Guid? ActivityAreaId = null);
 
 /// <summary>
 /// Command to create an invoice with items (REQ-039)
@@ -23,6 +23,8 @@ public sealed record CreateInvoiceCommand : IRequest<InvoiceDetailDto>
     public string? RecipientAddress { get; init; }
     public decimal TaxRate { get; init; }
     public string? Notes { get; init; }
+    public string? PaymentTerms { get; init; }
+    public Guid? TemplateId { get; init; }
     public required List<CreateInvoiceItemInput> Items { get; init; }
     public required string UserName { get; init; }
 }

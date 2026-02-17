@@ -25,6 +25,9 @@ interface Transaction {
   receiptId: string | null;
   reference: string;
   notes: string;
+  activityAreaId: string | null;
+  activityAreaName: string | null;
+  activityAreaCode: string | null;
 }
 
 interface Account {
@@ -38,6 +41,14 @@ interface Category {
   type: string;
 }
 
+interface ActivityArea {
+  id: string;
+  name: string;
+  code: string;
+  isActive: boolean;
+  sortOrder: number;
+}
+
 interface TransactionForm {
   date: string;
   description: string;
@@ -47,6 +58,16 @@ interface TransactionForm {
   categoryId: string;
   reference: string;
   notes: string;
+  activityAreaId: string;
+}
+
+interface Receipt {
+  id: string;
+  fileName: string;
+  contentType: string;
+  fileSize: number;
+  notes: string;
+  createdAt: string;
 }
 
 // --- Icons ---
@@ -131,6 +152,7 @@ const emptyForm: TransactionForm = {
   categoryId: "",
   reference: "",
   notes: "",
+  activityAreaId: "",
 };
 
 // --- Component ---
@@ -157,6 +179,7 @@ export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [activityAreas, setActivityAreas] = useState<ActivityArea[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -179,6 +202,17 @@ export default function TransactionsPage() {
   const [deletingTransaction, setDeletingTransaction] =
     useState<Transaction | null>(null);
 
+  // Receipt attachment
+  const [receiptModalTx, setReceiptModalTx] = useState<Transaction | null>(null);
+  const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const [selectedReceiptId, setSelectedReceiptId] = useState("");
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptNotes, setReceiptNotes] = useState("");
+  const [receiptSaving, setReceiptSaving] = useState(false);
+
+  // Receipt preview
+  const [previewModal, setPreviewModal] = useState<{ url: string; type: string; name: string } | null>(null);
+
   // --- Auth check ---
 
   useEffect(() => {
@@ -199,6 +233,16 @@ export default function TransactionsPage() {
       "/api/v1/finance/categories"
     );
     if (res.data) setCategories(res.data as Category[]);
+  }, []);
+
+  const fetchActivityAreas = useCallback(async () => {
+    const res = await apiRef.current.get<ActivityArea[]>(
+      "/api/v1/finance/activity-areas"
+    );
+    if (res.data) {
+      const active = (res.data as ActivityArea[]).filter((a) => a.isActive).sort((a, b) => a.sortOrder - b.sortOrder);
+      setActivityAreas(active);
+    }
   }, []);
 
   const fetchTransactions = useCallback(async () => {
@@ -234,8 +278,9 @@ export default function TransactionsPage() {
     if (isAuthenticated && canReadFinance) {
       fetchAccounts();
       fetchCategories();
+      fetchActivityAreas();
     }
-  }, [isAuthenticated, canReadFinance, fetchAccounts, fetchCategories]);
+  }, [isAuthenticated, canReadFinance, fetchAccounts, fetchCategories, fetchActivityAreas]);
 
   // Load transactions when filters change
   useEffect(() => {
@@ -263,6 +308,7 @@ export default function TransactionsPage() {
       categoryId: tx.categoryId,
       reference: tx.reference || "",
       notes: tx.notes || "",
+      activityAreaId: tx.activityAreaId || "",
     });
     setEditingTransaction(tx);
     setFormError(null);
@@ -298,6 +344,7 @@ export default function TransactionsPage() {
       categoryId: form.categoryId,
       reference: form.reference.trim() || null,
       notes: form.notes.trim() || null,
+      activityAreaId: form.activityAreaId || null,
     };
 
     try {
@@ -352,6 +399,114 @@ export default function TransactionsPage() {
       setDeletingTransaction(null);
     }
   };
+
+  // --- Receipt handlers ---
+
+  const fetchReceipts = useCallback(async () => {
+    try {
+      const res = await apiRef.current.get<Receipt[]>("/api/v1/finance/receipts");
+      if (res.data) setReceipts(res.data as Receipt[]);
+    } catch { /* ignore */ }
+  }, []);
+
+  const openReceiptModal = useCallback(async (tx: Transaction) => {
+    setReceiptModalTx(tx);
+    setSelectedReceiptId("");
+    setReceiptFile(null);
+    setReceiptNotes("");
+    await fetchReceipts();
+  }, [fetchReceipts]);
+
+  const closeReceiptModal = () => {
+    setReceiptModalTx(null);
+    setSelectedReceiptId("");
+    setReceiptFile(null);
+    setReceiptNotes("");
+  };
+
+  const handleAttachReceipt = useCallback(async () => {
+    if (!receiptModalTx) return;
+    setReceiptSaving(true);
+    try {
+      let receiptId = selectedReceiptId;
+      // If a file is selected, upload it first
+      if (receiptFile && !selectedReceiptId) {
+        const formData = new FormData();
+        formData.append("file", receiptFile);
+        formData.append("notes", receiptNotes);
+        const uploadRes = await apiRef.current.upload<Receipt>("/api/v1/finance/receipts", formData);
+        if (uploadRes.error || !uploadRes.data) {
+          setError(uploadRes.error || "Upload failed");
+          setReceiptSaving(false);
+          return;
+        }
+        receiptId = (uploadRes.data as Receipt).id;
+      }
+      if (!receiptId) { setReceiptSaving(false); return; }
+      const res = await apiRef.current.post(
+        `/api/v1/finance/transactions/${receiptModalTx.id}/receipt`,
+        { receiptId }
+      );
+      if (res.error) {
+        setError(res.error);
+      } else {
+        closeReceiptModal();
+        fetchTransactions();
+      }
+    } catch {
+      setError("Failed to attach receipt");
+    } finally {
+      setReceiptSaving(false);
+    }
+  }, [receiptModalTx, selectedReceiptId, receiptFile, receiptNotes, fetchTransactions]);
+
+  const handleDetachReceipt = useCallback(async (tx: Transaction) => {
+    try {
+      const res = await apiRef.current.delete(
+        `/api/v1/finance/transactions/${tx.id}/receipt`
+      );
+      if (res.error) {
+        setError(res.error);
+      } else {
+        fetchTransactions();
+      }
+    } catch {
+      setError("Failed to detach receipt");
+    }
+  }, [fetchTransactions]);
+
+  const handleViewReceipt = useCallback(async (receiptId: string) => {
+    try {
+      const infoRes = await apiRef.current.get<Receipt>(`/api/v1/finance/receipts/${receiptId}`);
+      const receipt = infoRes.data as Receipt | null;
+      const contentType = receipt?.contentType ?? "";
+      const fileName = receipt?.fileName ?? "receipt";
+
+      const res = await apiRef.current.get<Blob>(`/api/v1/finance/receipts/${receiptId}/download`);
+      if (res.error || !res.data) return;
+      const blob = res.data as Blob;
+      const url = URL.createObjectURL(blob);
+
+      if (contentType.startsWith("image/") || contentType === "application/pdf") {
+        setPreviewModal({ url, type: contentType, name: fileName });
+      } else {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch {
+      setError("Failed to load receipt");
+    }
+  }, []);
+
+  const closePreviewModal = useCallback(() => {
+    if (previewModal) URL.revokeObjectURL(previewModal.url);
+    setPreviewModal(null);
+  }, [previewModal]);
 
   // --- Loading & auth guard ---
 
@@ -519,6 +674,9 @@ export default function TransactionsPage() {
                     <th className="px-4 py-3 font-medium text-gray-700">
                       {t("account")}
                     </th>
+                    <th className="px-4 py-3 font-medium text-gray-700">
+                      {t("activityArea")}
+                    </th>
                     <th className="px-4 py-3 text-center font-medium text-gray-700">
                       <ReceiptIcon className="inline h-4 w-4" />
                     </th>
@@ -568,10 +726,48 @@ export default function TransactionsPage() {
                       <td className="px-4 py-3 text-gray-700">
                         {tx.accountName}
                       </td>
-                      <td className="px-4 py-3 text-center">
-                        {tx.receiptId && (
-                          <ReceiptIcon className="inline h-4 w-4 text-orange-600" />
+                      <td className="px-4 py-3 text-gray-700">
+                        {tx.activityAreaCode ? (
+                          <span className="text-xs">
+                            <span className="font-mono font-medium">{tx.activityAreaCode}</span>
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">—</span>
                         )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {tx.receiptId ? (
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => handleViewReceipt(tx.receiptId!)}
+                              className="rounded p-0.5 text-orange-600 transition-colors hover:bg-orange-50 hover:text-orange-800"
+                              title={t("viewReceipt")}
+                            >
+                              <ReceiptIcon className="inline h-4 w-4" />
+                            </button>
+                            {canWriteFinance && (
+                              <button
+                                onClick={() => handleDetachReceipt(tx)}
+                                className="rounded p-0.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                                title={t("detachReceipt")}
+                              >
+                                <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        ) : canWriteFinance ? (
+                          <button
+                            onClick={() => openReceiptModal(tx)}
+                            className="rounded p-1 text-gray-400 transition-colors hover:bg-orange-50 hover:text-orange-600"
+                            title={t("attachReceipt")}
+                          >
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                          </button>
+                        ) : null}
                       </td>
                       {canWriteFinance && (
                         <td className="px-4 py-3 whitespace-nowrap">
@@ -689,7 +885,7 @@ export default function TransactionsPage() {
                   </label>
                   <select
                     name="accountId"
-                    value={form.accountId}
+                    value={form.accountId ?? ""}
                     onChange={handleFormChange}
                     required
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none"
@@ -708,7 +904,7 @@ export default function TransactionsPage() {
                   </label>
                   <select
                     name="categoryId"
-                    value={form.categoryId}
+                    value={form.categoryId ?? ""}
                     onChange={handleFormChange}
                     required
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none"
@@ -735,6 +931,26 @@ export default function TransactionsPage() {
                   onChange={handleFormChange}
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none"
                 />
+              </div>
+
+              {/* Activity Area */}
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  {t("activityArea")}
+                </label>
+                <select
+                  name="activityAreaId"
+                  value={form.activityAreaId ?? ""}
+                  onChange={handleFormChange}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none"
+                >
+                  <option value="">{t("noActivityArea")}</option>
+                  {activityAreas.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.code} — {a.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Notes */}
@@ -800,6 +1016,128 @@ export default function TransactionsPage() {
               >
                 {saving ? "…" : t("delete")}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Receipt Attachment Modal */}
+      {receiptModalTx && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h2 className="mb-4 text-lg font-semibold text-gray-900">
+              {t("attachReceiptTitle")}
+            </h2>
+            <p className="mb-4 text-sm text-gray-600">
+              {receiptModalTx.description}
+            </p>
+
+            {/* Select existing receipt */}
+            <div className="mb-4">
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                {t("selectExistingReceipt")}
+              </label>
+              <select
+                value={selectedReceiptId}
+                onChange={(e) => {
+                  setSelectedReceiptId(e.target.value);
+                  if (e.target.value) setReceiptFile(null);
+                }}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none"
+              >
+                <option value="">—</option>
+                {receipts.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.fileName} ({new Date(r.createdAt).toLocaleDateString("de-CH")})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Or upload new */}
+            <div className="mb-4">
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                {t("orUploadNew")}
+              </label>
+              <input
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png,.tiff"
+                onChange={(e) => {
+                  setReceiptFile(e.target.files?.[0] ?? null);
+                  if (e.target.files?.[0]) setSelectedReceiptId("");
+                }}
+                className="w-full text-sm text-gray-500 file:mr-4 file:rounded-lg file:border-0 file:bg-orange-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-orange-700 hover:file:bg-orange-100"
+              />
+              {receiptFile && (
+                <input
+                  type="text"
+                  placeholder={t("notes")}
+                  value={receiptNotes}
+                  onChange={(e) => setReceiptNotes(e.target.value)}
+                  className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none"
+                />
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={closeReceiptModal}
+                disabled={receiptSaving}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+              >
+                {t("cancel")}
+              </button>
+              <button
+                onClick={handleAttachReceipt}
+                disabled={receiptSaving || (!selectedReceiptId && !receiptFile)}
+                className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:opacity-50"
+              >
+                {receiptSaving ? "…" : t("uploadAndAttach")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Receipt Preview Modal */}
+      {previewModal && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 p-4">
+          <div className="relative flex w-full max-w-4xl flex-col rounded-xl bg-white shadow-xl" style={{ maxHeight: "90vh" }}>
+            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+              <h2 className="truncate text-lg font-semibold text-gray-900">{previewModal.name}</h2>
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewModal.url}
+                  download={previewModal.name}
+                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                >
+                  {t("downloadReceipt")}
+                </a>
+                <button
+                  onClick={closePreviewModal}
+                  className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="overflow-auto p-4" style={{ maxHeight: "calc(90vh - 5rem)" }}>
+              {previewModal.type.startsWith("image/") ? (
+                <img
+                  src={previewModal.url}
+                  alt={previewModal.name}
+                  className="mx-auto max-w-full rounded"
+                />
+              ) : (
+                <iframe
+                  src={previewModal.url}
+                  title={previewModal.name}
+                  className="h-[70vh] w-full rounded border-0"
+                />
+              )}
             </div>
           </div>
         </div>

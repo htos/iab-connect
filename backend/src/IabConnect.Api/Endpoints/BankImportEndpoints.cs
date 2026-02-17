@@ -44,6 +44,13 @@ public static class BankImportEndpoints
             .WithName("IgnoreBankImportItem")
             .WithSummary("Ignore a bank import item")
             .WithDescription("REQ-041: Marks a bank import item as ignored.");
+
+        group.MapPost("/import-camt", ImportCamt)
+            .RequireAuthorization("RequireFinanceWrite")
+            .DisableAntiforgery()
+            .WithName("ImportCamtFile")
+            .WithSummary("Import camt.053/054 XML file")
+            .WithDescription("REQ-069: Imports bank transactions from an ISO 20022 camt.053 or camt.054 XML file with auto-matching.");
     }
 
     private static string GetUserName(HttpContext ctx) =>
@@ -81,9 +88,10 @@ public static class BankImportEndpoints
 
     private static async Task<IResult> MatchItem(
         Guid id, Guid itemId, MatchItemRequest request,
-        ISender sender, CancellationToken ct)
+        ISender sender, HttpContext httpContext, CancellationToken ct)
     {
-        var dto = await sender.Send(new MatchBankImportItemCommand(id, itemId, request.PaymentId), ct);
+        var dto = await sender.Send(
+            new MatchBankImportItemCommand(id, itemId, request.PaymentId, GetUserName(httpContext)), ct);
         return dto is null
             ? Results.NotFound(new { Message = "Bank import or item not found." })
             : Results.Ok(dto);
@@ -96,6 +104,23 @@ public static class BankImportEndpoints
         return dto is null
             ? Results.NotFound(new { Message = "Bank import or item not found." })
             : Results.Ok(dto);
+    }
+
+    private static async Task<IResult> ImportCamt(
+        IFormFile file, ISender sender,
+        HttpContext httpContext, CancellationToken ct)
+    {
+        if (file is null || file.Length == 0)
+            return Results.BadRequest(new { Message = "A camt XML file is required." });
+
+        await using var stream = file.OpenReadStream();
+        var dto = await sender.Send(new ImportCamtCommand
+        {
+            FileName = file.FileName,
+            FileStream = stream,
+            UserName = GetUserName(httpContext)
+        }, ct);
+        return Results.Created($"/api/v1/finance/bank-imports/{dto.Id}", dto);
     }
 
     // DTOs

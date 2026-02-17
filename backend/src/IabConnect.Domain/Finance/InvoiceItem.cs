@@ -22,6 +22,10 @@ public class InvoiceItem : Entity
     public decimal? GrossAmount { get; private set; }
     public bool IsGrossEntry { get; private set; }
 
+    // REQ-068: Activity area tagging
+    public Guid? ActivityAreaId { get; private set; }
+    public ActivityArea? ActivityArea { get; private set; }
+
     private InvoiceItem() { }
 
     public static InvoiceItem Create(Guid invoiceId, string description, decimal quantity, decimal unitPrice)
@@ -46,7 +50,8 @@ public class InvoiceItem : Entity
         decimal unitPrice,
         Guid? taxCodeId,
         decimal? taxRate,
-        bool isGrossEntry)
+        bool isGrossEntry,
+        Guid? activityAreaId = null)
     {
         if (string.IsNullOrWhiteSpace(description))
             throw new ArgumentException("Description is required.", nameof(description));
@@ -59,7 +64,8 @@ public class InvoiceItem : Entity
             UnitPrice = unitPrice,
             TaxCodeId = taxCodeId,
             TaxRate = taxRate,
-            IsGrossEntry = isGrossEntry
+            IsGrossEntry = isGrossEntry,
+            ActivityAreaId = activityAreaId
         };
         item.RecalculateAmounts();
         return item;
@@ -79,7 +85,8 @@ public class InvoiceItem : Entity
         decimal unitPrice,
         Guid? taxCodeId,
         decimal? taxRate,
-        bool isGrossEntry)
+        bool isGrossEntry,
+        Guid? activityAreaId = null)
     {
         Description = description.Trim();
         Quantity = quantity;
@@ -87,6 +94,7 @@ public class InvoiceItem : Entity
         TaxCodeId = taxCodeId;
         TaxRate = taxRate;
         IsGrossEntry = isGrossEntry;
+        ActivityAreaId = activityAreaId;
         RecalculateAmounts();
     }
 

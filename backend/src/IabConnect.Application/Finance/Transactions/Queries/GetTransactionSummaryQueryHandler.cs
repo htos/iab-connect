@@ -13,7 +13,10 @@ public sealed class GetTransactionSummaryQueryHandler : IRequestHandler<GetTrans
 
     public async Task<TransactionSummaryDto> Handle(GetTransactionSummaryQuery request, CancellationToken ct)
     {
-        var (totalIncome, totalExpense) = await _repository.GetSummaryAsync(request.From, request.To, ct);
+        var from = request.From.HasValue ? DateTime.SpecifyKind(request.From.Value, DateTimeKind.Utc) : (DateTime?)null;
+        var to = request.To.HasValue ? DateTime.SpecifyKind(request.To.Value, DateTimeKind.Utc) : (DateTime?)null;
+
+        var (totalIncome, totalExpense) = await _repository.GetSummaryAsync(from, to, ct);
         return new TransactionSummaryDto(totalIncome, totalExpense, totalIncome - totalExpense);
     }
 }

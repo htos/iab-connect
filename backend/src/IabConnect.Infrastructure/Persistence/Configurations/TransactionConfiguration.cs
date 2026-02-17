@@ -88,6 +88,15 @@ public sealed class TransactionConfiguration : IEntityTypeConfiguration<Transact
             .HasForeignKey(t => t.ReceiptId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        // REQ-068: Activity area
+        builder.Property(t => t.ActivityAreaId)
+            .HasColumnName("activity_area_id");
+
+        builder.HasOne(t => t.ActivityArea)
+            .WithMany()
+            .HasForeignKey(t => t.ActivityAreaId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.Property(t => t.CreatedAt)
             .HasColumnName("created_at");
 
