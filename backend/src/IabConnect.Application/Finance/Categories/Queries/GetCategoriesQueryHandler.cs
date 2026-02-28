@@ -1,8 +1,9 @@
+using IabConnect.Application.Common;
 using MediatR;
 
 namespace IabConnect.Application.Finance.Categories.Queries;
 
-public sealed class GetCategoriesQueryHandler : IRequestHandler<GetCategoriesQuery, List<CategoryDto>>
+public sealed class GetCategoriesQueryHandler : IRequestHandler<GetCategoriesQuery, PagedResult<CategoryDto>>
 {
     private readonly ICategoryRepository _repository;
 
@@ -11,11 +12,20 @@ public sealed class GetCategoriesQueryHandler : IRequestHandler<GetCategoriesQue
         _repository = repository;
     }
 
-    public async Task<List<CategoryDto>> Handle(GetCategoriesQuery request, CancellationToken ct)
+    public async Task<PagedResult<CategoryDto>> Handle(GetCategoriesQuery request, CancellationToken ct)
     {
         var categories = await _repository.GetAllAsync(ct);
-        return categories.Select(c => new CategoryDto(
+        var dtos = categories.Select(c => new CategoryDto(
             c.Id, c.Name, c.Type.ToString(), c.Color,
-            c.IsActive, c.CreatedAt, c.CreatedBy)).ToList();
+            c.IsActive, c.CreatedAt, c.CreatedBy));
+
+        var (field, desc) = PaginationHelper.ParseSort(request.Sort, "name", false);
+        var sorted = field.ToLowerInvariant() switch
+        {
+            "createdat" => dtos.ApplySort(c => c.CreatedAt, desc),
+            _ => dtos.ApplySort(c => c.Name, desc)
+        };
+
+        return sorted.ToPagedResult(request.Page, request.PageSize);
     }
 }

@@ -12,10 +12,10 @@ public static class AuditEndpoints
 {
     public static void MapAuditEndpoints(this IEndpointRouteBuilder routes)
     {
-        // Admin-only endpoints for viewing audit logs
+        // Admin and auditor endpoints for viewing audit logs
         var adminGroup = routes.MapGroup("/api/v1/audit")
             .WithTags("Audit")
-            .RequireAuthorization(policy => policy.RequireRole("admin"));
+            .RequireAuthorization(policy => policy.RequireRole("admin", "auditor"));
 
         adminGroup.MapGet("/", GetAuditEvents)
             .WithName("GetAuditEvents")

@@ -149,7 +149,8 @@ export default function ActivityAreasPage() {
       if (response.error) {
         setError(response.error);
       } else if (response.data) {
-        const sorted = (response.data as ActivityArea[]).sort(
+        const body = response.data as unknown as { items: ActivityArea[] };
+        const sorted = (body.items ?? []).sort(
           (a, b) => a.sortOrder - b.sortOrder
         );
         setAreas(sorted);

@@ -36,6 +36,9 @@ public enum AuditEventType
     FinanceDeleted,
     FinanceExported,
     FinanceStatusChanged,
+    FinanceArchived,
+    FinanceRestored,
+    FinancePurged,
 
     // Data access events
     DataExported,

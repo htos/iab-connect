@@ -160,7 +160,8 @@ export default function TaxCodesPage() {
       if (response.error) {
         setError(response.error);
       } else if (response.data) {
-        setTaxCodes(response.data as TaxCode[]);
+        const body = response.data as unknown as { items: TaxCode[] };
+        setTaxCodes(body.items ?? []);
       }
     } catch {
       setError(tRef.current("loadError"));

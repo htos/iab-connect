@@ -1,5 +1,7 @@
+using IabConnect.Application.Audit;
 using IabConnect.Application.Common;
 using IabConnect.Application.Finance.BankImports.Queries;
+using IabConnect.Domain.Audit;
 using IabConnect.Domain.Finance;
 using MediatR;
 
@@ -10,13 +12,16 @@ public sealed class IgnoreBankImportItemCommandHandler
 {
     private readonly IBankImportRepository _repository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAuditService _auditService;
 
     public IgnoreBankImportItemCommandHandler(
         IBankImportRepository repository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IAuditService auditService)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
+        _auditService = auditService;
     }
 
     public async Task<BankImportItemDto?> Handle(IgnoreBankImportItemCommand request, CancellationToken ct)
@@ -34,6 +39,13 @@ public sealed class IgnoreBankImportItemCommandHandler
 
         await _repository.UpdateAsync(bankImport, ct);
         await _unitOfWork.SaveChangesAsync(ct);
+
+        await _auditService.LogActionAsync(
+            AuditEventType.FinanceUpdated,
+            $"Bank import item ignored",
+            entityType: "BankImportItem",
+            entityId: request.ItemId.ToString(),
+            ct: ct);
 
         return GetBankImportsQueryHandler.MapItemDto(item);
     }

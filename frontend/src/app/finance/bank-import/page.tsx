@@ -79,7 +79,8 @@ export default function BankImportPage() {
     try {
       const res = await apiRef.current.get("/api/v1/finance/bank-imports");
       if (res.error) throw new Error(res.error);
-      setImports(res.data as BankImport[]);
+      const body = res.data as { items: BankImport[] };
+      setImports(body.items ?? []);
     } catch {
       setError("Failed to load bank imports");
     } finally {

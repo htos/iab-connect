@@ -113,8 +113,10 @@ export default function FinanceDashboardPage() {
           totalAmount: invoiceList.reduce((sum, inv) => sum + inv.total, 0),
         });
       }
-      if (transactionsRes.data)
-        setRecentTransactions((transactionsRes.data as Transaction[]).slice(0, 10));
+      if (transactionsRes.data) {
+        const body = transactionsRes.data as unknown as { items: Transaction[] };
+        setRecentTransactions((body.items ?? []).slice(0, 10));
+      }
     } catch {
       setError("Failed to load dashboard data");
     } finally {

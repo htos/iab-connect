@@ -31,7 +31,13 @@ public static class FiscalPeriodEndpoints
         [AsParameters] FiscalPeriodFilterRequest filter,
         ISender sender)
     {
-        var query = new GetFiscalPeriodsQuery(filter.Year);
+        var query = new GetFiscalPeriodsQuery(filter.Year)
+        {
+            Page = filter.Page ?? 1,
+            PageSize = filter.PageSize ?? 20,
+            Sort = filter.Sort,
+            Filter = filter.Filter
+        };
         var result = await sender.Send(query);
         return Results.Ok(result);
     }
@@ -118,7 +124,9 @@ public static class FiscalPeriodEndpoints
     }
 
     // Request records
-    public sealed record FiscalPeriodFilterRequest(int? Year = null);
+    public sealed record FiscalPeriodFilterRequest(
+        int? Year = null, int? Page = null, int? PageSize = null,
+        string? Sort = null, string? Filter = null);
     public sealed record GeneratePeriodsRequest(int Year);
     public sealed record LockPeriodRequest(string? Notes);
     public sealed record ClosePeriodRequest(string? Notes);

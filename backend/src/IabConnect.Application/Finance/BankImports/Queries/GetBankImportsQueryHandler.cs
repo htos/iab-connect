@@ -1,9 +1,10 @@
+using IabConnect.Application.Common;
 using IabConnect.Domain.Finance;
 using MediatR;
 
 namespace IabConnect.Application.Finance.BankImports.Queries;
 
-public sealed class GetBankImportsQueryHandler : IRequestHandler<GetBankImportsQuery, List<BankImportDto>>
+public sealed class GetBankImportsQueryHandler : IRequestHandler<GetBankImportsQuery, PagedResult<BankImportDto>>
 {
     private readonly IBankImportRepository _repository;
 
@@ -12,10 +13,19 @@ public sealed class GetBankImportsQueryHandler : IRequestHandler<GetBankImportsQ
         _repository = repository;
     }
 
-    public async Task<List<BankImportDto>> Handle(GetBankImportsQuery request, CancellationToken ct)
+    public async Task<PagedResult<BankImportDto>> Handle(GetBankImportsQuery request, CancellationToken ct)
     {
         var imports = await _repository.GetAllAsync(ct);
-        return imports.Select(MapToDto).ToList();
+        var dtos = imports.Select(MapToDto);
+
+        var (field, desc) = PaginationHelper.ParseSort(request.Sort, "importDate", true);
+        var sorted = field.ToLowerInvariant() switch
+        {
+            "filename" => dtos.ApplySort(b => b.FileName, desc),
+            _ => dtos.ApplySort(b => b.ImportDate, desc)
+        };
+
+        return sorted.ToPagedResult(request.Page, request.PageSize);
     }
 
     internal static BankImportDto MapToDto(BankImport bi) =>

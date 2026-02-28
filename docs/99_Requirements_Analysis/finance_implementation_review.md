@@ -1,7 +1,7 @@
 # Finance-Modul — Vollständige Implementierungsanalyse
 
 > **Zweck:** Fachliche und technische Validierung durch einen Finanzexperten und einen Entwickler  
-> **Stand:** 27.02.2026  
+> **Stand:** 28.02.2026  
 > **Scope:** Backend (Domain, Application, API, Infrastructure), Frontend (Pages, Types, Navigation), Tests  
 > **Projekt:** IAB Connect — Vereinsverwaltung für einen indisch-asiatischen Kulturverein
 
@@ -166,13 +166,22 @@ Das Finanzmodul bildet eine **vereinfachte Einnahmen-Ausgaben-Rechnung** ab. Es 
 | **REQ-068** | ActivityArea Dimension-Tagging | Could have | ✅ Done | Tagging auf Buchungen + Rechnungspositionen, P&L-Report |
 | **REQ-069** | camt Import (ISO 20022) | Should have | ✅ Done | camt.053/054 Parser, 5-stufiger Matcher |
 
+### Sprint 5 Finanz-Requirements
+
+| ID | Titel | Priorität | Status | Beschreibung |
+|---|---|---|---|---|
+| **REQ-070** | Revisionssicheres Archiv / Retention | Must have | ✅ Done | IArchivable auf Receipt/Invoice/Transaction, Archive/Restore/Purge, 10-Jahre Retention |
+| **REQ-071** | Rechnungsnummern-Serien (konkurenzsicher) | Must have | ✅ Done | InvoiceNumberCounter mit PostgreSQL UPSERT, per Profile/FiscalYear, immutable nach Send |
+| **REQ-072** | eInvoice Validierung (EN 16931 / CIUS) | Should have | ✅ Done | En16931Validator, BR-01..BR-AE-01, ICiusProfile, strukturierte ValidationErrors |
+| **REQ-073** | pain.001 Export (CH SPS / SEPA) | Could have | ✅ Done | Pain001Generator, pain.001.001.09, Export + Validate Endpoints |
+
 ---
 
 ## 4. Datenmodell im Detail
 
 ### 4.1 Entity-Übersicht
 
-Das Finanzmodul umfasst **16 Domain-Entities**, die alle dem Rich Domain Model Pattern folgen (private Setter, Factory-Methoden, Geschäftslogik in der Entity):
+Das Finanzmodul umfasst **17 Domain-Entities**, die alle dem Rich Domain Model Pattern folgen (private Setter, Factory-Methoden, Geschäftslogik in der Entity):
 
 ```
 Account ──────────┐
@@ -856,21 +865,25 @@ Alle Abhängigkeiten werden über das DI-System registriert:
 
 | Method | Route | Auth | Beschreibung |
 |---|---|---|---|
-| `GET` | `/` | FinanceRead | Alle Konten laden |
+| `GET` | `/` | FinanceRead | Alle Konten laden (paginiert) |
 | `GET` | `/{id}` | FinanceRead | Konto nach ID |
 | `POST` | `/` | FinanceWrite | Konto erstellen (auditiert) |
 | `PUT` | `/{id}` | FinanceWrite | Konto aktualisieren (auditiert) |
 | `DELETE` | `/{id}` | FinanceWrite | Konto löschen (Soft-Delete, auditiert) |
+| `POST` | `/{id}/activate` | FinanceWrite | Konto aktivieren |
+| `POST` | `/{id}/deactivate` | FinanceWrite | Konto deaktivieren |
 
 ### 7.2 Kategorien (`/api/v1/finance/categories`)
 
 | Method | Route | Auth | Beschreibung |
 |---|---|---|---|
-| `GET` | `/` | FinanceRead | Alle Kategorien |
+| `GET` | `/` | FinanceRead | Alle Kategorien (paginiert) |
 | `GET` | `/{id}` | FinanceRead | Kategorie nach ID |
 | `POST` | `/` | FinanceWrite | Kategorie erstellen |
 | `PUT` | `/{id}` | FinanceWrite | Kategorie aktualisieren |
 | `DELETE` | `/{id}` | FinanceWrite | Kategorie löschen |
+| `POST` | `/{id}/activate` | FinanceWrite | Kategorie aktivieren |
+| `POST` | `/{id}/deactivate` | FinanceWrite | Kategorie deaktivieren |
 
 ### 7.3 Buchungen (`/api/v1/finance/transactions`)
 
@@ -889,8 +902,8 @@ Alle Abhängigkeiten werden über das DI-System registriert:
 
 | Method | Route | Auth | Beschreibung |
 |---|---|---|---|
-| `GET` | `/` | FinanceRead | Rechnungen (Filter: `status`) |
-| `GET` | `/open` | FinanceRead | Offene Rechnungen (Sent + Overdue) |
+| `GET` | `/` | FinanceRead | Rechnungen (Filter: `status`) (paginiert) |
+| `GET` | `/open` | FinanceRead | Offene Rechnungen (Sent + Overdue) (paginiert) |
 | `GET` | `/{id}` | FinanceRead | Rechnungsdetail mit Positionen |
 | `POST` | `/` | FinanceWrite | Rechnung erstellen (Periodensperre-Check) |
 | `PUT` | `/{id}` | FinanceWrite | Rechnung aktualisieren (nur Draft) |
@@ -899,6 +912,10 @@ Alle Abhängigkeiten werden über das DI-System registriert:
 | `POST` | `/{id}/cancel` | FinanceWrite | Rechnung stornieren (+ Gegenbuchung) |
 | `GET` | `/{id}/pdf` | FinanceRead | PDF herunterladen |
 | `GET` | `/{id}/einvoice` | FinanceRead | eInvoice UBL 2.1 XML (Feature-flagged) |
+| `POST` | `/{id}/mark-overdue` | FinanceWrite | Als überfällig markieren |
+| `POST` | `/{id}/archive` | FinanceWrite | Rechnung archivieren (IArchivable) |
+| `POST` | `/{id}/restore` | FinanceWrite | Rechnung wiederherstellen (Admin) |
+| `POST` | `/{id}/validate-einvoice` | FinanceRead | eInvoice EN 16931 Validierung |
 
 ### 7.5 Zahlungen (`/api/v1/finance/payments`)
 
@@ -926,12 +943,13 @@ Alle Abhängigkeiten werden über das DI-System registriert:
 | `GET` | `/{id}` | FinanceRead | Import-Detail mit Items |
 | `PUT` | `/{id}/items/{itemId}/match` | FinanceWrite | Item matchen |
 | `PUT` | `/{id}/items/{itemId}/ignore` | FinanceWrite | Item ignorieren |
+| `PUT` | `/{id}/items/{itemId}/unmatch` | FinanceWrite | Item unmatch |
 
 ### 7.7 Mahnwesen (`/api/v1/finance/dunning`)
 
 | Method | Route | Auth | Beschreibung |
 |---|---|---|---|
-| `GET` | `/` | FinanceRead | Alle Mahnungen |
+| `GET` | `/` | FinanceRead | Alle Mahnungen (Filter: `invoiceId`) (paginiert) |
 | `POST` | `/` | FinanceWrite | Mahnung erstellen |
 | `POST` | `/{id}/send` | FinanceWrite | Mahnung als versendet markieren |
 
@@ -944,6 +962,8 @@ Alle Abhängigkeiten werden über das DI-System registriert:
 | `GET` | `/{id}` | FinanceRead | Beleg-Metadaten |
 | `GET` | `/{id}/download` | FinanceRead | Datei herunterladen |
 | `DELETE` | `/{id}` | FinanceWrite | Beleg löschen (Soft-Delete + S3-Löschung) |
+| `POST` | `/{id}/archive` | FinanceWrite | Beleg archivieren (IArchivable) |
+| `POST` | `/{id}/restore` | FinanceWrite | Beleg wiederherstellen (Admin) |
 
 ### 7.9 Spesenabrechnungen (`/api/v1/finance/expense-claims`)
 
@@ -1008,6 +1028,20 @@ Alle Abhängigkeiten werden über das DI-System registriert:
 | `GET` | `/journal` | FinanceRead | Buchungsjournal-CSV (Filter: `from`, `to`) |
 | `GET` | `/open-items` | FinanceRead | Offene-Posten-CSV |
 | `GET` | `/vat-summary` | FinanceRead | MwSt-Zusammenfassung-CSV (Filter: `from`, `to`) |
+| `POST` | `/pain001` | FinanceWrite | pain.001 Zahlungsdatei Export (CH SPS / SEPA) |
+| `POST` | `/pain001/validate` | FinanceRead | pain.001 Validierung vor Export |
+
+### 7.17 Admin (`/api/v1/admin/finance`)
+
+| Method | Route | Auth | Beschreibung |
+|---|---|---|---|
+| `POST` | `/purge-archived` | Admin | Archivierte Daten nach RetainUntil endgültig löschen |
+
+### 7.18 Pagination (alle Listen-Endpunkte)
+
+Alle 13 GET-Listen-Endpunkte unterstützen einheitliche Pagination:
+- Query-Parameter: `?page=1&pageSize=20&sort=date:desc&filter=status:Sent`
+- Response: `PagedResult<T>` mit `items`, `page`, `pageSize`, `totalCount`, `totalPages`
 
 ### 7.15 Dashboard (`/api/v1/finance/dashboard`)
 
@@ -1646,32 +1680,52 @@ Jeder Audit-Eintrag enthält:
 | Thema | Beschreibung | Priorität |
 |---|---|---|
 | **Keine doppelte Buchführung** | Das System ist eine Einnahmen-Ausgaben-Rechnung, KEIN doppeltes Buchführungssystem (Soll/Haben) | Design-Entscheidung |
-| **Kein automatischer Mahnlauf** | Rechnungen werden nicht automatisch als "überfällig" markiert | Mittel |
 | **Kein E-Mail-Versand bei Mahnungen** | "Senden" ändert nur den Status, versendet keine E-Mail | Mittel |
 | **Keine Teilzahlungs-Tracking** | Es gibt kein "Restzahlung"-Feld auf der Rechnung (wird über Summe aller Payments berechnet) | Design-Entscheidung |
 | **Budget/Kostenstellen** | REQ-044 ist nicht implementiert | Backlog |
 | **Kein Bearbeitungs-UI für bestehende Rechnungen** | Nur Draft-Rechnungen können via API bearbeitet werden, kein Frontend-Editor für Änderungen | Mittel |
 
+**Erledigt (Sprint 5):**
+- ✅ Automatischer Mahnlauf: Hangfire MarkInvoicesOverdueJob (täglich) markiert überfällige Rechnungen
+- ✅ DunningScheduleGenerationJob (wöchentlich) generiert Mahnungen automatisch
+
 ### 24.2 Technische Einschränkungen
 
 | Thema | Beschreibung | Priorität |
 |---|---|---|
-| **Race Condition bei Rechnungsnummern** | Kein DB-Level-Lock bei `GetNextInvoiceNumberAsync()` | Mittel |
-| **Keine Paginierung** | Alle Listen-Endpunkte laden alle Daten | Mittel |
 | **CSV-Parsing client-seitig** | Bankimport-CSV wird im Browser geparst | Niedrig |
 | **MwSt-Berechnung nur Brutto→Netto bei Buchungen** | Bei Transactions wird IMMER vom Brutto herausgerechnet (kein Umschalten auf Nettoeingabe wie bei InvoiceItems) | Fachlich zu prüfen |
 | **Frontend: Inline API-Calls** | Kein dedizierter Finance-API-Service, alle Calls inline in Komponenten | Qualität |
 | **Mahnung ohne Überfälligkeits-Check** | `DunningNotice.Create()` prüft nicht den Invoice-Status | Mittel |
 
-### 24.3 Fehlende API-Endpunkte (Domain-Methoden existieren)
+**Erledigt (Sprint 5):**
+- ✅ Race Condition bei Rechnungsnummern: Gelöst durch InvoiceNumberCounter mit PostgreSQL atomic UPSERT (REQ-071)
+- ✅ Paginierung: Alle 13 Listen-Endpunkte paginiert (PagedResult<T> mit page/pageSize/sort/filter)
+- ✅ BankImport-Match/Ignore Audit-Logging implementiert
+- ✅ InvoiceTemplate: Soft-Delete statt Hard-Delete (ISoftDeletable)
 
-| Feature | Domain-Methode | API-Endpunkt |
-|---|---|---|
-| Rechnungs-Überfälligkeits-Markierung | `Invoice.MarkAsOverdue()` | Fehlt (braucht Scheduled Job) |
-| Konto aktivieren/deaktivieren | `Account.Activate()/Deactivate()` | Fehlt |
-| Kategorie aktivieren/deaktivieren | `Category.Activate()/Deactivate()` | Fehlt |
-| Bank-Import-Item unmatch | `BankImportItem.Unmatch()` | Fehlt |
-| Mahnungen nach Rechnung filtern | `IDunningNoticeRepository.GetByInvoiceIdAsync()` | Fehlt |
+### 24.3 Fehlende API-Endpunkte — ERLEDIGT (Sprint 5)
+
+Alle zuvor fehlenden Endpunkte wurden implementiert:
+
+| Feature | Domain-Methode | API-Endpunkt | Status |
+|---|---|---|---|
+| Rechnungs-Überfälligkeits-Markierung | `Invoice.MarkAsOverdue()` | POST `/{id}/mark-overdue` | ✅ Erledigt |
+| Konto aktivieren/deaktivieren | `Account.Activate()/Deactivate()` | POST `/{id}/activate`, POST `/{id}/deactivate` | ✅ Erledigt |
+| Kategorie aktivieren/deaktivieren | `Category.Activate()/Deactivate()` | POST `/{id}/activate`, POST `/{id}/deactivate` | ✅ Erledigt |
+| Bank-Import-Item unmatch | `BankImportItem.Unmatch()` | PUT `/{id}/items/{itemId}/unmatch` | ✅ Erledigt |
+| Mahnungen nach Rechnung filtern | `IDunningNoticeRepository.GetByInvoiceIdAsync()` | GET `/dunning?invoiceId=` | ✅ Erledigt |
+
+### 24.4 Neue Fähigkeiten (Sprint 5)
+
+| Feature | Beschreibung |
+|---|---|
+| **Archivierung/Retention (REQ-070)** | IArchivable Interface auf Receipt, Invoice, Transaction. Archive/Restore/Purge Endpoints. 10-Jahre Retention. Read-only wenn archiviert. |
+| **eInvoice Validierung (REQ-072)** | En16931Validator mit BR-01..BR-AE-01 Business Rules. ICiusProfile Extension Point. POST /invoices/{id}/validate-einvoice. |
+| **pain.001 Export (REQ-073)** | Pain001Generator (CH SPS + SEPA). pain.001.001.09 Format. Export und Validate Endpoints. |
+| **InvoiceNumberCounter (REQ-071)** | PostgreSQL atomic UPSERT. Per-Profile, Per-Fiscal-Year. Immutable nach Send. |
+| **Hangfire Background Jobs** | MarkInvoicesOverdueJob (täglich), DunningScheduleGenerationJob (wöchentlich). Idempotent, AutoRetry(3). |
+| **AccountType korrigiert** | Cash, Bank, Other (nicht Income/Expense/Asset/Liability). |
 
 ---
 
@@ -1708,4 +1762,4 @@ Jeder Audit-Eintrag enthält:
 
 ---
 
-> **Zusammenfassung:** Das Finanzmodul ist umfangreich implementiert mit 16 Domain-Entities, ~210 CQRS-Dateien, 420+ Unit-Tests, vollständiger Frontend-Abdeckung und erweiterten Features (Swiss QR-Bill, eInvoice UBL 2.1, Periodensperre, Spesen-Workflow, camt-Import). Die größten offenen Punkte sind: fehlender automatischer Mahnlauf, keine Paginierung, Race Condition bei Rechnungsnummern und fehlendes E-Mail-Versand bei Mahnungen.
+> **Zusammenfassung:** Das Finanzmodul ist umfangreich implementiert mit 17 Domain-Entities, ~210 CQRS-Dateien, 420+ Unit-Tests, vollständiger Frontend-Abdeckung und erweiterten Features (Swiss QR-Bill, eInvoice UBL 2.1 + Validierung, Periodensperre, Spesen-Workflow, camt-Import, pain.001 Export, Archivierung/Retention, InvoiceNumberCounter). Alle Listen-Endpunkte sind paginiert. Hangfire Background Jobs für automatische Überfälligkeits-Markierung und Mahnungsgenerierung. Die größten verbleibenden offenen Punkte sind: fehlendes E-Mail-Versand bei Mahnungen, Budget/Kostenstellen (REQ-044), Frontend-Refactoring (shared API service, TypeScript types, i18n) und Integration-Tests.

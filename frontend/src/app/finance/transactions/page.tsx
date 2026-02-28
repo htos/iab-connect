@@ -225,14 +225,20 @@ export default function TransactionsPage() {
 
   const fetchAccounts = useCallback(async () => {
     const res = await apiRef.current.get<Account[]>("/api/v1/finance/accounts");
-    if (res.data) setAccounts(res.data as Account[]);
+    if (res.data) {
+      const body = res.data as unknown as { items: Account[] };
+      setAccounts(body.items ?? []);
+    }
   }, []);
 
   const fetchCategories = useCallback(async () => {
     const res = await apiRef.current.get<Category[]>(
       "/api/v1/finance/categories"
     );
-    if (res.data) setCategories(res.data as Category[]);
+    if (res.data) {
+      const body = res.data as unknown as { items: Category[] };
+      setCategories(body.items ?? []);
+    }
   }, []);
 
   const fetchActivityAreas = useCallback(async () => {
@@ -240,7 +246,8 @@ export default function TransactionsPage() {
       "/api/v1/finance/activity-areas"
     );
     if (res.data) {
-      const active = (res.data as ActivityArea[]).filter((a) => a.isActive).sort((a, b) => a.sortOrder - b.sortOrder);
+      const body = res.data as unknown as { items: ActivityArea[] };
+      const active = (body.items ?? []).filter((a) => a.isActive).sort((a, b) => a.sortOrder - b.sortOrder);
       setActivityAreas(active);
     }
   }, []);
@@ -264,7 +271,8 @@ export default function TransactionsPage() {
       if (res.error) {
         setError(res.error);
       } else if (res.data) {
-        setTransactions(res.data as Transaction[]);
+        const body = res.data as unknown as { items: Transaction[] };
+        setTransactions(body.items ?? []);
       }
     } catch {
       setError("Failed to load transactions");
@@ -405,7 +413,10 @@ export default function TransactionsPage() {
   const fetchReceipts = useCallback(async () => {
     try {
       const res = await apiRef.current.get<Receipt[]>("/api/v1/finance/receipts");
-      if (res.data) setReceipts(res.data as Receipt[]);
+      if (res.data) {
+        const body = res.data as unknown as { items: Receipt[] };
+        setReceipts(body.items ?? []);
+      }
     } catch { /* ignore */ }
   }, []);
 

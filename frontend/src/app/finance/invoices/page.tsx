@@ -183,7 +183,8 @@ export default function InvoicesPage() {
       if (res.error) {
         setError(res.error);
       } else if (res.data) {
-        setInvoices(res.data as Invoice[]);
+        const body = res.data as unknown as { items: Invoice[] };
+        setInvoices(body.items ?? []);
       }
     } catch {
       setError("Failed to load invoices");

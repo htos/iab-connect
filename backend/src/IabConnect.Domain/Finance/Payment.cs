@@ -171,6 +171,15 @@ public class Payment : Entity, ISoftDeletable
         UpdatedAt = DateTime.UtcNow;
     }
 
+    /// <summary>
+    /// Clears the linked transaction (e.g. when a bank import match is reversed).
+    /// </summary>
+    public void ClearTransaction()
+    {
+        TransactionId = null;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     public void AttachReceipt(Guid receiptId)
     {
         ReceiptId = receiptId;

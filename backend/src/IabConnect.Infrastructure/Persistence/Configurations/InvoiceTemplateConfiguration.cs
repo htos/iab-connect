@@ -95,11 +95,23 @@ public sealed class InvoiceTemplateConfiguration : IEntityTypeConfiguration<Invo
         builder.Property(t => t.UpdatedAt)
             .HasColumnName("updated_at");
 
+        builder.Property(t => t.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasDefaultValue(false);
+
+        builder.Property(t => t.DeletedAt)
+            .HasColumnName("deleted_at");
+
         // Unique index: only one default template per jurisdiction + country_code
         builder.HasIndex(t => new { t.Jurisdiction, t.CountryCode, t.IsDefault })
             .IsUnique()
             .HasFilter("is_default = true")
             .HasDatabaseName("ix_invoice_templates_jurisdiction_country_default");
+
+        builder.HasQueryFilter(t => !t.IsDeleted);
+
+        builder.HasIndex(t => t.IsDeleted)
+            .HasDatabaseName("ix_invoice_templates_is_deleted");
 
         builder.Ignore(t => t.DomainEvents);
     }

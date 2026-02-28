@@ -1,3 +1,4 @@
+using IabConnect.Application.Common;
 using MediatR;
 
 namespace IabConnect.Application.Finance.DunningNotices.Queries;
@@ -9,6 +10,12 @@ public sealed record DunningNoticeDto(
     string? Notes, string CreatedBy);
 
 /// <summary>
-/// Query to get all dunning notices (REQ-042)
+/// Query to get all dunning notices, optionally filtered by invoice (REQ-042) with pagination support
 /// </summary>
-public sealed record GetDunningNoticesQuery : IRequest<List<DunningNoticeDto>>;
+public sealed record GetDunningNoticesQuery(Guid? InvoiceId = null) : IRequest<PagedResult<DunningNoticeDto>>
+{
+    public int Page { get; init; } = 1;
+    public int PageSize { get; init; } = 20;
+    public string? Sort { get; init; }
+    public string? Filter { get; init; }
+}

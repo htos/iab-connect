@@ -32,12 +32,13 @@ public interface ICategoryRepository
 /// </summary>
 public interface ITransactionRepository
 {
-    Task<List<Transaction>> GetAllAsync(DateTime? from = null, DateTime? to = null, TransactionType? type = null, CancellationToken ct = default);
+    Task<List<Transaction>> GetAllAsync(DateTime? from = null, DateTime? to = null, TransactionType? type = null, bool includeArchived = false, CancellationToken ct = default);
     Task<Transaction?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task AddAsync(Transaction transaction, CancellationToken ct = default);
     Task UpdateAsync(Transaction transaction, CancellationToken ct = default);
     Task DeleteAsync(Guid id, CancellationToken ct = default);
     Task<(decimal totalIncome, decimal totalExpense)> GetSummaryAsync(DateTime? from = null, DateTime? to = null, CancellationToken ct = default);
+    Task<List<Transaction>> GetArchivedAsync(CancellationToken ct = default);
 }
 
 /// <summary>
@@ -45,7 +46,7 @@ public interface ITransactionRepository
 /// </summary>
 public interface IInvoiceRepository
 {
-    Task<List<Invoice>> GetAllAsync(InvoiceStatus? status = null, CancellationToken ct = default);
+    Task<List<Invoice>> GetAllAsync(InvoiceStatus? status = null, bool includeArchived = false, CancellationToken ct = default);
     Task<Invoice?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<Invoice?> GetByIdIncludingDeletedAsync(Guid id, CancellationToken ct = default);
     Task<Invoice?> GetByNumberAsync(string invoiceNumber, CancellationToken ct = default);
@@ -54,6 +55,7 @@ public interface IInvoiceRepository
     Task DeleteAsync(Guid id, CancellationToken ct = default);
     Task<List<Invoice>> GetOpenItemsAsync(CancellationToken ct = default);
     Task<string> GetNextInvoiceNumberAsync(CancellationToken ct = default);
+    Task<List<Invoice>> GetArchivedAsync(CancellationToken ct = default);
 }
 
 /// <summary>
@@ -63,6 +65,7 @@ public interface IPaymentRepository
 {
     Task<List<Payment>> GetAllAsync(CancellationToken ct = default);
     Task<Payment?> GetByIdAsync(Guid id, CancellationToken ct = default);
+    Task<List<Payment>> GetByIdsAsync(List<Guid> ids, CancellationToken ct = default);
     Task<List<Payment>> GetByInvoiceIdAsync(Guid invoiceId, CancellationToken ct = default);
     Task AddAsync(Payment payment, CancellationToken ct = default);
     Task UpdateAsync(Payment payment, CancellationToken ct = default);
@@ -97,11 +100,14 @@ public interface IDunningNoticeRepository
 /// </summary>
 public interface IReceiptRepository
 {
-    Task<List<Receipt>> GetAllAsync(CancellationToken ct = default);
+    Task<List<Receipt>> GetAllAsync(bool includeArchived = false, CancellationToken ct = default);
     Task<Receipt?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task AddAsync(Receipt receipt, CancellationToken ct = default);
     Task UpdateAsync(Receipt receipt, CancellationToken ct = default);
     Task DeleteAsync(Guid id, CancellationToken ct = default);
+    Task<List<Receipt>> GetArchivedAsync(CancellationToken ct = default);
+    Task<List<Receipt>> GetExpiredArchivedAsync(DateTimeOffset asOf, CancellationToken ct = default);
+    Task RemoveAsync(Receipt receipt, CancellationToken ct = default);
 }
 
 /// <summary>

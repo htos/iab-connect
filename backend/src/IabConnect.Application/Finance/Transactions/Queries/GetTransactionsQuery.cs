@@ -1,3 +1,4 @@
+using IabConnect.Application.Common;
 using MediatR;
 
 namespace IabConnect.Application.Finance.Transactions.Queries;
@@ -14,11 +15,15 @@ public sealed record TransactionDto(
     DateTime CreatedAt, string CreatedBy, DateTime? UpdatedAt, string? UpdatedBy);
 
 /// <summary>
-/// Query to get transactions with optional filters (REQ-038)
+/// Query to get transactions with optional filters (REQ-038) with pagination support
 /// </summary>
-public sealed record GetTransactionsQuery : IRequest<List<TransactionDto>>
+public sealed record GetTransactionsQuery : IRequest<PagedResult<TransactionDto>>
 {
     public DateTime? From { get; init; }
     public DateTime? To { get; init; }
     public string? Type { get; init; }
+    public int Page { get; init; } = 1;
+    public int PageSize { get; init; } = 20;
+    public string? Sort { get; init; }
+    public string? Filter { get; init; }
 }

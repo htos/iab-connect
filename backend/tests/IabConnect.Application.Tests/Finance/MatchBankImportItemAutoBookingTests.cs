@@ -1,4 +1,5 @@
 using FluentAssertions;
+using IabConnect.Application.Audit;
 using IabConnect.Application.Common;
 using IabConnect.Application.Finance;
 using IabConnect.Application.Finance.BankImports.Commands;
@@ -18,10 +19,11 @@ public class MatchBankImportItemAutoBookingTests
     private readonly Mock<IPaymentRepository> _paymentRepo = new();
     private readonly Mock<IAutoBookingService> _autoBookingService = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IAuditService> _auditService = new();
 
     private MatchBankImportItemCommandHandler CreateHandler() =>
         new(_bankImportRepo.Object, _paymentRepo.Object,
-            _autoBookingService.Object, _unitOfWork.Object);
+            _autoBookingService.Object, _unitOfWork.Object, _auditService.Object);
 
     private static BankImport CreateBankImportWithItem(out BankImportItem item)
     {

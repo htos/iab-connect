@@ -29,18 +29,20 @@ public sealed class DeleteReceiptCommandHandler : IRequestHandler<DeleteReceiptC
         var receipt = await _repository.GetByIdAsync(request.Id, ct);
         if (receipt is null) return false;
 
-        if (!string.IsNullOrEmpty(receipt.FilePath))
-        {
-            await _documentStorage.DeleteReceiptAsync(receipt.FilePath, ct);
-        }
+        // REQ-070: Archive instead of soft-delete for compliance retention
+        if (receipt.IsArchived)
+            throw new InvalidOperationException("Receipt is already archived.");
 
-        receipt.SoftDelete(request.UserName);
+        var fiscalYearEnd = new DateTimeOffset(DateTime.UtcNow.Year, 12, 31, 23, 59, 59, TimeSpan.Zero);
+        var retainUntil = fiscalYearEnd.AddYears(10);
+
+        receipt.Archive(request.UserName ?? "system", "Deleted via receipt management", retainUntil);
         await _repository.UpdateAsync(receipt, ct);
         await _unitOfWork.SaveChangesAsync(ct);
 
         await _auditService.LogActionAsync(
-            AuditEventType.FinanceDeleted,
-            $"Receipt '{receipt.FileName}' soft-deleted and file removed from storage",
+            AuditEventType.FinanceArchived,
+            $"Receipt '{receipt.FileName}' archived (was delete request) with 10-year retention",
             entityType: "Receipt",
             entityId: request.Id.ToString(),
             ct: ct);

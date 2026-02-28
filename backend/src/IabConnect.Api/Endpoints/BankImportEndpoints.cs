@@ -45,6 +45,12 @@ public static class BankImportEndpoints
             .WithSummary("Ignore a bank import item")
             .WithDescription("REQ-041: Marks a bank import item as ignored.");
 
+        group.MapPut("/{id:guid}/items/{itemId:guid}/unmatch", UnmatchItem)
+            .RequireAuthorization("RequireFinanceWrite")
+            .WithName("UnmatchBankImportItem")
+            .WithSummary("Unmatch a bank import item")
+            .WithDescription("REQ-041: Reverses a previous match, deleting any auto-created transaction.");
+
         group.MapPost("/import-camt", ImportCamt)
             .RequireAuthorization("RequireFinanceWrite")
             .DisableAntiforgery()
@@ -58,9 +64,16 @@ public static class BankImportEndpoints
         ?? ctx.User.FindFirst(ClaimTypes.Email)?.Value
         ?? "system";
 
-    private static async Task<IResult> GetAll(ISender sender, CancellationToken ct)
+    private static async Task<IResult> GetAll(
+        ISender sender, int? page, int? pageSize, string? sort, string? filter, CancellationToken ct)
     {
-        var imports = await sender.Send(new GetBankImportsQuery(), ct);
+        var imports = await sender.Send(new GetBankImportsQuery
+        {
+            Page = page ?? 1,
+            PageSize = pageSize ?? 20,
+            Sort = sort,
+            Filter = filter
+        }, ct);
         return Results.Ok(imports);
     }
 
@@ -104,6 +117,24 @@ public static class BankImportEndpoints
         return dto is null
             ? Results.NotFound(new { Message = "Bank import or item not found." })
             : Results.Ok(dto);
+    }
+
+    private static async Task<IResult> UnmatchItem(
+        Guid id, Guid itemId, ISender sender,
+        HttpContext httpContext, CancellationToken ct)
+    {
+        try
+        {
+            var dto = await sender.Send(
+                new UnmatchBankImportItemCommand(id, itemId, GetUserName(httpContext)), ct);
+            return dto is null
+                ? Results.NotFound(new { Message = "Bank import or item not found." })
+                : Results.Ok(dto);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(new { Message = ex.Message });
+        }
     }
 
     private static async Task<IResult> ImportCamt(

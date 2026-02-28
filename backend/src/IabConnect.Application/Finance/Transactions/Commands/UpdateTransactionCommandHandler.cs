@@ -31,6 +31,10 @@ public sealed class UpdateTransactionCommandHandler : IRequestHandler<UpdateTran
         var transaction = await _repository.GetByIdAsync(request.Id, ct);
         if (transaction is null) return null;
 
+        // REQ-070: Reject updates on archived transactions
+        if (transaction.IsArchived)
+            throw new InvalidOperationException("Cannot update an archived transaction.");
+
         // REQ-066: Check fiscal period locking (old and new dates)
         await _fiscalPeriodService.EnsurePeriodNotLockedAsync(transaction.Date, ct);
         await _fiscalPeriodService.EnsurePeriodNotLockedAsync(request.Date, ct);

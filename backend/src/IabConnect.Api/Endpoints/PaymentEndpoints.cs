@@ -64,9 +64,16 @@ public static class PaymentEndpoints
         ?? ctx.User.FindFirst(ClaimTypes.Email)?.Value
         ?? "system";
 
-    private static async Task<IResult> GetAll(ISender sender, CancellationToken ct)
+    private static async Task<IResult> GetAll(
+        ISender sender, int? page, int? pageSize, string? sort, string? filter, CancellationToken ct)
     {
-        var payments = await sender.Send(new GetPaymentsQuery(), ct);
+        var payments = await sender.Send(new GetPaymentsQuery
+        {
+            Page = page ?? 1,
+            PageSize = pageSize ?? 20,
+            Sort = sort,
+            Filter = filter
+        }, ct);
         return Results.Ok(payments);
     }
 

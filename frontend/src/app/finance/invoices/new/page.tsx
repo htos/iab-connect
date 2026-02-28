@@ -102,7 +102,8 @@ export default function NewInvoicePage() {
         "/api/v1/finance/tax-codes"
       );
       if (!response.error && response.data) {
-        setTaxCodes((response.data as TaxCode[]).filter((tc) => tc.isActive));
+        const body = response.data as unknown as { items: TaxCode[] };
+        setTaxCodes((body.items ?? []).filter((tc) => tc.isActive));
       }
     } catch {
       // Non-critical
@@ -120,7 +121,8 @@ export default function NewInvoicePage() {
         "/api/v1/finance/activity-areas"
       );
       if (!response.error && response.data) {
-        const active = (response.data as ActivityArea[]).filter((a) => a.isActive).sort((a, b) => a.sortOrder - b.sortOrder);
+        const body = response.data as unknown as { items: ActivityArea[] };
+        const active = (body.items ?? []).filter((a) => a.isActive).sort((a, b) => a.sortOrder - b.sortOrder);
         setActivityAreas(active);
       }
     } catch {

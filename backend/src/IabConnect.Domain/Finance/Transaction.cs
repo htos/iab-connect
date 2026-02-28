@@ -5,8 +5,9 @@ namespace IabConnect.Domain.Finance;
 /// <summary>
 /// REQ-038: Financial transaction (Buchung) - income or expense entry.
 /// REQ-062: Extended with optional tax code and tax breakdown.
+/// REQ-070: Supports revision-safe archival (Swiss OR Art. 958f).
 /// </summary>
-public class Transaction : Entity, ISoftDeletable
+public class Transaction : Entity, ISoftDeletable, IArchivable
 {
     public DateTime Date { get; private set; }
     public string Description { get; private set; } = string.Empty;
@@ -38,6 +39,13 @@ public class Transaction : Entity, ISoftDeletable
     public bool IsDeleted { get; private set; }
     public DateTime? DeletedAt { get; private set; }
     public string? DeletedBy { get; private set; }
+
+    // REQ-070: Archive fields
+    public bool IsArchived { get; private set; }
+    public DateTimeOffset? ArchivedAt { get; private set; }
+    public string? ArchivedBy { get; private set; }
+    public string? ArchiveReason { get; private set; }
+    public DateTimeOffset RetainUntil { get; private set; }
 
     private Transaction() { }
 
@@ -151,5 +159,37 @@ public class Transaction : Entity, ISoftDeletable
         IsDeleted = false;
         DeletedAt = null;
         DeletedBy = null;
+    }
+
+    /// <summary>
+    /// REQ-070: Archives the transaction, making it read-only.
+    /// </summary>
+    public void Archive(string archivedBy, string reason, DateTimeOffset retainUntil)
+    {
+        if (string.IsNullOrWhiteSpace(archivedBy))
+            throw new ArgumentException("ArchivedBy is required.", nameof(archivedBy));
+        if (string.IsNullOrWhiteSpace(reason))
+            throw new ArgumentException("Archive reason is required.", nameof(reason));
+
+        IsArchived = true;
+        ArchivedAt = DateTimeOffset.UtcNow;
+        ArchivedBy = archivedBy;
+        ArchiveReason = reason.Trim();
+        RetainUntil = retainUntil;
+    }
+
+    /// <summary>
+    /// REQ-070: Restores the transaction from archive (Admin only).
+    /// </summary>
+    public void Restore(string restoredBy)
+    {
+        if (!IsArchived)
+            throw new InvalidOperationException("Transaction is not archived.");
+
+        IsArchived = false;
+        ArchivedAt = null;
+        ArchivedBy = null;
+        ArchiveReason = null;
+        RetainUntil = default;
     }
 }

@@ -5,8 +5,10 @@ namespace IabConnect.Domain.Finance;
 /// <summary>
 /// REQ-039: Invoice (Rechnung) for members, sponsors, vendors.
 /// REQ-062: Extended with per-item VAT totals.
+/// REQ-070: Supports revision-safe archival (Swiss OR Art. 958f).
+/// REQ-071: InvoiceNumber is immutable once the invoice leaves Draft status.
 /// </summary>
-public class Invoice : Entity, ISoftDeletable
+public class Invoice : Entity, ISoftDeletable, IArchivable
 {
     public string InvoiceNumber { get; private set; } = string.Empty;
     public DateTime Date { get; private set; }
@@ -43,6 +45,13 @@ public class Invoice : Entity, ISoftDeletable
     public bool IsDeleted { get; private set; }
     public DateTime? DeletedAt { get; private set; }
     public string? DeletedBy { get; private set; }
+
+    // REQ-070: Archive fields
+    public bool IsArchived { get; private set; }
+    public DateTimeOffset? ArchivedAt { get; private set; }
+    public string? ArchivedBy { get; private set; }
+    public string? ArchiveReason { get; private set; }
+    public DateTimeOffset RetainUntil { get; private set; }
 
     private Invoice() { }
 
@@ -238,6 +247,12 @@ public class Invoice : Entity, ISoftDeletable
         UpdatedBy = updatedBy;
     }
 
+    /// <summary>
+    /// REQ-071: Once an invoice has left Draft status (Sent, Paid, Overdue, Cancelled),
+    /// the InvoiceNumber is immutable and cannot be changed.
+    /// </summary>
+    public bool IsInvoiceNumberImmutable => Status != InvoiceStatus.Draft;
+
     public void SoftDelete(string? deletedBy = null)
     {
         IsDeleted = true;
@@ -250,6 +265,38 @@ public class Invoice : Entity, ISoftDeletable
         IsDeleted = false;
         DeletedAt = null;
         DeletedBy = null;
+    }
+
+    /// <summary>
+    /// REQ-070: Archives the invoice, making it read-only.
+    /// </summary>
+    public void Archive(string archivedBy, string reason, DateTimeOffset retainUntil)
+    {
+        if (string.IsNullOrWhiteSpace(archivedBy))
+            throw new ArgumentException("ArchivedBy is required.", nameof(archivedBy));
+        if (string.IsNullOrWhiteSpace(reason))
+            throw new ArgumentException("Archive reason is required.", nameof(reason));
+
+        IsArchived = true;
+        ArchivedAt = DateTimeOffset.UtcNow;
+        ArchivedBy = archivedBy;
+        ArchiveReason = reason.Trim();
+        RetainUntil = retainUntil;
+    }
+
+    /// <summary>
+    /// REQ-070: Restores the invoice from archive (Admin only).
+    /// </summary>
+    public void Restore(string restoredBy)
+    {
+        if (!IsArchived)
+            throw new InvalidOperationException("Invoice is not archived.");
+
+        IsArchived = false;
+        ArchivedAt = null;
+        ArchivedBy = null;
+        ArchiveReason = null;
+        RetainUntil = default;
     }
 
     private void RecalculateTotals()

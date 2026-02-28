@@ -2069,6 +2069,20 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("ArchiveReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("archive_reason");
+
+                    b.Property<DateTimeOffset?>("ArchivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("archived_at");
+
+                    b.Property<string>("ArchivedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("archived_by");
+
                     b.Property<string>("CancellationReason")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")
@@ -2111,6 +2125,12 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("invoice_number");
 
+                    b.Property<bool>("IsArchived")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_archived");
+
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -2146,6 +2166,10 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("recipient_type");
+
+                    b.Property<DateTimeOffset>("RetainUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("retain_until");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -2206,6 +2230,9 @@ namespace IabConnect.Infrastructure.Migrations
                     b.HasIndex("InvoiceNumber")
                         .IsUnique()
                         .HasDatabaseName("ix_invoices_invoice_number");
+
+                    b.HasIndex("IsArchived")
+                        .HasDatabaseName("ix_invoices_is_archived");
 
                     b.HasIndex("IsDeleted")
                         .HasDatabaseName("ix_invoices_is_deleted");
@@ -2289,6 +2316,43 @@ namespace IabConnect.Infrastructure.Migrations
                     b.ToTable("invoice_items", (string)null);
                 });
 
+            modelBuilder.Entity("IabConnect.Domain.Finance.InvoiceNumberCounter", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("CurrentValue")
+                        .HasColumnType("integer")
+                        .HasColumnName("current_value");
+
+                    b.Property<Guid>("FinanceProfileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("finance_profile_id");
+
+                    b.Property<int>("FiscalYear")
+                        .HasColumnType("integer")
+                        .HasColumnName("fiscal_year");
+
+                    b.Property<string>("Prefix")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("prefix");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FinanceProfileId", "FiscalYear")
+                        .IsUnique()
+                        .HasDatabaseName("ix_invoice_number_counters_profile_year");
+
+                    b.ToTable("invoice_number_counters", (string)null);
+                });
+
             modelBuilder.Entity("IabConnect.Domain.Finance.InvoiceTemplate", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2309,6 +2373,10 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("default_payment_terms");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
                     b.Property<string>("FooterText")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")
@@ -2322,6 +2390,12 @@ namespace IabConnect.Infrastructure.Migrations
                     b.Property<bool>("IsDefault")
                         .HasColumnType("boolean")
                         .HasColumnName("is_default");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
 
                     b.Property<string>("Jurisdiction")
                         .IsRequired()
@@ -2394,6 +2468,9 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("IsDeleted")
+                        .HasDatabaseName("ix_invoice_templates_is_deleted");
 
                     b.HasIndex("Jurisdiction", "CountryCode", "IsDefault")
                         .IsUnique()
@@ -2539,6 +2616,20 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("ArchiveReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("archive_reason");
+
+                    b.Property<DateTimeOffset?>("ArchivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("archived_at");
+
+                    b.Property<string>("ArchivedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("archived_by");
+
                     b.Property<string>("ContentType")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -2575,6 +2666,12 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("file_size");
 
+                    b.Property<bool>("IsArchived")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_archived");
+
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -2584,6 +2681,10 @@ namespace IabConnect.Infrastructure.Migrations
                     b.Property<string>("Notes")
                         .HasColumnType("text")
                         .HasColumnName("notes");
+
+                    b.Property<DateTimeOffset>("RetainUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("retain_until");
 
                     b.Property<DateTime>("UploadedAt")
                         .HasColumnType("timestamp with time zone")
@@ -2596,6 +2697,9 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasColumnName("uploaded_by");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("IsArchived")
+                        .HasDatabaseName("ix_receipts_is_archived");
 
                     b.HasIndex("IsDeleted")
                         .HasDatabaseName("ix_receipts_is_deleted");
@@ -2731,6 +2835,20 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("amount");
 
+                    b.Property<string>("ArchiveReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("archive_reason");
+
+                    b.Property<DateTimeOffset?>("ArchivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("archived_at");
+
+                    b.Property<string>("ArchivedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("archived_by");
+
                     b.Property<Guid?>("CategoryId")
                         .HasColumnType("uuid")
                         .HasColumnName("category_id");
@@ -2764,6 +2882,12 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("description");
 
+                    b.Property<bool>("IsArchived")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_archived");
+
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -2787,6 +2911,10 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("reference");
+
+                    b.Property<DateTimeOffset>("RetainUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("retain_until");
 
                     b.Property<decimal?>("TaxAmount")
                         .HasPrecision(18, 2)
@@ -2824,6 +2952,9 @@ namespace IabConnect.Infrastructure.Migrations
                     b.HasIndex("ActivityAreaId");
 
                     b.HasIndex("CategoryId");
+
+                    b.HasIndex("IsArchived")
+                        .HasDatabaseName("ix_transactions_is_archived");
 
                     b.HasIndex("IsDeleted")
                         .HasDatabaseName("ix_transactions_is_deleted");
@@ -3189,6 +3320,15 @@ namespace IabConnect.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("ActivityArea");
+                });
+
+            modelBuilder.Entity("IabConnect.Domain.Finance.InvoiceNumberCounter", b =>
+                {
+                    b.HasOne("IabConnect.Domain.Finance.FinanceProfile", null)
+                        .WithMany()
+                        .HasForeignKey("FinanceProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("IabConnect.Domain.Finance.Payment", b =>

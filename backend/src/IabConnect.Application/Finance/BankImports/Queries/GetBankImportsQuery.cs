@@ -1,3 +1,4 @@
+using IabConnect.Application.Common;
 using MediatR;
 
 namespace IabConnect.Application.Finance.BankImports.Queries;
@@ -16,6 +17,12 @@ public sealed record BankImportItemDto(
     Guid? SuggestedInvoiceId, decimal? MatchConfidence);
 
 /// <summary>
-/// Query to get all bank imports (REQ-041)
+/// Query to get all bank imports (REQ-041) with pagination support
 /// </summary>
-public sealed record GetBankImportsQuery : IRequest<List<BankImportDto>>;
+public sealed record GetBankImportsQuery : IRequest<PagedResult<BankImportDto>>
+{
+    public int Page { get; init; } = 1;
+    public int PageSize { get; init; } = 20;
+    public string? Sort { get; init; }
+    public string? Filter { get; init; }
+}

@@ -2,6 +2,7 @@
 
 /**
  * Admin Documents Page - REQ-035: Folder & Permission Management (Admin only)
+ * Now with hierarchical folder navigation (drill-down + breadcrumbs)
  */
 
 import { useAuth } from "@/lib/auth";
@@ -12,9 +13,15 @@ import {
   DocumentFolderDto,
   getFolders,
   createFolder,
+  updateFolder,
   deleteFolder,
   setFolderPermissions,
 } from "@/lib/services/documents";
+
+interface BreadcrumbItem {
+  id: string | null; // null = root
+  name: string;
+}
 
 export default function AdminDocumentsPage() {
   const { isAuthenticated, isLoading: authLoading, isAdmin } = useAuth();
@@ -25,16 +32,36 @@ export default function AdminDocumentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Folder navigation state
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([
+    { id: null, name: "" }, // root
+  ]);
+
+  // Create folder dialog
   const [showCreate, setShowCreate] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [newFolderDesc, setNewFolderDesc] = useState("");
-  const [newFolderParent, setNewFolderParent] = useState("");
+
+  // Edit folder dialog
+  const [showEdit, setShowEdit] = useState(false);
+  const [editFolder, setEditFolder] = useState<DocumentFolderDto | null>(null);
+  const [editFolderName, setEditFolderName] = useState("");
+  const [editFolderDesc, setEditFolderDesc] = useState("");
+
+  // Permissions dialog
   const [selectedFolder, setSelectedFolder] =
     useState<DocumentFolderDto | null>(null);
   const [showPermissions, setShowPermissions] = useState(false);
   const [permMember, setPermMember] = useState("");
   const [permVorstand, setPermVorstand] = useState("");
+
+  // Delete confirmation
   const [deleteFolderId, setDeleteFolderId] = useState<string | null>(null);
+
+  // Subfolder counts cache: parentId -> count
+  const [subfolderCounts, setSubfolderCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (!authLoading && (!isAuthenticated || !isAdmin)) {
@@ -42,63 +69,111 @@ export default function AdminDocumentsPage() {
     }
   }, [authLoading, isAuthenticated, isAdmin, router]);
 
-  const fetchFolders = useCallback(async () => {
-    const result = await getFolders();
-    if (result.success) {
-      setFolders(result.data);
-    } else {
-      setError(result.error || "Error loading folders");
-    }
-    setLoading(false);
-  }, []);
+  const fetchFolders = useCallback(
+    async (parentId?: string | null) => {
+      setLoading(true);
+      const result = await getFolders(parentId || undefined);
+      if (result.success) {
+        setFolders(result.data);
+
+        // Fetch subfolder counts for each folder
+        const counts: Record<string, number> = {};
+        await Promise.all(
+          result.data.map(async (f) => {
+            const subResult = await getFolders(f.id);
+            if (subResult.success) {
+              counts[f.id] = subResult.data.length;
+            }
+          })
+        );
+        setSubfolderCounts(counts);
+      } else {
+        setError(result.error || "Error loading folders");
+      }
+      setLoading(false);
+    },
+    []
+  );
 
   useEffect(() => {
     if (isAuthenticated && isAdmin) {
-      getFolders().then(result => {
-        if (result.success) {
-          setFolders(result.data);
-        } else {
-          setError(result.error || "Error loading folders");
-        }
-        setLoading(false);
-      });
+      fetchFolders(currentFolderId);
     }
-  }, [isAuthenticated, isAdmin]);
+  }, [isAuthenticated, isAdmin, currentFolderId, fetchFolders]);
 
+  // Navigate into a folder
+  const navigateToFolder = (folder: DocumentFolderDto) => {
+    setBreadcrumbs((prev) => [...prev, { id: folder.id, name: folder.name }]);
+    setCurrentFolderId(folder.id);
+  };
+
+  // Navigate via breadcrumb
+  const navigateToBreadcrumb = (index: number) => {
+    const targetCrumb = breadcrumbs[index];
+    setBreadcrumbs(breadcrumbs.slice(0, index + 1));
+    setCurrentFolderId(targetCrumb.id);
+  };
+
+  // Create folder (always as child of current folder)
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return;
     const result = await createFolder({
       name: newFolderName,
       description: newFolderDesc || undefined,
-      parentFolderId: newFolderParent || undefined,
+      parentFolderId: currentFolderId || undefined,
     });
     if (result.success) {
       setShowCreate(false);
       setNewFolderName("");
       setNewFolderDesc("");
-      setNewFolderParent("");
       setSuccess(t("documents.folderCreated"));
-      setLoading(true);
-      fetchFolders();
+      fetchFolders(currentFolderId);
       setTimeout(() => setSuccess(null), 3000);
     } else {
       setError(result.error || "Error");
     }
   };
 
+  // Edit/rename folder
+  const openEditFolder = (folder: DocumentFolderDto) => {
+    setEditFolder(folder);
+    setEditFolderName(folder.name);
+    setEditFolderDesc(folder.description || "");
+    setShowEdit(true);
+  };
+
+  const handleEditFolder = async () => {
+    if (!editFolder || !editFolderName.trim()) return;
+    const result = await updateFolder(editFolder.id, {
+      name: editFolderName,
+      description: editFolderDesc || undefined,
+      sortOrder: editFolder.sortOrder,
+    });
+    if (result.success) {
+      setShowEdit(false);
+      setEditFolder(null);
+      setSuccess(t("documents.folderUpdated"));
+      fetchFolders(currentFolderId);
+      setTimeout(() => setSuccess(null), 3000);
+    } else {
+      setError(result.error || "Error");
+    }
+  };
+
+  // Delete folder
   const handleDeleteFolder = async (id: string) => {
     setDeleteFolderId(null);
     const result = await deleteFolder(id);
     if (result.success) {
       setSuccess(t("documents.folderDeleted"));
-      setLoading(true);
-      fetchFolders();
+      fetchFolders(currentFolderId);
       setTimeout(() => setSuccess(null), 3000);
     } else {
       setError(result.error || "Error");
     }
   };
 
+  // Permissions
   const openPermissions = (folder: DocumentFolderDto) => {
     setSelectedFolder(folder);
     const memberPerm = folder.permissions.find((p) => p.role === "Member");
@@ -121,8 +196,7 @@ export default function AdminDocumentsPage() {
     if (result.success) {
       setShowPermissions(false);
       setSuccess(t("documents.permissionsSaved"));
-      setLoading(true);
-      fetchFolders();
+      fetchFolders(currentFolderId);
       setTimeout(() => setSuccess(null), 3000);
     } else {
       setError(result.error || "Error");
@@ -143,7 +217,8 @@ export default function AdminDocumentsPage() {
   return (
     <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        {/* Header */}
+        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
               {t("documents.adminTitle")}
@@ -171,6 +246,53 @@ export default function AdminDocumentsPage() {
           </button>
         </div>
 
+        {/* Breadcrumbs */}
+        {breadcrumbs.length > 1 && (
+          <nav className="mb-4 flex items-center gap-1 text-sm">
+            {breadcrumbs.map((crumb, index) => (
+              <span key={crumb.id ?? "root"} className="flex items-center gap-1">
+                {index > 0 && (
+                  <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                )}
+                {index < breadcrumbs.length - 1 ? (
+                  <button
+                    onClick={() => navigateToBreadcrumb(index)}
+                    className="font-medium text-orange-600 hover:text-orange-800 hover:underline"
+                  >
+                    {index === 0 ? (
+                      <span className="flex items-center gap-1">
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                        </svg>
+                        {t("documents.allFolders")}
+                      </span>
+                    ) : (
+                      crumb.name
+                    )}
+                  </button>
+                ) : (
+                  <span className="font-semibold text-gray-900">{crumb.name}</span>
+                )}
+              </span>
+            ))}
+          </nav>
+        )}
+
+        {/* Back Button (when inside a folder) */}
+        {currentFolderId && (
+          <button
+            onClick={() => navigateToBreadcrumb(breadcrumbs.length - 2)}
+            className="mb-4 inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            {t("documents.backToParent")}
+          </button>
+        )}
+
         {success && (
           <div className="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-green-700">
             {success}
@@ -179,6 +301,7 @@ export default function AdminDocumentsPage() {
         {error && (
           <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
             {error}
+            <button onClick={() => setError(null)} className="ml-2 text-red-800 font-medium hover:underline">✕</button>
           </div>
         )}
 
@@ -189,6 +312,11 @@ export default function AdminDocumentsPage() {
               <h2 className="mb-4 text-xl font-bold">
                 {t("documents.createFolder")}
               </h2>
+              {currentFolderId && (
+                <p className="mb-3 text-sm text-gray-500">
+                  {t("documents.parentFolder")}: {breadcrumbs[breadcrumbs.length - 1]?.name}
+                </p>
+              )}
               <div className="space-y-4">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">
@@ -199,6 +327,7 @@ export default function AdminDocumentsPage() {
                     value={newFolderName}
                     onChange={(e) => setNewFolderName(e.target.value)}
                     className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                    autoFocus
                   />
                 </div>
                 <div>
@@ -212,27 +341,14 @@ export default function AdminDocumentsPage() {
                     className="w-full rounded-lg border border-gray-300 px-3 py-2"
                   />
                 </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
-                    {t("documents.parentFolder")}
-                  </label>
-                  <select
-                    value={newFolderParent}
-                    onChange={(e) => setNewFolderParent(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
-                  >
-                    <option value="">{t("documents.rootLevel")}</option>
-                    {folders.map((f) => (
-                      <option key={f.id} value={f.id}>
-                        {f.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
               </div>
               <div className="mt-6 flex justify-end gap-3">
                 <button
-                  onClick={() => setShowCreate(false)}
+                  onClick={() => {
+                    setShowCreate(false);
+                    setNewFolderName("");
+                    setNewFolderDesc("");
+                  }}
                   className="rounded-lg border px-4 py-2 text-gray-700 hover:bg-gray-50"
                 >
                   {t("common.cancel")}
@@ -240,6 +356,60 @@ export default function AdminDocumentsPage() {
                 <button
                   onClick={handleCreateFolder}
                   disabled={!newFolderName.trim()}
+                  className="rounded-lg bg-orange-600 px-4 py-2 text-white hover:bg-orange-700 disabled:opacity-50"
+                >
+                  {t("common.save")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Folder Modal */}
+        {showEdit && editFolder && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="mx-4 w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+              <h2 className="mb-4 text-xl font-bold">
+                {t("documents.editFolder")}
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    {t("common.name")}
+                  </label>
+                  <input
+                    type="text"
+                    value={editFolderName}
+                    onChange={(e) => setEditFolderName(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    {t("documents.description")}
+                  </label>
+                  <textarea
+                    value={editFolderDesc}
+                    onChange={(e) => setEditFolderDesc(e.target.value)}
+                    rows={2}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                  />
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  onClick={() => {
+                    setShowEdit(false);
+                    setEditFolder(null);
+                  }}
+                  className="rounded-lg border px-4 py-2 text-gray-700 hover:bg-gray-50"
+                >
+                  {t("common.cancel")}
+                </button>
+                <button
+                  onClick={handleEditFolder}
+                  disabled={!editFolderName.trim()}
                   className="rounded-lg bg-orange-600 px-4 py-2 text-white hover:bg-orange-700 disabled:opacity-50"
                 >
                   {t("common.save")}
@@ -315,7 +485,16 @@ export default function AdminDocumentsPage() {
           </div>
         ) : folders.length === 0 ? (
           <div className="rounded-lg bg-white p-12 text-center shadow">
-            <p className="text-gray-500">{t("documents.noFolders")}</p>
+            <svg
+              className="mx-auto h-12 w-12 text-gray-300"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" />
+            </svg>
+            <p className="mt-4 text-gray-500">
+              {currentFolderId ? t("documents.noSubfolders") : t("documents.noFolders")}
+            </p>
           </div>
         ) : (
           <div className="overflow-hidden rounded-lg bg-white shadow">
@@ -340,18 +519,29 @@ export default function AdminDocumentsPage() {
                 {folders.map((folder) => (
                   <tr key={folder.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => navigateToFolder(folder)}
+                        className="flex items-center gap-2 text-left group"
+                        title={t("documents.openFolder")}
+                      >
                         <svg
-                          className="h-5 w-5 text-orange-500"
+                          className="h-5 w-5 flex-shrink-0 text-orange-500 group-hover:text-orange-700"
                           fill="currentColor"
                           viewBox="0 0 24 24"
                         >
                           <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" />
                         </svg>
-                        <span className="font-medium text-gray-900">
-                          {folder.name}
-                        </span>
-                      </div>
+                        <div>
+                          <span className="font-medium text-gray-900 group-hover:text-orange-700 group-hover:underline">
+                            {folder.name}
+                          </span>
+                          {(subfolderCounts[folder.id] ?? 0) > 0 && (
+                            <span className="ml-2 text-xs text-gray-400">
+                              ({t("documents.subfolderCount", { count: subfolderCounts[folder.id] })})
+                            </span>
+                          )}
+                        </div>
+                      </button>
                     </td>
                     <td className="hidden px-6 py-4 md:table-cell">
                       <span className="text-sm text-gray-600">
@@ -378,6 +568,12 @@ export default function AdminDocumentsPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => openEditFolder(folder)}
+                          className="text-sm font-medium text-blue-600 hover:text-blue-800"
+                        >
+                          {t("common.edit")}
+                        </button>
                         <button
                           onClick={() => openPermissions(folder)}
                           className="text-sm font-medium text-orange-600 hover:text-orange-800"

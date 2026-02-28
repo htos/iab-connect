@@ -143,7 +143,8 @@ export default function ActivityAreasPage() {
       if (response.error) {
         setError(response.error);
       } else if (response.data) {
-        setAreas(response.data as ActivityArea[]);
+        const body = response.data as unknown as { items: ActivityArea[] };
+        setAreas(body.items ?? []);
       }
     } catch {
       setError("Failed to load activity areas");

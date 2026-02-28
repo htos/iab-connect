@@ -55,7 +55,8 @@ export default function CategoriesPage() {
       setError(null);
       const res = await apiRef.current.get("/api/v1/finance/categories");
       if (res.error) throw new Error(res.error);
-      setCategories(res.data as Category[]);
+      const body = res.data as { items: Category[] };
+      setCategories(body.items ?? []);
     } catch {
       setError(tRef.current("loadError"));
     } finally {

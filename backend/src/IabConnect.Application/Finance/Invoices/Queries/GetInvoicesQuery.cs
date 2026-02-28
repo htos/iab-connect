@@ -1,3 +1,4 @@
+using IabConnect.Application.Common;
 using MediatR;
 
 namespace IabConnect.Application.Finance.Invoices.Queries;
@@ -27,6 +28,12 @@ public sealed record InvoiceItemDto(
     decimal? GrossAmount, bool IsGrossEntry, Guid? ActivityAreaId);
 
 /// <summary>
-/// Query to get invoices with optional status filter (REQ-039)
+/// Query to get invoices with optional status filter (REQ-039) with pagination support
 /// </summary>
-public sealed record GetInvoicesQuery(string? Status) : IRequest<List<InvoiceListDto>>;
+public sealed record GetInvoicesQuery(string? Status) : IRequest<PagedResult<InvoiceListDto>>
+{
+    public int Page { get; init; } = 1;
+    public int PageSize { get; init; } = 20;
+    public string? Sort { get; init; }
+    public string? Filter { get; init; }
+}

@@ -1,6 +1,6 @@
 # Finanzen-Modul — Detaillierte Übersicht
 
-> Stand: 16.02.2026 | Autor: Requirements-Engineering-Analyse
+> Stand: 28.02.2026 | Autor: Requirements-Engineering-Analyse
 > Scope: Backend (Domain, Application, API, Infrastructure), Frontend (Pages, Components, API-Client), Dokumentation
 
 ---
@@ -22,25 +22,30 @@
 
 ## 1. Zusammenfassung
 
-Das Finanzmodul ist das umfangreichste Feature des Projekts. 7 von 8 Kern-Finanz-Requirements sind Done (REQ-038 bis REQ-043, REQ-045), alle 10 erweiterten Finanz-Requirements sind Done (REQ-060 bis REQ-069). Es umfasst:
+Das Finanzmodul ist das umfangreichste Feature des Projekts. 7 von 8 Kern-Finanz-Requirements sind Done (REQ-038 bis REQ-043, REQ-045), alle 10 erweiterten Finanz-Requirements sind Done (REQ-060 bis REQ-069), und 4 weitere Finanz-Requirements sind Done (REQ-070 bis REQ-073). Es umfasst:
 
-- 16 Domain-Entities (Account, Category, Transaction, Invoice, InvoiceItem, Payment, BankImport, BankImportItem, DunningNotice, Receipt, FinanceProfile, TaxCode, ActivityArea, FiscalPeriod, ExpenseClaim, InvoiceTemplate)
+- 17 Domain-Entities (Account, Category, Transaction, Invoice, InvoiceItem, Payment, BankImport, BankImportItem, DunningNotice, Receipt, FinanceProfile, TaxCode, ActivityArea, FiscalPeriod, ExpenseClaim, InvoiceTemplate, InvoiceNumberCounter)
 - ~210 CQRS-Dateien (Commands, Queries, Handlers, Validators via MediatR + FluentValidation)
-- API-Endpunkte fuer alle Finance-Bereiche
+- API-Endpunkte fuer alle Finance-Bereiche, alle paginiert (PagedResult<T>)
 - 12+ Frontend-Seiten unter /finance
 - ~130 i18n-Keys in DE und EN
 - 420+ Finance-Unit-Tests
 - Soft-Delete/Storno auf allen Entities implementiert
+- IArchivable Interface mit 10-Jahre Retention auf Receipt, Invoice, Transaction (REQ-070)
 - Receipt-File-Storage via S3/RustFS mit SHA256-Integrity
 - Invoice-PDF via QuestPDF, Swiss QR-Zahlteil via Codecrete.SwissQRBill
 - FinanceProfile (CH/EU Jurisdiktion, Waehrung, Org-Details)
 - VAT/MWST (konfigurierbare TaxCodes, Per-Item-Tax, VAT-Export)
 - EU-Rechnungskonformitaet mit InvoiceTemplate (VAT-ID, Reverse Charge, Rechtshinweise)
 - eInvoice Export (EN 16931/UBL 2.1) mit Feature-Flag
+- eInvoice Validierung (En16931Validator, BR-01..BR-AE-01, ICiusProfile) (REQ-072)
 - Geschaeftsperioden (FiscalPeriod) mit Open/Closed/Locked und Periodensperre
 - Zahlungs-Freigabe-Workflow und Spesenabrechnung (ExpenseClaim)
 - ActivityArea Dimension-Tagging mit P&L-Report
 - camt Import (ISO 20022 camt.053/054) mit 5-stufigem Referenz-Matching
+- InvoiceNumberCounter mit PostgreSQL atomic UPSERT, per-profile/per-fiscal-year (REQ-071)
+- pain.001 Export (CH SPS / SEPA, pain.001.001.09) (REQ-073)
+- Hangfire Background Jobs (MarkInvoicesOverdueJob daily, DunningScheduleGenerationJob weekly)
 
 ### Bewertung
 
@@ -85,6 +90,15 @@ Das Finanzmodul ist das umfangreichste Feature des Projekts. 7 von 8 Kern-Finanz
 | **REQ-068** | ActivityArea Dimension-Tagging           | Could have  | ✅ Done    | Sprint 4 |
 | **REQ-069** | camt Import (ISO 20022)                  | Should have | ✅ Done    | Sprint 4 |
 
+### Sprint 5 Finanz-Requirements
+
+| ID          | Titel                                         | Prio        | Status     | Sprint   |
+| ----------- | --------------------------------------------- | ----------- | ---------- | -------- |
+| **REQ-070** | Revisionssicheres Archiv / Retention          | Must have   | ✅ Done    | Sprint 5 |
+| **REQ-071** | Rechnungsnummern-Serien (konkurenzsicher)     | Must have   | ✅ Done    | Sprint 5 |
+| **REQ-072** | eInvoice Validierung (EN 16931 / CIUS)        | Should have | ✅ Done    | Sprint 5 |
+| **REQ-073** | pain.001 Export (CH SPS / SEPA)               | Could have  | ✅ Done    | Sprint 5 |
+
 ### Finanz-abhängige Requirements (andere Bereiche)
 
 | ID      | Bereich        | Bezug zu Finanzen                    | Status     |
@@ -117,7 +131,7 @@ Das Finanzmodul ist das umfangreichste Feature des Projekts. 7 von 8 Kern-Finanz
 
 | Entity             | Datei                              | REQ     | Beschreibung                                                                                   |
 | ------------------ | ---------------------------------- | ------- | ---------------------------------------------------------------------------------------------- |
-| **Account**        | `Domain/Finance/Account.cs`        | REQ-038 | Finanzkonten (Income/Expense/Asset/Liability), CRUD + Activate/Deactivate                      |
+| **Account**        | `Domain/Finance/Account.cs`        | REQ-038 | Finanzkonten (Cash/Bank/Other), CRUD + Activate/Deactivate                                     |
 | **Category**       | `Domain/Finance/Category.cs`       | REQ-038 | Buchungskategorien mit Farbcode, CRUD + Activate/Deactivate                                    |
 | **Transaction**    | `Domain/Finance/Transaction.cs`    | REQ-038 | Buchungen (Einnahmen/Ausgaben), Beleg-Verknüpfung                                              |
 | **Invoice**        | `Domain/Finance/Invoice.cs`        | REQ-039 | Rechnungen mit Nummernkreis INV-YYYY-NNNN, Status-Workflow (Draft→Sent→Paid/Overdue/Cancelled) |
@@ -129,7 +143,8 @@ Das Finanzmodul ist das umfangreichste Feature des Projekts. 7 von 8 Kern-Finanz
 | **Receipt**        | `Domain/Finance/Receipt.cs`        | REQ-043 | Belegerfassung (nur Metadaten, kein echter File-Upload!)                                       |
 | **FinanceProfile** | `Domain/Finance/FinanceProfile.cs` | REQ-060 | CH/EU Jurisdiktion, Waehrung, Org-Details                                                      |
 | **TaxCode**        | `Domain/Finance/TaxCode.cs`        | REQ-062 | Konfigurierbare Steuercodes (Name, Rate, Code), Per-Item-Tax                                   |
-| **InvoiceTemplate**| `Domain/Finance/InvoiceTemplate.cs`| REQ-064 | EU-Pflichtfelder (VAT-ID, Steuerbefreiung, Reverse Charge, Zahlungsbedingungen)                |
+| **InvoiceTemplate**| `Domain/Finance/InvoiceTemplate.cs`| REQ-064 | EU-Pflichtfelder (VAT-ID, Steuerbefreiung, Reverse Charge, Zahlungsbedingungen), ISoftDeletable |
+| **InvoiceNumberCounter** | `Domain/Finance/InvoiceNumberCounter.cs` | REQ-071 | Atomarer Zähler pro Profil/Geschäftsjahr, PostgreSQL UPSERT                      |
 | **FiscalPeriod**   | `Domain/Finance/FiscalPeriod.cs`   | REQ-066 | Geschaeftsperioden mit Status (Open/Closed/Locked), monatliche Perioden                        |
 | **ExpenseClaim**   | `Domain/Finance/ExpenseClaim.cs`   | REQ-067 | Spesenabrechnung mit Lebenszyklus (Draft bis Reimbursed)                                       |
 | **ActivityArea**   | `Domain/Finance/ActivityArea.cs`   | REQ-068 | Dimension-Tagging (Name, Code, Color, SortOrder), FK auf Transaction/InvoiceItem               |
@@ -138,7 +153,7 @@ Das Finanzmodul ist das umfangreichste Feature des Projekts. 7 von 8 Kern-Finanz
 
 | Enum                   | Werte                                 |
 | ---------------------- | ------------------------------------- |
-| `AccountType`          | Income, Expense, Asset, Liability     |
+| `AccountType`          | Cash, Bank, Other                     |
 | `TransactionType`      | Income, Expense                       |
 | `InvoiceStatus`        | Draft, Sent, Paid, Overdue, Cancelled |
 | `RecipientType`        | Member, Sponsor, Vendor, Other        |
@@ -161,17 +176,18 @@ Das Finanzmodul ist das umfangreichste Feature des Projekts. 7 von 8 Kern-Finanz
 
 ### 3.4 API-Endpunkte (implementiert)
 
-| Bereich      | Route-Prefix                   | Endpunkte                                                     | Auth       |
-| ------------ | ------------------------------ | ------------------------------------------------------------- | ---------- |
-| Accounts     | `/api/v1/finance/accounts`     | GET, POST, PUT, DELETE                                        | Read/Write |
-| Categories   | `/api/v1/finance/categories`   | GET, POST, PUT, DELETE                                        | Read/Write |
-| Transactions | `/api/v1/finance/transactions` | GET, GET /summary, GET /{id}, POST, PUT, DELETE               | Read/Write |
-| Invoices     | `/api/v1/finance/invoices`     | GET, GET /open, GET /{id}, POST, PUT, DELETE, POST /{id}/send | Read/Write |
-| Payments     | `/api/v1/finance/payments`     | GET, POST, PUT, DELETE                                        | Read/Write |
-| Bank Imports | `/api/v1/finance/bank-imports` | GET, POST, GET /{id}, PUT match, PUT ignore                   | Read/Write |
-| Dunning      | `/api/v1/finance/dunning`      | GET, POST, POST /{id}/send                                    | Read/Write |
-| Receipts     | `/api/v1/finance/receipts`     | GET, POST, GET /{id}, DELETE                                  | Read/Write |
-| Exports      | `/api/v1/finance/exports`      | GET /journal, GET /open-items                                 | Read       |
+| Bereich      | Route-Prefix                   | Endpunkte                                                                     | Auth       |
+| ------------ | ------------------------------ | ----------------------------------------------------------------------------- | ---------- |
+| Accounts     | `/api/v1/finance/accounts`     | GET, POST, PUT, DELETE, POST /{id}/activate, POST /{id}/deactivate           | Read/Write |
+| Categories   | `/api/v1/finance/categories`   | GET, POST, PUT, DELETE, POST /{id}/activate, POST /{id}/deactivate           | Read/Write |
+| Transactions | `/api/v1/finance/transactions` | GET, GET /summary, GET /{id}, POST, PUT, DELETE                               | Read/Write |
+| Invoices     | `/api/v1/finance/invoices`     | GET, GET /open, GET /{id}, POST, PUT, DELETE, POST /{id}/send, POST /{id}/mark-overdue, POST /{id}/archive, POST /{id}/restore, POST /{id}/validate-einvoice | Read/Write |
+| Payments     | `/api/v1/finance/payments`     | GET, POST, PUT, DELETE                                                        | Read/Write |
+| Bank Imports | `/api/v1/finance/bank-imports` | GET, POST, GET /{id}, PUT match, PUT ignore, PUT unmatch                      | Read/Write |
+| Dunning      | `/api/v1/finance/dunning`      | GET, GET ?invoiceId=, POST, POST /{id}/send                                   | Read/Write |
+| Receipts     | `/api/v1/finance/receipts`     | GET, POST, GET /{id}, DELETE, POST /{id}/archive, POST /{id}/restore          | Read/Write |
+| Exports      | `/api/v1/finance/exports`      | GET /journal, GET /open-items, GET /vat-summary, POST /pain001, POST /pain001/validate | Read  |
+| Admin        | `/api/v1/admin/finance`        | POST /purge-archived                                                          | Admin      |
 
 **Autorisierung:** `RequireFinanceRead` (admin, kassier, auditor) / `RequireFinanceWrite` (admin, kassier)
 
@@ -233,31 +249,25 @@ Das Finanzmodul ist das umfangreichste Feature des Projekts. 7 von 8 Kern-Finanz
 | ActivityAreas  | Dimension-Tagging mit P&L-Report                             | Erledigt |
 | camt Import    | ISO 20022 Parser + 5-stufiges Referenz-Matching              | Erledigt |
 
-### 5.2 Fehlende API-Endpunkte (Domain-Methoden existieren, aber kein Endpunkt)
+### 5.2 Fehlende API-Endpunkte — ERLEDIGT (Sprint 5)
 
-| Feature                           | Domain-Methode vorhanden                         | API-Endpunkt                     |
-| --------------------------------- | ------------------------------------------------ | -------------------------------- |
-| Rechnung als bezahlt markieren    | `Invoice.MarkAsPaid()`                           | ❌ Nur indirekt via Zahlung      |
-| Rechnung als überfällig markieren | `Invoice.MarkAsOverdue()`                        | ❌ Fehlt (braucht Scheduled Job) |
-| Rechnung stornieren               | `Invoice.Cancel()`                               | ❌ Fehlt (DELETE ≠ Cancel)       |
-| Konto aktivieren/deaktivieren     | `Account.Activate/Deactivate()`                  | ❌                               |
-| Kategorie aktivieren/deaktivieren | `Category.Activate/Deactivate()`                 | ❌                               |
-| Beleg an Buchung anhängen         | `Transaction.AttachReceipt()`                    | ❌                               |
-| Beleg von Buchung lösen           | `Transaction.DetachReceipt()`                    | ❌                               |
-| Bank-Import-Eintrag unmatch       | `BankImportItem.Unmatch()`                       | ❌                               |
-| Mahnung nach Rechnung abrufen     | `IDunningNoticeRepository.GetByInvoiceIdAsync()` | ❌                               |
-| Konto nach Nummer suchen          | `IAccountRepository.GetByNumberAsync()`          | ❌                               |
+Alle zuvor fehlenden Endpunkte wurden implementiert:
+
+| Feature                           | Domain-Methode vorhanden                         | API-Endpunkt                       | Status   |
+| --------------------------------- | ------------------------------------------------ | ---------------------------------- | -------- |
+| Rechnung als überfällig markieren | `Invoice.MarkAsOverdue()`                        | POST `/{id}/mark-overdue`          | Erledigt |
+| Konto aktivieren/deaktivieren     | `Account.Activate/Deactivate()`                  | POST `/{id}/activate/deactivate`   | Erledigt |
+| Kategorie aktivieren/deaktivieren | `Category.Activate/Deactivate()`                 | POST `/{id}/activate/deactivate`   | Erledigt |
+| Bank-Import-Eintrag unmatch       | `BankImportItem.Unmatch()`                       | PUT `/{id}/items/{itemId}/unmatch` | Erledigt |
+| Mahnung nach Rechnung abrufen     | `IDunningNoticeRepository.GetByInvoiceIdAsync()` | GET `/dunning?invoiceId=`          | Erledigt |
 
 ### 5.3 Verbleibende offene Features
 
 | Feature                        | Beschreibung                                           | Prioritaet |
 | ------------------------------ | ------------------------------------------------------ | ---------- |
 | Mahnungs-Email                 | MarkAsSent aendert nur Status, kein E-Mail-Versand     | Mittel     |
-| Paginierung                    | Keine Paginierung auf allen Listen-Endpunkten          | Mittel     |
-| Volltextsuche                  | Keine Suchfunktion auf Listen                          | Mittel     |
 | Rechnungs-Bearbeitung          | Keine Edit-Seite fuer bestehende Rechnungen            | Mittel     |
 | Seed-Daten                     | Keine Finance-Testdaten fuer Entwicklung               | Niedrig    |
-| Scheduled Job: Ueberfaellig    | Kein automatisches Markieren ueberfaelliger Rechnungen | Mittel     |
 | Server-seitiges CSV-Parsing    | Bankimport erwartet Client-parsed Daten                | Niedrig    |
 | Budget/Kostenstellen (REQ-044) | Noch nicht umgesetzt                                   | Backlog    |
 | Integration-Tests              | End-to-End-Verifikation fuer neue Features             | Mittel     |
@@ -278,10 +288,10 @@ Das Finanzmodul ist das umfangreichste Feature des Projekts. 7 von 8 Kern-Finanz
 
 | Problem                                 | Beschreibung                                                             | Schwere |
 | --------------------------------------- | ------------------------------------------------------------------------ | ------- |
-| Race Condition                          | Invoice-Nummern-Generierung ohne DB-Level-Locking                        | Mittel  |
+| Race Condition                          | Invoice-Nummern-Generierung ohne DB-Level-Locking                        | Erledigt: InvoiceNumberCounter mit PostgreSQL UPSERT (REQ-071) |
 | Payment-Update-Problem                  | Aendern/Loeschen einer Zahlung revidiert MarkAsPaid nicht                | Mittel  |
 | Mahnung ohne Pruefung                   | DunningNotice.Create prueft nicht, ob Rechnung wirklich ueberfaellig ist | Mittel  |
-| BankImport-Match/Ignore nicht auditiert | Audit-Log fehlt fuer diese Aktionen                                      | Mittel  |
+| BankImport-Match/Ignore nicht auditiert | Audit-Log fehlt fuer diese Aktionen                                      | Erledigt: Audit-Logging implementiert |
 
 Erledigt:
 
@@ -337,11 +347,11 @@ Erledigt:
 
 | #   | Ziel                                        | Status                                       |
 | --- | ------------------------------------------- | -------------------------------------------- |
-| 6   | Fehlende API-Endpunkte nachruesten          | Teilweise erledigt (Cancel/Storno vorhanden) |
+| 6   | Fehlende API-Endpunkte nachruesten          | Erledigt: MarkOverdue, Activate/Deactivate, Unmatch, DunningNotice Filter |
 | 7   | Application Layer aufbauen                  | Erledigt: 126 CQRS-Dateien                   |
 | 8   | Mahnungs-Email-Versand                      | Offen                                        |
-| 9   | Scheduled Job fuer ueberfaellige Rechnungen | Offen                                        |
-| 10  | Paginierung                                 | Offen                                        |
+| 9   | Scheduled Job fuer ueberfaellige Rechnungen | Erledigt: Hangfire MarkInvoicesOverdueJob (daily) |
+| 10  | Paginierung                                 | Erledigt: PagedResult<T> auf allen 13 Listen-Endpunkten |
 | 11  | Rechnungs-Bearbeitungsseite                 | Offen                                        |
 
 ### Phase 3: Frontend-Refactoring (Prioritaet: MITTEL)
@@ -498,12 +508,13 @@ Erledigt:
 | GET    | `/{id}`                       | Import-Detail mit Zeilen |
 | PUT    | `/{id}/items/{itemId}/match`  | Zeile matchen            |
 | PUT    | `/{id}/items/{itemId}/ignore` | Zeile ignorieren         |
+| PUT    | `/{id}/items/{itemId}/unmatch`| Zeile unmatch            |
 
 ### Dunning (`/api/v1/finance/dunning`)
 
 | Method | Route        | Beschreibung      |
 | ------ | ------------ | ----------------- |
-| GET    | `/`          | Alle Mahnungen    |
+| GET    | `/`          | Alle Mahnungen (Filter: invoiceId) |
 | POST   | `/`          | Mahnung erstellen |
 | POST   | `/{id}/send` | Mahnung versenden |
 
@@ -515,6 +526,8 @@ Erledigt:
 | POST   | `/`     | Beleg hochladen (nur Metadaten!) |
 | GET    | `/{id}` | Beleg-Detail                     |
 | DELETE | `/{id}` | Beleg löschen                    |
+| POST   | `/{id}/archive` | Beleg archivieren         |
+| POST   | `/{id}/restore` | Beleg wiederherstellen    |
 
 ### Exports (`/api/v1/finance/exports`)
 
@@ -522,7 +535,68 @@ Erledigt:
 | ------ | ------------- | -------------------------------------- |
 | GET    | `/journal`    | Buchungsjournal-CSV (Filter: from, to) |
 | GET    | `/open-items` | Offene-Posten-Liste CSV                |
+| GET    | `/vat-summary`| MwSt-Zusammenfassung-CSV               |
+| POST   | `/pain001`    | pain.001 Zahlungsdatei Export          |
+| POST   | `/pain001/validate` | pain.001 Validierung             |
+
+### Admin (`/api/v1/admin/finance`)
+
+| Method | Route             | Beschreibung                              |
+| ------ | ----------------- | ----------------------------------------- |
+| POST   | `/purge-archived` | Archivierte Daten nach RetainUntil löschen |
+
+### Pagination
+
+Alle GET Listen-Endpunkte (13 Endpunkte) unterstützen Pagination:
+- Query-Parameter: `?page=1&pageSize=20&sort=date:desc&filter=status:Sent`
+- Response: `PagedResult<T>` mit `items`, `page`, `pageSize`, `totalCount`, `totalPages`
 
 ---
 
-> Fazit: Das Finanzmodul ist funktional breit aufgestellt. Alle 10 erweiterten Finanz-Requirements (REQ-060 bis REQ-069) sind Done. 420+ Unit-Tests, FluentValidation, Soft-Delete auf allen Entities, CQRS/MediatR mit ~210 Dateien, 16 Domain-Entities. Naechste Schritte: Paginierung, Mahnungs-E-Mail-Versand, Integration-Tests.
+## 11. Archivierung und Retention (REQ-070)
+
+- **IArchivable Interface** auf Receipt, Invoice, Transaction
+- Felder: `IsArchived`, `ArchivedAt`, `ArchivedBy`, `ArchiveReason`, `RetainUntil`
+- Archive/Restore Endpoints: `POST /{id}/archive`, `POST /{id}/restore`
+- Admin Purge: `POST /admin/finance/purge-archived` (nur nach RetainUntil)
+- 10-Jahre Retention Policy
+- Archivierte Entities sind read-only (Mutation wird abgelehnt)
+- Admin kann Restore durchführen
+- Alle Archive/Restore/Purge Aktionen werden auditiert
+
+## 12. Invoice Number Counter (REQ-071)
+
+- **InvoiceNumberCounter Entity** mit PostgreSQL atomic UPSERT
+- Per-FinanceProfile, Per-Fiscal-Year Zähler
+- Felder: `FinanceProfileId`, `FiscalYear`, `Prefix`, `CurrentValue`, `UpdatedAt`
+- Konkurenzsichere Nummernvergabe (kein Race Condition mehr)
+- Rechnungsnummer ist immutable nach Send (Status >= Sent)
+
+## 13. eInvoice Validierung (REQ-072)
+
+- **En16931Validator** mit Business Rules BR-01..BR-AE-01
+- Prüft Pflichtfelder, VAT-Breakdown, MonetaryTotals
+- **ICiusProfile** Extension Point für profilspezifische CIUS-Validierung
+- Endpoint: `POST /invoices/{id}/validate-einvoice`
+- Strukturierte ValidationErrors (Feld, Regel, Message)
+
+## 14. pain.001 Export (REQ-073)
+
+- **Pain001Generator** mit Profil-Unterstützung:
+  - CH SPS (Swiss Payment Standards)
+  - SEPA (EU)
+- Format: pain.001.001.09
+- Endpoints:
+  - `POST /exports/pain001` — Export generieren
+  - `POST /exports/pain001/validate` — Validierung vor Export
+- Remittance Information (InvoiceNumber/Reference) wird befüllt
+- IBAN/BIC Validierung
+
+## 15. Background Jobs (Hangfire)
+
+- **MarkInvoicesOverdueJob**: Täglich, markiert überfällige Rechnungen (DueDate < heute, Status = Sent). Idempotent, AutoRetry(3).
+- **DunningScheduleGenerationJob**: Wöchentlich, generiert Mahnungen für überfällige Rechnungen. Idempotent, AutoRetry(3).
+
+---
+
+> Fazit: Das Finanzmodul ist funktional breit aufgestellt. Alle 10 erweiterten Finanz-Requirements (REQ-060 bis REQ-069) und 4 Sprint-5-Requirements (REQ-070 bis REQ-073) sind Done. 420+ Unit-Tests, FluentValidation, Soft-Delete auf allen Entities, IArchivable auf Receipt/Invoice/Transaction, CQRS/MediatR mit ~210 Dateien, 17 Domain-Entities. Alle Listen-Endpunkte paginiert (PagedResult<T>). Hangfire Background Jobs (MarkInvoicesOverdueJob, DunningScheduleGenerationJob). Naechste Schritte: Mahnungs-E-Mail-Versand, Integration-Tests, Budget/Kostenstellen (REQ-044).

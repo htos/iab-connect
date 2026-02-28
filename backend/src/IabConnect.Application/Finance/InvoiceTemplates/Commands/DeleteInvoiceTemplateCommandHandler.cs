@@ -26,12 +26,13 @@ public sealed class DeleteInvoiceTemplateCommandHandler : IRequestHandler<Delete
         var template = await _repository.GetByIdAsync(request.Id, ct);
         if (template is null) return false;
 
-        await _repository.DeleteAsync(request.Id, ct);
+        template.SoftDelete();
+        await _repository.UpdateAsync(template, ct);
         await _unitOfWork.SaveChangesAsync(ct);
 
         await _auditService.LogActionAsync(
             AuditEventType.FinanceDeleted,
-            $"Invoice template '{template.Name}' deleted",
+            $"Invoice template '{template.Name}' soft-deleted",
             entityType: "InvoiceTemplate",
             entityId: request.Id.ToString(),
             ct: ct);

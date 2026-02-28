@@ -1,6 +1,7 @@
 using IabConnect.Application.Finance;
 using IabConnect.Domain.Finance;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace IabConnect.Infrastructure.Persistence.Repositories;
 
@@ -121,13 +122,16 @@ public sealed class TransactionRepository : ITransactionRepository
         _context = context;
     }
 
-    public async Task<List<Transaction>> GetAllAsync(DateTime? from = null, DateTime? to = null, TransactionType? type = null, CancellationToken ct = default)
+    public async Task<List<Transaction>> GetAllAsync(DateTime? from = null, DateTime? to = null, TransactionType? type = null, bool includeArchived = false, CancellationToken ct = default)
     {
         var query = _context.Transactions
             .AsNoTracking()
             .Include(t => t.Account)
             .Include(t => t.Category)
             .AsQueryable();
+
+        if (!includeArchived)
+            query = query.Where(t => !t.IsArchived);
 
         if (from.HasValue)
             query = query.Where(t => t.Date >= from.Value);
@@ -193,6 +197,17 @@ public sealed class TransactionRepository : ITransactionRepository
 
         return (totalIncome, totalExpense);
     }
+
+    public async Task<List<Transaction>> GetArchivedAsync(CancellationToken ct = default)
+    {
+        return await _context.Transactions
+            .AsNoTracking()
+            .Include(t => t.Account)
+            .Include(t => t.Category)
+            .Where(t => t.IsArchived)
+            .OrderByDescending(t => t.ArchivedAt)
+            .ToListAsync(ct);
+    }
 }
 
 /// <summary>
@@ -207,12 +222,15 @@ public sealed class InvoiceRepository : IInvoiceRepository
         _context = context;
     }
 
-    public async Task<List<Invoice>> GetAllAsync(InvoiceStatus? status = null, CancellationToken ct = default)
+    public async Task<List<Invoice>> GetAllAsync(InvoiceStatus? status = null, bool includeArchived = false, CancellationToken ct = default)
     {
         var query = _context.Invoices
             .AsNoTracking()
             .Include(i => i.Items)
             .AsQueryable();
+
+        if (!includeArchived)
+            query = query.Where(i => !i.IsArchived);
 
         if (status.HasValue)
             query = query.Where(i => i.Status == status.Value);
@@ -273,24 +291,64 @@ public sealed class InvoiceRepository : IInvoiceRepository
         var year = DateTime.UtcNow.Year;
         var prefix = $"INV-{year}-";
 
-        var lastNumber = await _context.Invoices
+        // REQ-071: Use atomic PostgreSQL UPSERT for concurrency-safe numbering.
+        // The ON CONFLICT … DO UPDATE acquires a row-level lock, preventing
+        // two concurrent callers from ever reading the same counter value.
+        var profileId = await GetDefaultProfileIdAsync(ct);
+
+        var connection = _context.Database.GetDbConnection();
+        if (connection.State != System.Data.ConnectionState.Open)
+            await connection.OpenAsync(ct);
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            INSERT INTO invoice_number_counters (id, finance_profile_id, fiscal_year, prefix, current_value, updated_at)
+            VALUES (gen_random_uuid(), @profileId, @fiscalYear, @prefix, 1, now())
+            ON CONFLICT (finance_profile_id, fiscal_year)
+            DO UPDATE SET current_value = invoice_number_counters.current_value + 1,
+                          updated_at = now()
+            RETURNING current_value
+            """;
+
+        var p1 = command.CreateParameter();
+        p1.ParameterName = "profileId";
+        p1.Value = profileId;
+        command.Parameters.Add(p1);
+
+        var p2 = command.CreateParameter();
+        p2.ParameterName = "fiscalYear";
+        p2.Value = year;
+        command.Parameters.Add(p2);
+
+        var p3 = command.CreateParameter();
+        p3.ParameterName = "prefix";
+        p3.Value = prefix;
+        command.Parameters.Add(p3);
+
+        // Enlist in the current EF Core transaction if one is active
+        if (_context.Database.CurrentTransaction is not null)
+            command.Transaction = _context.Database.CurrentTransaction.GetDbTransaction();
+
+        var result = await command.ExecuteScalarAsync(ct);
+        var nextValue = Convert.ToInt32(result);
+
+        return $"{prefix}{nextValue:D4}";
+    }
+
+    /// <summary>
+    /// Returns the active FinanceProfile Id, or a deterministic sentinel GUID
+    /// when no profile exists yet (e.g. during initial setup / tests).
+    /// </summary>
+    private async Task<Guid> GetDefaultProfileIdAsync(CancellationToken ct)
+    {
+        var profileId = await _context.FinanceProfiles
             .AsNoTracking()
-            .IgnoreQueryFilters()
-            .Where(i => i.InvoiceNumber.StartsWith(prefix))
-            .OrderByDescending(i => i.InvoiceNumber)
-            .Select(i => i.InvoiceNumber)
+            .Where(fp => fp.IsActive)
+            .Select(fp => (Guid?)fp.Id)
             .FirstOrDefaultAsync(ct);
 
-        var nextSequence = 1;
-
-        if (lastNumber is not null)
-        {
-            var numericPart = lastNumber[prefix.Length..];
-            if (int.TryParse(numericPart, out var parsed))
-                nextSequence = parsed + 1;
-        }
-
-        return $"{prefix}{nextSequence:D4}";
+        // Deterministic sentinel so the counter row is stable even without a profile
+        return profileId ?? Guid.Parse("00000000-0000-0000-0000-000000000001");
     }
 
     public async Task<Invoice?> GetByIdIncludingDeletedAsync(Guid id, CancellationToken ct = default)
@@ -299,6 +357,16 @@ public sealed class InvoiceRepository : IInvoiceRepository
             .IgnoreQueryFilters()
             .Include(i => i.Items)
             .FirstOrDefaultAsync(i => i.Id == id, ct);
+    }
+
+    public async Task<List<Invoice>> GetArchivedAsync(CancellationToken ct = default)
+    {
+        return await _context.Invoices
+            .AsNoTracking()
+            .Include(i => i.Items)
+            .Where(i => i.IsArchived)
+            .OrderByDescending(i => i.ArchivedAt)
+            .ToListAsync(ct);
     }
 }
 
@@ -328,6 +396,15 @@ public sealed class PaymentRepository : IPaymentRepository
         return await _context.Payments
             .Include(p => p.Invoice)
             .FirstOrDefaultAsync(p => p.Id == id, ct);
+    }
+
+    public async Task<List<Payment>> GetByIdsAsync(List<Guid> ids, CancellationToken ct = default)
+    {
+        return await _context.Payments
+            .Include(p => p.Invoice)
+            .Where(p => ids.Contains(p.Id))
+            .OrderByDescending(p => p.Date)
+            .ToListAsync(ct);
     }
 
     public async Task<List<Payment>> GetByInvoiceIdAsync(Guid invoiceId, CancellationToken ct = default)
@@ -467,10 +544,16 @@ public sealed class ReceiptRepository : IReceiptRepository
         _context = context;
     }
 
-    public async Task<List<Receipt>> GetAllAsync(CancellationToken ct = default)
+    public async Task<List<Receipt>> GetAllAsync(bool includeArchived = false, CancellationToken ct = default)
     {
-        return await _context.Receipts
+        var query = _context.Receipts
             .AsNoTracking()
+            .AsQueryable();
+
+        if (!includeArchived)
+            query = query.Where(r => !r.IsArchived);
+
+        return await query
             .OrderByDescending(r => r.UploadedAt)
             .ToListAsync(ct);
     }
@@ -501,6 +584,28 @@ public sealed class ReceiptRepository : IReceiptRepository
             receipt.SoftDelete();
             await _context.SaveChangesAsync(ct);
         }
+    }
+
+    public async Task<List<Receipt>> GetArchivedAsync(CancellationToken ct = default)
+    {
+        return await _context.Receipts
+            .AsNoTracking()
+            .Where(r => r.IsArchived)
+            .OrderByDescending(r => r.ArchivedAt)
+            .ToListAsync(ct);
+    }
+
+    public async Task<List<Receipt>> GetExpiredArchivedAsync(DateTimeOffset asOf, CancellationToken ct = default)
+    {
+        return await _context.Receipts
+            .Where(r => r.IsArchived && r.RetainUntil <= asOf)
+            .ToListAsync(ct);
+    }
+
+    public async Task RemoveAsync(Receipt receipt, CancellationToken ct = default)
+    {
+        _context.Receipts.Remove(receipt);
+        await _context.SaveChangesAsync(ct);
     }
 }
 
@@ -756,7 +861,7 @@ public sealed class InvoiceTemplateRepository : IInvoiceTemplateRepository
         var template = await _context.InvoiceTemplates.FindAsync([id], ct);
         if (template is not null)
         {
-            _context.InvoiceTemplates.Remove(template);
+            template.SoftDelete();
             await _context.SaveChangesAsync(ct);
         }
     }

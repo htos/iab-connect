@@ -38,6 +38,18 @@ public static class CategoryEndpoints
             .WithName("DeleteCategory")
             .WithSummary("Delete a transaction category")
             .WithDescription("REQ-038: Deletes a transaction category. Audited.");
+
+        group.MapPost("/{id:guid}/activate", Activate)
+            .RequireAuthorization("RequireFinanceWrite")
+            .WithName("ActivateCategory")
+            .WithSummary("Activate a transaction category")
+            .WithDescription("REQ-038: Activates a transaction category. Audited.");
+
+        group.MapPost("/{id:guid}/deactivate", Deactivate)
+            .RequireAuthorization("RequireFinanceWrite")
+            .WithName("DeactivateCategory")
+            .WithSummary("Deactivate a transaction category")
+            .WithDescription("REQ-038: Deactivates a transaction category. Audited.");
     }
 
     private static string GetUserName(HttpContext ctx) =>
@@ -45,9 +57,16 @@ public static class CategoryEndpoints
         ?? ctx.User.FindFirst(ClaimTypes.Email)?.Value
         ?? "system";
 
-    private static async Task<IResult> GetAll(ISender sender, CancellationToken ct)
+    private static async Task<IResult> GetAll(
+        ISender sender, int? page, int? pageSize, string? sort, string? filter, CancellationToken ct)
     {
-        var categories = await sender.Send(new GetCategoriesQuery(), ct);
+        var categories = await sender.Send(new GetCategoriesQuery
+        {
+            Page = page ?? 1,
+            PageSize = pageSize ?? 20,
+            Sort = sort,
+            Filter = filter
+        }, ct);
         return Results.Ok(categories);
     }
 
@@ -85,6 +104,24 @@ public static class CategoryEndpoints
     {
         var found = await sender.Send(new DeleteCategoryCommand(id, GetUserName(httpContext)), ct);
         return found ? Results.NoContent() : Results.NotFound(new { Message = "Category not found." });
+    }
+
+    private static async Task<IResult> Activate(
+        Guid id, ISender sender, HttpContext httpContext, CancellationToken ct)
+    {
+        var dto = await sender.Send(new ActivateCategoryCommand(id, GetUserName(httpContext)), ct);
+        return dto is null
+            ? Results.NotFound(new { Message = "Category not found." })
+            : Results.Ok(dto);
+    }
+
+    private static async Task<IResult> Deactivate(
+        Guid id, ISender sender, HttpContext httpContext, CancellationToken ct)
+    {
+        var dto = await sender.Send(new DeactivateCategoryCommand(id, GetUserName(httpContext)), ct);
+        return dto is null
+            ? Results.NotFound(new { Message = "Category not found." })
+            : Results.Ok(dto);
     }
 
     // DTOs

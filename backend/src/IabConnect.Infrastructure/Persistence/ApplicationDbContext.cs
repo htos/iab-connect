@@ -50,6 +50,7 @@ public sealed class ApplicationDbContext : DbContext
     public DbSet<ExpenseClaim> ExpenseClaims => Set<ExpenseClaim>();
     public DbSet<InvoiceTemplate> InvoiceTemplates => Set<InvoiceTemplate>();
     public DbSet<ActivityArea> ActivityAreas => Set<ActivityArea>();
+    public DbSet<InvoiceNumberCounter> InvoiceNumberCounters => Set<InvoiceNumberCounter>();
 
     // Documents (REQ-034..037)
     public DbSet<DocumentFolder> DocumentFolders => Set<DocumentFolder>();

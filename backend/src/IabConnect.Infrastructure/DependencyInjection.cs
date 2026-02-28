@@ -6,7 +6,9 @@ using IabConnect.Application.Authorization;
 using IabConnect.Application.Common;
 using IabConnect.Application.Communication;
 using IabConnect.Application.Finance;
+using IabConnect.Application.Finance.EInvoice;
 using IabConnect.Application.Finance.Invoices;
+using IabConnect.Application.Finance.Jobs;
 using IabConnect.Domain.Audit;
 using IabConnect.Domain.Communication;
 using IabConnect.Domain.Documents;
@@ -16,6 +18,8 @@ using IabConnect.Domain.Privacy;
 using IabConnect.Infrastructure.Audit;
 using IabConnect.Infrastructure.Email;
 using IabConnect.Infrastructure.Finance;
+using IabConnect.Infrastructure.Finance.EInvoice;
+using IabConnect.Infrastructure.Finance.Jobs;
 using IabConnect.Infrastructure.Identity;
 using IabConnect.Infrastructure.Persistence;
 using IabConnect.Infrastructure.Persistence.Repositories;
@@ -91,6 +95,12 @@ public static class DependencyInjection
         // REQ-065: eInvoice export (EN 16931 UBL)
         services.AddScoped<IEInvoiceExporter, UblInvoiceExporter>();
 
+        // REQ-073: pain.001 ISO 20022 payment export
+        services.AddScoped<Application.Finance.Exports.Pain001.IPain001Generator, Pain001Generator>();
+
+        // REQ-072: eInvoice validation (EN 16931 baseline + CIUS extension point)
+        services.AddScoped<IEInvoiceValidator, En16931Validator>();
+
         // REQ-034..037: Documents repositories
         services.AddScoped<IDocumentRepository, DocumentRepository>();
         services.AddScoped<IDocumentFolderRepository, DocumentFolderRepository>();
@@ -123,6 +133,14 @@ public static class DependencyInjection
         // REQ-026: E-Mail-Kampagnen Job Service (Hangfire)
         services.AddScoped<IEmailCampaignJobService, EmailCampaignJobService>();
         services.AddScoped<EmailCampaignSendJob>();
+
+        // REQ-039: Background job — mark overdue invoices
+        services.AddScoped<IMarkInvoicesOverdueService, MarkInvoicesOverdueService>();
+        services.AddScoped<MarkInvoicesOverdueJob>();
+
+        // REQ-042: Background job — generate dunning notices
+        services.AddScoped<IDunningScheduleService, DunningScheduleService>();
+        services.AddScoped<DunningScheduleGenerationJob>();
 
         // REQ-034: Document Storage (RustFS via S3 SDK)
         services.Configure<DocumentStorageSettings>(configuration.GetSection(DocumentStorageSettings.SectionName));

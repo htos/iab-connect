@@ -115,7 +115,8 @@ export default function PaymentsPage() {
     try {
       const res = await apiRef.current.get("/api/v1/finance/payments");
       if (res.error) throw new Error(res.error);
-      setPayments(res.data as Payment[]);
+      const body = res.data as { items: Payment[] };
+      setPayments(body.items ?? []);
     } catch {
       setError("Failed to load payments");
     }
@@ -261,7 +262,10 @@ export default function PaymentsPage() {
   const fetchReceipts = useCallback(async () => {
     try {
       const res = await apiRef.current.get<Receipt[]>("/api/v1/finance/receipts");
-      if (res.data) setAvailableReceipts(res.data as Receipt[]);
+      if (res.data) {
+        const body = res.data as unknown as { items: Receipt[] };
+        setAvailableReceipts(body.items ?? []);
+      }
     } catch { /* ignore */ }
   }, []);
 

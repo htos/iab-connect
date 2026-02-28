@@ -6,7 +6,7 @@ namespace IabConnect.Domain.Finance;
 /// REQ-064: Configurable invoice template per finance profile.
 /// Stores EU-specific mandatory fields and optional presentation settings.
 /// </summary>
-public class InvoiceTemplate : Entity
+public class InvoiceTemplate : Entity, ISoftDeletable
 {
     public string Name { get; private set; } = string.Empty;
     public Jurisdiction Jurisdiction { get; private set; }
@@ -34,6 +34,8 @@ public class InvoiceTemplate : Entity
 
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
+    public bool IsDeleted { get; private set; }
+    public DateTime? DeletedAt { get; private set; }
 
     private InvoiceTemplate() { }
 
@@ -110,5 +112,17 @@ public class InvoiceTemplate : Entity
         LegalNotice = legalNotice?.Trim();
         Language = language.Trim();
         UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    public void SoftDelete()
+    {
+        IsDeleted = true;
+        DeletedAt = DateTime.UtcNow;
+    }
+
+    public void Restore()
+    {
+        IsDeleted = false;
+        DeletedAt = null;
     }
 }

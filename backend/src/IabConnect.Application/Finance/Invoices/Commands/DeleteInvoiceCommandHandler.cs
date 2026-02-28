@@ -31,6 +31,10 @@ public sealed class DeleteInvoiceCommandHandler : IRequestHandler<DeleteInvoiceC
         if (invoice is null)
             return Result.Failure("Invoice not found.");
 
+        // REQ-070: Reject deletion of archived invoices
+        if (invoice.IsArchived)
+            return Result.Failure("Cannot delete an archived invoice.");
+
         // REQ-066: Check fiscal period locking
         await _fiscalPeriodService.EnsurePeriodNotLockedAsync(invoice.Date, ct);
 

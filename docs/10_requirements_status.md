@@ -562,3 +562,35 @@ Owner: Implementation Agent
 SprintOderRelease: Sprint 4
 TicketLink:
 Notizen: camt Import (ISO 20022) und Referenz-Matching implementiert. CamtParser fuer camt.053 und camt.054 XML (System.Xml.Linq, keine externen Abhaengigkeiten). BankImportMatcher mit 5-stufiger Matching-Strategie (InvoiceNumber exact, Structured/Unstructured Reference, Amount+Date, Amount-only). BankImport erweitert mit Format und OriginalFileStoragePath. BankImportItem erweitert mit 7 Referenzfeldern. Backend: ImportCamtCommand + Handler + Validator. Frontend: camt Upload Button, Referenz-Spalten, Match-Confidence Badges. 28 Unit-Tests (16 Parser, 8 Matcher, 4 Validator). Sample-Fixtures fuer camt.053/054.
+
+ID: REQ-070
+Status: Done
+StatusSeit: 2026 02 28
+Owner: Implementation Agent
+SprintOderRelease: Sprint 5
+TicketLink:
+Notizen: Retention/Archival implementiert. IArchivable Interface auf Receipt, Invoice, Transaction. Archive/Restore Endpoints (POST /{id}/archive, POST /{id}/restore). Admin-Purge Endpoint (POST /admin/finance/purge-archived) nur nach RetainUntil. 10-Jahre Retention. Archivierte Entities sind read-only. Admin kann Restore durchführen. Audit-Logging für alle Archive/Restore/Purge Aktionen.
+
+ID: REQ-071
+Status: Done
+StatusSeit: 2026 02 28
+Owner: Implementation Agent
+SprintOderRelease: Sprint 5
+TicketLink:
+Notizen: Invoice Number Counter implementiert. InvoiceNumberCounter Entity mit PostgreSQL atomic UPSERT (konkurenzsicher). Per-Profile, Per-Fiscal-Year Nummernvergabe. Prefix konfigurierbar. Rechnungsnummer ist immutable nach Send (Status >= Sent).
+
+ID: REQ-072
+Status: Done
+StatusSeit: 2026 02 28
+Owner: Implementation Agent
+SprintOderRelease: Sprint 5
+TicketLink:
+Notizen: eInvoice Validierung implementiert. En16931Validator mit Business Rules BR-01..BR-AE-01. ICiusProfile Extension Point für profilspezifische CIUS. POST /invoices/{id}/validate-einvoice Endpoint mit strukturierten ValidationErrors. Validierung prüft Pflichtfelder, VAT-Breakdown, MonetaryTotals.
+
+ID: REQ-073
+Status: Done
+StatusSeit: 2026 02 28
+Owner: Implementation Agent
+SprintOderRelease: Sprint 5
+TicketLink:
+Notizen: pain.001 Export implementiert. Pain001Generator mit CH SPS und SEPA Profil-Unterstützung. Format pain.001.001.09. POST /exports/pain001 (Export) und POST /exports/pain001/validate (Validierung) Endpoints. Remittance Information (InvoiceNumber/Reference) wird befüllt. IBAN/BIC Validierung.

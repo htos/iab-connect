@@ -1,9 +1,10 @@
+using IabConnect.Application.Common;
 using IabConnect.Domain.Finance;
 using MediatR;
 
 namespace IabConnect.Application.Finance.Receipts.Queries;
 
-public sealed class GetReceiptsQueryHandler : IRequestHandler<GetReceiptsQuery, List<ReceiptDto>>
+public sealed class GetReceiptsQueryHandler : IRequestHandler<GetReceiptsQuery, PagedResult<ReceiptDto>>
 {
     private readonly IReceiptRepository _repository;
 
@@ -12,10 +13,19 @@ public sealed class GetReceiptsQueryHandler : IRequestHandler<GetReceiptsQuery, 
         _repository = repository;
     }
 
-    public async Task<List<ReceiptDto>> Handle(GetReceiptsQuery request, CancellationToken ct)
+    public async Task<PagedResult<ReceiptDto>> Handle(GetReceiptsQuery request, CancellationToken ct)
     {
-        var receipts = await _repository.GetAllAsync(ct);
-        return receipts.Select(MapToDto).ToList();
+        var receipts = await _repository.GetAllAsync(ct: ct);
+        var dtos = receipts.Select(MapToDto);
+
+        var (field, desc) = PaginationHelper.ParseSort(request.Sort, "uploadedAt", true);
+        var sorted = field.ToLowerInvariant() switch
+        {
+            "filename" => dtos.ApplySort(r => r.FileName, desc),
+            _ => dtos.ApplySort(r => r.UploadedAt, desc)
+        };
+
+        return sorted.ToPagedResult(request.Page, request.PageSize);
     }
 
     internal static ReceiptDto MapToDto(Receipt r) =>

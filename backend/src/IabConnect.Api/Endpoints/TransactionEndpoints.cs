@@ -70,9 +70,17 @@ public static class TransactionEndpoints
         ?? "system";
 
     private static async Task<IResult> GetAll(
-        ISender sender, DateTime? from, DateTime? to, string? type, CancellationToken ct)
+        ISender sender, DateTime? from, DateTime? to, string? type,
+        int? page, int? pageSize, string? sort, string? filter, CancellationToken ct)
     {
-        var transactions = await sender.Send(new GetTransactionsQuery { From = from, To = to, Type = type }, ct);
+        var transactions = await sender.Send(new GetTransactionsQuery
+        {
+            From = from, To = to, Type = type,
+            Page = page ?? 1,
+            PageSize = pageSize ?? 20,
+            Sort = sort,
+            Filter = filter
+        }, ct);
         return Results.Ok(transactions);
     }
 

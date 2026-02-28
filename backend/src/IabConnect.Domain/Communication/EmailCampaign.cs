@@ -105,12 +105,23 @@ public sealed class EmailCampaign : Entity
         if (Status != EmailCampaignStatus.Draft)
             throw new InvalidOperationException("Only draft campaigns can be edited");
 
-        Name = name ?? throw new ArgumentException("Name is required", nameof(name));
-        Subject = subject ?? throw new ArgumentException("Subject is required", nameof(subject));
-        HtmlContent = htmlContent ?? throw new ArgumentException("HTML content is required", nameof(htmlContent));
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Name is required", nameof(name));
+        if (string.IsNullOrWhiteSpace(subject))
+            throw new ArgumentException("Subject is required", nameof(subject));
+        if (string.IsNullOrWhiteSpace(htmlContent))
+            throw new ArgumentException("HTML content is required", nameof(htmlContent));
+        if (string.IsNullOrWhiteSpace(fromName))
+            throw new ArgumentException("From name is required", nameof(fromName));
+        if (string.IsNullOrWhiteSpace(fromEmail))
+            throw new ArgumentException("From email is required", nameof(fromEmail));
+
+        Name = name;
+        Subject = subject;
+        HtmlContent = htmlContent;
         PlainTextContent = plainTextContent;
-        FromName = fromName ?? throw new ArgumentException("From name is required", nameof(fromName));
-        FromEmail = fromEmail ?? throw new ArgumentException("From email is required", nameof(fromEmail));
+        FromName = fromName;
+        FromEmail = fromEmail;
         ReplyToEmail = replyToEmail;
         UpdatedAt = DateTime.UtcNow;
     }
@@ -149,11 +160,11 @@ public sealed class EmailCampaign : Entity
     /// </summary>
     public void StartSending()
     {
-        if (Status != EmailCampaignStatus.Draft && Status != EmailCampaignStatus.Scheduled)
+        if (Status != EmailCampaignStatus.Draft && Status != EmailCampaignStatus.Scheduled && Status != EmailCampaignStatus.Failed)
             throw new InvalidOperationException($"Cannot start sending campaign in status {Status}");
 
         Status = EmailCampaignStatus.Sending;
-        SentAt = DateTime.UtcNow;
+        SentAt ??= DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
     }
 

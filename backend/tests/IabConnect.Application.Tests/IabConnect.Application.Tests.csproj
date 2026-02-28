@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\IabConnect.Application\IabConnect.Application.csproj" />
+    <ProjectReference Include="..\..\src\IabConnect.Infrastructure\IabConnect.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

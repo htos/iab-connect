@@ -1,10 +1,11 @@
+using IabConnect.Application.Finance.Exports.Pain001;
 using IabConnect.Application.Finance.Exports.Queries;
 using MediatR;
 
 namespace IabConnect.Api.Endpoints;
 
 /// <summary>
-/// API endpoints for finance CSV exports (REQ-044)
+/// API endpoints for finance exports (REQ-044, REQ-073)
 /// </summary>
 public static class FinanceExportEndpoints
 {
@@ -30,6 +31,19 @@ public static class FinanceExportEndpoints
             .WithName("ExportVatSummary")
             .WithSummary("Export VAT summary as CSV")
             .WithDescription("REQ-062: Exports VAT summary grouped by tax code for a date range. Audited.");
+
+        // REQ-073: pain.001 ISO 20022 payment export
+        group.MapPost("/pain001", ExportPain001)
+            .RequireAuthorization("RequireFinanceWrite")
+            .WithName("ExportPain001")
+            .WithSummary("Export approved payments as pain.001 XML")
+            .WithDescription("REQ-073: Generates ISO 20022 pain.001.001.09 XML for credit transfer initiation. Supports CH SPS and SEPA.");
+
+        group.MapPost("/pain001/validate", ValidatePain001)
+            .RequireAuthorization("RequireFinanceRead")
+            .WithName("ValidatePain001")
+            .WithSummary("Validate payments for pain.001 export")
+            .WithDescription("REQ-073: Validates payments and config for pain.001 export without generating XML.");
     }
 
     private static async Task<IResult> ExportJournal(
@@ -50,5 +64,26 @@ public static class FinanceExportEndpoints
     {
         var result = await sender.Send(new ExportVatSummaryQuery(from, to), ct);
         return Results.File(result.Content, result.ContentType, result.FileName);
+    }
+
+    private static async Task<IResult> ExportPain001(
+        ISender sender, ExportPain001Query query, CancellationToken ct)
+    {
+        var result = await sender.Send(query, ct);
+
+        if (!result.Validation.IsValid)
+        {
+            return Results.BadRequest(result.Validation);
+        }
+
+        var bytes = System.Text.Encoding.UTF8.GetBytes(result.Xml);
+        return Results.File(bytes, "application/xml", result.FileName);
+    }
+
+    private static async Task<IResult> ValidatePain001(
+        ISender sender, ValidatePain001Query query, CancellationToken ct)
+    {
+        var result = await sender.Send(query, ct);
+        return Results.Ok(result);
     }
 }

@@ -26,6 +26,14 @@ pageSize
 sort
 filter
 
+Alle Listen-Endpunkte (GET collections) unterstützen diese Pagination Query-Parameter.
+Response Format für paginierte Listen: PagedResult<T>
+  items: Array der Ergebnisse
+  page: Aktuelle Seite
+  pageSize: Seitengrösse
+  totalCount: Gesamtanzahl
+  totalPages: Gesamtseiten
+
 Auth und Authorisierung
 Authorization Header mit Bearer Token
 Backend validiert Issuer, Audience, Signature
@@ -149,11 +157,15 @@ GET /api/v1/finance/accounts
 POST /api/v1/finance/accounts
 PUT /api/v1/finance/accounts/{id}
 DELETE /api/v1/finance/accounts/{id}
+POST /api/v1/finance/accounts/{id}/activate
+POST /api/v1/finance/accounts/{id}/deactivate
 
 GET /api/v1/finance/categories
 POST /api/v1/finance/categories
 PUT /api/v1/finance/categories/{id}
 DELETE /api/v1/finance/categories/{id}
+POST /api/v1/finance/categories/{id}/activate
+POST /api/v1/finance/categories/{id}/deactivate
 
 GET /api/v1/finance/transactions
 GET /api/v1/finance/transactions/summary
@@ -172,6 +184,10 @@ PUT /api/v1/finance/invoices/{id}
 DELETE /api/v1/finance/invoices/{id}
 POST /api/v1/finance/invoices/{id}/send
 POST /api/v1/finance/invoices/{id}/cancel
+POST /api/v1/finance/invoices/{id}/mark-overdue
+POST /api/v1/finance/invoices/{id}/archive
+POST /api/v1/finance/invoices/{id}/restore
+POST /api/v1/finance/invoices/{id}/validate-einvoice
 GET /api/v1/finance/invoices/{id}/pdf
 
 GET /api/v1/finance/payments
@@ -184,6 +200,7 @@ POST /api/v1/finance/bank-imports
 GET /api/v1/finance/bank-imports/{id}
 PUT /api/v1/finance/bank-imports/{id}/items/{itemId}/match
 PUT /api/v1/finance/bank-imports/{id}/items/{itemId}/ignore
+PUT /api/v1/finance/bank-imports/{id}/items/{itemId}/unmatch
 
 GET /api/v1/finance/dunning
 POST /api/v1/finance/dunning
@@ -194,10 +211,16 @@ POST /api/v1/finance/receipts
 GET /api/v1/finance/receipts/{id}
 GET /api/v1/finance/receipts/{id}/download
 DELETE /api/v1/finance/receipts/{id}
+POST /api/v1/finance/receipts/{id}/archive
+POST /api/v1/finance/receipts/{id}/restore
 
 GET /api/v1/finance/exports/journal
 GET /api/v1/finance/exports/open-items
 GET /api/v1/finance/exports/vat-summary
+POST /api/v1/finance/exports/pain001
+POST /api/v1/finance/exports/pain001/validate
+
+POST /api/v1/admin/finance/purge-archived
 
 GET /api/v1/finance/profile
 POST /api/v1/finance/profile

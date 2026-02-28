@@ -48,6 +48,7 @@ public static class EndpointMapper
         app.MapInvoiceTemplateEndpoints(); // REQ-064: Invoice Templates
         app.MapActivityAreaEndpoints(); // REQ-068: Activity Areas
         app.MapDashboardEndpoints(); // Finance Dashboard overview
+        app.MapArchiveEndpoints(); // REQ-070: Archive/Retention
 
         return app;
     }

@@ -194,7 +194,8 @@ export default function InvoiceTemplatesPage() {
       if (response.error) {
         setError(response.error);
       } else if (response.data) {
-        setTemplates(response.data as InvoiceTemplate[]);
+        const body = response.data as unknown as { items: InvoiceTemplate[] };
+        setTemplates(body.items ?? []);
       }
     } catch {
       setError(tit("error"));

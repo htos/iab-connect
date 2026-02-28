@@ -17,6 +17,8 @@ public sealed class DocumentTag : Entity
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Tag name is required.", nameof(name));
+        if (name.Trim().Length > Document.MaxTagNameLength)
+            throw new ArgumentException($"Tag name must not exceed {Document.MaxTagNameLength} characters.", nameof(name));
 
         return new DocumentTag
         {

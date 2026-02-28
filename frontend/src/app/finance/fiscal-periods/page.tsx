@@ -289,7 +289,8 @@ export default function FiscalPeriodsPage() {
         setError(t("error"));
         return;
       }
-      setPeriods(response.data ?? []);
+      const body = response.data as unknown as { items: FiscalPeriod[] };
+      setPeriods(body?.items ?? []);
     } catch {
       setError(t("error"));
     } finally {

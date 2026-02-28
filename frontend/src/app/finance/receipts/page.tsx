@@ -47,7 +47,8 @@ export default function ReceiptsPage() {
       setError(null);
       const res = await apiRef.current.get("/api/v1/finance/receipts");
       if (res.error) throw new Error(res.error);
-      setReceipts(res.data as Receipt[]);
+      const body = res.data as { items: Receipt[] };
+      setReceipts(body.items ?? []);
     } catch {
       setError(tRef.current("loadError"));
     } finally {

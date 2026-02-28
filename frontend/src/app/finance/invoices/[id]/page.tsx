@@ -104,7 +104,8 @@ export default function InvoiceDetailPage() {
         `/api/v1/finance/payments?invoiceId=${id}`
       );
       if (response.error) throw new Error(response.error);
-      setPayments(response.data as Payment[]);
+      const body = response.data as { items: Payment[] };
+      setPayments(body.items ?? []);
     } catch {
       // Payments are non-critical, silently fail
     }

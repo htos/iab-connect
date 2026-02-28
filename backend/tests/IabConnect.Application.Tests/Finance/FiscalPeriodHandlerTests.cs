@@ -585,7 +585,7 @@ public class FiscalPeriodHandlerTests
         var result = await handler.Handle(new GetFiscalPeriodsQuery(), CancellationToken.None);
 
         // Assert
-        result.Should().HaveCount(12);
+        result.Items.Should().HaveCount(12);
     }
 
     [Fact]
@@ -604,8 +604,8 @@ public class FiscalPeriodHandlerTests
         var result = await handler.Handle(new GetFiscalPeriodsQuery(2026), CancellationToken.None);
 
         // Assert
-        result.Should().HaveCount(6);
-        result.Should().OnlyContain(p => p.Year == 2026);
+        result.Items.Should().HaveCount(6);
+        result.Items.Should().OnlyContain(p => p.Year == 2026);
     }
 
     #endregion

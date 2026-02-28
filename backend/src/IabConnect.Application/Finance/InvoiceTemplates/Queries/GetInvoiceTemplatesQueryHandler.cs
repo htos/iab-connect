@@ -1,9 +1,10 @@
+using IabConnect.Application.Common;
 using IabConnect.Domain.Finance;
 using MediatR;
 
 namespace IabConnect.Application.Finance.InvoiceTemplates.Queries;
 
-public sealed class GetInvoiceTemplatesQueryHandler : IRequestHandler<GetInvoiceTemplatesQuery, List<InvoiceTemplateDto>>
+public sealed class GetInvoiceTemplatesQueryHandler : IRequestHandler<GetInvoiceTemplatesQuery, PagedResult<InvoiceTemplateDto>>
 {
     private readonly IInvoiceTemplateRepository _repository;
 
@@ -12,7 +13,7 @@ public sealed class GetInvoiceTemplatesQueryHandler : IRequestHandler<GetInvoice
         _repository = repository;
     }
 
-    public async Task<List<InvoiceTemplateDto>> Handle(GetInvoiceTemplatesQuery request, CancellationToken ct)
+    public async Task<PagedResult<InvoiceTemplateDto>> Handle(GetInvoiceTemplatesQuery request, CancellationToken ct)
     {
         Jurisdiction? jurisdiction = null;
         if (!string.IsNullOrWhiteSpace(request.Jurisdiction) &&
@@ -22,7 +23,16 @@ public sealed class GetInvoiceTemplatesQueryHandler : IRequestHandler<GetInvoice
         }
 
         var templates = await _repository.GetAllAsync(jurisdiction, ct);
-        return templates.Select(MapToDto).ToList();
+        var dtos = templates.Select(MapToDto);
+
+        var (field, desc) = PaginationHelper.ParseSort(request.Sort, "name", false);
+        var sorted = field.ToLowerInvariant() switch
+        {
+            "jurisdiction" => dtos.ApplySort(t => t.Jurisdiction, desc),
+            _ => dtos.ApplySort(t => t.Name, desc)
+        };
+
+        return sorted.ToPagedResult(request.Page, request.PageSize);
     }
 
     internal static InvoiceTemplateDto MapToDto(InvoiceTemplate t) =>

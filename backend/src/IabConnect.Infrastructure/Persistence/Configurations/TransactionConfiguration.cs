@@ -122,10 +122,32 @@ public sealed class TransactionConfiguration : IEntityTypeConfiguration<Transact
             .HasColumnName("deleted_by")
             .HasMaxLength(200);
 
+        // REQ-070: Archive fields
+        builder.Property(t => t.IsArchived)
+            .HasColumnName("is_archived")
+            .HasDefaultValue(false);
+
+        builder.Property(t => t.ArchivedAt)
+            .HasColumnName("archived_at");
+
+        builder.Property(t => t.ArchivedBy)
+            .HasColumnName("archived_by")
+            .HasMaxLength(200);
+
+        builder.Property(t => t.ArchiveReason)
+            .HasColumnName("archive_reason")
+            .HasMaxLength(1000);
+
+        builder.Property(t => t.RetainUntil)
+            .HasColumnName("retain_until");
+
         builder.HasQueryFilter(t => !t.IsDeleted);
 
         builder.HasIndex(t => t.IsDeleted)
             .HasDatabaseName("ix_transactions_is_deleted");
+
+        builder.HasIndex(t => t.IsArchived)
+            .HasDatabaseName("ix_transactions_is_archived");
 
         builder.Ignore(t => t.DomainEvents);
     }

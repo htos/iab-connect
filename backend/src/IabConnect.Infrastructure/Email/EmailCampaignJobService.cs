@@ -117,7 +117,8 @@ public sealed class EmailCampaignSendJob
 
             // Status auf Sending setzen falls noch nicht geschehen
             if (campaign.Status == EmailCampaignStatus.Draft ||
-                campaign.Status == EmailCampaignStatus.Scheduled)
+                campaign.Status == EmailCampaignStatus.Scheduled ||
+                campaign.Status == EmailCampaignStatus.Failed)
             {
                 campaign.StartSending();
                 await _campaignRepository.UpdateAsync(campaign);
@@ -187,7 +188,12 @@ public sealed class EmailCampaignSendJob
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during email send job for campaign {CampaignId}", campaignId);
-            throw; // Hangfire wird automatisch retry versuchen
+
+            // Mark campaign as failed so it doesn't stay in 'Sending' forever
+            campaign.MarkAsFailed();
+            await _campaignRepository.UpdateAsync(campaign);
+
+            throw; // Hangfire will retry; StartSending() now accepts Failed status
         }
     }
 

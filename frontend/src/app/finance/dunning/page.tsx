@@ -60,7 +60,8 @@ export default function DunningPage() {
       setError(null);
       const res = await apiRef.current.get("/api/v1/finance/dunning");
       if (res.error) throw new Error(res.error);
-      setNotices(res.data as DunningNotice[]);
+      const body = res.data as { items: DunningNotice[] };
+      setNotices(body.items ?? []);
     } catch {
       setError(tRef.current("loadError"));
     } finally {
@@ -76,9 +77,11 @@ export default function DunningPage() {
       ]);
       if (overdueRes.error) throw new Error(overdueRes.error);
       if (sentRes.error) throw new Error(sentRes.error);
+      const overdueBody = overdueRes.data as { items: OverdueInvoice[] };
+      const sentBody = sentRes.data as { items: OverdueInvoice[] };
       setOverdueInvoices([
-        ...(overdueRes.data as OverdueInvoice[]),
-        ...(sentRes.data as OverdueInvoice[]),
+        ...(overdueBody.items ?? []),
+        ...(sentBody.items ?? []),
       ]);
     } catch {
       // non-critical, modal can still open

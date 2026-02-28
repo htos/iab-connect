@@ -1,3 +1,4 @@
+using IabConnect.Application.Audit;
 using IabConnect.Application.Privacy;
 using IabConnect.Domain.Audit;
 using IabConnect.Domain.Privacy;
@@ -153,6 +154,10 @@ public static class PrivacyEndpoints
 
         foreach (var update in request.Consents)
         {
+            // DataProcessing consent cannot be revoked (must use deletion request)
+            if (!update.IsGranted && update.Type == ConsentType.DataProcessing)
+                continue;
+
             var existing = await consentRepository.GetByUserAndTypeAsync(userId.Value, update.Type, ct);
 
             if (existing == null)
@@ -245,6 +250,7 @@ public static class PrivacyEndpoints
         HttpContext httpContext,
         ApplicationDbContext dbContext,
         IConsentRepository consentRepository,
+        IAuditService auditService,
         CancellationToken ct)
     {
         var userId = GetKeycloakUserId(httpContext);
@@ -314,6 +320,10 @@ public static class PrivacyEndpoints
             Consents: consentDtos,
             AuditEvents: auditEvents
         );
+
+        // Log the data export for audit compliance (REQ-011)
+        var currentUserId = userId.Value.ToString();
+        await auditService.LogDataExportAsync("PrivacyDataExport", currentUserId, email, 1, ct);
 
         // Return as JSON with content-disposition for download
         return Results.Json(export, contentType: "application/json", statusCode: 200);

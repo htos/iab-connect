@@ -53,9 +53,16 @@ public static class ReceiptEndpoints
         ?? ctx.User.FindFirst(ClaimTypes.Email)?.Value
         ?? "system";
 
-    private static async Task<IResult> GetAll(ISender sender, CancellationToken ct)
+    private static async Task<IResult> GetAll(
+        ISender sender, int? page, int? pageSize, string? sort, string? filter, CancellationToken ct)
     {
-        var receipts = await sender.Send(new GetReceiptsQuery(), ct);
+        var receipts = await sender.Send(new GetReceiptsQuery
+        {
+            Page = page ?? 1,
+            PageSize = pageSize ?? 20,
+            Sort = sort,
+            Filter = filter
+        }, ct);
         return Results.Ok(receipts);
     }
 

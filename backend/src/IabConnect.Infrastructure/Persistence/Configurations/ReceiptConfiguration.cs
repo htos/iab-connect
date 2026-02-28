@@ -64,10 +64,32 @@ public sealed class ReceiptConfiguration : IEntityTypeConfiguration<Receipt>
             .HasColumnName("deleted_by")
             .HasMaxLength(200);
 
+        // REQ-070: Archive fields
+        builder.Property(r => r.IsArchived)
+            .HasColumnName("is_archived")
+            .HasDefaultValue(false);
+
+        builder.Property(r => r.ArchivedAt)
+            .HasColumnName("archived_at");
+
+        builder.Property(r => r.ArchivedBy)
+            .HasColumnName("archived_by")
+            .HasMaxLength(200);
+
+        builder.Property(r => r.ArchiveReason)
+            .HasColumnName("archive_reason")
+            .HasMaxLength(1000);
+
+        builder.Property(r => r.RetainUntil)
+            .HasColumnName("retain_until");
+
         builder.HasQueryFilter(r => !r.IsDeleted);
 
         builder.HasIndex(r => r.IsDeleted)
             .HasDatabaseName("ix_receipts_is_deleted");
+
+        builder.HasIndex(r => r.IsArchived)
+            .HasDatabaseName("ix_receipts_is_archived");
 
         builder.Ignore(r => r.DomainEvents);
     }

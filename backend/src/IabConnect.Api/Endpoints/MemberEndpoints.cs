@@ -1,9 +1,13 @@
 using IabConnect.Application.Authorization;
+using IabConnect.Application.Members.Commands;
 using IabConnect.Domain.Authorization;
 using IabConnect.Domain.Members;
 using IabConnect.Infrastructure.Persistence;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using DomainMembershipType = IabConnect.Domain.Members.MembershipType;
+using CommandMembershipType = IabConnect.Application.Members.Commands.MembershipType;
 
 namespace IabConnect.Api.Endpoints;
 
@@ -207,41 +211,36 @@ public static class MemberEndpoints
     private static async Task<IResult> CreateMember(
         [FromBody] CreateMemberRequest request,
         HttpContext httpContext,
+        ISender sender,
         IMemberRepository memberRepository,
         ISecurityAuditLogger auditLogger,
-        ApplicationDbContext dbContext,
         CancellationToken ct)
     {
-        // Check for duplicate email
-        if (await memberRepository.EmailExistsAsync(request.Email, ct))
-            return Results.Conflict(new { Error = "E-Mail-Adresse bereits vergeben" });
+        var command = new CreateMemberCommand
+        {
+            FirstName = request.FirstName,
+            LastName = request.LastName,
+            Email = request.Email,
+            Phone = request.Phone,
+            Street = request.Street,
+            City = request.City,
+            PostalCode = request.PostalCode,
+            Country = request.Country ?? "Schweiz",
+            MembershipType = (CommandMembershipType)(int)request.MembershipType
+        };
 
-        var address = Address.Create(
-            request.Street,
-            request.City,
-            request.PostalCode,
-            request.Country ?? "Schweiz");
-
-        var member = Member.Create(
-            request.FirstName,
-            request.LastName,
-            request.Email,
-            address,
-            request.MembershipType,
-            request.Phone);
-
-        await memberRepository.AddAsync(member, ct);
-        await dbContext.SaveChangesAsync(ct);
+        var memberId = await sender.Send(command, ct);
 
         // REQ-011: Log member creation
+        var member = await memberRepository.GetByIdAsync(memberId, ct);
         auditLogger.LogAccessGranted(
             httpContext.User,
             "Member",
             "Create",
-            member.Id.ToString(),
-            new Dictionary<string, object> { ["MemberName"] = $"{member.FirstName} {member.LastName}", ["Email"] = member.Email });
+            memberId.ToString(),
+            new Dictionary<string, object> { ["MemberName"] = $"{request.FirstName} {request.LastName}", ["Email"] = request.Email });
 
-        return Results.Created($"/api/v1/members/{member.Id}", MapToDto(member));
+        return Results.Created($"/api/v1/members/{memberId}", member != null ? MapToDto(member) : null);
     }
 
     private static async Task<IResult> UpdateMember(
@@ -460,10 +459,10 @@ public static class MemberEndpoints
                 PendingMembers = g.Count(m => m.Status == MembershipStatus.Pending),
                 InactiveMembers = g.Count(m => m.Status == MembershipStatus.Inactive),
                 SuspendedMembers = g.Count(m => m.Status == MembershipStatus.Suspended),
-                RegularMembers = g.Count(m => m.MembershipType == MembershipType.Regular),
-                StudentMembers = g.Count(m => m.MembershipType == MembershipType.Student),
-                FamilyMembers = g.Count(m => m.MembershipType == MembershipType.Family),
-                HonoraryMembers = g.Count(m => m.MembershipType == MembershipType.Honorary)
+                RegularMembers = g.Count(m => m.MembershipType == DomainMembershipType.Regular),
+                StudentMembers = g.Count(m => m.MembershipType == DomainMembershipType.Student),
+                FamilyMembers = g.Count(m => m.MembershipType == DomainMembershipType.Family),
+                HonoraryMembers = g.Count(m => m.MembershipType == DomainMembershipType.Honorary)
             })
             .FirstOrDefaultAsync(ct);
 
@@ -496,12 +495,12 @@ public static class MemberEndpoints
         MemberSince = member.MemberSince
     };
 
-    private static string GetMembershipTypeDisplay(MembershipType type) => type switch
+    private static string GetMembershipTypeDisplay(DomainMembershipType type) => type switch
     {
-        MembershipType.Regular => "Einzelmitglied",
-        MembershipType.Student => "Student/Lernender",
-        MembershipType.Family => "Familienmitglied",
-        MembershipType.Honorary => "Ehrenmitglied",
+        DomainMembershipType.Regular => "Einzelmitglied",
+        DomainMembershipType.Student => "Student/Lernender",
+        DomainMembershipType.Family => "Familienmitglied",
+        DomainMembershipType.Honorary => "Ehrenmitglied",
         _ => type.ToString()
     };
 
@@ -601,7 +600,7 @@ public record GetMembersQuery(
     int PageSize = 20,
     string? Search = null,
     MembershipStatus? Status = null,
-    MembershipType? Type = null);
+    DomainMembershipType? Type = null);
 
 public record CreateMemberRequest(
     string FirstName,
@@ -612,7 +611,7 @@ public record CreateMemberRequest(
     string PostalCode,
     string? Country,
     string? Phone,
-    MembershipType MembershipType);
+    DomainMembershipType MembershipType);
 
 public record UpdateMemberRequest(
     string FirstName,
@@ -635,7 +634,7 @@ public record UpdateOwnProfileRequest(
 
 public record UpdateStatusRequest(MembershipStatus Status);
 
-public record UpdateTypeRequest(MembershipType MembershipType);
+public record UpdateTypeRequest(DomainMembershipType MembershipType);
 
 public record MemberDto
 {
@@ -648,7 +647,7 @@ public record MemberDto
     public string City { get; init; } = null!;
     public string PostalCode { get; init; } = null!;
     public string Country { get; init; } = null!;
-    public MembershipType MembershipType { get; init; }
+    public DomainMembershipType MembershipType { get; init; }
     public string MembershipTypeDisplay { get; init; } = null!;
     public MembershipStatus Status { get; init; }
     public string StatusDisplay { get; init; } = null!;

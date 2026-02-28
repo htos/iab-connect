@@ -91,7 +91,8 @@ export default function ExpenseClaimsPage() {
         `/api/v1/finance/expense-claims${qs ? `?${qs}` : ""}`
       );
       if (res.error) throw new Error(res.error);
-      setClaims(res.data as ExpenseClaim[]);
+      const body = res.data as { items: ExpenseClaim[] };
+      setClaims(body.items ?? []);
     } catch {
       setError(tRef.current("error"));
     } finally {

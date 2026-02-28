@@ -45,9 +45,16 @@ public static class ActivityAreaEndpoints
             .WithDescription("REQ-068: Soft-deletes an activity area.");
     }
 
-    private static async Task<IResult> GetAll(ISender sender, CancellationToken ct)
+    private static async Task<IResult> GetAll(
+        ISender sender, int? page, int? pageSize, string? sort, string? filter, CancellationToken ct)
     {
-        var areas = await sender.Send(new GetActivityAreasQuery(), ct);
+        var areas = await sender.Send(new GetActivityAreasQuery
+        {
+            Page = page ?? 1,
+            PageSize = pageSize ?? 20,
+            Sort = sort,
+            Filter = filter
+        }, ct);
         return Results.Ok(areas);
     }
 

@@ -50,7 +50,13 @@ public static class ExpenseClaimEndpoints
             parsedStatus = s;
         }
 
-        var query = new GetExpenseClaimsQuery(parsedStatus, filter.ClaimantId);
+        var query = new GetExpenseClaimsQuery(parsedStatus, filter.ClaimantId)
+        {
+            Page = filter.Page ?? 1,
+            PageSize = filter.PageSize ?? 20,
+            Sort = filter.Sort,
+            Filter = filter.Filter
+        };
         var result = await sender.Send(query);
         return Results.Ok(result);
     }
@@ -145,7 +151,9 @@ public static class ExpenseClaimEndpoints
     }
 
     // Request records
-    public sealed record ExpenseClaimFilterRequest(string? Status = null, Guid? ClaimantId = null);
+    public sealed record ExpenseClaimFilterRequest(
+        string? Status = null, Guid? ClaimantId = null,
+        int? Page = null, int? PageSize = null, string? Sort = null, string? Filter = null);
     public sealed record CreateExpenseClaimRequest(string Title, string Description, decimal Amount, string Currency, DateTime Date, Guid? ReceiptId);
     public sealed record UpdateExpenseClaimRequest(string Title, string Description, decimal Amount, DateTime Date, Guid? ReceiptId);
     public sealed record ReviewExpenseClaimRequest(string? Comment);

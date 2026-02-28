@@ -145,11 +145,34 @@ public sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
             .HasColumnName("deleted_by")
             .HasMaxLength(200);
 
+        // REQ-070: Archive fields
+        builder.Property(i => i.IsArchived)
+            .HasColumnName("is_archived")
+            .HasDefaultValue(false);
+
+        builder.Property(i => i.ArchivedAt)
+            .HasColumnName("archived_at");
+
+        builder.Property(i => i.ArchivedBy)
+            .HasColumnName("archived_by")
+            .HasMaxLength(200);
+
+        builder.Property(i => i.ArchiveReason)
+            .HasColumnName("archive_reason")
+            .HasMaxLength(1000);
+
+        builder.Property(i => i.RetainUntil)
+            .HasColumnName("retain_until");
+
         builder.HasQueryFilter(i => !i.IsDeleted);
 
         builder.HasIndex(i => i.IsDeleted)
             .HasDatabaseName("ix_invoices_is_deleted");
 
+        builder.HasIndex(i => i.IsArchived)
+            .HasDatabaseName("ix_invoices_is_archived");
+
         builder.Ignore(i => i.DomainEvents);
+        builder.Ignore(i => i.IsInvoiceNumberImmutable);
     }
 }

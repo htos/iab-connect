@@ -34,6 +34,10 @@ public sealed class UpdateInvoiceCommandHandler : IRequestHandler<UpdateInvoiceC
         var invoice = await _invoiceRepository.GetByIdAsync(request.Id, ct);
         if (invoice is null) return null;
 
+        // REQ-070: Reject updates on archived invoices
+        if (invoice.IsArchived)
+            throw new InvalidOperationException("Cannot update an archived invoice.");
+
         // REQ-066: Check fiscal period locking (old and new dates)
         await _fiscalPeriodService.EnsurePeriodNotLockedAsync(invoice.Date, ct);
         await _fiscalPeriodService.EnsurePeriodNotLockedAsync(request.Date, ct);

@@ -1,9 +1,10 @@
+using IabConnect.Application.Common;
 using IabConnect.Domain.Finance;
 using MediatR;
 
 namespace IabConnect.Application.Finance.TaxCodes.Queries;
 
-public sealed class GetTaxCodesQueryHandler : IRequestHandler<GetTaxCodesQuery, List<TaxCodeDto>>
+public sealed class GetTaxCodesQueryHandler : IRequestHandler<GetTaxCodesQuery, PagedResult<TaxCodeDto>>
 {
     private readonly ITaxCodeRepository _repository;
 
@@ -12,10 +13,21 @@ public sealed class GetTaxCodesQueryHandler : IRequestHandler<GetTaxCodesQuery, 
         _repository = repository;
     }
 
-    public async Task<List<TaxCodeDto>> Handle(GetTaxCodesQuery request, CancellationToken ct)
+    public async Task<PagedResult<TaxCodeDto>> Handle(GetTaxCodesQuery request, CancellationToken ct)
     {
         var taxCodes = await _repository.GetAllActiveAsync(ct);
-        return taxCodes.Select(MapToDto).ToList();
+        var dtos = taxCodes.Select(MapToDto);
+
+        var (field, desc) = PaginationHelper.ParseSort(request.Sort, "code", false);
+        var sorted = field.ToLowerInvariant() switch
+        {
+            "rate" => dtos.ApplySort(tc => tc.Rate, desc),
+            "label" => dtos.ApplySort(tc => tc.Label, desc),
+            "createdat" => dtos.ApplySort(tc => tc.CreatedAt, desc),
+            _ => dtos.ApplySort(tc => tc.Code, desc)
+        };
+
+        return sorted.ToPagedResult(request.Page, request.PageSize);
     }
 
     internal static TaxCodeDto MapToDto(TaxCode tc) =>

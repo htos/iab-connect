@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using IabConnect.Application.Common;
+using IabConnect.Application.Finance.EInvoice;
 using IabConnect.Application.Finance.Invoices.Commands;
 using IabConnect.Application.Finance.Invoices.Queries;
 using MediatR;
@@ -65,6 +66,12 @@ public static class InvoiceEndpoints
             .WithSummary("Cancel (storno) an invoice")
             .WithDescription("REQ-039: Cancels a sent/overdue invoice with storno reversal transaction. Audited.");
 
+        group.MapPost("/{id:guid}/mark-overdue", MarkAsOverdue)
+            .RequireAuthorization("RequireFinanceWrite")
+            .WithName("MarkInvoiceAsOverdue")
+            .WithSummary("Mark invoice as overdue")
+            .WithDescription("REQ-039: Marks a sent invoice as overdue when due date has passed. Audited.");
+
         group.MapGet("/{id:guid}/pdf", DownloadPdf)
             .RequireAuthorization("RequireFinanceRead")
             .WithName("DownloadInvoicePdf")
@@ -82,6 +89,15 @@ public static class InvoiceEndpoints
             .Produces(200, contentType: "application/xml")
             .ProducesProblem(400)
             .ProducesProblem(404);
+
+        group.MapPost("/{id:guid}/validate-einvoice", ValidateEInvoice)
+            .RequireAuthorization("RequireFinanceRead")
+            .WithName("ValidateEInvoice")
+            .WithSummary("Validate invoice eInvoice XML (EN 16931)")
+            .WithDescription("REQ-072: Generates UBL XML and validates against EN 16931 business rules. Returns validation result.")
+            .Produces<EInvoiceValidationResult>(200)
+            .ProducesProblem(400)
+            .ProducesProblem(404);
     }
 
     private static string GetUserName(HttpContext ctx) =>
@@ -89,9 +105,17 @@ public static class InvoiceEndpoints
         ?? ctx.User.FindFirst(ClaimTypes.Email)?.Value
         ?? "system";
 
-    private static async Task<IResult> GetAll(ISender sender, string? status, CancellationToken ct)
+    private static async Task<IResult> GetAll(
+        ISender sender, string? status, int? page, int? pageSize, string? sort, string? filter,
+        CancellationToken ct)
     {
-        var invoices = await sender.Send(new GetInvoicesQuery(status), ct);
+        var invoices = await sender.Send(new GetInvoicesQuery(status)
+        {
+            Page = page ?? 1,
+            PageSize = pageSize ?? 20,
+            Sort = sort,
+            Filter = filter
+        }, ct);
         return Results.Ok(invoices);
     }
 
@@ -192,6 +216,22 @@ public static class InvoiceEndpoints
         return Results.Ok(result.Value);
     }
 
+    private static async Task<IResult> MarkAsOverdue(
+        Guid id, ISender sender, HttpContext httpContext, CancellationToken ct)
+    {
+        try
+        {
+            var dto = await sender.Send(new MarkInvoiceAsOverdueCommand(id, GetUserName(httpContext)), ct);
+            return dto is null
+                ? Results.NotFound(new { Message = "Invoice not found." })
+                : Results.Ok(dto);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(new { Message = ex.Message });
+        }
+    }
+
     private static async Task<IResult> DownloadPdf(Guid id, ISender sender, CancellationToken ct)
     {
         var result = await sender.Send(new GenerateInvoicePdfQuery(id), ct);
@@ -211,6 +251,21 @@ public static class InvoiceEndpoints
         if (result is null)
             return Results.NotFound(new { Message = "Invoice not found or is in draft status." });
         return Results.File(result.XmlBytes, contentType: result.ContentType, fileDownloadName: result.FileName);
+    }
+
+    private static async Task<IResult> ValidateEInvoice(Guid id, ISender sender, CancellationToken ct)
+    {
+        try
+        {
+            var result = await sender.Send(new ValidateEInvoiceQuery(id), ct);
+            if (result is null)
+                return Results.NotFound(new { Message = "Invoice not found." });
+            return Results.Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(new { Message = ex.Message });
+        }
     }
 
     // DTOs

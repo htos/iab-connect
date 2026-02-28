@@ -46,9 +46,16 @@ public static class InvoiceTemplateEndpoints
     }
 
     private static async Task<IResult> GetAll(
-        ISender sender, string? jurisdiction = null, CancellationToken ct = default)
+        ISender sender, string? jurisdiction = null, int? page = null, int? pageSize = null,
+        string? sort = null, string? filter = null, CancellationToken ct = default)
     {
-        var templates = await sender.Send(new GetInvoiceTemplatesQuery(jurisdiction), ct);
+        var templates = await sender.Send(new GetInvoiceTemplatesQuery(jurisdiction)
+        {
+            Page = page ?? 1,
+            PageSize = pageSize ?? 20,
+            Sort = sort,
+            Filter = filter
+        }, ct);
         return Results.Ok(templates);
     }
 

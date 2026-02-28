@@ -30,6 +30,10 @@ public sealed class Document : AggregateRoot
 
     private Document() : base() { }
 
+    public const int MaxNameLength = 500;
+    public const int MaxDescriptionLength = 2000;
+    public const int MaxTagNameLength = 100;
+
     public static Document Create(
         string name,
         Guid folderId,
@@ -41,6 +45,10 @@ public sealed class Document : AggregateRoot
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Document name is required.", nameof(name));
+        if (name.Trim().Length > MaxNameLength)
+            throw new ArgumentException($"Document name must not exceed {MaxNameLength} characters.", nameof(name));
+        if (description != null && description.Trim().Length > MaxDescriptionLength)
+            throw new ArgumentException($"Description must not exceed {MaxDescriptionLength} characters.", nameof(description));
         if (fileSize <= 0)
             throw new ArgumentException("File size must be positive.", nameof(fileSize));
 
@@ -68,6 +76,10 @@ public sealed class Document : AggregateRoot
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Document name is required.", nameof(name));
+        if (name.Trim().Length > MaxNameLength)
+            throw new ArgumentException($"Document name must not exceed {MaxNameLength} characters.", nameof(name));
+        if (description != null && description.Trim().Length > MaxDescriptionLength)
+            throw new ArgumentException($"Description must not exceed {MaxDescriptionLength} characters.", nameof(description));
 
         Name = name.Trim();
         Category = category;
@@ -184,6 +196,8 @@ public sealed class Document : AggregateRoot
     {
         if (string.IsNullOrWhiteSpace(tagName))
             throw new ArgumentException("Tag name is required.", nameof(tagName));
+        if (tagName.Trim().Length > MaxTagNameLength)
+            throw new ArgumentException($"Tag name must not exceed {MaxTagNameLength} characters.", nameof(tagName));
 
         var normalizedTag = tagName.Trim().ToLowerInvariant();
 

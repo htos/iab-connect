@@ -39,9 +39,16 @@ public static class TaxCodeEndpoints
             .WithDescription("REQ-062: Soft-deletes a tax code.");
     }
 
-    private static async Task<IResult> GetAll(ISender sender, CancellationToken ct)
+    private static async Task<IResult> GetAll(
+        ISender sender, int? page, int? pageSize, string? sort, string? filter, CancellationToken ct)
     {
-        var taxCodes = await sender.Send(new GetTaxCodesQuery(), ct);
+        var taxCodes = await sender.Send(new GetTaxCodesQuery
+        {
+            Page = page ?? 1,
+            PageSize = pageSize ?? 20,
+            Sort = sort,
+            Filter = filter
+        }, ct);
         return Results.Ok(taxCodes);
     }
 

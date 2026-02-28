@@ -66,7 +66,8 @@ export default function AccountsPage() {
       setError(null);
       const res = await apiRef.current.get("/api/v1/finance/accounts");
       if (res.error) throw new Error(res.error);
-      setAccounts(res.data as Account[]);
+      const body = res.data as { items: Account[] };
+      setAccounts(body.items ?? []);
     } catch {
       setError(tRef.current("loadError"));
     } finally {

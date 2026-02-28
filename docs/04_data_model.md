@@ -258,13 +258,13 @@ Name
 Account
 
 Beschreibung
-Finanzkonto zur Kategorisierung von Buchungen (Einnahmen, Ausgaben, Vermögen, Verbindlichkeiten).
+Finanzkonto zur Kategorisierung von Buchungen (Kasse, Bank, Sonstige).
 
 Wichtige Felder
 id
 name
 number
-type (Income, Expense, Asset, Liability)
+type (Cash, Bank, Other)
 description
 is_active
 sort_order
@@ -332,6 +332,11 @@ tax_code_id optional (REQ-062)
 tax_rate optional (REQ-062)
 tax_amount optional (REQ-062)
 net_amount optional (REQ-062)
+is_archived (IArchivable, REQ-070)
+archived_at (IArchivable, REQ-070)
+archived_by (IArchivable, REQ-070)
+archive_reason (IArchivable, REQ-070)
+retain_until (IArchivable, REQ-070)
 created_at
 created_by
 updated_at
@@ -381,6 +386,11 @@ cancelled_at (Storno)
 subtotal_net (REQ-062 VAT Aggregat)
 total_tax (REQ-062 VAT Aggregat)
 total_gross (REQ-062 VAT Aggregat)
+is_archived (IArchivable, REQ-070)
+archived_at (IArchivable, REQ-070)
+archived_by (IArchivable, REQ-070)
+archive_reason (IArchivable, REQ-070)
+retain_until (IArchivable, REQ-070)
 created_at
 created_by
 updated_at
@@ -564,6 +574,11 @@ file_hash (SHA256)
 uploaded_at
 uploaded_by
 notes
+is_archived (IArchivable, REQ-070)
+archived_at (IArchivable, REQ-070)
+archived_by (IArchivable, REQ-070)
+archive_reason (IArchivable, REQ-070)
+retain_until (IArchivable, REQ-070)
 is_deleted (ISoftDeletable)
 deleted_at (ISoftDeletable)
 deleted_by
@@ -641,6 +656,65 @@ Validierungen
 organization_name ist nicht leer
 organization_address ist nicht leer
 fiscal_year_start_month zwischen 1 und 12
+
+Name
+InvoiceNumberCounter
+
+Beschreibung
+Atomarer Zähler für Rechnungsnummern pro Finanzprofil und Geschäftsjahr. Verwendet PostgreSQL UPSERT für konkurenzsichere Nummernvergabe (REQ-071).
+
+Wichtige Felder
+id
+finance_profile_id (FK zu FinanceProfile)
+fiscal_year (int, z.B. 2026)
+prefix (string, z.B. "INV-2026-")
+current_value (int, aktueller Zählerstand)
+updated_at
+
+Beziehungen
+InvoiceNumberCounter zu FinanceProfile
+
+Indizes
+finance_profile_id + fiscal_year unique
+
+Validierungen
+fiscal_year > 0
+current_value >= 0
+
+Name
+InvoiceTemplate
+
+Beschreibung
+Konfigurierbare Rechnungsvorlage für EU-Konformitätsfelder. Unterstützt Soft-Delete (ISoftDeletable).
+
+Wichtige Felder
+id
+name
+jurisdiction (CH, EU)
+country_code optional
+is_default
+show_vat_id
+show_tax_exemption_note
+tax_exemption_note optional
+show_reverse_charge_note
+reverse_charge_note optional
+show_payment_terms
+default_payment_terms optional
+show_bank_details
+logo_url optional
+header_text optional
+footer_text optional
+legal_notice optional
+language
+is_deleted (ISoftDeletable)
+deleted_at (ISoftDeletable)
+
+Indizes
+jurisdiction
+is_default
+
+Validierungen
+name ist nicht leer
 
 Document Management Entities
 

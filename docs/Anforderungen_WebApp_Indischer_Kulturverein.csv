@@ -176,6 +176,7 @@ REQ-058,Betrieb & Qualität,API/Webhooks (optional),Schnittstellen für spätere
 REQ-059,Betrieb & Qualität,Konfiguration & Systemeinstellungen,"Zentrale Einstellungen des Vereins (Texte, Logos, Beiträge, Mail-Absender).","• Vereinsprofil
 • Beitragssätze
 • Mail-Settings",Must,Admin,Settings,Einstellungen wirken ohne Codeänderung; Änderungen sind auditiert.,,
+ID,Bereich,Anforderung,Beschreibung,Funktionalitäten,Priorität,Zielrollen,Daten/Objekte,Akzeptanzkriterien,Abhängigkeiten,Hinweise/Risiken
 REQ-060,Finanzen,"Finanz-Setup: Land/Profil, Währung, Geschäftsjahr","Konfigurierbares Finanzprofil pro Verein (Schweiz oder EU). Steuert Währung, Geschäftsjahr, VAT/MWST-Flags, Nummernkreise und Zahlungs-Defaults.","• FinanceProfile: CH oder EU (optional EU-Land-Code)
 • Default currency (CHF/EUR) + Rundungsregeln
 • Geschäftsjahr Start/Ende, Perioden
@@ -213,3 +214,23 @@ REQ-068,Finanzen,Sparte/Projekt-Zuordnung für steuerliche und interne Auswertun
 REQ-069,Finanzen,Banking-Import Upgrade: ISO 20022 (camt) und SEPA-Referenzen,"Zusätzlich zum CSV-Import können standardisierte Bankformate (ISO 20022 camt.053/054) importiert werden, inkl. Referenzen für Matching.","• Import camt.053/054 (XML) optional
 • Erkennung/Parsing von Referenzen (z.B. QR-Referenz, End-to-End-ID)
 • Matching-Verbesserungen: automatische Zuordnung zu offenen Rechnungen",Could,Kassier,BankStatementImport,Ein camt-File kann importiert werden; System erstellt ImportItems mit Datum/Betrag/Referenz; Matching-Vorschläge funktionieren.,"REQ-041 (Bankimport), REQ-040 (Zahlungen)",Parsing/Edge Cases je Bank; ggf. Bibliothek nötig.
+REQ-070,Finanzen,Revisionssicheres Archiv und Retention Enforcement,"Finanzdokumente werden revisionssicher archiviert (Unveränderbarkeit, Nachvollziehbarkeit, Integrität) und dürfen innerhalb der Aufbewahrungsfrist nicht physisch gelöscht werden.","• Object-Storage Versioning/WORM oder Object-Lock Option (konfigurierbar je Environment)
+• DELETE-Endpunkte führen zu Archivierung (Soft-Delete) statt physischer Löschung
+• Audit-Event für Archivierung/Restore/Hard-Delete nach Retention
+• Audit-Paket Export (ZIP) pro Periode inkl. Manifest (Hashes, Metadaten)
+• Dokumentierter Lifecycle (Retention, Legal Hold, Restore-Prozess)",Must,"Kassier, Auditor, Admin","FinanceDocument, Receipt, InvoicePDF, BankImportFile, AuditManifest",Innerhalb der Retention ist kein Hard-Delete möglich; DELETE setzt Archived-Flag und Datei bleibt im Storage; Audit-Paket kann erneut erzeugt werden und Hashes stimmen überein.,"REQ-061, REQ-057, Storage (RustFS)",Aufbewahrungspflichten variieren je Land; Object-Lock/WORM muss vom Storage unterstützt und getestet werden; GDPR Löschwünsche können durch gesetzliche Aufbewahrung eingeschränkt sein.
+REQ-071,Finanzen,Rechnungsnummern-Serien und unveränderbare Nummernvergabe,"Rechnungen erhalten fortlaufende, eindeutige Nummern pro Serie (z.B. pro Geschäftsjahr/Profil). Nummernvergabe ist konkurenzsicher und die Nummer ist nach Versand/Finalisierung unveränderbar.","• Konfigurierbare NumberSeries (Prefix, Suffix, Separator, Padding, Reset-Regel)
+• Transaktional/konkurenzsichere Nummernvergabe (DB-seitig) pro Tenant+Serie
+• InvoiceNumber ist nach Status Sent/Issued/PartiallyPaid/Paid unveränderbar
+• Report für Nummern-Gaps mit Begründung (Cancelled/Storno/Draft verworfen)
+• Migration/Backfill für bestehende Rechnungen ohne Nummer",Must,"Kassier, Admin, Auditor","Invoice, NumberSeries, InvoiceNumberAudit",Bei paralleler Rechnungserstellung entstehen keine Duplikate; ein Versuch die Nummer nach Versand zu ändern wird abgelehnt und auditiert; Gap-Report ist exportierbar.,"REQ-039, REQ-060, REQ-011",Einige Länder verlangen lückenlose Nummerierung oder zusätzliche Regeln; Konfiguration muss pro Jurisdiktion dokumentiert werden.
+REQ-072,Finanzen,eInvoicing Validierung und CIUS-Unterstützung je Profil,"Exportierte eInvoices (EN 16931/UBL, optional Peppol BIS) werden automatisch validiert. Fehler werden verständlich zurückgegeben und können vor Versand korrigiert werden.","• Offline-Validierung des eInvoice-Exports (Schema + Schematron Rules)
+• FinanceProfile Setting für eInvoice-Format (EN 16931 UBL, Peppol BIS Billing 3.0)
+• API liefert strukturierte ValidationErrors (Feld, Regel, Message)
+• UI zeigt Validierungsfehler inline und blockiert Export/Versand bei Must-Fehlern
+• Test-Fixtures + CI-Pipeline Step für eInvoice-Validation",Should,"Kassier, Admin","FinanceProfile, EInvoiceExport, EInvoiceValidationResult",Ein gültiger Export besteht die Validation; ungültige Pflichtfelder führen zu klaren Fehlermeldungen; Peppol-Option kann pro Profil aktiviert werden.,"REQ-065, REQ-064, REQ-062",CIUS Regeln unterscheiden sich je Land/Netzwerk; Validator-Regeln müssen versioniert und aktualisiert werden.
+REQ-073,Finanzen,ISO 20022 Zahlungsdatei Export (pain.001) für Auszahlungen,"Genehmigte Zahlungen können als ISO 20022 Zahlungsdatei (pain.001) exportiert werden (CH SPS und EU SEPA), um sie in E-Banking einzureichen.","• Batch-Export von Approved Payments zu pain.001
+• Auswahl Format anhand FinanceProfile (CH SPS vs. SEPA)
+• Remittance Information (InvoiceNumber/Reference) wird befüllt
+• Validierung (IBAN/BIC, strukturierte Adresse, Beträge)
+• Export-Status (Exported) + Audit-Log",Could,Kassier,"Payment, PaymentBatch, FinanceProfile, Pain001File",pain.001 lässt sich in gängigen E-Banking Portalen importieren; Export enthält alle genehmigten Zahlungen korrekt; Fehlerhafte Empfängerdaten werden vor Export angezeigt.,"REQ-067, REQ-060, REQ-011",Banken haben teils spezifische Anforderungen (BIC/Addressing); umfangreiche Testfälle pro Bank können nötig sein.

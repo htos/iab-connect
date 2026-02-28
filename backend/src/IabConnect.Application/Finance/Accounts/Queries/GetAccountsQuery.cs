@@ -1,3 +1,4 @@
+using IabConnect.Application.Common;
 using MediatR;
 
 namespace IabConnect.Application.Finance.Accounts.Queries;
@@ -11,6 +12,12 @@ public sealed record AccountDto(
     DateTime? UpdatedAt, string? UpdatedBy);
 
 /// <summary>
-/// Query to get all financial accounts (REQ-038)
+/// Query to get all financial accounts (REQ-038) with pagination support
 /// </summary>
-public sealed record GetAccountsQuery : IRequest<List<AccountDto>>;
+public sealed record GetAccountsQuery : IRequest<PagedResult<AccountDto>>
+{
+    public int Page { get; init; } = 1;
+    public int PageSize { get; init; } = 20;
+    public string? Sort { get; init; }
+    public string? Filter { get; init; }
+}

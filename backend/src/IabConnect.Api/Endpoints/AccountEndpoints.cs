@@ -44,6 +44,18 @@ public static class AccountEndpoints
             .WithName("DeleteAccount")
             .WithSummary("Delete a financial account")
             .WithDescription("REQ-038: Deletes a financial account. Audited.");
+
+        group.MapPost("/{id:guid}/activate", Activate)
+            .RequireAuthorization("RequireFinanceWrite")
+            .WithName("ActivateAccount")
+            .WithSummary("Activate a financial account")
+            .WithDescription("REQ-038: Activates a financial account. Audited.");
+
+        group.MapPost("/{id:guid}/deactivate", Deactivate)
+            .RequireAuthorization("RequireFinanceWrite")
+            .WithName("DeactivateAccount")
+            .WithSummary("Deactivate a financial account")
+            .WithDescription("REQ-038: Deactivates a financial account. Audited.");
     }
 
     private static string GetUserName(HttpContext ctx) =>
@@ -51,9 +63,16 @@ public static class AccountEndpoints
         ?? ctx.User.FindFirst(ClaimTypes.Email)?.Value
         ?? "system";
 
-    private static async Task<IResult> GetAll(ISender sender, CancellationToken ct)
+    private static async Task<IResult> GetAll(
+        ISender sender, int? page, int? pageSize, string? sort, string? filter, CancellationToken ct)
     {
-        var accounts = await sender.Send(new GetAccountsQuery(), ct);
+        var accounts = await sender.Send(new GetAccountsQuery
+        {
+            Page = page ?? 1,
+            PageSize = pageSize ?? 20,
+            Sort = sort,
+            Filter = filter
+        }, ct);
         return Results.Ok(accounts);
     }
 
@@ -105,6 +124,24 @@ public static class AccountEndpoints
     {
         var found = await sender.Send(new DeleteAccountCommand(id, GetUserName(httpContext)), ct);
         return found ? Results.NoContent() : Results.NotFound(new { Message = "Account not found." });
+    }
+
+    private static async Task<IResult> Activate(
+        Guid id, ISender sender, HttpContext httpContext, CancellationToken ct)
+    {
+        var dto = await sender.Send(new ActivateAccountCommand(id, GetUserName(httpContext)), ct);
+        return dto is null
+            ? Results.NotFound(new { Message = "Account not found." })
+            : Results.Ok(dto);
+    }
+
+    private static async Task<IResult> Deactivate(
+        Guid id, ISender sender, HttpContext httpContext, CancellationToken ct)
+    {
+        var dto = await sender.Send(new DeactivateAccountCommand(id, GetUserName(httpContext)), ct);
+        return dto is null
+            ? Results.NotFound(new { Message = "Account not found." })
+            : Results.Ok(dto);
     }
 
     // DTOs

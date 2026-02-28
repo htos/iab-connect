@@ -123,9 +123,9 @@ public class InvoiceTemplateHandlerTests
         var result = await handler.Handle(query, CancellationToken.None);
 
         // Assert
-        result.Should().HaveCount(2);
-        result[0].Name.Should().Be("EU Standard");
-        result[1].Name.Should().Be("CH Standard");
+        result.Items.Should().HaveCount(2);
+        result.Items[0].Name.Should().Be("CH Standard");
+        result.Items[1].Name.Should().Be("EU Standard");
     }
 
     [Fact]
@@ -147,8 +147,8 @@ public class InvoiceTemplateHandlerTests
         var result = await handler.Handle(query, CancellationToken.None);
 
         // Assert
-        result.Should().HaveCount(1);
-        result[0].Jurisdiction.Should().Be("EU");
+        result.Items.Should().HaveCount(1);
+        result.Items[0].Jurisdiction.Should().Be("EU");
 
         _templateRepo.Verify(r => r.GetAllAsync(Jurisdiction.EU, It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -175,7 +175,8 @@ public class InvoiceTemplateHandlerTests
 
         // Assert
         result.Should().BeTrue();
-        _templateRepo.Verify(r => r.DeleteAsync(template.Id, It.IsAny<CancellationToken>()), Times.Once);
+        template.IsDeleted.Should().BeTrue();
+        _templateRepo.Verify(r => r.UpdateAsync(template, It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -196,7 +197,7 @@ public class InvoiceTemplateHandlerTests
 
         // Assert
         result.Should().BeFalse();
-        _templateRepo.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _templateRepo.Verify(r => r.UpdateAsync(It.IsAny<InvoiceTemplate>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     #endregion

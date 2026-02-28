@@ -1,8 +1,10 @@
 using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Hangfire;
 using IabConnect.Api.Authorization;
 using IabConnect.Api.Middleware;
+using IabConnect.Infrastructure.Finance.Jobs;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
@@ -224,6 +226,30 @@ public static class DependencyInjection
         // Auth
         app.UseAuthentication();
         app.UseAuthorization();
+
+        // Hangfire Dashboard (dev only) + recurring jobs
+        if (app.Environment.IsDevelopment())
+        {
+            app.UseHangfireDashboard("/hangfire");
+        }
+
+        // Register recurring background jobs (skip in Testing — no Hangfire storage available)
+        if (app.Environment.EnvironmentName != "Testing")
+        {
+            var jobManager = app.Services.GetRequiredService<IRecurringJobManager>();
+
+            jobManager.AddOrUpdate<MarkInvoicesOverdueJob>(
+                "mark-invoices-overdue",
+                job => job.ExecuteAsync(CancellationToken.None),
+                Cron.Daily,
+                new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+            jobManager.AddOrUpdate<DunningScheduleGenerationJob>(
+                "generate-dunning-notices",
+                job => job.ExecuteAsync(CancellationToken.None),
+                Cron.Weekly,
+                new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+        }
 
         // Health checks
         app.MapHealthChecks("/health");
