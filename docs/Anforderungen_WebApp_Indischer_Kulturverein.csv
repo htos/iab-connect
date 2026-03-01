@@ -234,3 +234,43 @@ REQ-073,Finanzen,ISO 20022 Zahlungsdatei Export (pain.001) für Auszahlungen,"Ge
 • Remittance Information (InvoiceNumber/Reference) wird befüllt
 • Validierung (IBAN/BIC, strukturierte Adresse, Beträge)
 • Export-Status (Exported) + Audit-Log",Could,Kassier,"Payment, PaymentBatch, FinanceProfile, Pain001File",pain.001 lässt sich in gängigen E-Banking Portalen importieren; Export enthält alle genehmigten Zahlungen korrekt; Fehlerhafte Empfängerdaten werden vor Export angezeigt.,"REQ-067, REQ-060, REQ-011",Banken haben teils spezifische Anforderungen (BIC/Addressing); umfangreiche Testfälle pro Bank können nötig sein.
+REQ-074,Finanzen,Accounting Mode im Finance Setup,"Pro Verein/FinanceProfile konfigurierbar, ob nur Einnahmen-Ausgaben-Rechnung oder zusätzlich doppelte Buchhaltung aktiv ist.","• FinanceProfile Feld AccountingMode (SimpleCash/DoubleEntry)
+• System verhält sich abhängig vom Mode
+• Änderung wird im Audit Log protokolliert",Should,"Admin, Kassier","FinanceProfile, AccountingMode","Im Mode SimpleCash werden keine Journal Entries erzeugt; im Mode DoubleEntry werden bei Buchungen/Zahlungen automatisch Journal Entries erzeugt; Mode-Änderung ist auditiert.","REQ-060, REQ-011",Mode-Wechsel erfordert Backfill der bestehenden Daten; Umschaltung muss reversibel sein.
+REQ-075,Finanzen,Kontenplan für Hauptbuch (Chart of Accounts),"Separater Kontenplan für die doppelte Buchhaltung, getrennt von bestehenden Finance Accounts.","• Hauptbuchkonto mit Nummer, Name, Kontenklasse (Aktiven/Passiven/Eigenkapital/Ertrag/Aufwand), Normal-Saldo
+• Optional Parent-Konto für Hierarchie
+• Kontenplan pro FinanceProfile konfigurierbar",Should,"Kassier, Admin","LedgerAccount, ChartOfAccounts","Konto kann erstellt, geändert, deaktiviert werden; Kontonummer ist eindeutig pro FinanceProfile; Kontenklasse ist verpflichtend.","REQ-074, REQ-060",Standard-Kontenplan (CH KMU / EU SKR) als Seed-Daten bereitstellen.
+REQ-076,Finanzen,Journal Entry mit Soll und Haben Zeilen,"Jede Buchung im Hauptbuch wird als Journal Entry mit mindestens zwei Zeilen geführt (Soll/Haben Prinzip).","• Journal Entry Header: Datum, Beschreibung, Referenz, Status (Draft/Posted/Reversed)
+• Journal Entry Lines: Konto, Soll-Betrag, Haben-Betrag
+• Balance-Regel: Summe Soll muss Summe Haben entsprechen",Should,"Kassier, Admin","JournalEntry, JournalEntryLine","Journal Entry kann nicht gepostet werden wenn Soll != Haben; mindestens zwei Zeilen; jeder Betrag positiv und entweder Soll oder Haben.","REQ-074, REQ-075",Manuelle Journal Entries zusätzlich zu automatischen ermöglichen.
+REQ-077,Finanzen,Posting Service für automatische Journal Entries,"System erzeugt Journal Entries automatisch aus bestehenden Subledger-Ereignissen (Transaction, Payment, optional Invoice).","• Posting Patterns für Einnahme und Ausgabe
+• Category-Mapping bestimmt Gegenkonto
+• Finance-Account-Mapping bestimmt Bank/Kasse-Konto
+• TaxCode-Mapping erzeugt Steuer-Zeile wenn steuerbar",Should,"Kassier, Admin","PostingMapping, JournalEntry","Einnahme: Bank/Kasse Soll, Ertrag Haben; Ausgabe: Aufwand Soll, Bank/Kasse Haben; Steuercode erzeugt zusätzliche Steuer-Zeile.","REQ-074, REQ-075, REQ-076",Ohne vollständiges Mapping blockiert System das Posting mit verständlicher Fehlermeldung.
+REQ-078,Finanzen,Storno statt Edit für gepostete Journal Entries,"Gepostete Journal Entries dürfen nicht geändert werden. Korrekturen erfolgen über Storno (Reversal Entry).","• Reverse Entry erzeugt neuen Journal Entry mit umgekehrten Soll/Haben
+• Status Reversed und Verknüpfung zum Original
+• Audit Log Eintrag bei Storno",Should,"Kassier, Admin","JournalEntry, ReversalEntry","Update/Delete auf gepostete Entries nicht möglich; Storno erzeugt neue Buchung; Original bleibt erhalten; Salden korrekt angepasst.","REQ-076, REQ-066",Storno-Buchungen müssen klar als solche erkennbar sein im UI.
+REQ-079,Finanzen,Periodensperre gilt auch für Hauptbuch,"Gesperrte Fiscal Periods verhindern auch Posting und Storno von Journal Entries.","• Prüfung Fiscal Period Status bei Post und Reverse
+• Fehlermeldung bei Locked Period",Should,"Kassier, Admin","FiscalPeriod, JournalEntry","In Locked Period kein Post möglich; in Locked Period kein Reverse möglich.","REQ-066, REQ-076",Konsistenz mit bestehender Periodensperre-Logik sicherstellen.
+REQ-080,Finanzen,Probe-Bilanz Bericht (Trial Balance),"Trial Balance Report zeigt alle Hauptbuchkonten mit Soll/Haben-Salden und prüft ob balanced.","• Liste aller Konten mit Soll-Saldo, Haben-Saldo, Netto-Saldo
+• Total Soll == Total Haben Prüfung
+• Filter nach Zeitraum oder Periode
+• CSV Export",Should,"Kassier, Auditor","LedgerAccount, JournalEntryLine, TrialBalance","Bericht zeigt Totals und weist aus ob balanced; CSV Export möglich.","REQ-075, REQ-076",Performance bei vielen Buchungen durch SQL-Aggregation oder Snapshots optimieren.
+REQ-081,Finanzen,Bilanz und Erfolgsrechnung aus Hauptbuch,"Minimale Abschlüsse (P&L, Balance Sheet) aus dem Hauptbuch ableitbar.","• Erfolgsrechnung: Ertrag- und Aufwand-Konten mit Resultat
+• Bilanz: Aktiven, Passiven, Eigenkapital
+• Filter nach Zeitraum/Geschäftsjahr
+• CSV Export",Should,"Kassier, Vorstand, Auditor","LedgerAccount, JournalEntryLine","Reports sind konsistent zur Probe-Bilanz; CSV Export möglich.","REQ-080, REQ-075",Gewinnvortrag und Periodenabschluss berücksichtigen.
+REQ-082,Finanzen,Mapping UI für Kategorien und Konten und Steuercodes,"Admin/Kassier pflegt Zuordnungen zwischen Subledger und Hauptbuch für automatisches Posting.","• Kategorie zu Hauptbuchkonto Mapping
+• Finance Account zu Hauptbuchkonto Mapping
+• Steuercode zu Steuerkonten (Vorsteuer/geschuldete Steuer)
+• Standard-Mappings vordefinierbar",Should,"Kassier, Admin","PostingMapping, LedgerAccount, Category, Account, TaxCode","Ohne vollständiges Mapping blockiert System Posting mit verständlichem Fehler; Standard-Mappings können vordefiniert werden.","REQ-075, REQ-077",Mapping-Vollständigkeits-Check als Validierung vor erstem Posting.
+REQ-083,Finanzen,Verknüpfung Subledger zu Hauptbuch,"Nutzer kann sehen welche Hauptbuchbuchung zu welcher Rechnung/Zahlung/Buchung gehört.","• SourceType und SourceId auf Journal Entry
+• Links im UI von Transaction, Payment, Invoice auf Journal Entry
+• Rückverfolgbarkeit in beide Richtungen",Should,"Kassier, Auditor","JournalEntry, Transaction, Payment, Invoice","Jeder automatisch erzeugte Journal Entry ist eindeutig auf eine Quelle zurückführbar; Link im UI sichtbar.","REQ-076, REQ-077",Performance der Verknüpfungs-Abfragen bei vielen Daten.
+REQ-084,Finanzen,Backfill für bestehende Daten bei DoubleEntry-Aktivierung,"Beim Aktivieren von DoubleEntry werden bestehende Transaktionen/Zahlungen optional in Journal Entries überführt.","• Admin-Aktion Backfill mit Stichtag
+• Backfill für Transactions und Paid Payments
+• Protokoll mit Anzahl erzeugter Einträge und Fehlern
+• Idempotent (kein Duplikat bei erneutem Lauf)",Should,"Admin, Kassier","JournalEntry, Transaction, Payment","Backfill ist idempotent; fehlende Mappings werden als Fehler protokolliert; Ergebnis-Report zeigt Anzahl und Fehler.",REQ-077,Backfill kann bei grossen Datenmengen Performance-Impact haben; ggf. als Background Job.
+REQ-085,Finanzen,Tests für Posting und Balance Regeln,"Automatisierte Tests für kritische Hauptbuch-Logik.","• Unit Tests: Balance Rule, Posting Patterns, Steuer-Berechnung, Rundung
+• Integration Tests: API Post, Reverse, Trial Balance
+• Für jede Posting-Variante mindestens ein Testfall",Should,"Dev, QA","JournalEntry, JournalEntryLine, PostingMapping","Für jede Posting-Variante existiert mindestens ein Testfall; Tests laufen in CI erfolgreich.","REQ-076, REQ-077, REQ-078",Rundungs-Edge-Cases besonders testen (Brutto/Netto Steuer).

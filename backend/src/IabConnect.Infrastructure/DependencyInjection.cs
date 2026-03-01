@@ -92,6 +92,14 @@ public static class DependencyInjection
         services.AddScoped<IInvoiceTemplateRepository, InvoiceTemplateRepository>();
         services.AddScoped<IActivityAreaRepository, ActivityAreaRepository>();
 
+        // REQ-074..085: Double-Entry Bookkeeping repositories
+        services.AddScoped<ILedgerAccountRepository, LedgerAccountRepository>();
+        services.AddScoped<IJournalEntryRepository, JournalEntryRepository>();
+        services.AddScoped<IPostingMappingRepository, PostingMappingRepository>();
+
+        // REQ-077: Accounting posting service (double-entry auto-posting)
+        services.AddScoped<IabConnect.Application.Finance.Accounting.IAccountingPostingService, AccountingPostingService>();
+
         // REQ-065: eInvoice export (EN 16931 UBL)
         services.AddScoped<IEInvoiceExporter, UblInvoiceExporter>();
 

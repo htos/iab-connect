@@ -549,7 +549,7 @@ namespace IabConnect.Infrastructure.Migrations
 
                     b.HasIndex("Name");
 
-                    b.ToTable("EmailTemplates");
+                    b.ToTable("EmailTemplates", (string)null);
                 });
 
             modelBuilder.Entity("IabConnect.Domain.Communication.EmailTemplateVariable", b =>
@@ -582,7 +582,7 @@ namespace IabConnect.Infrastructure.Migrations
 
                     b.HasIndex("EmailTemplateId");
 
-                    b.ToTable("EmailTemplateVariable");
+                    b.ToTable("EmailTemplateVariable", (string)null);
                 });
 
             modelBuilder.Entity("IabConnect.Domain.Documents.Document", b =>
@@ -1845,6 +1845,14 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("AccountingMode")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("SimpleCash")
+                        .HasColumnName("accounting_mode");
+
                     b.Property<decimal?>("ApprovalThresholdChf")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
@@ -2480,6 +2488,257 @@ namespace IabConnect.Infrastructure.Migrations
                     b.ToTable("invoice_templates", (string)null);
                 });
 
+            modelBuilder.Entity("IabConnect.Domain.Finance.JournalEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<Guid>("FinanceProfileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("finance_profile_id");
+
+                    b.Property<Guid?>("FiscalPeriodId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("fiscal_period_id");
+
+                    b.Property<DateTime?>("PostedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("posted_at");
+
+                    b.Property<string>("PostedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("posted_by");
+
+                    b.Property<string>("Reference")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("reference");
+
+                    b.Property<Guid?>("ReversalOfEntryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reversal_of_entry_id");
+
+                    b.Property<Guid?>("SourceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_id");
+
+                    b.Property<string>("SourceType")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("source_type");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Date")
+                        .HasDatabaseName("ix_journal_entries_date");
+
+                    b.HasIndex("FinanceProfileId")
+                        .HasDatabaseName("ix_journal_entries_finance_profile_id");
+
+                    b.HasIndex("FiscalPeriodId")
+                        .HasDatabaseName("ix_journal_entries_fiscal_period_id");
+
+                    b.HasIndex("ReversalOfEntryId");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_journal_entries_status");
+
+                    b.HasIndex("SourceType", "SourceId")
+                        .HasDatabaseName("ix_journal_entries_source");
+
+                    b.ToTable("journal_entries", (string)null);
+                });
+
+            modelBuilder.Entity("IabConnect.Domain.Finance.JournalEntryLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("ActivityAreaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("activity_area_id");
+
+                    b.Property<decimal>("CreditAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("credit_amount");
+
+                    b.Property<decimal>("DebitAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("debit_amount");
+
+                    b.Property<Guid>("JournalEntryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("journal_entry_id");
+
+                    b.Property<Guid>("LedgerAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ledger_account_id");
+
+                    b.Property<decimal?>("NetAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("net_amount");
+
+                    b.Property<decimal?>("TaxAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("tax_amount");
+
+                    b.Property<Guid?>("TaxCodeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tax_code_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActivityAreaId");
+
+                    b.HasIndex("JournalEntryId")
+                        .HasDatabaseName("ix_journal_entry_lines_journal_entry_id");
+
+                    b.HasIndex("LedgerAccountId")
+                        .HasDatabaseName("ix_journal_entry_lines_ledger_account_id");
+
+                    b.HasIndex("TaxCodeId");
+
+                    b.ToTable("journal_entry_lines", (string)null);
+                });
+
+            modelBuilder.Entity("IabConnect.Domain.Finance.LedgerAccount", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AccountClass")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("account_class");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("DeletedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<Guid>("FinanceProfileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("finance_profile_id");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("NormalBalance")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("normal_balance");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("number");
+
+                    b.Property<Guid?>("ParentAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("parent_account_id");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountClass")
+                        .HasDatabaseName("ix_ledger_accounts_account_class");
+
+                    b.HasIndex("FinanceProfileId")
+                        .HasDatabaseName("ix_ledger_accounts_finance_profile_id");
+
+                    b.HasIndex("ParentAccountId");
+
+                    b.HasIndex("FinanceProfileId", "Number")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ledger_accounts_profile_number_unique")
+                        .HasFilter("is_deleted = false");
+
+                    b.ToTable("ledger_accounts", (string)null);
+                });
+
             modelBuilder.Entity("IabConnect.Domain.Finance.Payment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2608,6 +2867,69 @@ namespace IabConnect.Infrastructure.Migrations
                     b.HasIndex("TransactionId");
 
                     b.ToTable("payments", (string)null);
+                });
+
+            modelBuilder.Entity("IabConnect.Domain.Finance.PostingMapping", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("FinanceProfileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("finance_profile_id");
+
+                    b.Property<Guid>("LedgerAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ledger_account_id");
+
+                    b.Property<string>("MappingType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("mapping_type");
+
+                    b.Property<Guid>("SourceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_id");
+
+                    b.Property<Guid?>("TaxLedgerAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tax_ledger_account_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FinanceProfileId")
+                        .HasDatabaseName("ix_posting_mappings_finance_profile_id");
+
+                    b.HasIndex("LedgerAccountId");
+
+                    b.HasIndex("TaxLedgerAccountId");
+
+                    b.HasIndex("FinanceProfileId", "MappingType", "SourceId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_posting_mappings_profile_type_source_unique");
+
+                    b.ToTable("posting_mappings", (string)null);
                 });
 
             modelBuilder.Entity("IabConnect.Domain.Finance.Receipt", b =>
@@ -3331,6 +3653,82 @@ namespace IabConnect.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("IabConnect.Domain.Finance.JournalEntry", b =>
+                {
+                    b.HasOne("IabConnect.Domain.Finance.FinanceProfile", "FinanceProfile")
+                        .WithMany()
+                        .HasForeignKey("FinanceProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("IabConnect.Domain.Finance.FiscalPeriod", "FiscalPeriod")
+                        .WithMany()
+                        .HasForeignKey("FiscalPeriodId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("IabConnect.Domain.Finance.JournalEntry", "ReversalOfEntry")
+                        .WithMany()
+                        .HasForeignKey("ReversalOfEntryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("FinanceProfile");
+
+                    b.Navigation("FiscalPeriod");
+
+                    b.Navigation("ReversalOfEntry");
+                });
+
+            modelBuilder.Entity("IabConnect.Domain.Finance.JournalEntryLine", b =>
+                {
+                    b.HasOne("IabConnect.Domain.Finance.ActivityArea", "ActivityArea")
+                        .WithMany()
+                        .HasForeignKey("ActivityAreaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("IabConnect.Domain.Finance.JournalEntry", "JournalEntry")
+                        .WithMany("Lines")
+                        .HasForeignKey("JournalEntryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("IabConnect.Domain.Finance.LedgerAccount", "LedgerAccount")
+                        .WithMany()
+                        .HasForeignKey("LedgerAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("IabConnect.Domain.Finance.TaxCode", "TaxCode")
+                        .WithMany()
+                        .HasForeignKey("TaxCodeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("ActivityArea");
+
+                    b.Navigation("JournalEntry");
+
+                    b.Navigation("LedgerAccount");
+
+                    b.Navigation("TaxCode");
+                });
+
+            modelBuilder.Entity("IabConnect.Domain.Finance.LedgerAccount", b =>
+                {
+                    b.HasOne("IabConnect.Domain.Finance.FinanceProfile", "FinanceProfile")
+                        .WithMany()
+                        .HasForeignKey("FinanceProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("IabConnect.Domain.Finance.LedgerAccount", "ParentAccount")
+                        .WithMany()
+                        .HasForeignKey("ParentAccountId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("FinanceProfile");
+
+                    b.Navigation("ParentAccount");
+                });
+
             modelBuilder.Entity("IabConnect.Domain.Finance.Payment", b =>
                 {
                     b.HasOne("IabConnect.Domain.Finance.Invoice", "Invoice")
@@ -3353,6 +3751,32 @@ namespace IabConnect.Infrastructure.Migrations
                     b.Navigation("Receipt");
 
                     b.Navigation("Transaction");
+                });
+
+            modelBuilder.Entity("IabConnect.Domain.Finance.PostingMapping", b =>
+                {
+                    b.HasOne("IabConnect.Domain.Finance.FinanceProfile", "FinanceProfile")
+                        .WithMany()
+                        .HasForeignKey("FinanceProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("IabConnect.Domain.Finance.LedgerAccount", "LedgerAccount")
+                        .WithMany()
+                        .HasForeignKey("LedgerAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("IabConnect.Domain.Finance.LedgerAccount", "TaxLedgerAccount")
+                        .WithMany()
+                        .HasForeignKey("TaxLedgerAccountId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("FinanceProfile");
+
+                    b.Navigation("LedgerAccount");
+
+                    b.Navigation("TaxLedgerAccount");
                 });
 
             modelBuilder.Entity("IabConnect.Domain.Finance.Transaction", b =>
@@ -3420,7 +3844,7 @@ namespace IabConnect.Infrastructure.Migrations
 
                             b1.HasKey("MemberId");
 
-                            b1.ToTable("members");
+                            b1.ToTable("members", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("MemberId");
@@ -3464,6 +3888,11 @@ namespace IabConnect.Infrastructure.Migrations
             modelBuilder.Entity("IabConnect.Domain.Finance.Invoice", b =>
                 {
                     b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("IabConnect.Domain.Finance.JournalEntry", b =>
+                {
+                    b.Navigation("Lines");
                 });
 #pragma warning restore 612, 618
         }

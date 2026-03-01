@@ -8,6 +8,7 @@ using IabConnect.Domain.Finance;
 using IabConnect.Domain.Members;
 using IabConnect.Domain.Privacy;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace IabConnect.Infrastructure.Persistence;
 
@@ -52,6 +53,12 @@ public sealed class ApplicationDbContext : DbContext
     public DbSet<ActivityArea> ActivityAreas => Set<ActivityArea>();
     public DbSet<InvoiceNumberCounter> InvoiceNumberCounters => Set<InvoiceNumberCounter>();
 
+    // REQ-074..085: Double-Entry Bookkeeping
+    public DbSet<LedgerAccount> LedgerAccounts => Set<LedgerAccount>();
+    public DbSet<JournalEntry> JournalEntries => Set<JournalEntry>();
+    public DbSet<JournalEntryLine> JournalEntryLines => Set<JournalEntryLine>();
+    public DbSet<PostingMapping> PostingMappings => Set<PostingMapping>();
+
     // Documents (REQ-034..037)
     public DbSet<DocumentFolder> DocumentFolders => Set<DocumentFolder>();
     public DbSet<Document> Documents => Set<Document>();
@@ -71,13 +78,68 @@ public sealed class ApplicationDbContext : DbContext
 
         // Configure soft delete global query filter for all entities
         // TODO: Apply to all aggregate roots
+
+        // Npgsql 6+ requires DateTimeKind.Utc for timestamptz columns.
+        // Apply UTC value converters globally to every DateTime / DateTime? property
+        // so that Unspecified or Local values are normalised before reaching the driver.
+        ApplyUtcDateTimeConverters(modelBuilder);
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        // TODO: Dispatch domain events before saving
-        // TODO: Set audit fields (CreatedBy, UpdatedBy, etc.)
+        // Belt-and-suspenders: normalise any remaining non-UTC DateTimes
+        // that might slip past the value converter (e.g. shadow properties).
+        ChangeTracker.DetectChanges();
+        NormalizeDateTimesToUtc();
 
         return await base.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Applies ValueConverters to all DateTime and DateTime? properties on every entity
+    /// so that Npgsql always receives DateTimeKind.Utc values for timestamptz columns.
+    /// </summary>
+    private static void ApplyUtcDateTimeConverters(ModelBuilder modelBuilder)
+    {
+        var dateTimeConverter = new ValueConverter<DateTime, DateTime>(
+            v => v.Kind == DateTimeKind.Utc ? v : DateTime.SpecifyKind(v, DateTimeKind.Utc),
+            v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+
+        var nullableDateTimeConverter = new ValueConverter<DateTime?, DateTime?>(
+            v => !v.HasValue ? v
+                : v.Value.Kind == DateTimeKind.Utc ? v
+                : DateTime.SpecifyKind(v.Value, DateTimeKind.Utc),
+            v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : v);
+
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            foreach (var property in entityType.GetProperties())
+            {
+                if (property.ClrType == typeof(DateTime))
+                {
+                    property.SetValueConverter(dateTimeConverter);
+                }
+                else if (property.ClrType == typeof(DateTime?))
+                {
+                    property.SetValueConverter(nullableDateTimeConverter);
+                }
+            }
+        }
+    }
+
+    private void NormalizeDateTimesToUtc()
+    {
+        foreach (var entry in ChangeTracker.Entries())
+        {
+            if (entry.State is not (EntityState.Added or EntityState.Modified)) continue;
+
+            foreach (var prop in entry.Properties)
+            {
+                if (prop.CurrentValue is DateTime dt && dt.Kind != DateTimeKind.Utc)
+                {
+                    prop.CurrentValue = DateTime.SpecifyKind(dt, DateTimeKind.Utc);
+                }
+            }
+        }
     }
 }

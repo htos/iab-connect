@@ -22,6 +22,7 @@ public sealed record FinanceProfileDto(
     string? BankName,
     string? BankIban,
     string? BankBic,
+    string AccountingMode,
     bool IsActive,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);

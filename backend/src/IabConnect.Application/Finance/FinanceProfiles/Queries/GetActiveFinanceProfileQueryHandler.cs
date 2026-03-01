@@ -26,5 +26,6 @@ public sealed class GetActiveFinanceProfileQueryHandler
             p.OrganizationCity, p.OrganizationPostalCode, p.OrganizationCountry,
             p.OrganizationEmail, p.OrganizationPhone, p.OrganizationWebsite,
             p.OrganizationUid, p.VatStatus.ToString(), p.VatNumber,
-            p.BankName, p.BankIban, p.BankBic, p.IsActive, p.CreatedAt, p.UpdatedAt);
+            p.BankName, p.BankIban, p.BankBic, p.AccountingMode.ToString(),
+            p.IsActive, p.CreatedAt, p.UpdatedAt);
 }

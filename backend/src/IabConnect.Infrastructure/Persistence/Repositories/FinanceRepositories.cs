@@ -924,3 +924,263 @@ public sealed class ActivityAreaRepository : IActivityAreaRepository
         }
     }
 }
+
+// ─── Double-Entry Bookkeeping (REQ-074..085) ───
+
+/// <summary>
+/// REQ-075: Ledger account (chart of accounts) repository implementation
+/// </summary>
+public sealed class LedgerAccountRepository : ILedgerAccountRepository
+{
+    private readonly ApplicationDbContext _context;
+
+    public LedgerAccountRepository(ApplicationDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<List<LedgerAccount>> GetAllByProfileAsync(Guid financeProfileId, CancellationToken ct = default)
+    {
+        return await _context.LedgerAccounts
+            .AsNoTracking()
+            .Where(la => la.FinanceProfileId == financeProfileId)
+            .OrderBy(la => la.SortOrder)
+            .ThenBy(la => la.Number)
+            .ToListAsync(ct);
+    }
+
+    public async Task<LedgerAccount?> GetByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        return await _context.LedgerAccounts
+            .FirstOrDefaultAsync(la => la.Id == id, ct);
+    }
+
+    public async Task<LedgerAccount?> GetByNumberAsync(Guid financeProfileId, string number, CancellationToken ct = default)
+    {
+        return await _context.LedgerAccounts
+            .AsNoTracking()
+            .FirstOrDefaultAsync(la => la.FinanceProfileId == financeProfileId && la.Number == number, ct);
+    }
+
+    public async Task<List<LedgerAccount>> GetByClassAsync(Guid financeProfileId, LedgerAccountClass accountClass, CancellationToken ct = default)
+    {
+        return await _context.LedgerAccounts
+            .AsNoTracking()
+            .Where(la => la.FinanceProfileId == financeProfileId && la.AccountClass == accountClass)
+            .OrderBy(la => la.SortOrder)
+            .ThenBy(la => la.Number)
+            .ToListAsync(ct);
+    }
+
+    public async Task AddAsync(LedgerAccount account, CancellationToken ct = default)
+    {
+        await _context.LedgerAccounts.AddAsync(account, ct);
+        await _context.SaveChangesAsync(ct);
+    }
+
+    public async Task UpdateAsync(LedgerAccount account, CancellationToken ct = default)
+    {
+        _context.LedgerAccounts.Update(account);
+        await _context.SaveChangesAsync(ct);
+    }
+
+    public async Task DeleteAsync(Guid id, string deletedBy, CancellationToken ct = default)
+    {
+        var account = await _context.LedgerAccounts.FindAsync([id], ct);
+        if (account is not null)
+        {
+            account.SoftDelete(deletedBy);
+            await _context.SaveChangesAsync(ct);
+        }
+    }
+}
+
+/// <summary>
+/// REQ-076: Journal entry repository implementation
+/// </summary>
+public sealed class JournalEntryRepository : IJournalEntryRepository
+{
+    private readonly ApplicationDbContext _context;
+
+    public JournalEntryRepository(ApplicationDbContext context)
+    {
+        _context = context;
+    }
+
+    /// <summary>
+    /// Npgsql requires DateTimeKind.Utc for 'timestamp with time zone' columns.
+    /// Query-string dates arrive as Kind=Unspecified; normalise them here.
+    /// </summary>
+    private static DateTime? ToUtc(DateTime? dt) =>
+        dt.HasValue ? DateTime.SpecifyKind(dt.Value, DateTimeKind.Utc) : null;
+
+    public async Task<List<JournalEntry>> GetAllAsync(Guid financeProfileId, DateTime? from = null, DateTime? to = null, JournalEntryStatus? status = null, CancellationToken ct = default)
+    {
+        var utcFrom = ToUtc(from);
+        var utcTo = ToUtc(to);
+
+        var query = _context.JournalEntries
+            .AsNoTracking()
+            .Include(je => je.Lines)
+            .Where(je => je.FinanceProfileId == financeProfileId);
+
+        if (utcFrom.HasValue)
+            query = query.Where(je => je.Date >= utcFrom.Value);
+        if (utcTo.HasValue)
+            query = query.Where(je => je.Date <= utcTo.Value);
+        if (status.HasValue)
+            query = query.Where(je => je.Status == status.Value);
+
+        return await query
+            .OrderByDescending(je => je.Date)
+            .ThenByDescending(je => je.CreatedAt)
+            .ToListAsync(ct);
+    }
+
+    public async Task<JournalEntry?> GetByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        return await _context.JournalEntries
+            .FirstOrDefaultAsync(je => je.Id == id, ct);
+    }
+
+    public async Task<JournalEntry?> GetByIdWithLinesAsync(Guid id, CancellationToken ct = default)
+    {
+        return await _context.JournalEntries
+            .Include(je => je.Lines)
+                .ThenInclude(l => l.LedgerAccount)
+            .Include(je => je.Lines)
+                .ThenInclude(l => l.TaxCode)
+            .Include(je => je.Lines)
+                .ThenInclude(l => l.ActivityArea)
+            .FirstOrDefaultAsync(je => je.Id == id, ct);
+    }
+
+    public async Task<List<JournalEntry>> GetBySourceAsync(string sourceType, Guid sourceId, CancellationToken ct = default)
+    {
+        return await _context.JournalEntries
+            .AsNoTracking()
+            .Include(je => je.Lines)
+            .Where(je => je.SourceType == sourceType && je.SourceId == sourceId)
+            .OrderByDescending(je => je.Date)
+            .ToListAsync(ct);
+    }
+
+    public async Task<List<JournalEntry>> GetByLedgerAccountAsync(Guid ledgerAccountId, DateTime? from = null, DateTime? to = null, CancellationToken ct = default)
+    {
+        var utcFrom = ToUtc(from);
+        var utcTo = ToUtc(to);
+
+        var query = _context.JournalEntries
+            .AsNoTracking()
+            .Include(je => je.Lines)
+            .Where(je => je.Lines.Any(l => l.LedgerAccountId == ledgerAccountId));
+
+        if (utcFrom.HasValue)
+            query = query.Where(je => je.Date >= utcFrom.Value);
+        if (utcTo.HasValue)
+            query = query.Where(je => je.Date <= utcTo.Value);
+
+        return await query
+            .OrderByDescending(je => je.Date)
+            .ToListAsync(ct);
+    }
+
+    public async Task<List<JournalEntry>> GetByFiscalPeriodAsync(Guid fiscalPeriodId, CancellationToken ct = default)
+    {
+        return await _context.JournalEntries
+            .AsNoTracking()
+            .Include(je => je.Lines)
+            .Where(je => je.FiscalPeriodId == fiscalPeriodId)
+            .OrderByDescending(je => je.Date)
+            .ToListAsync(ct);
+    }
+
+    public async Task AddAsync(JournalEntry entry, CancellationToken ct = default)
+    {
+        await _context.JournalEntries.AddAsync(entry, ct);
+        await _context.SaveChangesAsync(ct);
+    }
+
+    public async Task UpdateAsync(JournalEntry entry, CancellationToken ct = default)
+    {
+        // Explicitly remove lines that are no longer in the collection
+        // (EF orphan detection can be unreliable with private backing fields).
+        var existingLines = await _context.JournalEntryLines
+            .Where(l => l.JournalEntryId == entry.Id)
+            .ToListAsync(ct);
+
+        var currentLineIds = entry.Lines.Select(l => l.Id).ToHashSet();
+        var linesToRemove = existingLines.Where(l => !currentLineIds.Contains(l.Id)).ToList();
+        if (linesToRemove.Count > 0)
+            _context.JournalEntryLines.RemoveRange(linesToRemove);
+
+        _context.JournalEntries.Update(entry);
+        await _context.SaveChangesAsync(ct);
+    }
+}
+
+/// <summary>
+/// REQ-077/082: Posting mapping repository implementation
+/// </summary>
+public sealed class PostingMappingRepository : IPostingMappingRepository
+{
+    private readonly ApplicationDbContext _context;
+
+    public PostingMappingRepository(ApplicationDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<List<PostingMapping>> GetAllByProfileAsync(Guid financeProfileId, CancellationToken ct = default)
+    {
+        return await _context.PostingMappings
+            .AsNoTracking()
+            .Include(pm => pm.LedgerAccount)
+            .Include(pm => pm.TaxLedgerAccount)
+            .Where(pm => pm.FinanceProfileId == financeProfileId)
+            .OrderBy(pm => pm.MappingType)
+            .ToListAsync(ct);
+    }
+
+    public async Task<PostingMapping?> GetByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        return await _context.PostingMappings
+            .Include(pm => pm.LedgerAccount)
+            .Include(pm => pm.TaxLedgerAccount)
+            .FirstOrDefaultAsync(pm => pm.Id == id, ct);
+    }
+
+    public async Task<PostingMapping?> GetBySourceAsync(Guid financeProfileId, PostingMappingType mappingType, Guid sourceId, CancellationToken ct = default)
+    {
+        return await _context.PostingMappings
+            .AsNoTracking()
+            .Include(pm => pm.LedgerAccount)
+            .Include(pm => pm.TaxLedgerAccount)
+            .FirstOrDefaultAsync(pm =>
+                pm.FinanceProfileId == financeProfileId &&
+                pm.MappingType == mappingType &&
+                pm.SourceId == sourceId, ct);
+    }
+
+    public async Task AddAsync(PostingMapping mapping, CancellationToken ct = default)
+    {
+        await _context.PostingMappings.AddAsync(mapping, ct);
+        await _context.SaveChangesAsync(ct);
+    }
+
+    public async Task UpdateAsync(PostingMapping mapping, CancellationToken ct = default)
+    {
+        _context.PostingMappings.Update(mapping);
+        await _context.SaveChangesAsync(ct);
+    }
+
+    public async Task DeleteAsync(Guid id, CancellationToken ct = default)
+    {
+        var mapping = await _context.PostingMappings.FindAsync([id], ct);
+        if (mapping is not null)
+        {
+            _context.PostingMappings.Remove(mapping);
+            await _context.SaveChangesAsync(ct);
+        }
+    }
+}

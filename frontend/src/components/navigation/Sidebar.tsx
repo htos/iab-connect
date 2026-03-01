@@ -7,16 +7,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useAuth, ROLES } from "@/lib/auth";
+import { useAuth, useApiClient, ROLES } from "@/lib/auth";
 import { useAppSettings } from "@/components/providers/AppSettingsProvider";
 import { useSidebar } from "./SidebarContext";
-import { useState } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 
 interface NavItem {
   labelKey: string;
   href?: string;
   icon: React.ReactNode;
   requiredRoles?: string[];
+  requiresDoubleEntry?: boolean;
   submenu?: NavItem[];
 }
 
@@ -228,6 +229,18 @@ const navItems: NavItem[] = [
         icon: <></>,
       },
       {
+        labelKey: "nav.journalEntries",
+        href: "/finance/journal-entries",
+        icon: <></>,
+        requiresDoubleEntry: true,
+      },
+      {
+        labelKey: "nav.accountingReports",
+        href: "/finance/accounting-reports",
+        icon: <></>,
+        requiresDoubleEntry: true,
+      },
+      {
         labelKey: "nav.financeSettings",
         href: "/finance/settings",
         icon: <></>,
@@ -286,6 +299,7 @@ interface SidebarItemProps {
   item: NavItem;
   isActive: boolean;
   isOpen: boolean;
+  isDoubleEntry: boolean;
   onNavigate: () => void;
   t: (key: string) => string;
   roles: string[];
@@ -295,6 +309,7 @@ function NavItemWithSubmenu({
   item,
   isActive,
   isOpen,
+  isDoubleEntry,
   onNavigate,
   t,
   roles,
@@ -372,6 +387,7 @@ function NavItemWithSubmenu({
         <div className="mt-1 ml-3 space-y-1 border-l border-gray-200 pl-3">
           {item.submenu
             .filter((subitem) => {
+              if (subitem.requiresDoubleEntry && !isDoubleEntry) return false;
               if (!subitem.requiredRoles) return true;
               return subitem.requiredRoles.some((role) => roles.includes(role));
             })
@@ -406,6 +422,29 @@ export function Sidebar() {
   const { isAuthenticated, isLoading, roles } = useAuth();
   const { settings } = useAppSettings();
   const { isOpen, close } = useSidebar();
+  const api = useApiClient();
+  const apiRef = useRef(api);
+  apiRef.current = api;
+
+  const [isDoubleEntry, setIsDoubleEntry] = useState(false);
+
+  // Fetch finance profile to determine accounting mode
+  const fetchAccountingMode = useCallback(async () => {
+    try {
+      const res = await apiRef.current.get("/api/v1/finance/profile");
+      if (!res.error && res.data) {
+        setIsDoubleEntry((res.data as { accountingMode?: string }).accountingMode === "DoubleEntry");
+      }
+    } catch {
+      // ignore — default to false
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated && !isLoading) {
+      fetchAccountingMode();
+    }
+  }, [isAuthenticated, isLoading, fetchAccountingMode]);
 
   // Don't show on login or error pages
   if (pathname === "/login" || pathname.startsWith("/auth/")) {
@@ -456,6 +495,7 @@ export function Sidebar() {
                   item={item}
                   isActive={isActive}
                   isOpen={isOpen}
+                  isDoubleEntry={isDoubleEntry}
                   onNavigate={() => {
                     // Close sidebar on mobile after navigation
                     if (window.innerWidth < 1024) {

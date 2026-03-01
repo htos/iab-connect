@@ -50,6 +50,12 @@ public static class EndpointMapper
         app.MapDashboardEndpoints(); // Finance Dashboard overview
         app.MapArchiveEndpoints(); // REQ-070: Archive/Retention
 
+        // REQ-074..085: Double-Entry Bookkeeping
+        app.MapLedgerAccountEndpoints();
+        app.MapJournalEntryEndpoints();
+        app.MapPostingMappingEndpoints();
+        app.MapAccountingReportEndpoints();
+
         return app;
     }
 

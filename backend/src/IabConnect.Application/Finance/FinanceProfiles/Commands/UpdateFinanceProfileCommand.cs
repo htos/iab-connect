@@ -27,4 +27,5 @@ public sealed record UpdateFinanceProfileCommand : IRequest<FinanceProfileDto?>
     public string? BankName { get; init; }
     public string? BankIban { get; init; }
     public string? BankBic { get; init; }
+    public string? AccountingMode { get; init; }
 }

@@ -231,6 +231,28 @@ POST /api/v1/finance/tax-codes
 PUT /api/v1/finance/tax-codes/{id}
 DELETE /api/v1/finance/tax-codes/{id}
 
+Doppelte Buchhaltung (REQ-074 bis REQ-085)
+GET /api/v1/finance/ledger-accounts
+POST /api/v1/finance/ledger-accounts
+PUT /api/v1/finance/ledger-accounts/{id}
+DELETE /api/v1/finance/ledger-accounts/{id}
+
+GET /api/v1/finance/journal-entries
+GET /api/v1/finance/journal-entries/{id}
+GET /api/v1/finance/journal-entries/by-source
+POST /api/v1/finance/journal-entries
+POST /api/v1/finance/journal-entries/{id}/post
+POST /api/v1/finance/journal-entries/{id}/reverse
+
+GET /api/v1/finance/posting-mappings
+POST /api/v1/finance/posting-mappings
+PUT /api/v1/finance/posting-mappings/{id}
+DELETE /api/v1/finance/posting-mappings/{id}
+
+GET /api/v1/finance/accounting-reports/trial-balance
+GET /api/v1/finance/accounting-reports/balance-sheet
+GET /api/v1/finance/accounting-reports/profit-and-loss
+
 Reporting
 GET /api/v1/reports/members/statistics
 GET /api/v1/reports/finance

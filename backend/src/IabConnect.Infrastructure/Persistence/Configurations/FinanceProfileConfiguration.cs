@@ -115,6 +115,14 @@ public sealed class FinanceProfileConfiguration : IEntityTypeConfiguration<Finan
         builder.Property(fp => fp.IsActive)
             .HasColumnName("is_active");
 
+        // REQ-074: Accounting mode (SimpleCash default, optionally DoubleEntry)
+        builder.Property(fp => fp.AccountingMode)
+            .HasColumnName("accounting_mode")
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .HasDefaultValue(AccountingMode.SimpleCash)
+            .IsRequired();
+
         // Filtered unique index: only one active profile at a time
         builder.HasIndex(fp => fp.IsActive)
             .IsUnique()

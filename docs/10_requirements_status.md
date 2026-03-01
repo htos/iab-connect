@@ -594,3 +594,99 @@ Owner: Implementation Agent
 SprintOderRelease: Sprint 5
 TicketLink:
 Notizen: pain.001 Export implementiert. Pain001Generator mit CH SPS und SEPA Profil-Unterstützung. Format pain.001.001.09. POST /exports/pain001 (Export) und POST /exports/pain001/validate (Validierung) Endpoints. Remittance Information (InvoiceNumber/Reference) wird befüllt. IBAN/BIC Validierung.
+
+ID: REQ-074
+Status: Ready
+StatusSeit: 2026 02 28
+Owner: Implementation Agent
+SprintOderRelease: Sprint 6
+TicketLink:
+Notizen: Accounting Mode im Finance Setup. AccountingMode Enum (SimpleCash/DoubleEntry) auf FinanceProfile. Steuerung ob doppelte Buchhaltung aktiv ist. Voraussetzung für alle weiteren Double Entry Requirements.
+
+ID: REQ-075
+Status: Ready
+StatusSeit: 2026 02 28
+Owner: Implementation Agent
+SprintOderRelease: Sprint 6
+TicketLink:
+Notizen: Kontenplan für Hauptbuch. LedgerAccount Entity mit Nummer, Name, Kontenklasse, Normal-Saldo, Hierarchie. Separiert von bestehenden Finance Accounts. CRUD Endpoints und UI.
+
+ID: REQ-076
+Status: Ready
+StatusSeit: 2026 02 28
+Owner: Implementation Agent
+SprintOderRelease: Sprint 6
+TicketLink:
+Notizen: Journal Entry mit Soll/Haben Zeilen. JournalEntry und JournalEntryLine Entities. Balance-Regel Enforcement. Status-Workflow Draft/Posted/Reversed.
+
+ID: REQ-077
+Status: Ready
+StatusSeit: 2026 02 28
+Owner: Implementation Agent
+SprintOderRelease: Sprint 6
+TicketLink:
+Notizen: Posting Service für automatische Journal Entries aus Subledger-Ereignissen. PostingMapping Entity für Kategorie/Account/TaxCode zu Hauptbuchkonto Zuordnung.
+
+ID: REQ-078
+Status: Ready
+StatusSeit: 2026 02 28
+Owner: Implementation Agent
+SprintOderRelease: Sprint 6
+TicketLink:
+Notizen: Storno statt Edit für gepostete Journal Entries. Reversal Entry Pattern. Audit Trail für Stornierungen.
+
+ID: REQ-079
+Status: Ready
+StatusSeit: 2026 02 28
+Owner: Implementation Agent
+SprintOderRelease: Sprint 6
+TicketLink:
+Notizen: Periodensperre gilt auch für Hauptbuch. Integration mit bestehendem FiscalPeriod Locking.
+
+ID: REQ-080
+Status: Ready
+StatusSeit: 2026 02 28
+Owner: Implementation Agent
+SprintOderRelease: Sprint 6
+TicketLink:
+Notizen: Trial Balance Report. SQL-Aggregation über JournalEntryLines pro LedgerAccount. CSV Export. Balanced-Check.
+
+ID: REQ-081
+Status: Ready
+StatusSeit: 2026 02 28
+Owner: Implementation Agent
+SprintOderRelease: Sprint 6
+TicketLink:
+Notizen: Bilanz und Erfolgsrechnung aus Hauptbuch. P&L (Revenue/Expense Konten) und Balance Sheet (Asset/Liability/Equity). CSV Export.
+
+ID: REQ-082
+Status: Ready
+StatusSeit: 2026 02 28
+Owner: Implementation Agent
+SprintOderRelease: Sprint 6
+TicketLink:
+Notizen: Mapping UI für Posting-Zuordnungen. Kategorie zu Hauptbuchkonto, Finance Account zu Hauptbuchkonto, TaxCode zu Steuerkonten. Vollständigkeits-Validierung.
+
+ID: REQ-083
+Status: Ready
+StatusSeit: 2026 02 28
+Owner: Implementation Agent
+SprintOderRelease: Sprint 6
+TicketLink:
+Notizen: Verknüpfung Subledger zu Hauptbuch. SourceType/SourceId auf JournalEntry. Bidirektionale Navigation im UI.
+
+ID: REQ-084
+Status: Ready
+StatusSeit: 2026 02 28
+Owner: Implementation Agent
+SprintOderRelease: Sprint 6
+TicketLink:
+Notizen: Backfill für bestehende Daten bei DoubleEntry-Aktivierung. Admin-Aktion mit Stichtag. Idempotent. Fehler-Protokoll.
+
+ID: REQ-085
+Status: Ready
+StatusSeit: 2026 02 28
+Owner: Implementation Agent
+SprintOderRelease: Sprint 6
+TicketLink:
+Notizen: Automatisierte Tests für Posting und Balance Regeln. Unit Tests und Integration Tests für alle Posting-Varianten.

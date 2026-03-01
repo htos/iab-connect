@@ -207,6 +207,180 @@ export interface ActivityAreaReport {
   balance: number;
 }
 
+// --- REQ-074..085: Double-Entry Bookkeeping ---
+
+export type AccountingMode = "SimpleCash" | "DoubleEntry";
+
+export type LedgerAccountClass = "Asset" | "Liability" | "Equity" | "Revenue" | "Expense";
+export type NormalBalance = "Debit" | "Credit";
+export type JournalEntryStatus = "Draft" | "Posted" | "Reversed";
+export type PostingMappingType = "Category" | "Account" | "TaxCode";
+
+export interface LedgerAccount {
+  id: string;
+  financeProfileId: string;
+  number: string;
+  name: string;
+  accountClass: LedgerAccountClass;
+  normalBalance: NormalBalance;
+  description: string | null;
+  parentAccountId: string | null;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+  createdBy: string;
+  updatedAt: string | null;
+  updatedBy: string | null;
+}
+
+export interface CreateLedgerAccountRequest {
+  number: string;
+  name: string;
+  accountClass: LedgerAccountClass;
+  normalBalance: NormalBalance;
+  description?: string | null;
+  parentAccountId?: string | null;
+  sortOrder?: number;
+}
+
+export interface UpdateLedgerAccountRequest {
+  number: string;
+  name: string;
+  accountClass: LedgerAccountClass;
+  normalBalance: NormalBalance;
+  description?: string | null;
+  parentAccountId?: string | null;
+  sortOrder?: number;
+}
+
+export interface JournalEntryLine {
+  id: string;
+  ledgerAccountId: string;
+  ledgerAccountNumber: string;
+  ledgerAccountName: string;
+  debitAmount: number;
+  creditAmount: number;
+  taxCodeId: string | null;
+  taxCodeCode: string | null;
+  netAmount: number;
+  taxAmount: number;
+  activityAreaId: string | null;
+  activityAreaName: string | null;
+}
+
+export interface JournalEntry {
+  id: string;
+  financeProfileId: string;
+  date: string;
+  description: string;
+  reference: string | null;
+  status: JournalEntryStatus;
+  sourceType: string | null;
+  sourceId: string | null;
+  fiscalPeriodId: string | null;
+  lines: JournalEntryLine[];
+  createdAt: string;
+  createdBy: string;
+}
+
+export interface CreateJournalEntryLineRequest {
+  ledgerAccountId: string;
+  debitAmount: number;
+  creditAmount: number;
+  taxCodeId?: string | null;
+  netAmount?: number;
+  taxAmount?: number;
+  activityAreaId?: string | null;
+}
+
+export interface CreateJournalEntryRequest {
+  date: string;
+  description: string;
+  reference?: string | null;
+  fiscalPeriodId?: string | null;
+  lines: CreateJournalEntryLineRequest[];
+}
+
+export interface PostingMapping {
+  id: string;
+  financeProfileId: string;
+  mappingType: PostingMappingType;
+  sourceId: string;
+  ledgerAccountId: string;
+  ledgerAccountNumber: string;
+  ledgerAccountName: string;
+  taxLedgerAccountId: string | null;
+  taxLedgerAccountNumber: string | null;
+  taxLedgerAccountName: string | null;
+}
+
+export interface CreatePostingMappingRequest {
+  mappingType: PostingMappingType;
+  sourceId: string;
+  ledgerAccountId: string;
+  taxLedgerAccountId?: string | null;
+}
+
+export interface UpdatePostingMappingRequest {
+  ledgerAccountId: string;
+  taxLedgerAccountId?: string | null;
+}
+
+// --- Accounting Reports ---
+
+export interface TrialBalanceRow {
+  ledgerAccountId: string;
+  accountNumber: string;
+  accountName: string;
+  accountClass: string;
+  totalDebit: number;
+  totalCredit: number;
+  balance: number;
+}
+
+export interface TrialBalanceReport {
+  from: string | null;
+  to: string | null;
+  lines: TrialBalanceRow[];
+  totalDebit: number;
+  totalCredit: number;
+}
+
+export interface BalanceSheetRow {
+  ledgerAccountId: string;
+  accountNumber: string;
+  accountName: string;
+  accountClass: string;
+  balance: number;
+}
+
+export interface BalanceSheetReport {
+  asOfDate: string;
+  assets: BalanceSheetRow[];
+  liabilities: BalanceSheetRow[];
+  equity: BalanceSheetRow[];
+  totalAssets: number;
+  totalLiabilities: number;
+  totalEquity: number;
+}
+
+export interface ProfitAndLossRow {
+  ledgerAccountId: string;
+  accountNumber: string;
+  accountName: string;
+  amount: number;
+}
+
+export interface ProfitAndLossReport {
+  from: string | null;
+  to: string | null;
+  revenue: ProfitAndLossRow[];
+  expenses: ProfitAndLossRow[];
+  totalRevenue: number;
+  totalExpenses: number;
+  netResult: number;
+}
+
 // --- Pagination ---
 
 export interface PagedResult<T> {

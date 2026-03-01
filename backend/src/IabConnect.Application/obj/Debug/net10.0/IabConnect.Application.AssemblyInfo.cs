@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("IabConnect.Application")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e594e6c43e0fba8ccba567f7ae868f59b8dcca76")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+31b5d31f51ebb94b01c9b282e8ed5615b8eea3a7")]
 [assembly: System.Reflection.AssemblyProductAttribute("IabConnect.Application")]
 [assembly: System.Reflection.AssemblyTitleAttribute("IabConnect.Application")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -32,6 +32,7 @@ public sealed class UpdateFinanceProfileCommandHandler
         var jurisdiction = Enum.Parse<Jurisdiction>(request.Jurisdiction, ignoreCase: false);
         var currency = Enum.Parse<FinanceCurrency>(request.Currency, ignoreCase: false);
         var vatStatus = Enum.Parse<VatStatus>(request.VatStatus ?? "NotRegistered", ignoreCase: true);
+        var accountingMode = Enum.Parse<AccountingMode>(request.AccountingMode ?? "SimpleCash", ignoreCase: true);
 
         profile.Update(
             jurisdiction, request.CountryCode, currency, request.FiscalYearStartMonth,
@@ -40,7 +41,8 @@ public sealed class UpdateFinanceProfileCommandHandler
             request.OrganizationEmail, request.OrganizationPhone,
             request.OrganizationWebsite, request.OrganizationUid,
             request.BankName, request.BankIban, request.BankBic,
-            vatStatus, request.VatNumber);
+            vatStatus, request.VatNumber,
+            accountingMode: accountingMode);
 
         await _repository.UpdateAsync(profile, ct);
         await _unitOfWork.SaveChangesAsync(ct);

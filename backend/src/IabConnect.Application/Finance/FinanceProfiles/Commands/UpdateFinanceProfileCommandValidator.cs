@@ -32,5 +32,12 @@ public sealed class UpdateFinanceProfileCommandValidator : AbstractValidator<Upd
                 .Must(v => Enum.TryParse<VatStatus>(v, true, out _))
                 .WithMessage("Invalid VAT status.");
         });
+
+        When(x => x.AccountingMode is not null, () =>
+        {
+            RuleFor(x => x.AccountingMode)
+                .Must(v => Enum.TryParse<AccountingMode>(v, true, out _))
+                .WithMessage("Invalid accounting mode. Valid values: SimpleCash, DoubleEntry.");
+        });
     }
 }

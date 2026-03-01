@@ -38,6 +38,9 @@ public class FinanceProfile : Entity
     public decimal? ApprovalThresholdChf { get; private set; }
     public decimal? ApprovalThresholdEur { get; private set; }
 
+    // REQ-074: Accounting mode (SimpleCash or DoubleEntry)
+    public AccountingMode AccountingMode { get; private set; } = AccountingMode.SimpleCash;
+
     public bool IsActive { get; private set; } = true;
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
@@ -64,7 +67,8 @@ public class FinanceProfile : Entity
         VatStatus vatStatus = VatStatus.NotRegistered,
         string? vatNumber = null,
         decimal? approvalThresholdChf = null,
-        decimal? approvalThresholdEur = null)
+        decimal? approvalThresholdEur = null,
+        AccountingMode accountingMode = AccountingMode.SimpleCash)
     {
         if (string.IsNullOrWhiteSpace(organizationName))
             throw new ArgumentException("Organization name is required.", nameof(organizationName));
@@ -103,6 +107,7 @@ public class FinanceProfile : Entity
             VatNumber = vatNumber?.Trim(),
             ApprovalThresholdChf = approvalThresholdChf,
             ApprovalThresholdEur = approvalThresholdEur,
+            AccountingMode = accountingMode,
             IsActive = true,
             CreatedAt = now,
             UpdatedAt = now
@@ -129,7 +134,8 @@ public class FinanceProfile : Entity
         VatStatus vatStatus = VatStatus.NotRegistered,
         string? vatNumber = null,
         decimal? approvalThresholdChf = null,
-        decimal? approvalThresholdEur = null)
+        decimal? approvalThresholdEur = null,
+        AccountingMode accountingMode = AccountingMode.SimpleCash)
     {
         if (string.IsNullOrWhiteSpace(organizationName))
             throw new ArgumentException("Organization name is required.", nameof(organizationName));
@@ -164,6 +170,7 @@ public class FinanceProfile : Entity
         VatNumber = vatNumber?.Trim();
         ApprovalThresholdChf = approvalThresholdChf;
         ApprovalThresholdEur = approvalThresholdEur;
+        AccountingMode = accountingMode;
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 

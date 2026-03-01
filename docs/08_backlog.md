@@ -49,6 +49,18 @@ REQ-060 Finanz-Setup Land/Profil, Währung, Geschäftsjahr
 REQ-061 Beleg- und Finanzdokumente Storage, Integrität, Aufbewahrung
 REQ-062 VAT/MWST Steuercodes, Netto/Brutto, Auswertung und Export
 REQ-063 Rechnungs-PDF mit Schweizer QR-Zahlteil
+REQ-074 Accounting Mode im Finance Setup SimpleCash oder DoubleEntry
+REQ-075 Kontenplan für Hauptbuch Chart of Accounts
+REQ-076 Journal Entry mit Soll und Haben Zeilen
+REQ-077 Posting Service für automatische Journal Entries
+REQ-078 Storno statt Edit für gepostete Journal Entries
+REQ-079 Periodensperre gilt auch für Hauptbuch
+REQ-080 Probe Bilanz Bericht Trial Balance
+REQ-081 Bilanz und Erfolgsrechnung aus Hauptbuch
+REQ-082 Mapping UI für Kategorien Konten und Steuercodes
+REQ-083 Verknüpfung Subledger zu Hauptbuch
+REQ-084 Backfill für bestehende Daten bei DoubleEntry Aktivierung
+REQ-085 Tests für Posting und Balance Regeln
 
 Öffentlicher Bereich
 REQ-046 Öffentliche Eventseite
@@ -97,6 +109,20 @@ REQ-043 Belegmanagement
 REQ-064 EU-Rechnungs-Compliance Pflichtfelder und Templates je Profil
 REQ-066 Periodenabschluss und Locking Jahresabschluss light
 REQ-067 Freigabe-Workflow für Zahlungen/Spesen Vier-Augen-Prinzip
+
+Doppelte Buchhaltung Sprint 6
+REQ-074 Accounting Mode im Finance Setup
+REQ-075 Kontenplan für Hauptbuch
+REQ-076 Journal Entry mit Soll und Haben Zeilen
+REQ-077 Posting Service für automatische Journal Entries
+REQ-078 Storno statt Edit für gepostete Journal Entries
+REQ-079 Periodensperre gilt auch für Hauptbuch
+REQ-080 Probe Bilanz Bericht
+REQ-081 Bilanz und Erfolgsrechnung
+REQ-082 Mapping UI für Kategorien Konten Steuercodes
+REQ-083 Verknüpfung Subledger zu Hauptbuch
+REQ-084 Backfill für bestehende Daten
+REQ-085 Tests für Posting und Balance Regeln
 
 Öffentlicher Bereich
 REQ-048 Sponsorenseite

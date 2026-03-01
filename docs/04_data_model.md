@@ -645,6 +645,7 @@ vat_number optional (REQ-062)
 bank_name optional
 bank_iban optional
 bank_bic optional
+accounting_mode (SimpleCash, DoubleEntry) default SimpleCash (REQ-074)
 is_active
 created_at
 updated_at
@@ -656,6 +657,144 @@ Validierungen
 organization_name ist nicht leer
 organization_address ist nicht leer
 fiscal_year_start_month zwischen 1 und 12
+
+Name
+LedgerAccount
+
+Beschreibung
+Hauptbuchkonto (Kontenplan) für doppelte Buchhaltung. Wird nur bei AccountingMode=DoubleEntry verwendet. Unterstützt hierarchische Kontenstruktur über parent_account_id. (REQ-075)
+
+Wichtige Felder
+id
+number (Kontonummer, z.B. "1000")
+name (Kontobezeichnung, z.B. "Bank")
+account_class (Asset, Liability, Equity, Revenue, Expense)
+normal_balance (Debit, Credit)
+description optional
+is_active default true
+parent_account_id optional (FK zu LedgerAccount)
+finance_profile_id (FK zu FinanceProfile)
+sort_order
+created_at
+created_by
+updated_at
+updated_by
+is_deleted (ISoftDeletable)
+deleted_at
+deleted_by
+
+Beziehungen
+LedgerAccount zu FinanceProfile
+LedgerAccount zu LedgerAccount (self-referencing über parent_account_id)
+LedgerAccount zu JournalEntryLine
+
+Indizes
+finance_profile_id + number unique (mit soft-delete Filter)
+
+Validierungen
+number ist nicht leer
+name ist nicht leer
+
+Name
+JournalEntry
+
+Beschreibung
+Buchungssatz (Journal Entry Header) für doppelte Buchhaltung. Jeder Eintrag hat mindestens 2 Zeilen, wobei Soll gleich Haben sein muss. Unterstützt Storno über reversal_of_entry_id. (REQ-076, REQ-078)
+
+Wichtige Felder
+id
+date
+description
+reference optional
+status (Draft, Posted, Reversed)
+source_type optional (z.B. "Transaction", "Payment")
+source_id optional (FK zur Quell-Entität)
+fiscal_period_id optional (FK zu FiscalPeriod)
+finance_profile_id (FK zu FinanceProfile)
+reversal_of_entry_id optional (FK zu JournalEntry für Storno)
+created_at
+created_by
+posted_at
+posted_by
+
+Beziehungen
+JournalEntry zu FinanceProfile
+JournalEntry zu FiscalPeriod
+JournalEntry zu JournalEntry (self-referencing für Storno)
+JournalEntry zu JournalEntryLine (1:n)
+
+Indizes
+finance_profile_id
+status
+source_type + source_id
+fiscal_period_id
+
+Validierungen
+description ist nicht leer
+Post: Status muss Draft sein, mindestens 2 Zeilen, Soll == Haben
+CreateReversal: Status muss Posted sein
+
+Name
+JournalEntryLine
+
+Beschreibung
+Einzelne Soll- oder Haben-Zeile eines Buchungssatzes. Referenziert ein Hauptbuchkonto und trägt entweder einen Soll- oder Haben-Betrag (nie beides). (REQ-076)
+
+Wichtige Felder
+id
+journal_entry_id (FK zu JournalEntry)
+ledger_account_id (FK zu LedgerAccount)
+debit_amount decimal(18,2)
+credit_amount decimal(18,2)
+tax_code_id optional (FK zu TaxCode)
+net_amount optional decimal(18,2)
+tax_amount optional decimal(18,2)
+activity_area_id optional (FK zu ActivityArea)
+
+Beziehungen
+JournalEntryLine zu JournalEntry
+JournalEntryLine zu LedgerAccount
+JournalEntryLine zu TaxCode
+JournalEntryLine zu ActivityArea
+
+Indizes
+journal_entry_id
+ledger_account_id
+
+Validierungen
+debit_amount >= 0
+credit_amount >= 0
+Entweder debit oder credit > 0 (nicht beides gleichzeitig)
+
+Name
+PostingMapping
+
+Beschreibung
+Zuordnung zwischen Nebenbuch-Entitäten (Kategorie, Konto, Steuercode) und Hauptbuchkonten für automatische Buchungssatz-Erstellung. (REQ-077, REQ-082)
+
+Wichtige Felder
+id
+finance_profile_id (FK zu FinanceProfile)
+mapping_type (Category, Account, TaxCode)
+source_id (ID der Quell-Entität)
+ledger_account_id (FK zu LedgerAccount, Ziel-Hauptbuchkonto)
+tax_ledger_account_id optional (FK zu LedgerAccount, für Steuer-Buchungen)
+created_at
+created_by
+updated_at
+updated_by
+
+Beziehungen
+PostingMapping zu FinanceProfile
+PostingMapping zu LedgerAccount (Hauptkonto)
+PostingMapping zu LedgerAccount (Steuerkonto, optional)
+
+Indizes
+finance_profile_id + mapping_type + source_id unique
+
+Validierungen
+source_id darf nicht leer sein
+ledger_account_id darf nicht leer sein
 
 Name
 InvoiceNumberCounter

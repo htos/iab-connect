@@ -185,3 +185,47 @@ public interface IActivityAreaRepository
     Task UpdateAsync(ActivityArea area, CancellationToken ct = default);
     Task DeleteAsync(Guid id, CancellationToken ct = default);
 }
+
+// ─── Double-Entry Bookkeeping (REQ-074..085) ───
+
+/// <summary>
+/// REQ-075: Repository for ledger accounts (chart of accounts)
+/// </summary>
+public interface ILedgerAccountRepository
+{
+    Task<List<LedgerAccount>> GetAllByProfileAsync(Guid financeProfileId, CancellationToken ct = default);
+    Task<LedgerAccount?> GetByIdAsync(Guid id, CancellationToken ct = default);
+    Task<LedgerAccount?> GetByNumberAsync(Guid financeProfileId, string number, CancellationToken ct = default);
+    Task<List<LedgerAccount>> GetByClassAsync(Guid financeProfileId, LedgerAccountClass accountClass, CancellationToken ct = default);
+    Task AddAsync(LedgerAccount account, CancellationToken ct = default);
+    Task UpdateAsync(LedgerAccount account, CancellationToken ct = default);
+    Task DeleteAsync(Guid id, string deletedBy, CancellationToken ct = default);
+}
+
+/// <summary>
+/// REQ-076: Repository for journal entries (Buchungssätze)
+/// </summary>
+public interface IJournalEntryRepository
+{
+    Task<List<JournalEntry>> GetAllAsync(Guid financeProfileId, DateTime? from = null, DateTime? to = null, JournalEntryStatus? status = null, CancellationToken ct = default);
+    Task<JournalEntry?> GetByIdAsync(Guid id, CancellationToken ct = default);
+    Task<JournalEntry?> GetByIdWithLinesAsync(Guid id, CancellationToken ct = default);
+    Task<List<JournalEntry>> GetBySourceAsync(string sourceType, Guid sourceId, CancellationToken ct = default);
+    Task<List<JournalEntry>> GetByLedgerAccountAsync(Guid ledgerAccountId, DateTime? from = null, DateTime? to = null, CancellationToken ct = default);
+    Task<List<JournalEntry>> GetByFiscalPeriodAsync(Guid fiscalPeriodId, CancellationToken ct = default);
+    Task AddAsync(JournalEntry entry, CancellationToken ct = default);
+    Task UpdateAsync(JournalEntry entry, CancellationToken ct = default);
+}
+
+/// <summary>
+/// REQ-077/082: Repository for posting mappings (subledger → GL mappings)
+/// </summary>
+public interface IPostingMappingRepository
+{
+    Task<List<PostingMapping>> GetAllByProfileAsync(Guid financeProfileId, CancellationToken ct = default);
+    Task<PostingMapping?> GetByIdAsync(Guid id, CancellationToken ct = default);
+    Task<PostingMapping?> GetBySourceAsync(Guid financeProfileId, PostingMappingType mappingType, Guid sourceId, CancellationToken ct = default);
+    Task AddAsync(PostingMapping mapping, CancellationToken ct = default);
+    Task UpdateAsync(PostingMapping mapping, CancellationToken ct = default);
+    Task DeleteAsync(Guid id, CancellationToken ct = default);
+}

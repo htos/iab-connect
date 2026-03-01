@@ -5,9 +5,10 @@
  * Central hub for all finance configuration and settings.
  */
 
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { useAuth } from "@/lib/auth";
+import { useAuth, useApiClient } from "@/lib/auth";
 
 // --- Icons ---
 
@@ -65,6 +66,24 @@ const BankImportIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const JournalIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+  </svg>
+);
+
+const ReportsIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+  </svg>
+);
+
+const LockIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+  </svg>
+);
+
 // --- Settings card data type ---
 interface SettingsCard {
   href: string;
@@ -75,7 +94,8 @@ interface SettingsCard {
   bgColor: string;
 }
 
-const settingsCards: SettingsCard[] = [
+/** Finanzprofil section — always visible */
+const profileCards: SettingsCard[] = [
   {
     href: "/finance/settings/profile",
     titleKey: "settingsHub.profile",
@@ -84,6 +104,10 @@ const settingsCards: SettingsCard[] = [
     color: "text-blue-600",
     bgColor: "bg-blue-50",
   },
+];
+
+/** Allgemein (General) section — always visible */
+const generalCards: SettingsCard[] = [
   {
     href: "/finance/accounts",
     titleKey: "settingsHub.accounts",
@@ -124,6 +148,10 @@ const settingsCards: SettingsCard[] = [
     color: "text-teal-600",
     bgColor: "bg-teal-50",
   },
+];
+
+/** Einfache Buchhaltung section — tools for simple cash-based accounting */
+const simpleCashCards: SettingsCard[] = [
   {
     href: "/finance/exports",
     titleKey: "settingsHub.exports",
@@ -142,12 +170,76 @@ const settingsCards: SettingsCard[] = [
   },
 ];
 
+/** Accounting settings cards — always shown but disabled when not DoubleEntry */
+const accountingSetupCards: SettingsCard[] = [
+  {
+    href: "/finance/ledger-accounts",
+    titleKey: "settingsHub.ledgerAccounts",
+    descKey: "settingsHub.ledgerAccountsDesc",
+    icon: AccountsIcon,
+    color: "text-orange-600",
+    bgColor: "bg-orange-50",
+  },
+  {
+    href: "/finance/posting-mappings",
+    titleKey: "settingsHub.postingMappings",
+    descKey: "settingsHub.postingMappingsDesc",
+    icon: CategoriesIcon,
+    color: "text-rose-600",
+    bgColor: "bg-rose-50",
+  },
+];
+
+/** Accounting operational cards — only visible when DoubleEntry is active */
+const accountingOperationalCards: SettingsCard[] = [
+  {
+    href: "/finance/journal-entries",
+    titleKey: "settingsHub.journalEntries",
+    descKey: "settingsHub.journalEntriesDesc",
+    icon: JournalIcon,
+    color: "text-sky-600",
+    bgColor: "bg-sky-50",
+  },
+  {
+    href: "/finance/accounting-reports",
+    titleKey: "settingsHub.accountingReports",
+    descKey: "settingsHub.accountingReportsDesc",
+    icon: ReportsIcon,
+    color: "text-purple-600",
+    bgColor: "bg-purple-50",
+  },
+];
+
 export default function FinanceSettingsPage() {
   const t = useTranslations("finance");
   const ts = useTranslations("finance.settings");
   const { canReadFinance, isLoading: authLoading } = useAuth();
+  const api = useApiClient();
+  const apiRef = useRef(api);
+  apiRef.current = api;
 
-  if (authLoading) {
+  const [isDoubleEntry, setIsDoubleEntry] = useState(false);
+  const [profileLoaded, setProfileLoaded] = useState(false);
+
+  const fetchProfile = useCallback(async () => {
+    try {
+      const res = await apiRef.current.get("/api/v1/finance/profile");
+      if (!res.error && res.data) {
+        const profile = res.data as { accountingMode?: string };
+        setIsDoubleEntry(profile.accountingMode === "DoubleEntry");
+      }
+    } catch {
+      // ignore — default to SimpleCash
+    } finally {
+      setProfileLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (canReadFinance) fetchProfile();
+  }, [canReadFinance, fetchProfile]);
+
+  if (authLoading || !profileLoaded) {
     return (
       <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
         <div className="mx-auto max-w-6xl">
@@ -163,6 +255,59 @@ export default function FinanceSettingsPage() {
     return null;
   }
 
+  /** Render a clickable settings card */
+  const renderCard = (card: SettingsCard) => {
+    const IconComponent = card.icon;
+    return (
+      <Link
+        key={card.href}
+        href={card.href}
+        className="group relative flex flex-col rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-all hover:border-orange-200 hover:shadow-md"
+      >
+        <div className="mb-4 flex items-center gap-4">
+          <div className={`rounded-xl p-3 ${card.bgColor}`}>
+            <IconComponent className={`h-6 w-6 ${card.color}`} />
+          </div>
+          <ChevronRightIcon className="ml-auto h-5 w-5 text-gray-300 transition-colors group-hover:text-orange-500" />
+        </div>
+        <h3 className="text-base font-semibold text-gray-900 transition-colors group-hover:text-orange-600">
+          {t(card.titleKey)}
+        </h3>
+        <p className="mt-1 text-sm leading-relaxed text-gray-500">
+          {t(card.descKey)}
+        </p>
+      </Link>
+    );
+  };
+
+  /** Render a disabled / greyed-out settings card */
+  const renderDisabledCard = (card: SettingsCard) => {
+    const IconComponent = card.icon;
+    return (
+      <div
+        key={card.href}
+        className="relative flex flex-col rounded-xl border border-gray-200 bg-gray-50 p-6 opacity-60 cursor-not-allowed"
+      >
+        <div className="mb-4 flex items-center gap-4">
+          <div className="rounded-xl p-3 bg-gray-100">
+            <IconComponent className="h-6 w-6 text-gray-400" />
+          </div>
+          <LockIcon className="ml-auto h-5 w-5 text-gray-300" />
+        </div>
+        <h3 className="text-base font-semibold text-gray-500">
+          {t(card.titleKey)}
+        </h3>
+        <p className="mt-1 text-sm leading-relaxed text-gray-400">
+          {t(card.descKey)}
+        </p>
+        <span className="mt-2 inline-flex items-center gap-1 text-xs text-gray-400">
+          <LockIcon className="h-3 w-3" />
+          {t("settingsHub.requiresDoubleEntry")}
+        </span>
+      </div>
+    );
+  };
+
   return (
     <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
       <div className="mx-auto max-w-6xl">
@@ -174,31 +319,63 @@ export default function FinanceSettingsPage() {
           <p className="mt-1 text-gray-600">{t("settingsHub.subtitle")}</p>
         </div>
 
-        {/* Settings Cards Grid */}
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {settingsCards.map((card) => {
-            const IconComponent = card.icon;
-            return (
-              <Link
-                key={card.href}
-                href={card.href}
-                className="group relative flex flex-col rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-all hover:border-orange-200 hover:shadow-md"
-              >
-                <div className="mb-4 flex items-center gap-4">
-                  <div className={`rounded-xl p-3 ${card.bgColor}`}>
-                    <IconComponent className={`h-6 w-6 ${card.color}`} />
-                  </div>
-                  <ChevronRightIcon className="ml-auto h-5 w-5 text-gray-300 transition-colors group-hover:text-orange-500" />
-                </div>
-                <h3 className="text-base font-semibold text-gray-900 transition-colors group-hover:text-orange-600">
-                  {t(card.titleKey)}
-                </h3>
-                <p className="mt-1 text-sm leading-relaxed text-gray-500">
-                  {t(card.descKey)}
-                </p>
-              </Link>
-            );
-          })}
+        {/* Section: Finanzprofil */}
+        <div className="mb-8">
+          <h2 className="mb-1 text-lg font-semibold text-gray-900">
+            {t("settingsHub.profileSectionTitle")}
+          </h2>
+          <p className="mb-4 text-sm text-gray-500">
+            {t("settingsHub.profileSectionDesc")}
+          </p>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {profileCards.map(renderCard)}
+          </div>
+        </div>
+
+        {/* Section: Allgemein */}
+        <div className="mb-8">
+          <h2 className="mb-1 text-lg font-semibold text-gray-900">
+            {t("settingsHub.generalSectionTitle")}
+          </h2>
+          <p className="mb-4 text-sm text-gray-500">
+            {t("settingsHub.generalSectionDesc")}
+          </p>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {generalCards.map(renderCard)}
+          </div>
+        </div>
+
+        {/* Section: Einfache Buchhaltung */}
+        <div className="mb-8">
+          <h2 className="mb-1 text-lg font-semibold text-gray-900">
+            {t("settingsHub.simpleCashSectionTitle")}
+          </h2>
+          <p className="mb-4 text-sm text-gray-500">
+            {t("settingsHub.simpleCashSectionDesc")}
+          </p>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {simpleCashCards.map(renderCard)}
+          </div>
+        </div>
+
+        {/* Section: Doppelte Buchhaltung */}
+        <div className="mb-8">
+          <h2 className="mb-1 text-lg font-semibold text-gray-900">
+            {t("settingsHub.doubleEntrySection")}
+          </h2>
+          <p className="mb-4 text-sm text-gray-500">
+            {isDoubleEntry
+              ? t("settingsHub.doubleEntryActive")
+              : t("settingsHub.doubleEntryInactive")}
+          </p>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {/* Setup cards: always shown, disabled when not DoubleEntry */}
+            {accountingSetupCards.map((card) =>
+              isDoubleEntry ? renderCard(card) : renderDisabledCard(card)
+            )}
+            {/* Operational cards: only shown when DoubleEntry */}
+            {isDoubleEntry && accountingOperationalCards.map(renderCard)}
+          </div>
         </div>
       </div>
     </main>

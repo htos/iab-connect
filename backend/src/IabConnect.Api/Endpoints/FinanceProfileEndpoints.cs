@@ -91,7 +91,8 @@ public static class FinanceProfileEndpoints
             VatNumber = request.VatNumber,
             BankName = request.BankName,
             BankIban = request.BankIban,
-            BankBic = request.BankBic
+            BankBic = request.BankBic,
+            AccountingMode = request.AccountingMode
         }, ct);
         return dto is null
             ? Results.NotFound(new { Message = "Finance profile not found." })
@@ -113,5 +114,6 @@ public static class FinanceProfileEndpoints
         string OrganizationPostalCode, string OrganizationCountry,
         string? OrganizationEmail, string? OrganizationPhone, string? OrganizationWebsite,
         string? OrganizationUid, string? VatStatus, string? VatNumber,
-        string? BankName, string? BankIban, string? BankBic);
+        string? BankName, string? BankIban, string? BankBic,
+        string? AccountingMode);
 }

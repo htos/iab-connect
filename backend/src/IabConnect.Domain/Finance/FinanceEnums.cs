@@ -164,3 +164,55 @@ public enum ExpenseClaimStatus
     Rejected,
     Reimbursed
 }
+
+/// <summary>
+/// REQ-074: Accounting mode for finance profile
+/// SimpleCash = existing income/expense bookkeeping (no journal entries)
+/// DoubleEntry = subledger + general ledger with automatic journal entry creation
+/// </summary>
+public enum AccountingMode
+{
+    SimpleCash,
+    DoubleEntry
+}
+
+/// <summary>
+/// REQ-075: Account classes for double-entry chart of accounts
+/// </summary>
+public enum LedgerAccountClass
+{
+    Asset,
+    Liability,
+    Equity,
+    Revenue,
+    Expense
+}
+
+/// <summary>
+/// REQ-075: Normal balance side for ledger accounts
+/// </summary>
+public enum NormalBalance
+{
+    Debit,
+    Credit
+}
+
+/// <summary>
+/// REQ-076: Journal entry lifecycle status
+/// </summary>
+public enum JournalEntryStatus
+{
+    Draft,
+    Posted,
+    Reversed
+}
+
+/// <summary>
+/// REQ-077: Types of posting mappings between subledger and general ledger
+/// </summary>
+public enum PostingMappingType
+{
+    Category,
+    Account,
+    TaxCode
+}

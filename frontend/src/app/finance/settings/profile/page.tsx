@@ -31,6 +31,7 @@ interface FinanceProfile {
   bankName: string | null;
   bankIban: string | null;
   bankBic: string | null;
+  accountingMode: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -53,6 +54,7 @@ interface FinanceProfileForm {
   bankName: string;
   bankIban: string;
   bankBic: string;
+  accountingMode: string;
 }
 
 // --- Icons ---
@@ -174,6 +176,7 @@ const DEFAULT_FORM: FinanceProfileForm = {
   bankName: "",
   bankIban: "",
   bankBic: "",
+  accountingMode: "SimpleCash",
 };
 
 export default function FinanceProfilePage() {
@@ -230,6 +233,7 @@ export default function FinanceProfilePage() {
         bankName: data.bankName ?? "",
         bankIban: data.bankIban ?? "",
         bankBic: data.bankBic ?? "",
+        accountingMode: data.accountingMode ?? "SimpleCash",
       });
     } catch {
       setError(tRef.current("loadError"));
@@ -286,6 +290,7 @@ export default function FinanceProfilePage() {
       bankName: form.bankName || null,
       bankIban: form.bankIban || null,
       bankBic: form.bankBic || null,
+      accountingMode: form.accountingMode,
     };
 
     try {
@@ -673,6 +678,64 @@ export default function FinanceProfilePage() {
                 disabled={!canWriteFinance}
               />
             </div>
+          </div>
+        </div>
+
+        {/* Accounting Mode Section */}
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="mb-6 flex items-center gap-3">
+            <div className="rounded-lg bg-indigo-50 p-2.5">
+              <SettingsIcon className="h-5 w-5 text-indigo-600" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">
+                {t("accounting.accountingMode")}
+              </h2>
+              <p className="text-sm text-gray-500">
+                {t("accounting.accountingModeDescription")}
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <label className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 cursor-pointer hover:border-orange-200 transition-colors">
+              <input
+                type="radio"
+                name="accountingMode"
+                value="SimpleCash"
+                checked={form.accountingMode === "SimpleCash"}
+                onChange={() => handleChange("accountingMode", "SimpleCash")}
+                disabled={!canWriteFinance}
+                className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300"
+              />
+              <div>
+                <div className="text-sm font-medium text-gray-900">
+                  {t("accounting.accountingModeSimpleCash")}
+                </div>
+                <div className="text-xs text-gray-500">
+                  {t("accounting.doubleEntryDisabled")}
+                </div>
+              </div>
+            </label>
+            <label className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 cursor-pointer hover:border-orange-200 transition-colors">
+              <input
+                type="radio"
+                name="accountingMode"
+                value="DoubleEntry"
+                checked={form.accountingMode === "DoubleEntry"}
+                onChange={() => handleChange("accountingMode", "DoubleEntry")}
+                disabled={!canWriteFinance}
+                className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300"
+              />
+              <div>
+                <div className="text-sm font-medium text-gray-900">
+                  {t("accounting.accountingModeDoubleEntry")}
+                </div>
+                <div className="text-xs text-gray-500">
+                  {t("accounting.doubleEntryEnabled")}
+                </div>
+              </div>
+            </label>
           </div>
         </div>
 

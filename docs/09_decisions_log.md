@@ -242,3 +242,63 @@ Enum für Steuersätze, hardcodierte Werte im Code.
 
 Auswirkung
 TaxCode CRUD Endpoints. InvoiceItem und Transaction referenzieren optional einen TaxCode. VAT Summary Export aggregiert nach TaxCode.
+
+Datum
+2026 02 28
+
+Entscheidung
+Doppelte Buchhaltung als optionale Hauptbuch-Ebene (Subledger plus General Ledger) mit AccountingMode Schalter auf FinanceProfile.
+
+Begründung
+Option B aus Analyse_Finanzen.md: Bestehendes Subledger (Transaktionen, Rechnungen, Zahlungen, Bankimport) bleibt primäre Eingabe-Ebene. Bei DoubleEntry Mode erzeugt ein PostingService automatisch JournalEntries im Hauptbuch. Anwender arbeiten wie bisher, erhalten aber korrekte doppelte Buchführung und Hauptbuch-Reports. Option A (Entweder-Oder) wurde verworfen, da bestehende Subledger-Screens wertvoll bleiben.
+
+Alternativen
+Option A: Modus-Umschalter ohne gleichzeitige Nutzung. Komplett eigene Transaction-Erfassung im Hauptbuch ohne Subledger.
+
+Auswirkung
+FinanceProfile bekommt AccountingMode Feld (SimpleCash default, DoubleEntry). 12 neue Requirements REQ-074 bis REQ-085. Neue Entities: LedgerAccount, JournalEntry, JournalEntryLine, PostingMapping. Bestehende Entities und Endpoints bleiben unverändert. Neue API Endpoints für Hauptbuch. PostingService integriert sich in bestehende Command Handlers.
+
+Datum
+2026 02 28
+
+Entscheidung
+Separater LedgerAccount Kontenplan statt Erweiterung der bestehenden Account Tabelle.
+
+Begründung
+Bestehende Account Entity (Kasse, Bank, Sonstige) hat eine andere Semantik als Hauptbuchkonten (Aktiven, Passiven, Eigenkapital, Ertrag, Aufwand). Zusammenlegung würde bestehendes UI und Logik brechen. Mapping zwischen Finance Account und LedgerAccount über PostingMapping.
+
+Alternativen
+Bestehende Account Tabelle um Kontenklassen erweitern und für beide Zwecke nutzen.
+
+Auswirkung
+Neue LedgerAccount Entity mit Kontenklasse, Normal-Saldo und Hierarchie. Finance Account bleibt unverändert. PostingMapping verbindet beide Ebenen.
+
+Datum
+2026 02 28
+
+Entscheidung
+PostingMapping Entity für konfigurierbare Zuordnung zwischen Subledger und Hauptbuch statt hardcodierter Regeln.
+
+Begründung
+Verschiedene Vereine haben unterschiedliche Kontenpläne. Admin muss selbst konfigurieren können welche Kategorie zu welchem Hauptbuchkonto mappt. Ohne Mapping blockiert das System das Posting mit klarer Fehlermeldung.
+
+Alternativen
+Hardcodierte Posting-Regeln basierend auf Konventionen. Automatische Kontenplan-Generierung ohne Konfiguration.
+
+Auswirkung
+PostingMapping Entity mit MappingType (Category, Account, TaxCode). CRUD Endpoints und Mapping UI. Vollständigkeits-Check vor erstem Posting. Standard-Mappings als Seed-Daten.
+
+Datum
+2026 02 28
+
+Entscheidung
+Alle Double Entry Requirements als Should-Priorität eingestuft und Sprint 6 zugeordnet.
+
+Begründung
+Doppelte Buchhaltung ist eine Erweiterung der bestehenden Einnahmen-Ausgaben-Rechnung. Kein Must-Have für MVP. Bestehende Finance-Funktionalität ist vollständig. Double Entry ist für Vereine relevant die gesetzlich zur doppelten Buchführung verpflichtet sind.
+
+Alternativen
+Als Must-Have einstufen und in Sprint 5 einplanen. Als Could-Have einstufen und auf unbestimmte Zeit verschieben.
+
+Auswirkung
+12 neue Requirements REQ-074 bis REQ-085 im Backlog als Sprint 6. Bestehende Sprints 1 bis 5 sind nicht betroffen.
