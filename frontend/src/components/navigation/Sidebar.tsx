@@ -446,6 +446,13 @@ export function Sidebar() {
     }
   }, [isAuthenticated, isLoading, fetchAccountingMode]);
 
+  // Re-fetch when the finance profile is updated elsewhere
+  useEffect(() => {
+    const handler = () => fetchAccountingMode();
+    window.addEventListener("finance-profile-changed", handler);
+    return () => window.removeEventListener("finance-profile-changed", handler);
+  }, [fetchAccountingMode]);
+
   // Don't show on login or error pages
   if (pathname === "/login" || pathname.startsWith("/auth/")) {
     return null;

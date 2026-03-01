@@ -213,13 +213,18 @@ const accountingOperationalCards: SettingsCard[] = [
 export default function FinanceSettingsPage() {
   const t = useTranslations("finance");
   const ts = useTranslations("finance.settings");
-  const { canReadFinance, isLoading: authLoading } = useAuth();
+  const { canReadFinance, canWriteFinance, isLoading: authLoading } = useAuth();
   const api = useApiClient();
   const apiRef = useRef(api);
   apiRef.current = api;
 
   const [isDoubleEntry, setIsDoubleEntry] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState("");
+  const [resetting, setResetting] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState<string | null>(null);
+  const [resetError, setResetError] = useState<string | null>(null);
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -238,6 +243,28 @@ export default function FinanceSettingsPage() {
   useEffect(() => {
     if (canReadFinance) fetchProfile();
   }, [canReadFinance, fetchProfile]);
+
+  const confirmWord = t("settingsHub.resetFinanceConfirmWord");
+
+  const handleFinanceReset = async () => {
+    if (resetConfirmText !== confirmWord) return;
+    setResetting(true);
+    setResetError(null);
+    setResetSuccess(null);
+    try {
+      const res = await apiRef.current.delete("/api/v1/finance/reset");
+      if (res.error) throw new Error(res.error);
+      setResetSuccess(t("settingsHub.resetFinanceSuccess"));
+      setShowResetModal(false);
+      setResetConfirmText("");
+      setIsDoubleEntry(false);
+      window.dispatchEvent(new CustomEvent("finance-profile-changed"));
+    } catch {
+      setResetError(t("settingsHub.resetFinanceError"));
+    } finally {
+      setResetting(false);
+    }
+  };
 
   if (authLoading || !profileLoaded) {
     return (
@@ -377,7 +404,102 @@ export default function FinanceSettingsPage() {
             {isDoubleEntry && accountingOperationalCards.map(renderCard)}
           </div>
         </div>
+
+        {/* Danger Zone — Finance Reset */}
+        {canWriteFinance && (
+          <div className="mb-8 rounded-xl border-2 border-red-200 bg-red-50 p-6">
+            <h2 className="mb-1 text-lg font-semibold text-red-800">
+              {t("settingsHub.dangerZoneTitle")}
+            </h2>
+            <p className="mb-4 text-sm text-red-600">
+              {t("settingsHub.dangerZoneDesc")}
+            </p>
+
+            {resetSuccess && (
+              <div className="mb-4 rounded-lg bg-green-100 p-3 text-sm text-green-700">
+                {resetSuccess}
+              </div>
+            )}
+            {resetError && (
+              <div className="mb-4 rounded-lg bg-red-100 p-3 text-sm text-red-700">
+                {resetError}
+              </div>
+            )}
+
+            <div className="flex items-start gap-4 rounded-lg border border-red-200 bg-white p-4">
+              <div className="rounded-xl bg-red-100 p-3">
+                <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-base font-semibold text-red-800">
+                  {t("settingsHub.resetFinanceTitle")}
+                </h3>
+                <p className="mt-1 text-sm text-red-600">
+                  {t("settingsHub.resetFinanceDesc")}
+                </p>
+                <button
+                  onClick={() => {
+                    setShowResetModal(true);
+                    setResetConfirmText("");
+                    setResetError(null);
+                    setResetSuccess(null);
+                  }}
+                  className="mt-3 rounded-lg border border-red-300 bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
+                >
+                  {t("settingsHub.resetFinanceButton")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Confirmation Modal */}
+      {showResetModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="mx-4 w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-red-800">
+              {t("settingsHub.resetFinanceConfirmTitle")}
+            </h3>
+            <p className="mt-2 text-sm text-gray-600">
+              {t("settingsHub.resetFinanceConfirmText")}
+            </p>
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700">
+                {t("settingsHub.resetFinanceConfirmInput")}
+              </label>
+              <input
+                type="text"
+                value={resetConfirmText}
+                onChange={(e) => setResetConfirmText(e.target.value)}
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+                placeholder={confirmWord}
+                autoFocus
+              />
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowResetModal(false);
+                  setResetConfirmText("");
+                }}
+                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                {t("settingsHub.resetFinanceCancel")}
+              </button>
+              <button
+                onClick={handleFinanceReset}
+                disabled={resetConfirmText !== confirmWord || resetting}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {resetting ? "..." : t("settingsHub.resetFinanceConfirmButton")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

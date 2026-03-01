@@ -100,6 +100,9 @@ public static class DependencyInjection
         // REQ-077: Accounting posting service (double-entry auto-posting)
         services.AddScoped<IabConnect.Application.Finance.Accounting.IAccountingPostingService, AccountingPostingService>();
 
+        // Finance reset service (admin-only)
+        services.AddScoped<IabConnect.Application.Finance.IFinanceResetService, Persistence.Services.FinanceResetService>();
+
         // REQ-065: eInvoice export (EN 16931 UBL)
         services.AddScoped<IEInvoiceExporter, UblInvoiceExporter>();
 

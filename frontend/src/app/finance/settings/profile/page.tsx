@@ -303,6 +303,7 @@ export default function FinanceProfilePage() {
           throw new Error(response.error ?? "Save failed");
         setProfile(response.data);
         setSuccess(tRef.current("saveSuccess"));
+        window.dispatchEvent(new CustomEvent("finance-profile-changed"));
       } else {
         const response = await apiRef.current.post<FinanceProfile>(
           "/api/v1/finance/profile",
@@ -312,6 +313,7 @@ export default function FinanceProfilePage() {
           throw new Error(response.error ?? "Save failed");
         setProfile(response.data);
         setSuccess(tRef.current("saveSuccess"));
+        window.dispatchEvent(new CustomEvent("finance-profile-changed"));
       }
     } catch {
       setError(tRef.current("saveError"));

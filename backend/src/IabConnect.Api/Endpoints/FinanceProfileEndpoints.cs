@@ -1,3 +1,4 @@
+using IabConnect.Application.Finance.Commands;
 using IabConnect.Application.Finance.FinanceProfiles.Commands;
 using IabConnect.Application.Finance.FinanceProfiles.Queries;
 using MediatR;
@@ -31,6 +32,14 @@ public static class FinanceProfileEndpoints
             .WithName("UpdateFinanceProfile")
             .WithSummary("Update a finance profile")
             .WithDescription("REQ-060: Updates an existing finance profile.");
+
+        // Finance Data Reset — admin-only, deletes ALL finance data
+        routes.MapDelete("/api/v1/finance/reset", ResetAllFinanceData)
+            .RequireAuthorization("RequireFinanceWrite")
+            .WithTags("Finance - Profile")
+            .WithName("ResetAllFinanceData")
+            .WithSummary("Delete ALL finance data")
+            .WithDescription("Irreversibly deletes all finance data including transactions, invoices, journal entries, accounts, etc.");
     }
 
     private static async Task<IResult> GetActiveProfile(ISender sender, CancellationToken ct)
@@ -97,6 +106,15 @@ public static class FinanceProfileEndpoints
         return dto is null
             ? Results.NotFound(new { Message = "Finance profile not found." })
             : Results.Ok(dto);
+    }
+
+    private static async Task<IResult> ResetAllFinanceData(
+        HttpContext ctx, ISender sender, CancellationToken ct)
+    {
+        var userName = ctx.User.FindFirst("preferred_username")?.Value
+                       ?? ctx.User.Identity?.Name ?? "system";
+        await sender.Send(new ResetAllFinanceDataCommand(userName), ct);
+        return Results.Ok(new { Message = "All finance data has been deleted." });
     }
 
     // DTOs
