@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using IabConnect.Api.Extensions;
 using IabConnect.Application.Finance.Transactions.Commands;
 using IabConnect.Application.Finance.Transactions.Queries;
 using MediatR;
@@ -64,11 +64,6 @@ public static class TransactionEndpoints
             .WithDescription("REQ-061: Removes the receipt link from a transaction. Audited.");
     }
 
-    private static string GetUserName(HttpContext ctx) =>
-        ctx.User.FindFirst("preferred_username")?.Value
-        ?? ctx.User.FindFirst(ClaimTypes.Email)?.Value
-        ?? "system";
-
     private static async Task<IResult> GetAll(
         ISender sender, DateTime? from, DateTime? to, string? type,
         int? page, int? pageSize, string? sort, string? filter, CancellationToken ct)
@@ -116,7 +111,7 @@ public static class TransactionEndpoints
             TaxCodeId = request.TaxCodeId,
             TaxRate = request.TaxRate,
             ActivityAreaId = request.ActivityAreaId,
-            UserName = GetUserName(httpContext)
+            UserName = httpContext.GetUserName()
         }, ct);
         return Results.Created($"/api/v1/finance/transactions/{dto.Id}", dto);
     }
@@ -139,7 +134,7 @@ public static class TransactionEndpoints
             TaxCodeId = request.TaxCodeId,
             TaxRate = request.TaxRate,
             ActivityAreaId = request.ActivityAreaId,
-            UserName = GetUserName(httpContext)
+            UserName = httpContext.GetUserName()
         }, ct);
         return dto is null
             ? Results.NotFound(new { Message = "Transaction not found." })
@@ -149,7 +144,7 @@ public static class TransactionEndpoints
     private static async Task<IResult> Delete(
         Guid id, ISender sender, HttpContext httpContext, CancellationToken ct)
     {
-        var found = await sender.Send(new DeleteTransactionCommand(id, GetUserName(httpContext)), ct);
+        var found = await sender.Send(new DeleteTransactionCommand(id, httpContext.GetUserName()), ct);
         return found ? Results.NoContent() : Results.NotFound(new { Message = "Transaction not found." });
     }
 

@@ -10,8 +10,8 @@ Komponenten
 2. Backend ASP.NET Core C# als modularer Monolith
 3. Datenbank PostgreSQL
 4. Auth Keycloak OIDC
-5. Background Jobs Hangfire oder Quartz
-6. Dokumente Storage S3 kompatibel wie RustFS oder File Storage
+5. Background Jobs Hangfire
+6. Dokumente Storage S3 kompatibel via RustFS
 7. Mail Provider SMTP oder API Provider
 
 Module im Monolith
@@ -39,11 +39,6 @@ Documents
 Verantwortlichkeit Upload, Rechte, Tags, Versionen
 Haupt Entities Document, DocumentVersion, DocumentTag, DocumentPermission
 API Bereiche documents
-
-Sponsors and Vendors
-Verantwortlichkeit Sponsoren, Lieferanten, Verträge, Historie
-Haupt Entities Sponsor, Vendor, ContactInteraction
-API Bereiche sponsors, vendors
 
 Finance
 Verantwortlichkeit Buchungen, Rechnungen, Zahlungen, Mahnungen, Belege, Steuercodes, Finanzprofil, PDF-Generierung

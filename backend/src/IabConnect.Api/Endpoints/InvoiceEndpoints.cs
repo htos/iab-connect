@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using IabConnect.Api.Extensions;
 using IabConnect.Application.Common;
 using IabConnect.Application.Finance.EInvoice;
 using IabConnect.Application.Finance.Invoices.Commands;
@@ -100,11 +100,6 @@ public static class InvoiceEndpoints
             .ProducesProblem(404);
     }
 
-    private static string GetUserName(HttpContext ctx) =>
-        ctx.User.FindFirst("preferred_username")?.Value
-        ?? ctx.User.FindFirst(ClaimTypes.Email)?.Value
-        ?? "system";
-
     private static async Task<IResult> GetAll(
         ISender sender, string? status, int? page, int? pageSize, string? sort, string? filter,
         CancellationToken ct)
@@ -151,7 +146,7 @@ public static class InvoiceEndpoints
             TemplateId = request.TemplateId,
             Items = request.Items.Select(i => new CreateInvoiceItemInput(
                 i.Description, i.Quantity, i.UnitPrice, i.TaxCodeId, i.IsGrossEntry, i.ActivityAreaId)).ToList(),
-            UserName = GetUserName(httpContext)
+            UserName = httpContext.GetUserName()
         }, ct);
         return Results.Created($"/api/v1/finance/invoices/{dto.Id}", dto);
     }
@@ -175,7 +170,7 @@ public static class InvoiceEndpoints
             TemplateId = request.TemplateId,
             Items = request.Items.Select(i => new CreateInvoiceItemInput(
                 i.Description, i.Quantity, i.UnitPrice, i.TaxCodeId, i.IsGrossEntry, i.ActivityAreaId)).ToList(),
-            UserName = GetUserName(httpContext)
+            UserName = httpContext.GetUserName()
         }, ct);
         return dto is null
             ? Results.NotFound(new { Message = "Invoice not found." })
@@ -185,7 +180,7 @@ public static class InvoiceEndpoints
     private static async Task<IResult> Delete(
         Guid id, ISender sender, HttpContext httpContext, CancellationToken ct)
     {
-        var result = await sender.Send(new DeleteInvoiceCommand(id, GetUserName(httpContext)), ct);
+        var result = await sender.Send(new DeleteInvoiceCommand(id, httpContext.GetUserName()), ct);
         if (!result.IsSuccess)
             return Results.BadRequest(new { Message = result.Error });
         return Results.NoContent();
@@ -194,7 +189,7 @@ public static class InvoiceEndpoints
     private static async Task<IResult> MarkAsSent(
         Guid id, ISender sender, HttpContext httpContext, CancellationToken ct)
     {
-        var dto = await sender.Send(new SendInvoiceCommand(id, GetUserName(httpContext)), ct);
+        var dto = await sender.Send(new SendInvoiceCommand(id, httpContext.GetUserName()), ct);
         return dto is null
             ? Results.NotFound(new { Message = "Invoice not found." })
             : Results.Ok(dto);
@@ -209,7 +204,7 @@ public static class InvoiceEndpoints
             Id = id,
             Reason = request.Reason,
             AccountId = request.AccountId,
-            UserName = GetUserName(httpContext)
+            UserName = httpContext.GetUserName()
         }, ct);
         if (!result.IsSuccess)
             return Results.BadRequest(new { Message = result.Error });
@@ -221,7 +216,7 @@ public static class InvoiceEndpoints
     {
         try
         {
-            var dto = await sender.Send(new MarkInvoiceAsOverdueCommand(id, GetUserName(httpContext)), ct);
+            var dto = await sender.Send(new MarkInvoiceAsOverdueCommand(id, httpContext.GetUserName()), ct);
             return dto is null
                 ? Results.NotFound(new { Message = "Invoice not found." })
                 : Results.Ok(dto);

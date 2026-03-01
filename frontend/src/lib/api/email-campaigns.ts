@@ -129,14 +129,8 @@ export interface PreviewRecipientsRequest {
   segmentFilter?: string;
 }
 
-// Paginated Response
-export interface PagedResponse<T> {
-  items: T[];
-  page: number;
-  pageSize: number;
-  totalCount: number;
-  totalPages: number;
-}
+// Paginated Response (re-exported from common)
+export type { PagedResult as PagedResponse } from '@/types/common';
 
 // Status helpers
 export function getStatusColor(status: EmailCampaignStatus): string {

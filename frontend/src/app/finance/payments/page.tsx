@@ -1,5 +1,7 @@
 "use client";
 
+import { formatCHF } from "@/lib/utils";
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useAuth, useApiClient } from "@/lib/auth";
@@ -48,10 +50,6 @@ interface OpenInvoice {
 type PaymentMethod = "Transfer" | "Cash" | "Online";
 type PaymentDirectionType = "Income" | "Expense";
 
-const formatCHF = (amount: number) =>
-  new Intl.NumberFormat("de-CH", { style: "currency", currency: "CHF" }).format(
-    amount
-  );
 
 export default function PaymentsPage() {
   const t = useTranslations("finance");

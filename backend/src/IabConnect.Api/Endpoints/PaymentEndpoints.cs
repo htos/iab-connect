@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using IabConnect.Api.Extensions;
 using IabConnect.Application.Finance.Payments.Commands;
 using IabConnect.Application.Finance.Payments.Queries;
 using MediatR;
@@ -59,11 +59,6 @@ public static class PaymentEndpoints
             .WithDescription("REQ-061: Removes the receipt link from a payment. Audited.");
     }
 
-    private static string GetUserName(HttpContext ctx) =>
-        ctx.User.FindFirst("preferred_username")?.Value
-        ?? ctx.User.FindFirst(ClaimTypes.Email)?.Value
-        ?? "system";
-
     private static async Task<IResult> GetAll(
         ISender sender, int? page, int? pageSize, string? sort, string? filter, CancellationToken ct)
     {
@@ -91,7 +86,7 @@ public static class PaymentEndpoints
             InvoiceId = request.InvoiceId,
             TransactionId = request.TransactionId,
             Notes = request.Notes,
-            UserName = GetUserName(httpContext)
+            UserName = httpContext.GetUserName()
         }, ct);
         return Results.Created($"/api/v1/finance/payments/{dto.Id}", dto);
     }
@@ -111,7 +106,7 @@ public static class PaymentEndpoints
             InvoiceId = request.InvoiceId,
             TransactionId = request.TransactionId,
             Notes = request.Notes,
-            UserName = GetUserName(httpContext)
+            UserName = httpContext.GetUserName()
         }, ct);
         return dto is null
             ? Results.NotFound(new { Message = "Payment not found." })
@@ -121,35 +116,35 @@ public static class PaymentEndpoints
     private static async Task<IResult> Delete(
         Guid id, ISender sender, HttpContext httpContext, CancellationToken ct)
     {
-        var found = await sender.Send(new DeletePaymentCommand(id, GetUserName(httpContext)), ct);
+        var found = await sender.Send(new DeletePaymentCommand(id, httpContext.GetUserName()), ct);
         return found ? Results.NoContent() : Results.NotFound(new { Message = "Payment not found." });
     }
 
     // REQ-067: Payment approval workflow handlers
     private static async Task<IResult> SubmitPayment(Guid id, HttpContext ctx, ISender sender, CancellationToken ct)
     {
-        var command = new SubmitPaymentCommand(id, GetUserName(ctx));
+        var command = new SubmitPaymentCommand(id, ctx.GetUserName());
         await sender.Send(command, ct);
         return Results.NoContent();
     }
 
     private static async Task<IResult> ApprovePayment(Guid id, ApprovePaymentRequest? request, HttpContext ctx, ISender sender, CancellationToken ct)
     {
-        var command = new ApprovePaymentCommand(id, request?.Comment, GetUserName(ctx));
+        var command = new ApprovePaymentCommand(id, request?.Comment, ctx.GetUserName());
         await sender.Send(command, ct);
         return Results.NoContent();
     }
 
     private static async Task<IResult> RejectPayment(Guid id, RejectPaymentRequest request, HttpContext ctx, ISender sender, CancellationToken ct)
     {
-        var command = new RejectPaymentCommand(id, request.Reason, GetUserName(ctx));
+        var command = new RejectPaymentCommand(id, request.Reason, ctx.GetUserName());
         await sender.Send(command, ct);
         return Results.NoContent();
     }
 
     private static async Task<IResult> MarkAsPaid(Guid id, HttpContext ctx, ISender sender, CancellationToken ct)
     {
-        var command = new MarkPaymentAsPaidCommand(id, GetUserName(ctx));
+        var command = new MarkPaymentAsPaidCommand(id, ctx.GetUserName());
         await sender.Send(command, ct);
         return Results.NoContent();
     }

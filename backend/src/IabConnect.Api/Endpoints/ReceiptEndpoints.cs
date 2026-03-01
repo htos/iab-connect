@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using IabConnect.Api.Extensions;
 using IabConnect.Application.Finance.Receipts.Commands;
 using IabConnect.Application.Finance.Receipts.Queries;
 using MediatR;
@@ -48,11 +48,6 @@ public static class ReceiptEndpoints
             .WithDescription("REQ-043: Soft-deletes receipt metadata and marks file for cleanup. Audited.");
     }
 
-    private static string GetUserName(HttpContext ctx) =>
-        ctx.User.FindFirst("preferred_username")?.Value
-        ?? ctx.User.FindFirst(ClaimTypes.Email)?.Value
-        ?? "system";
-
     private static async Task<IResult> GetAll(
         ISender sender, int? page, int? pageSize, string? sort, string? filter, CancellationToken ct)
     {
@@ -81,7 +76,7 @@ public static class ReceiptEndpoints
             FileSize = file.Length,
             FileStream = stream,
             Notes = notes,
-            UserName = GetUserName(httpContext)
+            UserName = httpContext.GetUserName()
         }, ct);
         return Results.Created($"/api/v1/finance/receipts/{dto.Id}", dto);
     }
@@ -112,7 +107,7 @@ public static class ReceiptEndpoints
     private static async Task<IResult> Delete(
         Guid id, ISender sender, HttpContext httpContext, CancellationToken ct)
     {
-        var found = await sender.Send(new DeleteReceiptCommand(id, GetUserName(httpContext)), ct);
+        var found = await sender.Send(new DeleteReceiptCommand(id, httpContext.GetUserName()), ct);
         return found ? Results.NoContent() : Results.NotFound(new { Message = "Receipt not found." });
     }
 }

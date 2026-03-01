@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using IabConnect.Api.Extensions;
 using IabConnect.Application.Finance.Accounting;
 using IabConnect.Application.Finance.Accounting.LedgerAccounts.Commands;
 using IabConnect.Application.Finance.Accounting.LedgerAccounts.Queries;
@@ -37,7 +37,7 @@ public static class LedgerAccountEndpoints
                 Description = body.Description,
                 ParentAccountId = body.ParentAccountId,
                 SortOrder = body.SortOrder,
-                UserName = GetUserName(ctx)
+                UserName = ctx.GetUserName()
             }, ct);
             return Results.Created($"/api/v1/finance/ledger-accounts/{dto.Id}", dto);
         })
@@ -57,7 +57,7 @@ public static class LedgerAccountEndpoints
                 Description = body.Description,
                 ParentAccountId = body.ParentAccountId,
                 SortOrder = body.SortOrder,
-                UserName = GetUserName(ctx)
+                UserName = ctx.GetUserName()
             }, ct);
             return dto is null
                 ? Results.NotFound(new { Message = $"Ledger account {id} not found." })
@@ -72,7 +72,7 @@ public static class LedgerAccountEndpoints
             var result = await sender.Send(new DeleteLedgerAccountCommand
             {
                 Id = id,
-                UserName = GetUserName(ctx)
+                UserName = ctx.GetUserName()
             }, ct);
             return result ? Results.NoContent() : Results.NotFound(new { Message = $"Ledger account {id} not found." });
         })
@@ -82,11 +82,6 @@ public static class LedgerAccountEndpoints
 
         return app;
     }
-
-    private static string GetUserName(HttpContext ctx) =>
-        ctx.User.FindFirst("preferred_username")?.Value
-        ?? ctx.User.FindFirst(ClaimTypes.Email)?.Value
-        ?? "system";
 
     // Request DTOs
     public sealed record CreateLedgerAccountRequest(

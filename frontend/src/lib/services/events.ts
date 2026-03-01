@@ -4,6 +4,7 @@
  */
 
 import { apiGet, apiPost, apiPut, apiDelete, type ApiResult } from './api';
+import type { PagedResult } from '@/types/common';
 
 // Types matching backend DTOs
 export interface EventDto {
@@ -123,13 +124,7 @@ export interface EventFilterOptions {
   pageSize?: number;
 }
 
-export interface PagedResult<T> {
-  items: T[];
-  totalCount: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-}
+export type { PagedResult } from '@/types/common';
 
 export interface EventStatistics {
   total: number;

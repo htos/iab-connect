@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using IabConnect.Api.Extensions;
 using IabConnect.Application.Finance.Accounting;
 using IabConnect.Application.Finance.Accounting.PostingMappings;
 using MediatR;
@@ -32,7 +32,7 @@ public static class PostingMappingEndpoints
                 SourceId = body.SourceId,
                 LedgerAccountId = body.LedgerAccountId,
                 TaxLedgerAccountId = body.TaxLedgerAccountId,
-                UserName = GetUserName(ctx)
+                UserName = ctx.GetUserName()
             }, ct);
             return Results.Created($"/api/v1/finance/posting-mappings/{dto.Id}", dto);
         })
@@ -47,7 +47,7 @@ public static class PostingMappingEndpoints
                 Id = id,
                 LedgerAccountId = body.LedgerAccountId,
                 TaxLedgerAccountId = body.TaxLedgerAccountId,
-                UserName = GetUserName(ctx)
+                UserName = ctx.GetUserName()
             }, ct);
             return dto is null
                 ? Results.NotFound(new { Message = $"Posting mapping {id} not found." })
@@ -68,11 +68,6 @@ public static class PostingMappingEndpoints
 
         return app;
     }
-
-    private static string GetUserName(HttpContext ctx) =>
-        ctx.User.FindFirst("preferred_username")?.Value
-        ?? ctx.User.FindFirst(ClaimTypes.Email)?.Value
-        ?? "system";
 
     // Request DTOs
     public sealed record CreatePostingMappingRequest(

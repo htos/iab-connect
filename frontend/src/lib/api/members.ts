@@ -37,13 +37,7 @@ export interface MemberDto {
   memberSince: string;
 }
 
-export interface PagedResponse<T> {
-  items: T[];
-  page: number;
-  pageSize: number;
-  totalCount: number;
-  totalPages: number;
-}
+export type { PagedResult as PagedResponse } from '@/types/common';
 
 export interface MemberStatisticsDto {
   totalMembers: number;

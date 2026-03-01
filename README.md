@@ -99,7 +99,7 @@ Built with modern technologies and following industry best practices, IAB Connec
 
 ### 🔐 Security & Privacy
 
-- **Role-Based Access Control (RBAC)**: Admin, Board Member, Member roles
+- **Role-Based Access Control (RBAC)**: Admin, Board Member, Kassier, Auditor, Event-Manager, Member roles
 - **Permission System**: Granular permissions for all operations
 - **Audit Logging**: Complete audit trail for compliance
 - **GDPR/DSG Compliance**: Data privacy controls and consent management
@@ -147,8 +147,7 @@ Built with modern technologies and following industry best practices, IAB Connec
 | **TypeScript**   | 5.x     | Type-safe JavaScript            |
 | **Tailwind CSS** | 4.x     | Utility-first CSS framework     |
 | **next-intl**    | 4.x     | Internationalization            |
-| **Zustand**      | 5.x     | State management                |
-| **TipTap**       | 2.x     | Rich text editor                |
+| **TipTap**       | 3.x     | Rich text editor                |
 
 ### Infrastructure
 
@@ -215,7 +214,7 @@ Ensure you have the following installed on your development machine:
 | ------------------ | ------- | ---------------------------------------------------------- |
 | **Docker Desktop** | Latest  | [Download](https://www.docker.com/products/docker-desktop) |
 | **.NET SDK**       | 10.0+   | [Download](https://dotnet.microsoft.com/download)          |
-| **Node.js**        | 20+     | [Download](https://nodejs.org/)                            |
+| **Node.js**        | 22+     | [Download](https://nodejs.org/)                            |
 | **Git**            | Latest  | [Download](https://git-scm.com/)                           |
 
 ### Installation
@@ -231,11 +230,11 @@ Ensure you have the following installed on your development machine:
 
    ```bash
    # Ensure Docker Desktop is running
-   docker-compose -f infra/docker-compose.yml up -d
+   docker compose -f infra/docker-compose.yml up -d
 
    # Wait 20-30 seconds for services to initialize
    # Verify all containers are running
-   docker-compose -f infra/docker-compose.yml ps
+   docker compose -f infra/docker-compose.yml ps
    ```
 
 3. **Set Up the Database**
@@ -330,7 +329,7 @@ npm run dev
 | ------------------ | --------------------- | ------------------- | --------------- |
 | **Application**    | http://localhost:3000 | admin@iabconnect.ch | Admin-Dev-2026! |
 | **Keycloak Admin** | http://localhost:8080 | admin               | admin-dev-2026  |
-| **MailHog**        | http://localhost:1080 | -                   | -               |
+| **MailHog**        | http://localhost:8025 | -                   | -               |
 | **Seq Logs**       | http://localhost:5341 | -                   | -               |
 | **RustFS Console** | http://localhost:9001 | rustfsadmin         | rustfsadmin     |
 
@@ -568,11 +567,14 @@ IAB Connect uses **OpenID Connect (OIDC)** with Keycloak for authentication:
 
 #### Roles
 
-| Role             | Description            | Permissions                                |
-| ---------------- | ---------------------- | ------------------------------------------ |
-| **Admin**        | Full system access     | All permissions                            |
-| **Board Member** | Association management | Manage events, view members, send emails   |
-| **Member**       | Regular member access  | View own profile, view public events, RSVP |
+| Role              | Description                   | Permissions                                      |
+| ----------------- | ----------------------------- | ------------------------------------------------ |
+| **Admin**         | Full system access            | All permissions                                  |
+| **Board Member**  | Association management        | Manage events, view members, send emails         |
+| **Kassier**       | Treasurer / Finance lead      | Finance read & write (accounts, invoices, etc.)  |
+| **Auditor**       | Financial auditor (read-only) | Finance read access                              |
+| **Event-Manager** | Event management lead         | Manage events, registrations, check-ins          |
+| **Member**        | Regular member access         | View own profile, view public events, RSVP       |
 
 #### Permissions
 
@@ -785,8 +787,8 @@ net stop postgresql-x64-17
 docker logs iabconnect-keycloak | grep -i "realm"
 
 # Reset Keycloak (deletes all data)
-docker-compose -f infra/docker-compose.yml down -v
-docker-compose -f infra/docker-compose.yml up -d
+docker compose -f infra/docker-compose.yml down -v
+docker compose -f infra/docker-compose.yml up -d
 ```
 
 **Database Migration Issues:**

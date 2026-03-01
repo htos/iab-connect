@@ -1,5 +1,7 @@
 "use client";
 
+import { formatCHF } from "@/lib/utils";
+
 /**
  * Finance Dashboard Page
  * REQ-038: Finance overview with KPI cards, open items and recent transactions
@@ -59,8 +61,6 @@ interface Transaction {
 
 // --- Helpers ---
 
-const formatCHF = (amount: number) =>
-  new Intl.NumberFormat("de-CH", { style: "currency", currency: "CHF" }).format(amount);
 
 // --- Component ---
 

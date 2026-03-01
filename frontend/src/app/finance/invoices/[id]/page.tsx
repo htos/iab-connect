@@ -1,5 +1,6 @@
 "use client";
 
+import { formatCHF } from "@/lib/utils";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
@@ -47,11 +48,6 @@ interface Payment {
   method: string;
   reference: string;
 }
-
-const formatCHF = (amount: number) =>
-  new Intl.NumberFormat("de-CH", { style: "currency", currency: "CHF" }).format(
-    amount
-  );
 
 const statusColors: Record<string, string> = {
   Draft: "bg-gray-100 text-gray-800",

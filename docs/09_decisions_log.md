@@ -76,7 +76,7 @@ Alternativen
 Eigenes ID Schema, numerische IDs ohne Präfix.
 
 Auswirkung
-Alle 59 Requirements aus der CSV werden mit REQ-001 bis REQ-059 referenziert.
+Requirements aus der CSV werden mit REQ-001 ff. referenziert (aktuell 85 Requirements inkl. Finance Addon).
 
 Datum
 2026 01 30

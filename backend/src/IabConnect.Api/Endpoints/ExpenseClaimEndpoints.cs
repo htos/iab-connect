@@ -2,7 +2,7 @@ using IabConnect.Application.Finance.ExpenseClaims;
 using IabConnect.Application.Finance.ExpenseClaims.Commands;
 using IabConnect.Application.Finance.ExpenseClaims.Queries;
 using MediatR;
-using System.Security.Claims;
+using IabConnect.Api.Extensions;
 
 namespace IabConnect.Api.Endpoints;
 
@@ -24,17 +24,6 @@ public static class ExpenseClaimEndpoints
         group.MapPost("/{id:guid}/approve", Approve).RequireAuthorization("RequireVorstand");
         group.MapPost("/{id:guid}/reject", Reject).RequireAuthorization("RequireFinanceWrite");
         group.MapPost("/{id:guid}/reimburse", Reimburse).RequireAuthorization("RequireFinanceWrite");
-    }
-
-    private static string GetUserName(HttpContext ctx) =>
-        ctx.User.FindFirst("preferred_username")?.Value
-        ?? ctx.User.FindFirst(ClaimTypes.Email)?.Value
-        ?? "system";
-
-    private static Guid GetUserId(HttpContext ctx)
-    {
-        var sub = ctx.User.FindFirst("sub")?.Value;
-        return sub is not null && Guid.TryParse(sub, out var id) ? id : Guid.Empty;
     }
 
     // GET all with optional filters
@@ -76,10 +65,10 @@ public static class ExpenseClaimEndpoints
             Amount = request.Amount,
             Currency = request.Currency,
             Date = request.Date,
-            ClaimantId = GetUserId(ctx),
-            ClaimantName = GetUserName(ctx),
+            ClaimantId = ctx.GetUserId(),
+            ClaimantName = ctx.GetUserName(),
             ReceiptId = request.ReceiptId,
-            UserName = GetUserName(ctx)
+            UserName = ctx.GetUserName()
         };
         var result = await sender.Send(command);
         return Results.Created($"/api/v1/finance/expense-claims/{result.Id}", result);
@@ -95,7 +84,7 @@ public static class ExpenseClaimEndpoints
             Amount = request.Amount,
             Date = request.Date,
             ReceiptId = request.ReceiptId,
-            UserName = GetUserName(ctx)
+            UserName = ctx.GetUserName()
         };
         var result = await sender.Send(command);
         return result is null ? Results.NotFound() : Results.Ok(result);
@@ -103,35 +92,35 @@ public static class ExpenseClaimEndpoints
 
     private static async Task<IResult> Delete(Guid id, HttpContext ctx, ISender sender)
     {
-        var command = new DeleteExpenseClaimCommand(id, GetUserName(ctx));
+        var command = new DeleteExpenseClaimCommand(id, ctx.GetUserName());
         var result = await sender.Send(command);
         return result ? Results.NoContent() : Results.NotFound();
     }
 
     private static async Task<IResult> Submit(Guid id, HttpContext ctx, ISender sender)
     {
-        var command = new SubmitExpenseClaimCommand(id, GetUserName(ctx));
+        var command = new SubmitExpenseClaimCommand(id, ctx.GetUserName());
         var result = await sender.Send(command);
         return result is null ? Results.NotFound() : Results.Ok(result);
     }
 
     private static async Task<IResult> Review(Guid id, ReviewExpenseClaimRequest? request, HttpContext ctx, ISender sender)
     {
-        var command = new ReviewExpenseClaimCommand(id, request?.Comment, GetUserName(ctx));
+        var command = new ReviewExpenseClaimCommand(id, request?.Comment, ctx.GetUserName());
         var result = await sender.Send(command);
         return result is null ? Results.NotFound() : Results.Ok(result);
     }
 
     private static async Task<IResult> Approve(Guid id, ApproveExpenseClaimRequest? request, HttpContext ctx, ISender sender)
     {
-        var command = new ApproveExpenseClaimCommand(id, request?.Comment, GetUserName(ctx));
+        var command = new ApproveExpenseClaimCommand(id, request?.Comment, ctx.GetUserName());
         var result = await sender.Send(command);
         return result is null ? Results.NotFound() : Results.Ok(result);
     }
 
     private static async Task<IResult> Reject(Guid id, RejectExpenseClaimRequest request, HttpContext ctx, ISender sender)
     {
-        var command = new RejectExpenseClaimCommand(id, request.Reason, GetUserName(ctx));
+        var command = new RejectExpenseClaimCommand(id, request.Reason, ctx.GetUserName());
         var result = await sender.Send(command);
         return result is null ? Results.NotFound() : Results.Ok(result);
     }
@@ -144,7 +133,7 @@ public static class ExpenseClaimEndpoints
             Method = request.Method,
             Reference = request.Reference,
             Notes = request.Notes,
-            UserName = GetUserName(ctx)
+            UserName = ctx.GetUserName()
         };
         var result = await sender.Send(command);
         return result is null ? Results.NotFound() : Results.Ok(result);

@@ -1,5 +1,7 @@
 "use client";
 
+import { formatCurrency } from "@/lib/utils";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -13,8 +15,6 @@ import type {
 
 type ReportTab = "trialBalance" | "balanceSheet" | "profitAndLoss";
 
-const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat("de-CH", { style: "currency", currency: "CHF" }).format(amount);
 
 /** Opens a popup window with a formatted report and triggers the browser print dialog (Save as PDF). */
 function printReport(title: string, subtitle: string, bodyHtml: string) {

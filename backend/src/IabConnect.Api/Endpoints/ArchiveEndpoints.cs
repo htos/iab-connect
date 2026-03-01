@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using IabConnect.Api.Extensions;
 using IabConnect.Application.Finance.Archive.Commands;
 using IabConnect.Application.Finance.Archive.Queries;
 using MediatR;
@@ -58,17 +58,12 @@ public static class ArchiveEndpoints
             .WithDescription("REQ-070: Returns all archived items across receipts, invoices, and transactions.");
     }
 
-    private static string GetUserName(HttpContext ctx) =>
-        ctx.User.FindFirst("preferred_username")?.Value
-        ?? ctx.User.FindFirst(ClaimTypes.Email)?.Value
-        ?? "system";
-
     private static async Task<IResult> ArchiveReceipt(
         Guid id, ArchiveRequest request, ISender sender,
         HttpContext httpContext, CancellationToken ct)
     {
         var found = await sender.Send(
-            new ArchiveReceiptCommand(id, request.Reason, GetUserName(httpContext)), ct);
+            new ArchiveReceiptCommand(id, request.Reason, httpContext.GetUserName()), ct);
         return found
             ? Results.Ok(new { Message = "Receipt archived successfully." })
             : Results.NotFound(new { Message = "Receipt not found." });
@@ -79,7 +74,7 @@ public static class ArchiveEndpoints
         HttpContext httpContext, CancellationToken ct)
     {
         var found = await sender.Send(
-            new RestoreReceiptCommand(id, GetUserName(httpContext)), ct);
+            new RestoreReceiptCommand(id, httpContext.GetUserName()), ct);
         return found
             ? Results.Ok(new { Message = "Receipt restored from archive." })
             : Results.NotFound(new { Message = "Receipt not found." });
@@ -90,7 +85,7 @@ public static class ArchiveEndpoints
         HttpContext httpContext, CancellationToken ct)
     {
         var found = await sender.Send(
-            new ArchiveInvoiceCommand(id, request.Reason, GetUserName(httpContext)), ct);
+            new ArchiveInvoiceCommand(id, request.Reason, httpContext.GetUserName()), ct);
         return found
             ? Results.Ok(new { Message = "Invoice archived successfully." })
             : Results.NotFound(new { Message = "Invoice not found." });
@@ -101,7 +96,7 @@ public static class ArchiveEndpoints
         HttpContext httpContext, CancellationToken ct)
     {
         var found = await sender.Send(
-            new RestoreInvoiceCommand(id, GetUserName(httpContext)), ct);
+            new RestoreInvoiceCommand(id, httpContext.GetUserName()), ct);
         return found
             ? Results.Ok(new { Message = "Invoice restored from archive." })
             : Results.NotFound(new { Message = "Invoice not found." });
@@ -111,7 +106,7 @@ public static class ArchiveEndpoints
         ISender sender, HttpContext httpContext, CancellationToken ct)
     {
         var count = await sender.Send(
-            new PurgeArchivedReceiptsCommand(GetUserName(httpContext)), ct);
+            new PurgeArchivedReceiptsCommand(httpContext.GetUserName()), ct);
         return Results.Ok(new { Message = $"{count} expired archived receipt(s) purged.", Count = count });
     }
 

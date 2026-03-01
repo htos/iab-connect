@@ -20,7 +20,7 @@ if errorlevel 1 (
 REM Start infrastructure
 echo [1/3] Starting Docker infrastructure...
 cd /d "%~dp0infra"
-docker-compose up -d
+docker compose up -d
 echo      Waiting for services to be ready...
 timeout /t 15 /nobreak >nul
 

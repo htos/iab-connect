@@ -1,5 +1,7 @@
 "use client";
 
+import { formatCHF } from "@/lib/utils";
+
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -39,10 +41,6 @@ interface ActivityArea {
   sortOrder: number;
 }
 
-const formatCHF = (amount: number) =>
-  new Intl.NumberFormat("de-CH", { style: "currency", currency: "CHF" }).format(
-    amount
-  );
 
 const toDateInputValue = (date: Date) => date.toISOString().split("T")[0];
 

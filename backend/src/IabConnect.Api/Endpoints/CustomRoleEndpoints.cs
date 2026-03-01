@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text.Json;
+using IabConnect.Api.Extensions;
 using IabConnect.Application.Audit;
 using IabConnect.Application.Authorization;
 using IabConnect.Domain.Audit;
@@ -97,8 +98,7 @@ public static class CustomRoleEndpoints
         if (existing is not null)
             return Results.Conflict(new { Message = $"A role with name '{request.Name}' already exists." });
 
-        var userName = httpContext.User.FindFirst("preferred_username")?.Value
-            ?? httpContext.User.FindFirst(ClaimTypes.Email)?.Value;
+        var userName = httpContext.GetUserName();
 
         var role = CustomRole.Create(
             request.Name,
@@ -141,8 +141,7 @@ public static class CustomRoleEndpoints
         if (existing is not null && existing.Id != id)
             return Results.Conflict(new { Message = $"A role with name '{request.Name}' already exists." });
 
-        var userName = httpContext.User.FindFirst("preferred_username")?.Value
-            ?? httpContext.User.FindFirst(ClaimTypes.Email)?.Value;
+        var userName = httpContext.GetUserName();
 
         role.Update(
             request.Name,

@@ -1,5 +1,7 @@
 "use client";
 
+import { formatCurrency } from "@/lib/utils";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -33,11 +35,6 @@ const emptyForm: AccountForm = {
   isActive: true,
   sortOrder: 0,
 };
-
-const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat("de-CH", { style: "currency", currency: "CHF" }).format(
-    amount
-  );
 
 export default function AccountsPage() {
   const t = useTranslations("finance");

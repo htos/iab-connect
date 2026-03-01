@@ -1,5 +1,7 @@
 "use client";
 
+import { formatCHF } from "@/lib/utils";
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -36,10 +38,6 @@ interface BankImportDetail extends BankImport {
   items: BankImportItem[];
 }
 
-const formatCHF = (amount: number) =>
-  new Intl.NumberFormat("de-CH", { style: "currency", currency: "CHF" }).format(
-    amount
-  );
 
 export default function BankImportPage() {
   const t = useTranslations("finance");

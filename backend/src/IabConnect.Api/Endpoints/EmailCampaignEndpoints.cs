@@ -1,4 +1,5 @@
 using Hangfire;
+using IabConnect.Api.Extensions;
 using IabConnect.Domain.Communication;
 using IabConnect.Domain.Members;
 using IabConnect.Infrastructure.Email;
@@ -92,8 +93,8 @@ public static class EmailCampaignEndpoints
         [FromBody] CreateEmailCampaignRequest request,
         HttpContext httpContext)
     {
-        var userId = GetUserId(httpContext);
-        var userName = GetUserName(httpContext);
+        var userId = httpContext.GetUserId();
+        var userName = httpContext.GetUserName();
 
         var campaign = EmailCampaign.Create(
             request.Name,
@@ -423,18 +424,6 @@ public static class EmailCampaignEndpoints
     }
 
     // Helper Methods
-    private static Guid GetUserId(HttpContext httpContext)
-    {
-        var sub = httpContext.User.FindFirst("sub")?.Value;
-        return Guid.TryParse(sub, out var userId) ? userId : Guid.Empty;
-    }
-
-    private static string GetUserName(HttpContext httpContext)
-    {
-        return httpContext.User.FindFirst("name")?.Value
-            ?? httpContext.User.FindFirst("preferred_username")?.Value
-            ?? "Unknown";
-    }
 
     private static async Task<List<EmailRecipient>> LoadRecipientsForCampaign(
         EmailCampaign campaign,

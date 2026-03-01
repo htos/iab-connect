@@ -1,5 +1,7 @@
 "use client";
 
+import { formatCHF } from "@/lib/utils";
+
 /**
  * Finance Transactions Page
  * REQ-039: Einnahmen/Ausgaben erfassen
@@ -138,10 +140,6 @@ const ReceiptIcon = ({ className }: { className?: string }) => (
 
 // --- Helpers ---
 
-const formatCHF = (amount: number) =>
-  new Intl.NumberFormat("de-CH", { style: "currency", currency: "CHF" }).format(
-    amount
-  );
 
 const emptyForm: TransactionForm = {
   date: new Date().toISOString().split("T")[0],

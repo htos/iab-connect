@@ -1,6 +1,0 @@
-{
-  "IabConnect.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "B:\\Projects\\IAB Connect\\iab-connect\\backend\\src\\IabConnect.Api",
-  "IabConnect.Application, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "B:\\Projects\\IAB Connect\\iab-connect\\backend\\src\\IabConnect.Application",
-  "IabConnect.Domain, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "B:\\Projects\\IAB Connect\\iab-connect\\backend\\src\\IabConnect.Domain",
-  "IabConnect.Infrastructure, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "B:\\Projects\\IAB Connect\\iab-connect\\backend\\src\\IabConnect.Infrastructure"
-}

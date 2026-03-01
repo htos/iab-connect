@@ -17,7 +17,7 @@ Alle Versionen wurden am 30.01.2026 aus den offiziellen Quellen recherchiert.
 | **Npgsql.EntityFrameworkCore.PostgreSQL**             | 10.0.x   | Stable     | -             | [nuget.org](https://www.nuget.org/packages/Npgsql.EntityFrameworkCore.PostgreSQL)             |
 | **Microsoft.AspNetCore.Authentication.JwtBearer**     | 10.0.2   | LTS        | November 2028 | [nuget.org](https://www.nuget.org/packages/Microsoft.AspNetCore.Authentication.JwtBearer)     |
 | **Microsoft.AspNetCore.Authentication.OpenIdConnect** | 10.0.2   | LTS        | November 2028 | [nuget.org](https://www.nuget.org/packages/Microsoft.AspNetCore.Authentication.OpenIdConnect) |
-| **Swashbuckle.AspNetCore**                            | 10.1.0   | Stable     | -             | [nuget.org](https://www.nuget.org/packages/Swashbuckle.AspNetCore)                            |
+| **Swashbuckle.AspNetCore**                            | 6.9.0    | Stable     | -             | [nuget.org](https://www.nuget.org/packages/Swashbuckle.AspNetCore)                            |
 | **Serilog.AspNetCore**                                | 10.0.0   | Stable     | -             | [nuget.org](https://www.nuget.org/packages/Serilog.AspNetCore)                                |
 | **Hangfire**                                          | 1.8.22   | Stable     | -             | [nuget.org](https://www.nuget.org/packages/Hangfire)                                          |
 | **MediatR**                                           | 12.x     | Stable     | -             | [nuget.org](https://www.nuget.org/packages/MediatR)                                           |
@@ -59,7 +59,7 @@ Alle Versionen wurden am 30.01.2026 aus den offiziellen Quellen recherchiert.
 
 | Technologie               | Version | Zweck                     |
 | ------------------------- | ------- | ------------------------- |
-| **next-auth**             | 5.x     | OIDC/Keycloak Integration |
+| **next-auth**             | 4.x     | OIDC/Keycloak Integration |
 | **@tanstack/react-query** | 5.x     | Server State Management   |
 | **zod**                   | 3.x     | Schema Validation         |
 | **react-hook-form**       | 7.x     | Form Handling             |
@@ -71,7 +71,7 @@ Alle Versionen wurden am 30.01.2026 aus den offiziellen Quellen recherchiert.
 
 | Technologie        | Version | Quelle                                                 |
 | ------------------ | ------- | ------------------------------------------------------ |
-| **PostgreSQL**     | 18.1    | [postgresql.org](https://www.postgresql.org/download/) |
+| **PostgreSQL**     | 17      | [postgresql.org](https://www.postgresql.org/download/) |
 | **Keycloak**       | 26.5.2  | [keycloak.org](https://www.keycloak.org/downloads)     |
 | **RustFS**         | latest  | [rustfs.com](https://rustfs.com/)                      |
 | **Docker**         | latest  | [docker.com](https://www.docker.com/)                  |
@@ -106,7 +106,7 @@ Alle Versionen wurden am 30.01.2026 aus den offiziellen Quellen recherchiert.
 - React 19 Server Components Support
 - Optimierte Build-Performance
 
-### Warum PostgreSQL 18?
+### Warum PostgreSQL 17?
 
 - JSONB für flexible Datenstrukturen
 - Hervorragende Performance

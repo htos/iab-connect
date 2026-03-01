@@ -49,6 +49,18 @@
       {
         "name": "member",
         "description": "Reguläres Mitglied"
+      },
+      {
+        "name": "kassier",
+        "description": "Kassier/Treasurer - Finanzverantwortung"
+      },
+      {
+        "name": "auditor",
+        "description": "Revisor - Finanzeinsicht (read-only)"
+      },
+      {
+        "name": "event-manager",
+        "description": "Event-Manager - Eventverantwortung"
       }
     ]
   },
@@ -60,6 +72,18 @@
     {
       "name": "Mitglieder",
       "realmRoles": ["member"]
+    },
+    {
+      "name": "Kassier",
+      "realmRoles": ["kassier", "member"]
+    },
+    {
+      "name": "Revisoren",
+      "realmRoles": ["auditor", "member"]
+    },
+    {
+      "name": "Event-Manager",
+      "realmRoles": ["event-manager", "member"]
     }
   ],
   "clients": [
@@ -157,6 +181,54 @@
         }
       ],
       "realmRoles": ["member"]
+    },
+    {
+      "username": "kassier@iabconnect.ch",
+      "email": "kassier@iabconnect.ch",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Kassier",
+      "lastName": "Test",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Kassier-Dev-2026!",
+          "temporary": true
+        }
+      ],
+      "realmRoles": ["kassier", "member"]
+    },
+    {
+      "username": "auditor@iabconnect.ch",
+      "email": "auditor@iabconnect.ch",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Revisor",
+      "lastName": "Test",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Auditor-Dev-2026!",
+          "temporary": true
+        }
+      ],
+      "realmRoles": ["auditor", "member"]
+    },
+    {
+      "username": "events@iabconnect.ch",
+      "email": "events@iabconnect.ch",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Event",
+      "lastName": "Manager",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Events-Dev-2026!",
+          "temporary": true
+        }
+      ],
+      "realmRoles": ["event-manager", "member"]
     },
     {
       "username": "service-account-iabconnect-admin",

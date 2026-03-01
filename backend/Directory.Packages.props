@@ -36,7 +36,6 @@
     <PackageVersion Include="AWSSDK.S3" Version="3.7.305.22" />
     <!-- Health Checks -->
     <PackageVersion Include="AspNetCore.HealthChecks.NpgSql" Version="8.0.2" />
-    <PackageVersion Include="AspNetCore.HealthChecks.Redis" Version="8.0.1" />
     <!-- Testing -->
     <PackageVersion Include="xunit.v3" Version="1.1.0" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.2" />

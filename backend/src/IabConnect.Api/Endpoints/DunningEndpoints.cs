@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using IabConnect.Api.Extensions;
 using IabConnect.Application.Finance.DunningNotices.Commands;
 using IabConnect.Application.Finance.DunningNotices.Queries;
 using MediatR;
@@ -34,11 +34,6 @@ public static class DunningEndpoints
             .WithDescription("REQ-042: Marks a dunning notice as sent. Audited.");
     }
 
-    private static string GetUserName(HttpContext ctx) =>
-        ctx.User.FindFirst("preferred_username")?.Value
-        ?? ctx.User.FindFirst(ClaimTypes.Email)?.Value
-        ?? "system";
-
     private static async Task<IResult> GetAll(
         ISender sender, Guid? invoiceId, int? page, int? pageSize, string? sort, string? filter,
         CancellationToken ct)
@@ -63,7 +58,7 @@ public static class DunningEndpoints
             Level = request.Level,
             DueDate = request.DueDate,
             Notes = request.Notes,
-            UserName = GetUserName(httpContext)
+            UserName = httpContext.GetUserName()
         }, ct);
         return dto is null
             ? Results.NotFound(new { Message = "Invoice not found." })

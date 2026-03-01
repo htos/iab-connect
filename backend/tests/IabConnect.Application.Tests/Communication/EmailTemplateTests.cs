@@ -1,7 +1,8 @@
-namespace IabConnect.Application.Tests.Communication;
-
+using FluentAssertions;
 using IabConnect.Domain.Communication;
 using Xunit;
+
+namespace IabConnect.Application.Tests.Communication;
 
 public class EmailTemplateTests
 {
@@ -19,21 +20,20 @@ public class EmailTemplateTests
         var template = EmailTemplate.Create(name, subject, htmlContent, textContent, category);
 
         // Assert
-        Assert.NotNull(template);
-        Assert.Equal(name, template.Name);
-        Assert.Equal(subject, template.Subject);
-        Assert.Equal(category, template.Category);
-        Assert.True(template.IsActive);
-        Assert.Equal(1, template.Version);
+        template.Should().NotBeNull();
+        template.Name.Should().Be(name);
+        template.Subject.Should().Be(subject);
+        template.Category.Should().Be(category);
+        template.IsActive.Should().BeTrue();
+        template.Version.Should().Be(1);
     }
 
     [Fact]
     public void Create_WithEmptyName_ThrowsException()
     {
         // Act & Assert
-        Assert.Throws<ArgumentException>(() =>
-            EmailTemplate.Create("", "Subject", "<p>Content</p>", "Content", "Test")
-        );
+        var act = () => EmailTemplate.Create("", "Subject", "<p>Content</p>", "Content", "Test");
+        act.Should().Throw<ArgumentException>();
     }
 
     [Fact]
@@ -47,7 +47,7 @@ public class EmailTemplateTests
         template.Update("Updated", "New Subject", "<p>New</p>", "New", "Test", "");
 
         // Assert
-        Assert.Equal(initialVersion + 1, template.Version);
+        template.Version.Should().Be(initialVersion + 1);
     }
 
     [Fact]
@@ -71,9 +71,9 @@ public class EmailTemplateTests
         var result = template.RenderHtml(variables);
 
         // Assert
-        Assert.Contains("John", result);
-        Assert.Contains("IAB Connect", result);
-        Assert.DoesNotContain("{{name}}", result);
+        result.Should().Contain("John");
+        result.Should().Contain("IAB Connect");
+        result.Should().NotContain("{{name}}");
     }
 
     [Fact]
@@ -97,7 +97,7 @@ public class EmailTemplateTests
         var result = template.RenderSubject(variables);
 
         // Assert
-        Assert.Equal("Hello Alice, from IAB", result);
+        result.Should().Be("Hello Alice, from IAB");
     }
 
     [Fact]
@@ -115,7 +115,7 @@ public class EmailTemplateTests
         });
 
         // Assert
-        Assert.Single(template.Variables);
-        Assert.Equal("name", template.Variables.First().Name);
+        template.Variables.Should().HaveCount(1);
+        template.Variables.First().Name.Should().Be("name");
     }
 }

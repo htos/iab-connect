@@ -1,5 +1,7 @@
 "use client";
 
+import { formatCHF } from "@/lib/utils";
+
 /**
  * Finance Invoices List Page
  * REQ-040: Rechnungserstellung
@@ -103,10 +105,6 @@ const XIcon = ({ className }: { className?: string }) => (
 
 // --- Helpers ---
 
-const formatCHF = (amount: number) =>
-  new Intl.NumberFormat("de-CH", { style: "currency", currency: "CHF" }).format(
-    amount
-  );
 
 const formatDate = (dateStr: string) => {
   const d = new Date(dateStr);

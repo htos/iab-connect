@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using IabConnect.Api.Extensions;
 using IabConnect.Application.Finance.BankImports.Commands;
 using IabConnect.Application.Finance.BankImports.Queries;
 using MediatR;
@@ -59,11 +59,6 @@ public static class BankImportEndpoints
             .WithDescription("REQ-069: Imports bank transactions from an ISO 20022 camt.053 or camt.054 XML file with auto-matching.");
     }
 
-    private static string GetUserName(HttpContext ctx) =>
-        ctx.User.FindFirst("preferred_username")?.Value
-        ?? ctx.User.FindFirst(ClaimTypes.Email)?.Value
-        ?? "system";
-
     private static async Task<IResult> GetAll(
         ISender sender, int? page, int? pageSize, string? sort, string? filter, CancellationToken ct)
     {
@@ -86,7 +81,7 @@ public static class BankImportEndpoints
             FileName = request.FileName,
             Rows = request.Rows.Select(r => new BankImportRowInput(
                 r.TransactionDate, r.Description, r.Amount, r.Iban, r.Reference)).ToList(),
-            UserName = GetUserName(httpContext)
+            UserName = httpContext.GetUserName()
         }, ct);
         return Results.Created($"/api/v1/finance/bank-imports/{dto.Id}", dto);
     }
@@ -104,7 +99,7 @@ public static class BankImportEndpoints
         ISender sender, HttpContext httpContext, CancellationToken ct)
     {
         var dto = await sender.Send(
-            new MatchBankImportItemCommand(id, itemId, request.PaymentId, GetUserName(httpContext)), ct);
+            new MatchBankImportItemCommand(id, itemId, request.PaymentId, httpContext.GetUserName()), ct);
         return dto is null
             ? Results.NotFound(new { Message = "Bank import or item not found." })
             : Results.Ok(dto);
@@ -126,7 +121,7 @@ public static class BankImportEndpoints
         try
         {
             var dto = await sender.Send(
-                new UnmatchBankImportItemCommand(id, itemId, GetUserName(httpContext)), ct);
+                new UnmatchBankImportItemCommand(id, itemId, httpContext.GetUserName()), ct);
             return dto is null
                 ? Results.NotFound(new { Message = "Bank import or item not found." })
                 : Results.Ok(dto);
@@ -149,7 +144,7 @@ public static class BankImportEndpoints
         {
             FileName = file.FileName,
             FileStream = stream,
-            UserName = GetUserName(httpContext)
+            UserName = httpContext.GetUserName()
         }, ct);
         return Results.Created($"/api/v1/finance/bank-imports/{dto.Id}", dto);
     }

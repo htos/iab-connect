@@ -1,3 +1,4 @@
+using IabConnect.Api.Extensions;
 using IabConnect.Application.Finance.Commands;
 using IabConnect.Application.Finance.FinanceProfiles.Commands;
 using IabConnect.Application.Finance.FinanceProfiles.Queries;
@@ -111,9 +112,7 @@ public static class FinanceProfileEndpoints
     private static async Task<IResult> ResetAllFinanceData(
         HttpContext ctx, ISender sender, CancellationToken ct)
     {
-        var userName = ctx.User.FindFirst("preferred_username")?.Value
-                       ?? ctx.User.Identity?.Name ?? "system";
-        await sender.Send(new ResetAllFinanceDataCommand(userName), ct);
+        await sender.Send(new ResetAllFinanceDataCommand(ctx.GetUserName()), ct);
         return Results.Ok(new { Message = "All finance data has been deleted." });
     }
 

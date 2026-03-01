@@ -115,12 +115,6 @@ POST /api/v1/documents/{id}/archive
 GET /api/v1/documents/tags
 PUT /api/v1/documents/{id}/tags
 
-Sponsors and Vendors
-GET /api/sponsors
-POST /api/sponsors
-GET /api/vendors
-POST /api/vendors
-
 Settings
 GET /api/v1/settings/public
 GET /api/v1/settings

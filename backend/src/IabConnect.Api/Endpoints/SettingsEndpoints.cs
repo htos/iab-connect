@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text.Json;
+using IabConnect.Api.Extensions;
 using IabConnect.Application.Audit;
 using IabConnect.Application.Common;
 using IabConnect.Domain.Audit;
@@ -80,8 +81,7 @@ public static class SettingsEndpoints
     {
         var userId = httpContext.User.FindFirst("sub")?.Value
             ?? httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        var userName = httpContext.User.FindFirst("preferred_username")?.Value
-            ?? httpContext.User.FindFirst(ClaimTypes.Email)?.Value;
+        var userName = httpContext.GetUserName();
 
         var settings = await settingsRepository.GetSettingsAsync(cancellationToken);
 

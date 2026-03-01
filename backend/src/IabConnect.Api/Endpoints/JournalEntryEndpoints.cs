@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using IabConnect.Api.Extensions;
 using IabConnect.Application.Finance.Accounting;
 using IabConnect.Application.Finance.Accounting.JournalEntries.Commands;
 using IabConnect.Application.Finance.Accounting.JournalEntries.Queries;
@@ -62,7 +62,7 @@ public static class JournalEntryEndpoints
                 Description = body.Description,
                 Reference = body.Reference,
                 Lines = lines,
-                UserName = GetUserName(ctx)
+                UserName = ctx.GetUserName()
             }, ct);
             return Results.Created($"/api/v1/finance/journal-entries/{dto.Id}", dto);
         })
@@ -75,7 +75,7 @@ public static class JournalEntryEndpoints
             var dto = await sender.Send(new PostJournalEntryCommand
             {
                 Id = id,
-                UserName = GetUserName(ctx)
+                UserName = ctx.GetUserName()
             }, ct);
             return dto is null
                 ? Results.NotFound(new { Message = $"Journal entry {id} not found." })
@@ -98,7 +98,7 @@ public static class JournalEntryEndpoints
                 Description = body.Description,
                 Reference = body.Reference,
                 Lines = lines,
-                UserName = GetUserName(ctx)
+                UserName = ctx.GetUserName()
             }, ct);
             return dto is null
                 ? Results.NotFound(new { Message = $"Journal entry {id} not found." })
@@ -114,7 +114,7 @@ public static class JournalEntryEndpoints
             {
                 Id = id,
                 Reason = body?.Reason,
-                UserName = GetUserName(ctx)
+                UserName = ctx.GetUserName()
             }, ct);
             return dto is null
                 ? Results.NotFound(new { Message = $"Journal entry {id} not found." })
@@ -126,11 +126,6 @@ public static class JournalEntryEndpoints
 
         return app;
     }
-
-    private static string GetUserName(HttpContext ctx) =>
-        ctx.User.FindFirst("preferred_username")?.Value
-        ?? ctx.User.FindFirst(ClaimTypes.Email)?.Value
-        ?? "system";
 
     // Request DTOs
     public sealed record CreateJournalEntryRequest(

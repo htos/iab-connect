@@ -2,7 +2,7 @@ using IabConnect.Application.Finance.FiscalPeriods;
 using IabConnect.Application.Finance.FiscalPeriods.Commands;
 using IabConnect.Application.Finance.FiscalPeriods.Queries;
 using MediatR;
-using System.Security.Claims;
+using IabConnect.Api.Extensions;
 
 namespace IabConnect.Api.Endpoints;
 
@@ -21,11 +21,6 @@ public static class FiscalPeriodEndpoints
         group.MapPost("/{id:guid}/close", Close).RequireAuthorization("RequireFinanceWrite");
         group.MapPost("/{id:guid}/reopen", Reopen).RequireAuthorization("RequireAdmin");
     }
-
-    private static string GetUserName(HttpContext ctx) =>
-        ctx.User.FindFirst("preferred_username")?.Value
-        ?? ctx.User.FindFirst(ClaimTypes.Email)?.Value
-        ?? "system";
 
     private static async Task<IResult> GetAll(
         [AsParameters] FiscalPeriodFilterRequest filter,
@@ -57,7 +52,7 @@ public static class FiscalPeriodEndpoints
         var command = new GenerateFiscalPeriodsCommand
         {
             Year = request.Year,
-            UserName = GetUserName(ctx)
+            UserName = ctx.GetUserName()
         };
         var result = await sender.Send(command);
         return Results.Ok(result);
@@ -73,7 +68,7 @@ public static class FiscalPeriodEndpoints
         {
             Id = id,
             Notes = request?.Notes,
-            UserName = GetUserName(ctx)
+            UserName = ctx.GetUserName()
         };
         var result = await sender.Send(command);
         return result is null ? Results.NotFound() : Results.Ok(result);
@@ -87,7 +82,7 @@ public static class FiscalPeriodEndpoints
         var command = new UnlockFiscalPeriodCommand
         {
             Id = id,
-            UserName = GetUserName(ctx)
+            UserName = ctx.GetUserName()
         };
         var result = await sender.Send(command);
         return result is null ? Results.NotFound() : Results.Ok(result);
@@ -103,7 +98,7 @@ public static class FiscalPeriodEndpoints
         {
             Id = id,
             Notes = request?.Notes,
-            UserName = GetUserName(ctx)
+            UserName = ctx.GetUserName()
         };
         var result = await sender.Send(command);
         return result is null ? Results.NotFound() : Results.Ok(result);
@@ -117,7 +112,7 @@ public static class FiscalPeriodEndpoints
         var command = new ReopenFiscalPeriodCommand
         {
             Id = id,
-            UserName = GetUserName(ctx)
+            UserName = ctx.GetUserName()
         };
         var result = await sender.Send(command);
         return result is null ? Results.NotFound() : Results.Ok(result);

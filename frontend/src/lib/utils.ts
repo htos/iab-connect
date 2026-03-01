@@ -43,3 +43,8 @@ export function formatCurrency(amount: number): string {
     currency: "CHF",
   }).format(amount);
 }
+
+/**
+ * Alias for formatCurrency — used in many finance pages
+ */
+export const formatCHF = formatCurrency;
