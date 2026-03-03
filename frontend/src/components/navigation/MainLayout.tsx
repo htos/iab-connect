@@ -48,8 +48,8 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
 export function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  // Full-page layouts (no sidebar) for these routes
-  const isFullPageLayout = pathname === "/login" || pathname.startsWith("/auth/");
+  // Full-page layouts (no sidebar, no internal header) for these routes
+  const isFullPageLayout = pathname === "/login" || pathname.startsWith("/auth/") || pathname.startsWith("/public");
 
   if (isFullPageLayout) {
     return <>{children}</>;

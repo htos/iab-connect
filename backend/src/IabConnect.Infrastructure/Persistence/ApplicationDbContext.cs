@@ -7,6 +7,7 @@ using IabConnect.Domain.Events;
 using IabConnect.Domain.Finance;
 using IabConnect.Domain.Members;
 using IabConnect.Domain.Privacy;
+using IabConnect.Domain.Blog;
 using IabConnect.Domain.Sponsors;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
@@ -65,6 +66,12 @@ public sealed class ApplicationDbContext : DbContext
     public DbSet<SponsorPackage> SponsorPackages => Set<SponsorPackage>();
     public DbSet<Supplier> Suppliers => Set<Supplier>();
     public DbSet<ContractLink> ContractLinks => Set<ContractLink>();
+
+    // Blog (REQ-047)
+    public DbSet<BlogPost> BlogPosts => Set<BlogPost>();
+
+    // Contact Messages (REQ-049)
+    public DbSet<ContactMessage> ContactMessages => Set<ContactMessage>();
 
     // Documents (REQ-034..037)
     public DbSet<DocumentFolder> DocumentFolders => Set<DocumentFolder>();

@@ -16,6 +16,14 @@ public static class SponsorEndpoints
 {
     public static void MapSponsorEndpoints(this IEndpointRouteBuilder routes)
     {
+        // Public endpoint (no auth required) - REQ-048
+        var publicGroup = routes.MapGroup("/api/v1/sponsors/public")
+            .WithTags("Sponsors");
+
+        publicGroup.MapGet("/", GetPublicSponsors)
+            .WithName("GetPublicSponsors")
+            .WithSummary("REQ-048: Get active sponsors for public page");
+
         var group = routes.MapGroup("/api/v1/sponsors")
             .WithTags("Sponsors")
             .RequireAuthorization("RequireVorstand");
@@ -63,6 +71,26 @@ public static class SponsorEndpoints
             .WithName("RemoveSponsorContractLink")
             .WithDescription("REQ-033: Remove contract link from sponsor");
     }
+
+    // === Public Endpoint ===
+
+    private static async Task<IResult> GetPublicSponsors(
+        ISponsorRepository sponsorRepository,
+        CancellationToken ct)
+    {
+        var sponsors = await sponsorRepository.GetAllAsync(SponsorStatus.Active, ct);
+        var dtos = sponsors.Select(s => new PublicSponsorDto(
+            s.Id,
+            s.CompanyName,
+            s.ContactPerson,
+            s.Website,
+            s.Notes,
+            s.Packages.Select(p => new PublicSponsorPackageDto(p.Name, s.Tier.ToString())).ToList()
+        )).ToList();
+        return Results.Ok(dtos);
+    }
+
+    // === Protected Endpoints ===
 
     private static async Task<IResult> GetAll(
         [FromQuery] string? status,
@@ -306,3 +334,10 @@ public record SponsorDetailDto(
 public record PackageDto(Guid Id, string Name, string? Description, decimal? Amount, string? Currency);
 
 public record ContractLinkDto(Guid Id, ContractLinkType LinkType, Guid TargetId, string? Description, DateTime CreatedAt);
+
+// Public DTOs (REQ-048)
+public record PublicSponsorDto(
+    Guid Id, string CompanyName, string? ContactPerson, string? Website, string? Description,
+    List<PublicSponsorPackageDto> Packages);
+
+public record PublicSponsorPackageDto(string Name, string Tier);

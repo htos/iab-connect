@@ -39,7 +39,25 @@ export default function HomePage() {
           <p className="mt-6 text-lg leading-8 text-gray-600">
             {t("home.welcomeGuest")}
           </p>
-          <div className="mt-10 flex items-center justify-center gap-x-6">
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+            <Link
+              href="/public/events"
+              className="rounded-lg border-2 border-orange-600 px-6 py-3 text-sm font-semibold text-orange-600 hover:bg-orange-50 transition-colors"
+            >
+              {t("publicNav.events")}
+            </Link>
+            <Link
+              href="/public/blog"
+              className="rounded-lg border-2 border-orange-600 px-6 py-3 text-sm font-semibold text-orange-600 hover:bg-orange-50 transition-colors"
+            >
+              {t("publicNav.blog")}
+            </Link>
+            <Link
+              href="/public/contact"
+              className="rounded-lg border-2 border-orange-600 px-6 py-3 text-sm font-semibold text-orange-600 hover:bg-orange-50 transition-colors"
+            >
+              {t("publicNav.contact")}
+            </Link>
             <Link
               href="/login"
               className="rounded-lg bg-orange-600 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-orange-700 transition-colors"

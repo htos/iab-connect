@@ -51,6 +51,12 @@ public static class EndpointMapper
         app.MapSponsorEndpoints();
         app.MapSupplierEndpoints();
 
+        // REQ-047: Blog
+        app.MapBlogEndpoints();
+
+        // REQ-049: Contact form
+        app.MapContactEndpoints();
+
         // REQ-074..085: Double-Entry Bookkeeping
         app.MapLedgerAccountEndpoints();
         app.MapJournalEntryEndpoints();

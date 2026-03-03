@@ -15,6 +15,7 @@ using IabConnect.Domain.Documents;
 using IabConnect.Domain.Events;
 using IabConnect.Domain.Members;
 using IabConnect.Domain.Privacy;
+using IabConnect.Domain.Blog;
 using IabConnect.Domain.Sponsors;
 using IabConnect.Infrastructure.Audit;
 using IabConnect.Infrastructure.Email;
@@ -96,6 +97,12 @@ public static class DependencyInjection
         // REQ-031..033: Sponsors & Suppliers repositories
         services.AddScoped<ISponsorRepository, SponsorRepository>();
         services.AddScoped<ISupplierRepository, SupplierRepository>();
+
+        // REQ-047: Blog repository
+        services.AddScoped<IBlogPostRepository, BlogPostRepository>();
+
+        // REQ-049: Contact message repository
+        services.AddScoped<IContactMessageRepository, ContactMessageRepository>();
 
         // REQ-074..085: Double-Entry Bookkeeping repositories
         services.AddScoped<ILedgerAccountRepository, LedgerAccountRepository>();
