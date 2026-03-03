@@ -6,7 +6,7 @@
 
 import { useAuth, useApiClient } from "@/lib/auth";
 import { useRouter, useParams } from "next/navigation";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, startTransition } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import type { SponsorDetailDto, UpdateSponsorRequest } from "@/types/sponsors";
@@ -62,7 +62,11 @@ export default function EditSponsorPage() {
   }, [api, sponsorId]);
 
   useEffect(() => {
-    if (isAuthenticated && (isVorstand || isAdmin)) fetchSponsor();
+    if (isAuthenticated && (isVorstand || isAdmin)) {
+      startTransition(() => {
+        void fetchSponsor();
+      });
+    }
   }, [isAuthenticated, isVorstand, isAdmin, fetchSponsor]);
 
   const handleSubmit = async (e: React.FormEvent) => {

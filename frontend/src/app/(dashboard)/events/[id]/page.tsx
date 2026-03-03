@@ -330,7 +330,7 @@ export default function EventPage({ params }: EventPageProps) {
           {event.imageUrl ? (
             <div className="h-64 md:h-80 relative">
               <Image src={event.imageUrl} alt={event.imageAltText || event.title} className="w-full h-full object-cover" fill sizes="100vw" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+              <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent" />
               <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
                 <div className="flex flex-wrap gap-2 mb-3">
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColors[event.status] || 'bg-gray-100 text-gray-800'}`}>
@@ -347,7 +347,7 @@ export default function EventPage({ params }: EventPageProps) {
               </div>
             </div>
           ) : (
-            <div className="h-48 bg-gradient-to-br from-orange-400 to-orange-600 relative">
+            <div className="h-48 bg-linear-to-br from-orange-400 to-orange-600 relative">
               <div className="absolute inset-0 flex items-center justify-center">
                 <svg className="w-20 h-20 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />

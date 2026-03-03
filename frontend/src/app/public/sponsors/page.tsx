@@ -146,7 +146,7 @@ export default function PublicSponsorsPage() {
 
       {/* CTA */}
       {!loading && (
-        <section className="mt-16 rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 p-12 text-center text-white">
+        <section className="mt-16 rounded-2xl bg-linear-to-r from-orange-500 to-orange-600 p-12 text-center text-white">
           <h2 className="text-3xl font-bold">{t('ctaTitle')}</h2>
           <p className="mx-auto mt-4 max-w-2xl text-orange-100">{t('ctaDescription')}</p>
           <Link
@@ -172,7 +172,7 @@ function SponsorCard({
 
   return (
     <div
-      className={`flex flex-col rounded-xl border bg-gradient-to-br p-6 shadow-sm transition-shadow hover:shadow-md ${colors}`}
+      className={`flex flex-col rounded-xl border bg-linear-to-br p-6 shadow-sm transition-shadow hover:shadow-md ${colors}`}
     >
       <h3 className="text-lg font-semibold text-gray-900">{sponsor.companyName}</h3>
       {sponsor.contactPerson && (

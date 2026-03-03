@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
+import Image from 'next/image';
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000';
 
@@ -148,11 +149,13 @@ export default function PublicBlogPage() {
               className="group flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md"
             >
               {post.imageUrl && (
-                <div className="h-48 overflow-hidden bg-gray-100">
-                  <img
+                <div className="relative h-48 overflow-hidden bg-gray-100">
+                  <Image
                     src={post.imageUrl}
                     alt={post.title}
-                    className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                    fill
+                    className="object-cover transition-transform group-hover:scale-105"
+                    unoptimized
                   />
                 </div>
               )}

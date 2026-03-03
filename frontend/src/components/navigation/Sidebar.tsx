@@ -341,7 +341,7 @@ function NavItemWithSubmenu({
         }`}
         title={!isOpen ? t(item.labelKey) : undefined}
       >
-        <span className="flex-shrink-0">{item.icon}</span>
+        <span className="shrink-0">{item.icon}</span>
         <span
           className={`font-medium whitespace-nowrap transition-opacity duration-200 ${
             isOpen ? "opacity-100" : "lg:w-0 lg:overflow-hidden lg:opacity-0"
@@ -369,7 +369,7 @@ function NavItemWithSubmenu({
         }`}
         title={!isOpen ? t(item.labelKey) : undefined}
       >
-        <span className="flex-shrink-0">{item.icon}</span>
+        <span className="shrink-0">{item.icon}</span>
         <span
           className={`flex-1 text-left font-medium whitespace-nowrap transition-opacity duration-200 ${
             isOpen ? "opacity-100" : "lg:w-0 lg:overflow-hidden lg:opacity-0"
@@ -436,7 +436,9 @@ export function Sidebar() {
   const { isOpen, close } = useSidebar();
   const api = useApiClient();
   const apiRef = useRef(api);
-  apiRef.current = api;
+  useEffect(() => {
+    apiRef.current = api;
+  }, [api]);
 
   const [isDoubleEntry, setIsDoubleEntry] = useState(false);
 

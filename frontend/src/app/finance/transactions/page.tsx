@@ -8,6 +8,7 @@ import { formatCHF } from "@/lib/utils";
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth, useApiClient } from "@/lib/auth";
@@ -524,7 +525,7 @@ export default function TransactionsPage() {
     return (
       <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
         <div className="mx-auto max-w-7xl">
-          <div className="flex min-h-[400px] items-center justify-center">
+          <div className="flex min-h-100 items-center justify-center">
             <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-orange-600"></div>
           </div>
         </div>
@@ -1166,10 +1167,14 @@ export default function TransactionsPage() {
             </div>
             <div className="overflow-auto p-4" style={{ maxHeight: "calc(90vh - 5rem)" }}>
               {previewModal.type.startsWith("image/") ? (
-                <img
+                <Image
                   src={previewModal.url}
                   alt={previewModal.name}
-                  className="mx-auto max-w-full rounded"
+                  width={0}
+                  height={0}
+                  sizes="100vw"
+                  className="mx-auto max-w-full rounded h-auto w-auto"
+                  unoptimized
                 />
               ) : (
                 <iframe

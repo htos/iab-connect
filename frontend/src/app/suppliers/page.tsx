@@ -6,7 +6,7 @@
 
 import { useAuth, useApiClient } from "@/lib/auth";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, startTransition } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import type { SupplierListDto, SupplierStatus } from "@/types/sponsors";
@@ -43,7 +43,11 @@ export default function SuppliersPage() {
   }, [api, statusFilter]);
 
   useEffect(() => {
-    if (isAuthenticated && isAdmin) fetchSuppliers();
+    if (isAuthenticated && isAdmin) {
+      startTransition(() => {
+        void fetchSuppliers();
+      });
+    }
   }, [isAuthenticated, isAdmin, fetchSuppliers]);
 
   const handleDelete = async () => {

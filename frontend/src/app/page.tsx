@@ -28,7 +28,7 @@ export default function HomePage() {
   // Unauthenticated view
   if (!isAuthenticated) {
     return (
-      <main className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center p-8 bg-gradient-to-br from-orange-50 to-amber-100">
+      <main className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center p-8 bg-linear-to-br from-orange-50 to-amber-100">
         <div className="text-center max-w-2xl">
           <div className="mx-auto h-24 w-24 bg-orange-600 rounded-full flex items-center justify-center mb-6">
             <span className="text-4xl text-white font-bold">IAB</span>

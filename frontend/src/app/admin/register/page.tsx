@@ -74,7 +74,7 @@ export default function RegisterPage() {
   // Success screen
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 to-amber-100 px-4">
+      <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-orange-50 to-amber-100 px-4">
         <div className="max-w-md w-full">
           <div className="bg-white shadow-xl rounded-2xl p-8 text-center">
             <div className="mx-auto h-16 w-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
@@ -106,7 +106,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 to-amber-100 px-4 py-8">
+    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-orange-50 to-amber-100 px-4 py-8">
       <div className="max-w-md w-full">
         {/* Logo and Title */}
         <div className="text-center mb-8">

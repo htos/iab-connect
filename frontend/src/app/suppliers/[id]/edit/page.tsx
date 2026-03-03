@@ -6,7 +6,7 @@
 
 import { useAuth, useApiClient } from "@/lib/auth";
 import { useRouter, useParams } from "next/navigation";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, startTransition } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import type { SupplierDetailDto, UpdateSupplierRequest } from "@/types/sponsors";
@@ -58,7 +58,11 @@ export default function EditSupplierPage() {
   }, [api, supplierId]);
 
   useEffect(() => {
-    if (isAuthenticated && isAdmin) fetchSupplier();
+    if (isAuthenticated && isAdmin) {
+      startTransition(() => {
+        void fetchSupplier();
+      });
+    }
   }, [isAuthenticated, isAdmin, fetchSupplier]);
 
   const handleSubmit = async (e: React.FormEvent) => {

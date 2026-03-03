@@ -3,6 +3,7 @@
 import { formatCHF } from "@/lib/utils";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { useAuth, useApiClient } from "@/lib/auth";
 
@@ -1140,10 +1141,14 @@ export default function PaymentsPage() {
               </div>
               <div className="overflow-auto p-4" style={{ maxHeight: "calc(90vh - 5rem)" }}>
                 {previewModal.type.startsWith("image/") ? (
-                  <img
+                  <Image
                     src={previewModal.url}
                     alt={previewModal.name}
-                    className="mx-auto max-w-full rounded"
+                    width={0}
+                    height={0}
+                    sizes="100vw"
+                    className="mx-auto max-w-full rounded h-auto w-auto"
+                    unoptimized
                   />
                 ) : (
                   <iframe

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
+import Image from 'next/image';
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000';
 
@@ -131,10 +132,14 @@ export default function PublicBlogDetailPage() {
         {/* Featured image */}
         {post.imageUrl && (
           <div className="mb-8 overflow-hidden rounded-xl">
-            <img
+            <Image
               src={post.imageUrl}
               alt={post.title}
+              width={0}
+              height={0}
+              sizes="100vw"
               className="h-auto w-full object-cover"
+              unoptimized
             />
           </div>
         )}

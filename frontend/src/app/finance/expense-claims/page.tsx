@@ -901,7 +901,7 @@ function AuditRow({
 }) {
   return (
     <div className="flex items-start gap-3 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-sm">
-      <div className="mt-0.5 h-2 w-2 flex-shrink-0 rounded-full bg-orange-400" />
+      <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-orange-400" />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2">
           <span className="font-medium text-gray-900">{label}</span>

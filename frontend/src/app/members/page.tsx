@@ -339,7 +339,7 @@ export default function MembersPage() {
                       <tr key={member.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <div className="h-10 w-10 flex-shrink-0 bg-orange-100 rounded-full flex items-center justify-center">
+                            <div className="h-10 w-10 shrink-0 bg-orange-100 rounded-full flex items-center justify-center">
                               <span className="text-orange-600 font-medium">
                                 {member.firstName[0]}{member.lastName[0]}
                               </span>

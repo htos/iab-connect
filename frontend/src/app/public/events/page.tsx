@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useTranslations } from "next-intl";
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
@@ -93,7 +94,7 @@ export default function PublicEventsPage() {
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-gray-50">
       {/* Hero */}
-      <section className="bg-gradient-to-r from-[#EA580C] to-orange-500 px-4 py-16 text-white sm:px-6 lg:px-8">
+      <section className="bg-linear-to-r from-[#EA580C] to-orange-500 px-4 py-16 text-white sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl text-center">
           <h1 className="text-3xl font-bold sm:text-4xl">{t("heroTitle")}</h1>
           <p className="mt-3 text-lg text-orange-100">{t("heroSubtitle")}</p>
@@ -194,12 +195,14 @@ export default function PublicEventsPage() {
                 className="group overflow-hidden rounded-xl bg-white shadow-sm transition-shadow hover:shadow-md"
               >
                 {/* Image placeholder */}
-                <div className="relative h-48 bg-gradient-to-br from-[#EA580C] to-orange-400">
+                <div className="relative h-48 bg-linear-to-br from-[#EA580C] to-orange-400">
                   {event.imageUrl ? (
-                    <img
+                    <Image
                       src={event.imageUrl}
                       alt={event.imageAltText ?? event.title}
-                      className="h-full w-full object-cover"
+                      fill
+                      className="object-cover"
+                      unoptimized
                     />
                   ) : (
                     <div className="flex h-full items-center justify-center">

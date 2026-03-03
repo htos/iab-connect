@@ -270,7 +270,7 @@ export default function FinanceSettingsPage() {
     return (
       <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
         <div className="mx-auto max-w-6xl">
-          <div className="flex min-h-[400px] items-center justify-center">
+          <div className="flex min-h-100 items-center justify-center">
             <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-orange-600"></div>
           </div>
         </div>

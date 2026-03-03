@@ -7,7 +7,7 @@
 
 import { useAuth } from "@/lib/auth";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, startTransition } from "react";
 import { useTranslations } from "next-intl";
 import {
   DocumentFolderDto,
@@ -100,7 +100,9 @@ export default function AdminDocumentsPage() {
 
   useEffect(() => {
     if (isAuthenticated && isAdmin) {
-      fetchFolders(currentFolderId);
+      startTransition(() => {
+        void fetchFolders(currentFolderId);
+      });
     }
   }, [isAuthenticated, isAdmin, currentFolderId, fetchFolders]);
 
@@ -554,7 +556,7 @@ export default function AdminDocumentsPage() {
                         title={t("documents.openFolder")}
                       >
                         <svg
-                          className="h-5 w-5 flex-shrink-0 text-orange-500 group-hover:text-orange-700"
+                          className="h-5 w-5 shrink-0 text-orange-500 group-hover:text-orange-700"
                           fill="currentColor"
                           viewBox="0 0 24 24"
                         >

@@ -345,7 +345,7 @@ export default function EventsPage() {
         {error && (
           <div className="mb-6 rounded-xl bg-red-50 border border-red-200 p-4">
             <div className="flex items-center gap-3">
-              <svg className="h-5 w-5 text-red-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="h-5 w-5 text-red-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <p className="text-red-800">{error}</p>
@@ -401,7 +401,7 @@ export default function EventsPage() {
                 className="group rounded-xl bg-white shadow-sm overflow-hidden hover:shadow-md transition-shadow"
               >
                 {/* Event Image */}
-                <div className="aspect-video bg-gradient-to-br from-orange-100 to-orange-200 relative">
+                <div className="aspect-video bg-linear-to-br from-orange-100 to-orange-200 relative">
                   {event.imageUrl ? (
                     <Image
                       src={event.imageUrl}
@@ -430,14 +430,14 @@ export default function EventsPage() {
                   </h3>
 
                   <div className="mt-2 flex items-center gap-2 text-sm text-gray-500">
-                    <svg className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                     <span className="line-clamp-1">{formatEventDate(event, 'de')}</span>
                   </div>
 
                   <div className="mt-1 flex items-center gap-2 text-sm text-gray-500">
-                    <svg className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>

@@ -387,15 +387,15 @@ export default function EmailCampaignDetailPage() {
           {/* Email Client Frame */}
           <div className="border border-gray-200 m-4 rounded-lg overflow-hidden shadow-inner bg-white">
             {/* Email Header */}
-            <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-white border-b">
+            <div className="px-6 py-4 bg-linear-to-r from-gray-50 to-white border-b">
               <div className="flex items-start gap-4">
                 {/* Avatar */}
-                <div className="flex-shrink-0 w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                <div className="shrink-0 w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
                   <span className="text-orange-600 font-bold text-lg">
                     {campaign.fromName?.charAt(0)?.toUpperCase() || 'I'}
                   </span>
                 </div>
-                <div className="flex-grow min-w-0">
+                <div className="grow min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-gray-900 text-lg">{campaign.fromName}</span>
                     <span className="text-gray-400">&lt;{campaign.fromEmail}&gt;</span>
@@ -404,7 +404,7 @@ export default function EmailCampaignDetailPage() {
                     {t("to")} <span className="text-gray-700">{t("recipients")}</span>
                   </div>
                 </div>
-                <div className="text-sm text-gray-400 flex-shrink-0">
+                <div className="text-sm text-gray-400 shrink-0">
                   {campaign.sentAt
                     ? new Date(campaign.sentAt).toLocaleString("de-DE", { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
                     : t("statusDraft")
@@ -419,7 +419,7 @@ export default function EmailCampaignDetailPage() {
             </div>
 
             {/* Email Body */}
-            <div className="max-h-[500px] overflow-auto bg-white">
+            <div className="max-h-125 overflow-auto bg-white">
               <div
                 className="p-6 prose prose-base max-w-none"
                 dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(campaign.htmlContent) }}

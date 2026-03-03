@@ -133,7 +133,7 @@ export function Header() {
 
               {/* User info */}
               <div className="hidden text-right sm:block">
-                <p className="max-w-[150px] truncate text-sm font-medium text-gray-900">
+                <p className="max-w-37.5 truncate text-sm font-medium text-gray-900">
                   {user?.name || user?.email}
                 </p>
               </div>

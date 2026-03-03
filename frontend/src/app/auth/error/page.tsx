@@ -78,7 +78,7 @@ export default function AuthErrorPage() {
   const description = t(mapping.descKey);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-orange-100 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-red-50 to-orange-100 px-4">
       <div className="max-w-md w-full">
         {/* Error Icon */}
         <div className="text-center mb-8">

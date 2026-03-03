@@ -97,7 +97,7 @@ export function OnboardingBanner() {
   }
 
   return (
-    <div className="bg-gradient-to-r from-orange-500 to-amber-500 rounded-xl shadow-lg p-4 md:p-6 mb-6 relative">
+    <div className="bg-linear-to-r from-orange-500 to-amber-500 rounded-xl shadow-lg p-4 md:p-6 mb-6 relative">
       {/* Dismiss button */}
       <button
         onClick={handleDismiss}

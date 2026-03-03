@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useTranslations } from "next-intl";
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
@@ -213,12 +214,14 @@ export default function PublicEventDetailPage() {
         {/* Main card */}
         <div className="overflow-hidden rounded-xl bg-white shadow-sm">
           {/* Image / Hero */}
-          <div className="relative h-64 bg-gradient-to-br from-[#EA580C] to-orange-400 sm:h-72">
+          <div className="relative h-64 bg-linear-to-br from-[#EA580C] to-orange-400 sm:h-72">
             {event.imageUrl ? (
-              <img
+              <Image
                 src={event.imageUrl}
                 alt={event.imageAltText ?? event.title}
-                className="h-full w-full object-cover"
+                fill
+                className="object-cover"
+                unoptimized
               />
             ) : (
               <div className="flex h-full items-center justify-center">
@@ -292,7 +295,7 @@ export default function PublicEventDetailPage() {
               {/* Date & Time */}
               <div className="flex items-start gap-3">
                 <svg
-                  className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#EA580C]"
+                  className="mt-0.5 h-5 w-5 shrink-0 text-[#EA580C]"
                   fill="none"
                   viewBox="0 0 24 24"
                   strokeWidth={1.5}
@@ -323,7 +326,7 @@ export default function PublicEventDetailPage() {
               {/* Location */}
               <div className="flex items-start gap-3">
                 <svg
-                  className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#EA580C]"
+                  className="mt-0.5 h-5 w-5 shrink-0 text-[#EA580C]"
                   fill="none"
                   viewBox="0 0 24 24"
                   strokeWidth={1.5}
@@ -366,7 +369,7 @@ export default function PublicEventDetailPage() {
               {/* Cost */}
               <div className="flex items-start gap-3">
                 <svg
-                  className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#EA580C]"
+                  className="mt-0.5 h-5 w-5 shrink-0 text-[#EA580C]"
                   fill="none"
                   viewBox="0 0 24 24"
                   strokeWidth={1.5}
@@ -401,7 +404,7 @@ export default function PublicEventDetailPage() {
               {(event.organizerName || event.contactEmail) && (
                 <div className="flex items-start gap-3">
                   <svg
-                    className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#EA580C]"
+                    className="mt-0.5 h-5 w-5 shrink-0 text-[#EA580C]"
                     fill="none"
                     viewBox="0 0 24 24"
                     strokeWidth={1.5}

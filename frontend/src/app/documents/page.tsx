@@ -324,7 +324,7 @@ export default function DocumentsPage() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <svg
-                          className="h-8 w-8 flex-shrink-0 text-gray-400"
+                          className="h-8 w-8 shrink-0 text-gray-400"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"

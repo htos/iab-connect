@@ -56,7 +56,7 @@ export default function CommunicationPage() {
     return (
       <main className="min-h-[calc(100vh-4rem)] p-4 md:p-8 bg-gray-50">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-center min-h-[400px]">
+          <div className="flex items-center justify-center min-h-100">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
           </div>
         </div>
@@ -118,7 +118,7 @@ export default function CommunicationPage() {
                       {t(section.descriptionKey)}
                     </p>
                   </div>
-                  <ChevronRightIcon className="h-5 w-5 text-gray-400 group-hover:text-orange-600 transition-colors flex-shrink-0 mt-1" />
+                  <ChevronRightIcon className="h-5 w-5 text-gray-400 group-hover:text-orange-600 transition-colors shrink-0 mt-1" />
                 </div>
               </Link>
             );

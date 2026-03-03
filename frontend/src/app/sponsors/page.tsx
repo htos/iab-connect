@@ -2,7 +2,7 @@
 
 import { useAuth, useApiClient } from "@/lib/auth";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, startTransition } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import type {
@@ -45,7 +45,9 @@ export default function SponsorsPage() {
 
   useEffect(() => {
     if (isAuthenticated && (isVorstand || isAdmin)) {
-      fetchSponsors();
+      startTransition(() => {
+        void fetchSponsors();
+      });
     }
   }, [isAuthenticated, isVorstand, isAdmin, fetchSponsors]);
 

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import LanguageSwitcher from "@/components/navigation/LanguageSwitcher";
+import { LanguageSwitcher } from "@/components/navigation/LanguageSwitcher";
 
 const navLinks = [
   { href: "/public/events", tKey: "events" },
