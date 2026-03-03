@@ -372,36 +372,36 @@ TicketLink:
 Notizen: Buchhaltungsexport implementiert. Backend: FinanceExportEndpoints mit Journal-CSV und Offene-Posten-CSV (RequireFinanceRead). Frontend: Export-Seite mit zwei Export-Karten (Journal mit Datumsbereich, Offene Posten), CSV-Download via Blob mit automatischer Content-Type-Erkennung.
 
 ID: REQ-046
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 03 03
+Owner: Implementation Agent
+SprintOderRelease: Sprint 7
 TicketLink:
-Notizen:
+Notizen: Öffentliche Eventseite implementiert. Frontend: /public/events Listenansicht mit Suchfeld und Kategoriefilter, /public/events/[id] Detailseite mit Registrierungsformular (Name, Email, Telefon, Gästeanzahl, Anforderungen). Backend: nutzt bestehende /api/v1/events/public Endpoints. Responsive Design mit PublicHeader und PublicFooter. i18n (de/en).
 
 ID: REQ-047
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 03 03
+Owner: Implementation Agent
+SprintOderRelease: Sprint 7
 TicketLink:
-Notizen:
+Notizen: Blog/News System implementiert. Backend: BlogPost Domain-Entity (AggregateRoot) mit Title, Slug (auto-generiert mit deutscher Umlaute-Transliteration), Content, Excerpt, Author, Category, Tags, Status (Draft/Published/Archived). BlogPostRepository, EF-Config (Tags als comma-separated string), Admin CRUD + Publish/Unpublish/Archive Endpoints. Public Endpoints: GET /api/v1/blog/public (nur published), GET /api/v1/blog/public/{id}. Frontend: /public/blog Listenansicht, /public/blog/[id] Detailseite. 14 Unit-Tests + 14 Repository-Integration-Tests.
 
 ID: REQ-048
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 03 03
+Owner: Implementation Agent
+SprintOderRelease: Sprint 7
 TicketLink:
-Notizen:
+Notizen: Öffentliche Sponsorenseite implementiert. Frontend: /public/sponsors zeigt aktive Sponsoren gruppiert nach Tier (Platinum/Gold/Silver/Bronze/Basic) mit Firmenname, Beschreibung, Logo, Website-Link und Packages. CTA-Section für Sponsoring-Anfragen mit Link zum Kontaktformular. Backend: Neuer Public-Endpoint GET /api/v1/sponsors/public mit PublicSponsorDto und PublicSponsorPackageDto (nur aktive Sponsoren, kein Auth erforderlich). i18n (de/en).
 
 ID: REQ-049
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 03 03
+Owner: Implementation Agent
+SprintOderRelease: Sprint 7
 TicketLink:
-Notizen:
+Notizen: Kontaktformular mit Spam-Schutz implementiert. Backend: ContactMessage Domain-Entity (AggregateRoot) mit Name, Email, Subject, Message, Status (New/Read/Responded/Archived), MarkAsRead/MarkAsResponded/Archive. ContactMessageRepository, EF-Config. Public Endpoint: POST /api/v1/public/contact mit Honeypot-Spam-Schutz (verstecktes "website" Feld). Admin Endpoints: GET/POST-read/POST-respond/POST-archive/DELETE unter /api/v1/contact-messages (RequireVorstand). Frontend: /public/contact Zwei-Spalten-Layout (Formular + Kontakt-Info Sidebar mit Email, Telefon, Adresse, Öffnungszeiten). 9 Unit-Tests + 11 Repository-Integration-Tests.
 
 ID: REQ-050
 Status: Backlog

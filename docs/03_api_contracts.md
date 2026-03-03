@@ -115,6 +115,12 @@ POST /api/v1/documents/{id}/archive
 GET /api/v1/documents/tags
 PUT /api/v1/documents/{id}/tags
 
+Sponsors and Vendors
+GET /api/sponsors
+POST /api/sponsors
+GET /api/vendors
+POST /api/vendors
+
 Settings
 GET /api/v1/settings/public
 GET /api/v1/settings
@@ -264,3 +270,46 @@ POST /api/v1/privacy/delete-request/confirm
 DELETE /api/v1/privacy/delete-request
 GET /api/v1/privacy/delete-requests (Admin)
 PUT /api/v1/privacy/delete-requests/{id} (Admin)
+
+Sponsors und Suppliers (REQ-031 bis REQ-033)
+GET /api/v1/sponsors
+GET /api/v1/sponsors/{id}
+POST /api/v1/sponsors
+PUT /api/v1/sponsors/{id}
+DELETE /api/v1/sponsors/{id}
+POST /api/v1/sponsors/{id}/activate
+POST /api/v1/sponsors/{id}/deactivate
+GET /api/v1/sponsors/{id}/packages
+POST /api/v1/sponsors/{id}/packages
+POST /api/v1/sponsors/{id}/contract-links
+GET /api/v1/sponsors/public (Öffentlich, kein Auth)
+
+GET /api/v1/suppliers
+GET /api/v1/suppliers/{id}
+POST /api/v1/suppliers
+PUT /api/v1/suppliers/{id}
+DELETE /api/v1/suppliers/{id}
+POST /api/v1/suppliers/{id}/activate
+POST /api/v1/suppliers/{id}/deactivate
+POST /api/v1/suppliers/{id}/contract-links
+
+Blog (REQ-047)
+GET /api/v1/blog (Admin, alle Posts)
+GET /api/v1/blog/{id} (Admin)
+POST /api/v1/blog (Admin, erstellen)
+PUT /api/v1/blog/{id} (Admin, bearbeiten)
+DELETE /api/v1/blog/{id} (Admin, löschen)
+POST /api/v1/blog/{id}/publish (Admin)
+POST /api/v1/blog/{id}/unpublish (Admin)
+POST /api/v1/blog/{id}/archive (Admin)
+GET /api/v1/blog/public (Öffentlich, nur published)
+GET /api/v1/blog/public/{id} (Öffentlich, nur published)
+
+Kontaktformular (REQ-049)
+POST /api/v1/public/contact (Öffentlich, mit Honeypot Spam-Schutz)
+GET /api/v1/contact-messages (Admin)
+GET /api/v1/contact-messages/{id} (Admin)
+POST /api/v1/contact-messages/{id}/read (Admin)
+POST /api/v1/contact-messages/{id}/respond (Admin)
+POST /api/v1/contact-messages/{id}/archive (Admin)
+DELETE /api/v1/contact-messages/{id} (Admin)

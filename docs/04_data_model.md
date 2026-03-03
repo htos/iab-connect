@@ -996,3 +996,200 @@ document_id + name unique
 
 Validierungen
 name ist nicht leer
+---
+
+Name
+Sponsor
+
+Beschreibung
+Sponsor des Vereins mit Firmendaten, Kontaktperson und Sponsoring-Tier.
+
+Wichtige Felder
+id
+company_name
+contact_person
+email
+phone
+website
+street
+city
+postal_code
+country
+tier (Platinum, Gold, Silver, Bronze, Basic)
+status (Prospect, Active, Inactive, Former)
+notes
+contract_start
+contract_end
+
+Beziehungen
+Sponsor zu SponsorPackage (1:n)
+Sponsor zu ContractLink (1:n)
+
+Indizes
+company_name
+
+Validierungen
+company_name ist nicht leer
+
+---
+
+Name
+SponsorPackage
+
+Beschreibung
+Sponsoring-Paket eines Sponsors (z.B. Gold-Paket).
+
+Wichtige Felder
+id
+sponsor_id
+name
+description
+amount
+currency
+benefits
+valid_from
+valid_until
+
+Beziehungen
+SponsorPackage zu Sponsor
+
+Indizes
+sponsor_id
+
+Validierungen
+name ist nicht leer
+amount >= 0
+
+---
+
+Name
+Supplier
+
+Beschreibung
+Lieferant des Vereins mit Firmendaten und Kategorie.
+
+Wichtige Felder
+id
+company_name
+contact_person
+email
+phone
+website
+street
+city
+postal_code
+country
+category
+status (Active, Inactive, Blocked)
+notes
+rating
+
+Beziehungen
+Supplier zu ContractLink (1:n)
+
+Indizes
+company_name
+
+Validierungen
+company_name ist nicht leer
+
+---
+
+Name
+ContractLink
+
+Beschreibung
+Verknüpfung zwischen Sponsor/Lieferant und Dokumenten, Rechnungen oder Events.
+
+Wichtige Felder
+id
+sponsor_id (nullable)
+supplier_id (nullable)
+link_type (Document, Invoice, Event, Other)
+reference_id
+description
+valid_from
+valid_until
+
+Beziehungen
+ContractLink zu Sponsor (optional)
+ContractLink zu Supplier (optional)
+
+Indizes
+sponsor_id
+supplier_id
+reference_id
+
+Validierungen
+Entweder sponsor_id oder supplier_id muss gesetzt sein
+
+---
+
+Name
+BlogPost
+
+Beschreibung
+Blog- oder Newsbeitrag für die öffentliche Website.
+
+Wichtige Felder
+id
+title
+slug (auto-generiert aus Titel, unique)
+content
+excerpt (optional)
+author
+category
+tags (Liste als comma-separated string)
+image_url (optional)
+status (Draft, Published, Archived)
+published_at (nullable)
+created_at
+updated_at
+
+Beziehungen
+Keine direkten FK-Beziehungen
+
+Indizes
+slug unique
+status
+published_at
+
+Validierungen
+title ist nicht leer
+content ist nicht leer
+author ist nicht leer
+slug wird automatisch generiert (inkl. deutsche Umlaute ä→ae, ö→oe, ü→ue, ß→ss)
+
+---
+
+Name
+ContactMessage
+
+Beschreibung
+Kontaktformular-Nachricht von der öffentlichen Website.
+
+Wichtige Felder
+id
+name
+email
+subject
+message
+status (New, Read, Responded, Archived)
+response_notes (optional)
+responded_at (nullable)
+responded_by (nullable)
+created_at
+updated_at
+
+Beziehungen
+Keine direkten FK-Beziehungen
+
+Indizes
+status
+created_at
+
+Validierungen
+name ist nicht leer
+email ist nicht leer
+subject ist nicht leer
+message ist nicht leer

@@ -302,3 +302,93 @@ Als Must-Have einstufen und in Sprint 5 einplanen. Als Could-Have einstufen und 
 
 Auswirkung
 12 neue Requirements REQ-074 bis REQ-085 im Backlog als Sprint 6. Bestehende Sprints 1 bis 5 sind nicht betroffen.
+
+Datum
+2026 03 02
+
+Entscheidung
+Sponsoren mit Tier-System (Platinum, Gold, Silver, Bronze, Basic) und Status-Lifecycle (Prospect, Active, Inactive, Former) modelliert.
+
+Begründung
+Tier ermöglicht differenzierte Darstellung auf der öffentlichen Sponsorenseite. Status-Lifecycle bildet den typischen Sponsoring-Prozess ab. Packages als separate Entity ermöglichen mehrere Sponsoring-Pakete pro Sponsor.
+
+Alternativen
+Einfache Sponsor-Entity ohne Tier oder Status. Freie Tags statt vordefinierter Tiers.
+
+Auswirkung
+Sponsor AggregateRoot mit SponsorPackage und ContractLink als Child Entities. Öffentliche Sponsorenseite gruppiert nach Tier. REQ-031 und REQ-032 abgeschlossen.
+
+Datum
+2026 03 02
+
+Entscheidung
+ContractLink als polymorphe Verknüpfungs-Entity zwischen Sponsor/Supplier und externen Referenzen.
+
+Begründung
+Sponsoren und Lieferanten benötigen Verknüpfungen zu Dokumenten, Rechnungen und Events. ContractLink mit nullable sponsor_id und supplier_id ermöglicht flexible Zuordnung. LinkType Enum (Document, Invoice, Event, Other) kategorisiert die Verknüpfung.
+
+Alternativen
+Separate Verknüpfungstabellen je Entitätstyp. M:N Tabelle mit generischem Fremdschlüssel.
+
+Auswirkung
+Eine ContractLink-Tabelle für beide Entitätstypen. Validierung stellt sicher dass entweder sponsor_id oder supplier_id gesetzt ist.
+
+Datum
+2026 03 03
+
+Entscheidung
+Öffentliche Seiten unter /public/ Pfad-Präfix mit separatem Layout (PublicHeader/PublicFooter) ohne Authentifizierung.
+
+Begründung
+Klare Trennung zwischen öffentlichem und geschütztem Bereich. MainLayout (Sidebar, TopBar) wird für /public/ Pfade ausgeblendet. PublicHeader enthält Navigation, Login-Link und LanguageSwitcher. PublicFooter mit 3-Spalten Layout.
+
+Alternativen
+Separate Next.js App für öffentlichen Bereich. Gleiche Layout-Struktur mit konditionaler Auth.
+
+Auswirkung
+MainLayout prüft pathname.startsWith("/public/") und rendert isFullPageLayout. 6 öffentliche Seiten (Events, Blog, Kontakt, Sponsoren) mit eigenem Design. REQ-046, REQ-047, REQ-048, REQ-049 abgeschlossen.
+
+Datum
+2026 03 03
+
+Entscheidung
+Blog-Slug wird automatisch aus dem Titel generiert mit deutscher Umlaut-Transliteration (ä→ae, ö→oe, ü→ue, ß→ss).
+
+Begründung
+SEO-freundliche URLs für Blog-Posts. Deutsche Umlaute müssen korrekt in ASCII-kompatible Zeichen übersetzt werden da URLs keine Umlaute enthalten sollten.
+
+Alternativen
+URL-Encoding der Umlaute. Manuelle Slug-Eingabe durch den Admin.
+
+Auswirkung
+BlogPost.GenerateSlug() Methode mit Regex-basierter Transliteration. Slug ist unique Index. Bei Aktualisierung des Titels wird Slug automatisch regeneriert.
+
+Datum
+2026 03 03
+
+Entscheidung
+Honeypot-Feld als Spam-Schutz für das öffentliche Kontaktformular statt CAPTCHA.
+
+Begründung
+Honeypot ist benutzerfreundlicher als CAPTCHA. Verstecktes Feld wird von Bots ausgefüllt, vom Browser aber nicht angezeigt. Einfache Implementierung ohne externe Services.
+
+Alternativen
+Google reCAPTCHA, hCaptcha, Rate Limiting allein.
+
+Auswirkung
+ContactEndpoints POST /api/v1/public/contact prüft honeypot-Feld. Wenn ausgefüllt wird Request mit 200 OK beantwortet (Bot bemerkt nichts), aber nicht gespeichert.
+
+Datum
+2026 03 03
+
+Entscheidung
+BlogPost Tags als comma-separated String in einer Spalte statt separate Tag-Entity.
+
+Begründung
+Tags werden nur zur Anzeige und einfachen Filterung verwendet. Keine Tag-übergreifende Auswertung oder Taxonomie nötig. Einfachere Implementierung ohne zusätzliche Tabelle und Join.
+
+Alternativen
+Separate BlogTag Entity mit M:N Beziehung. JSON Array in PostgreSQL.
+
+Auswirkung
+Tags Feld in blog_posts Tabelle als String. EF Core ValueConverter für List zu comma-separated String Konvertierung. Filterung über LIKE Query.

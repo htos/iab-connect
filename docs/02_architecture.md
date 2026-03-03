@@ -50,6 +50,22 @@ Verantwortlichkeit Dashboards und Exporte
 Haupt Entities hauptsächlich Views und Query Modelle
 API Bereiche reports, exports
 
+Sponsors and Suppliers
+Verantwortlichkeit Sponsoren, Sponsoring-Pakete, Lieferanten, Vertragsverknüpfungen
+Haupt Entities Sponsor, SponsorPackage, Supplier, ContractLink
+API Bereiche sponsors, suppliers
+
+Blog
+Verantwortlichkeit News und Blog-Beiträge für öffentliche Website
+Haupt Entities BlogPost
+API Bereiche blog (admin CRUD + public read)
+
+Public Website
+Verantwortlichkeit Öffentlich zugängliche Seiten ohne Authentifizierung
+Haupt Entities ContactMessage
+API Bereiche public/contact, public/events, public/sponsors, public/blog
+Frontend Bereiche /public/* mit eigenem Layout (PublicHeader, PublicFooter)
+
 Deployment
 Lokale Entwicklung
 
