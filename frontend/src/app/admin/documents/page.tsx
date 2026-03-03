@@ -63,6 +63,9 @@ export default function AdminDocumentsPage() {
   // Subfolder counts cache: parentId -> count
   const [subfolderCounts, setSubfolderCounts] = useState<Record<string, number>>({});
 
+  // Search
+  const [searchTerm, setSearchTerm] = useState("");
+
   useEffect(() => {
     if (!authLoading && (!isAuthenticated || !isAdmin)) {
       router.push("/");
@@ -100,6 +103,16 @@ export default function AdminDocumentsPage() {
       fetchFolders(currentFolderId);
     }
   }, [isAuthenticated, isAdmin, currentFolderId, fetchFolders]);
+
+  // Client-side filtering
+  const filteredFolders = folders.filter((folder) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      folder.name.toLowerCase().includes(term) ||
+      (folder.description?.toLowerCase().includes(term) ?? false)
+    );
+  });
 
   // Navigate into a folder
   const navigateToFolder = (folder: DocumentFolderDto) => {
@@ -478,12 +491,28 @@ export default function AdminDocumentsPage() {
           </div>
         )}
 
+        {/* Search */}
+        <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder={t("documents.searchDocuments")}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors"
+            />
+          </div>
+        </div>
+
         {/* Folder Table */}
         {loading ? (
           <div className="flex justify-center py-12">
             <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-orange-600"></div>
           </div>
-        ) : folders.length === 0 ? (
+        ) : filteredFolders.length === 0 ? (
           <div className="rounded-lg bg-white p-12 text-center shadow">
             <svg
               className="mx-auto h-12 w-12 text-gray-300"
@@ -516,7 +545,7 @@ export default function AdminDocumentsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
-                {folders.map((folder) => (
+                {filteredFolders.map((folder) => (
                   <tr key={folder.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <button

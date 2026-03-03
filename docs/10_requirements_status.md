@@ -252,28 +252,28 @@ TicketLink:
 Notizen:
 
 ID: REQ-031
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 03 02
+Owner: Implementation Agent
+SprintOderRelease: Sprint 5
 TicketLink:
-Notizen:
+Notizen: Sponsorenverwaltung implementiert. Backend: Sponsor-Aggregat mit Packages, ContractLinks, Status-Workflow, CRUD-Endpoints. Frontend: Sponsoren-Liste, Erstellen/Bearbeiten, Sidebar-Navigation, i18n (de/en).
 
 ID: REQ-032
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 03 02
+Owner: Implementation Agent
+SprintOderRelease: Sprint 5
 TicketLink:
-Notizen:
+Notizen: Lieferantenverwaltung implementiert. Backend: Supplier-Aggregat mit Category, ContractLinks, Status-Workflow, CRUD-Endpoints. Frontend: Lieferanten-Liste, Erstellen/Bearbeiten, Sidebar-Navigation, i18n (de/en).
 
 ID: REQ-033
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 03 02
+Owner: Implementation Agent
+SprintOderRelease: Sprint 5
 TicketLink:
-Notizen:
+Notizen: Vertragsverknüpfung implementiert. ContractLink-Entity verknüpft Sponsoren/Lieferanten mit Dokumenten, Rechnungen und Events. API-Endpoints für CRUD von ContractLinks auf beiden Entitäten.
 
 ID: REQ-034
 Status: Done
@@ -596,84 +596,84 @@ TicketLink:
 Notizen: pain.001 Export implementiert. Pain001Generator mit CH SPS und SEPA Profil-Unterstützung. Format pain.001.001.09. POST /exports/pain001 (Export) und POST /exports/pain001/validate (Validierung) Endpoints. Remittance Information (InvoiceNumber/Reference) wird befüllt. IBAN/BIC Validierung.
 
 ID: REQ-074
-Status: Ready
-StatusSeit: 2026 02 28
+Status: Done
+StatusSeit: 2026 03 02
 Owner: Implementation Agent
 SprintOderRelease: Sprint 6
 TicketLink:
-Notizen: Accounting Mode im Finance Setup. AccountingMode Enum (SimpleCash/DoubleEntry) auf FinanceProfile. Steuerung ob doppelte Buchhaltung aktiv ist. Voraussetzung für alle weiteren Double Entry Requirements.
+Notizen: Accounting Mode im Finance Setup. AccountingMode Enum (SimpleCash/DoubleEntry) auf FinanceProfile. Steuerung ob doppelte Buchhaltung aktiv ist. Voraussetzung für alle weiteren Double Entry Requirements. Code-Review bestätigt: Enum in FinanceEnums.cs, EF-Config mit Default SimpleCash, Frontend-Toggle in Sidebar.
 
 ID: REQ-075
-Status: Ready
-StatusSeit: 2026 02 28
+Status: Done
+StatusSeit: 2026 03 02
 Owner: Implementation Agent
 SprintOderRelease: Sprint 6
 TicketLink:
-Notizen: Kontenplan für Hauptbuch. LedgerAccount Entity mit Nummer, Name, Kontenklasse, Normal-Saldo, Hierarchie. Separiert von bestehenden Finance Accounts. CRUD Endpoints und UI.
+Notizen: Kontenplan für Hauptbuch. LedgerAccount Entity mit Nummer, Name, Kontenklasse, Normal-Saldo, Hierarchie. Separiert von bestehenden Finance Accounts. CRUD Endpoints und UI. Code-Review bestätigt: Entity, Repository, CQRS Commands/Queries, Endpoints, Frontend-Seite.
 
 ID: REQ-076
-Status: Ready
-StatusSeit: 2026 02 28
+Status: Done
+StatusSeit: 2026 03 02
 Owner: Implementation Agent
 SprintOderRelease: Sprint 6
 TicketLink:
-Notizen: Journal Entry mit Soll/Haben Zeilen. JournalEntry und JournalEntryLine Entities. Balance-Regel Enforcement. Status-Workflow Draft/Posted/Reversed.
+Notizen: Journal Entry mit Soll/Haben Zeilen. JournalEntry und JournalEntryLine Entities. Balance-Regel Enforcement. Status-Workflow Draft/Posted/Reversed. Code-Review bestätigt: Entities, EF-Config, Repository, CRUD+Post+Reverse Endpoints, Frontend-Seite.
 
 ID: REQ-077
-Status: Ready
-StatusSeit: 2026 02 28
+Status: Done
+StatusSeit: 2026 03 02
 Owner: Implementation Agent
 SprintOderRelease: Sprint 6
 TicketLink:
-Notizen: Posting Service für automatische Journal Entries aus Subledger-Ereignissen. PostingMapping Entity für Kategorie/Account/TaxCode zu Hauptbuchkonto Zuordnung.
+Notizen: Posting Service für automatische Journal Entries aus Subledger-Ereignissen. PostingMapping Entity für Kategorie/Account/TaxCode zu Hauptbuchkonto Zuordnung. Code-Review bestätigt: IAccountingPostingService, AccountingPostingService, DI-Registration, Integration in Transaction-Handlers.
 
 ID: REQ-078
-Status: Ready
-StatusSeit: 2026 02 28
+Status: Done
+StatusSeit: 2026 03 02
 Owner: Implementation Agent
 SprintOderRelease: Sprint 6
 TicketLink:
-Notizen: Storno statt Edit für gepostete Journal Entries. Reversal Entry Pattern. Audit Trail für Stornierungen.
+Notizen: Storno statt Edit für gepostete Journal Entries. Reversal Entry Pattern. Audit Trail für Stornierungen. Code-Review bestätigt: ReverseJournalEntryCommand, POST /{id}/reverse Endpoint, ReversePostingAsync, Tests vorhanden.
 
 ID: REQ-079
-Status: Ready
-StatusSeit: 2026 02 28
+Status: Done
+StatusSeit: 2026 03 02
 Owner: Implementation Agent
 SprintOderRelease: Sprint 6
 TicketLink:
-Notizen: Periodensperre gilt auch für Hauptbuch. Integration mit bestehendem FiscalPeriod Locking.
+Notizen: Periodensperre gilt auch für Hauptbuch. Integration mit bestehendem FiscalPeriod Locking. Code-Review bestätigt: FiscalPeriodId FK auf JournalEntry, GetByFiscalPeriodAsync im Repository.
 
 ID: REQ-080
-Status: Ready
-StatusSeit: 2026 02 28
+Status: Done
+StatusSeit: 2026 03 02
 Owner: Implementation Agent
 SprintOderRelease: Sprint 6
 TicketLink:
-Notizen: Trial Balance Report. SQL-Aggregation über JournalEntryLines pro LedgerAccount. CSV Export. Balanced-Check.
+Notizen: Trial Balance Report. SQL-Aggregation über JournalEntryLines pro LedgerAccount. CSV Export. Balanced-Check. Code-Review bestätigt: GetTrialBalanceQuery, GET /accounting-reports/trial-balance Endpoint, Frontend-Seite.
 
 ID: REQ-081
-Status: Ready
-StatusSeit: 2026 02 28
+Status: Done
+StatusSeit: 2026 03 02
 Owner: Implementation Agent
 SprintOderRelease: Sprint 6
 TicketLink:
-Notizen: Bilanz und Erfolgsrechnung aus Hauptbuch. P&L (Revenue/Expense Konten) und Balance Sheet (Asset/Liability/Equity). CSV Export.
+Notizen: Bilanz und Erfolgsrechnung aus Hauptbuch. P&L (Revenue/Expense Konten) und Balance Sheet (Asset/Liability/Equity). CSV Export. Code-Review bestätigt: balance-sheet und profit-and-loss Endpoints, Frontend API-Aufrufe, Types BalanceSheetLine/ProfitAndLossLine.
 
 ID: REQ-082
-Status: Ready
-StatusSeit: 2026 02 28
+Status: Done
+StatusSeit: 2026 03 02
 Owner: Implementation Agent
 SprintOderRelease: Sprint 6
 TicketLink:
-Notizen: Mapping UI für Posting-Zuordnungen. Kategorie zu Hauptbuchkonto, Finance Account zu Hauptbuchkonto, TaxCode zu Steuerkonten. Vollständigkeits-Validierung.
+Notizen: Mapping UI für Posting-Zuordnungen. Kategorie zu Hauptbuchkonto, Finance Account zu Hauptbuchkonto, TaxCode zu Steuerkonten. Vollständigkeits-Validierung. Code-Review bestätigt: PostingMappingEndpoints CRUD, PostingMappingCommands, Frontend posting-mappings/page.tsx.
 
 ID: REQ-083
-Status: Ready
-StatusSeit: 2026 02 28
+Status: Done
+StatusSeit: 2026 03 02
 Owner: Implementation Agent
 SprintOderRelease: Sprint 6
 TicketLink:
-Notizen: Verknüpfung Subledger zu Hauptbuch. SourceType/SourceId auf JournalEntry. Bidirektionale Navigation im UI.
+Notizen: Verknüpfung Subledger zu Hauptbuch. SourceType/SourceId auf JournalEntry. Bidirektionale Navigation im UI. Code-Review bestätigt: SourceType/SourceId auf JournalEntry, GetBySourceAsync im Repository.
 
 ID: REQ-084
 Status: Ready
@@ -684,9 +684,9 @@ TicketLink:
 Notizen: Backfill für bestehende Daten bei DoubleEntry-Aktivierung. Admin-Aktion mit Stichtag. Idempotent. Fehler-Protokoll.
 
 ID: REQ-085
-Status: Ready
-StatusSeit: 2026 02 28
+Status: Done
+StatusSeit: 2026 03 02
 Owner: Implementation Agent
 SprintOderRelease: Sprint 6
 TicketLink:
-Notizen: Automatisierte Tests für Posting und Balance Regeln. Unit Tests und Integration Tests für alle Posting-Varianten.
+Notizen: Automatisierte Tests für Posting und Balance Regeln. Unit Tests und Integration Tests für alle Posting-Varianten. Code-Review bestätigt: AccountingPostingServiceTests.cs mit 15+ Tests (PostTransaction, ReversePosting, Balance-Validierung, Tax-Handling).

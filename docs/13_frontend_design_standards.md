@@ -13,10 +13,11 @@ This document defines the design standards for the IAB Connect frontend. All new
 7. [Buttons](#buttons)
 8. [Alerts & Notifications](#alerts--notifications)
 9. [Tables](#tables)
-10. [Navigation Elements](#navigation-elements)
-11. [Loading States](#loading-states)
-12. [Internationalization (i18n)](#internationalization-i18n)
-13. [Responsive Design](#responsive-design)
+10. [List Page Search Fields](#list-page-search-fields)
+11. [Navigation Elements](#navigation-elements)
+12. [Loading States](#loading-states)
+13. [Internationalization (i18n)](#internationalization-i18n)
+14. [Responsive Design](#responsive-design)
 
 ---
 
@@ -427,6 +428,74 @@ Use this pattern for distinct sections within a page:
   </td>
 </tr>
 ```
+
+---
+
+## List Page Search Fields
+
+**MANDATORY**: Every list/table page MUST include a search field above the data table or card grid to allow users to filter content. This ensures a consistent user experience across all modules.
+
+### Standard Search Pattern
+
+```tsx
+const [searchTerm, setSearchTerm] = useState("");
+
+// Client-side filtering (when backend doesn't support search params)
+const filteredItems = items.filter((item) => {
+  const term = searchTerm.toLowerCase();
+  return (
+    item.name.toLowerCase().includes(term) ||
+    item.email?.toLowerCase().includes(term) ||
+    // Add all relevant searchable fields
+  );
+});
+```
+
+### Search Input Placement
+
+The search field is placed between the page header and the data table/cards, alongside any filter dropdowns (e.g., status filter).
+
+```tsx
+{/* Filters Row */}
+<div className="flex flex-col md:flex-row gap-4 mb-6">
+  <div className="flex-1">
+    <input
+      type="text"
+      placeholder={t("module.searchPlaceholder")}
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors"
+    />
+  </div>
+  <select
+    value={statusFilter}
+    onChange={(e) => setStatusFilter(e.target.value)}
+    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors"
+  >
+    <option value="">{t("module.allStatuses")}</option>
+    {/* Status options */}
+  </select>
+</div>
+```
+
+### i18n Key Convention
+
+Every module must provide a `searchPlaceholder` key in its i18n section:
+
+```json
+{
+  "module": {
+    "searchPlaceholder": "Search items..."
+  }
+}
+```
+
+### Requirements
+
+- **All list pages** must have a search input (members, events, sponsors, suppliers, invoices, transactions, payments, email campaigns, etc.)
+- Search should filter across **all user-visible text columns** (name, email, phone, category, etc.)
+- Use `outline-none transition-colors` on search inputs (same as all other form inputs)
+- Use `rounded-lg` with `focus:ring-2 focus:ring-orange-500 focus:border-orange-500`
 
 ---
 

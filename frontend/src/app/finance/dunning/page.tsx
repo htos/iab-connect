@@ -39,6 +39,7 @@ export default function DunningPage() {
   tRef.current = t;
 
   const [notices, setNotices] = useState<DunningNotice[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [overdueInvoices, setOverdueInvoices] = useState<OverdueInvoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -180,6 +181,19 @@ export default function DunningPage() {
     );
   };
 
+  const filteredNotices = notices.filter((n) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      n.invoiceNumber.toLowerCase().includes(term) ||
+      n.recipientName.toLowerCase().includes(term) ||
+      String(n.level).includes(term) ||
+      n.status.toLowerCase().includes(term) ||
+      new Date(n.date).toLocaleDateString("de-CH").includes(term) ||
+      new Date(n.dueDate).toLocaleDateString("de-CH").includes(term)
+    );
+  });
+
   if (!canReadFinance) return null;
 
   return (
@@ -211,6 +225,22 @@ export default function DunningPage() {
           </div>
         )}
 
+        {/* Search */}
+        <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder={t("searchDunning")}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors"
+            />
+          </div>
+        </div>
+
         {/* Loading Spinner */}
         {loading && (
           <div className="flex justify-center py-12">
@@ -219,14 +249,14 @@ export default function DunningPage() {
         )}
 
         {/* Empty State */}
-        {!loading && notices.length === 0 && (
+        {!loading && filteredNotices.length === 0 && (
           <div className="rounded-xl bg-white p-6 text-center text-gray-500 shadow-sm">
             {t("noDunningNotices")}
           </div>
         )}
 
         {/* Dunning Notices Table */}
-        {!loading && notices.length > 0 && (
+        {!loading && filteredNotices.length > 0 && (
           <div className="overflow-x-auto rounded-xl bg-white p-6 shadow-sm">
             <table className="w-full text-left">
               <thead>
@@ -245,7 +275,7 @@ export default function DunningPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {notices.map((notice) => (
+                {filteredNotices.map((notice) => (
                   <tr key={notice.id} className="text-sm">
                     <td className="py-3 font-medium text-gray-900">
                       {notice.invoiceNumber}

@@ -7,7 +7,7 @@
 
 import { useAuth } from "@/lib/auth";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import {
@@ -29,6 +29,7 @@ export default function EmailCampaignsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [statusFilter, setStatusFilter] = useState<EmailCampaignStatus | "">("");
+  const [searchTerm, setSearchTerm] = useState("");
 
   const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
   const accessTokenRef = useRef(accessToken);
@@ -85,6 +86,17 @@ export default function EmailCampaignsPage() {
       fetchCampaigns(page, statusFilter);
     }
   }, [accessToken, isVorstand, isAdmin, page, statusFilter, fetchCampaigns]);
+
+  const filteredCampaigns = useMemo(() => {
+    if (!searchTerm.trim()) return campaigns;
+    const term = searchTerm.toLowerCase();
+    return campaigns.filter((c) =>
+      c.name.toLowerCase().includes(term) ||
+      c.subject.toLowerCase().includes(term) ||
+      c.status.toLowerCase().includes(term) ||
+      (c.createdByName && c.createdByName.toLowerCase().includes(term))
+    );
+  }, [campaigns, searchTerm]);
 
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(t("deleteConfirm", { name }))) return;
@@ -147,7 +159,19 @@ export default function EmailCampaignsPage() {
 
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
-        <div className="flex flex-wrap gap-4">
+        <div className="flex flex-wrap gap-4 items-end">
+          <div className="relative flex-1">
+            <svg className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder={t("searchCampaigns")}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors"
+            />
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t("status")}</label>
             <select
@@ -203,14 +227,14 @@ export default function EmailCampaignsPage() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {campaigns.length === 0 ? (
+            {filteredCampaigns.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
                   {t("noCampaignsFound")}
                 </td>
               </tr>
             ) : (
-              campaigns.map((campaign) => (
+              filteredCampaigns.map((campaign) => (
                 <tr key={campaign.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <Link href={`/communication/email-campaigns/${campaign.id}`} className="text-blue-600 hover:underline font-medium">

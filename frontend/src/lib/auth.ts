@@ -278,7 +278,7 @@ export function useApiClient() {
     [accessToken, isAuthenticated, baseUrl]
   );
 
-  return {
+  return useMemo(() => ({
     get: <T>(endpoint: string) => fetchApi<T>(endpoint, { method: "GET" }),
     post: <T>(endpoint: string, body: unknown) =>
       fetchApi<T>(endpoint, { method: "POST", body: JSON.stringify(body) }),
@@ -288,5 +288,5 @@ export function useApiClient() {
       fetchApi<T>(endpoint, { method: "DELETE" }),
     upload: <T>(endpoint: string, formData: FormData) =>
       uploadFile<T>(endpoint, formData),
-  };
+  }), [fetchApi, uploadFile]);
 }

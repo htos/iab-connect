@@ -65,6 +65,7 @@ export default function JournalEntriesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<JournalEntryStatus | "">("");
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Create / Edit modal
   const [modalOpen, setModalOpen] = useState(false);
@@ -280,6 +281,17 @@ export default function JournalEntriesPage() {
     );
   };
 
+  const filteredEntries = entries.filter((entry) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      (entry.description ?? "").toLowerCase().includes(term) ||
+      (entry.reference ?? "").toLowerCase().includes(term) ||
+      (entry.sourceType ?? "").toLowerCase().includes(term) ||
+      new Date(entry.date).toLocaleDateString("de-CH").includes(term)
+    );
+  });
+
   if (!canReadFinance) return null;
 
   return (
@@ -299,7 +311,31 @@ export default function JournalEntriesPage() {
             <h1 className="text-2xl font-bold text-gray-900">{ta("journalEntries")}</h1>
             <p className="mt-1 text-sm text-gray-500">{ta("journalEntriesSubtitle")}</p>
           </div>
-          <div className="flex items-center gap-3">
+          {canWriteFinance && (
+            <button
+              onClick={openCreate}
+              className="rounded-lg bg-orange-600 px-4 py-2 font-medium text-white transition-colors hover:bg-orange-700"
+            >
+              {ta("newJournalEntry")}
+            </button>
+          )}
+        </div>
+
+        {/* Filters */}
+        <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+          <div className="flex flex-wrap gap-4 items-end">
+            <div className="relative flex-1">
+              <svg className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                placeholder={ta("searchJournalEntries")}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors"
+              />
+            </div>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as JournalEntryStatus | "")}
@@ -310,14 +346,6 @@ export default function JournalEntriesPage() {
               <option value="Posted">{ta("statusPosted")}</option>
               <option value="Reversed">{ta("statusReversed")}</option>
             </select>
-            {canWriteFinance && (
-              <button
-                onClick={openCreate}
-                className="rounded-lg bg-orange-600 px-4 py-2 font-medium text-white transition-colors hover:bg-orange-700"
-              >
-                {ta("newJournalEntry")}
-              </button>
-            )}
           </div>
         </div>
 
@@ -334,12 +362,12 @@ export default function JournalEntriesPage() {
         )}
 
         {/* Empty */}
-        {!loading && entries.length === 0 && (
+        {!loading && filteredEntries.length === 0 && (
           <div className="rounded-xl bg-white p-6 text-center text-gray-500 shadow-sm">{ta("noJournalEntries")}</div>
         )}
 
         {/* Table */}
-        {!loading && entries.length > 0 && (
+        {!loading && filteredEntries.length > 0 && (
           <div className="overflow-x-auto rounded-xl bg-white p-6 shadow-sm">
             <table className="w-full text-left">
               <thead>
@@ -353,7 +381,7 @@ export default function JournalEntriesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {entries.map((entry) => (
+                {filteredEntries.map((entry) => (
                   <tr key={entry.id} className="text-sm">
                     <td className="py-3 text-gray-900">{new Date(entry.date).toLocaleDateString("de-CH")}</td>
                     <td className="py-3 text-gray-900 max-w-xs truncate">{entry.description}</td>

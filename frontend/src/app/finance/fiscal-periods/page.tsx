@@ -265,6 +265,7 @@ export default function FiscalPeriodsPage() {
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [periods, setPeriods] = useState<FiscalPeriod[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -481,6 +482,22 @@ export default function FiscalPeriodsPage() {
   // Year options
   const yearOptions = Array.from({ length: 7 }, (_, i) => currentYear - 3 + i);
 
+  // Client-side filtering
+  const filteredPeriods = periods.filter((period) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    const statusLabel =
+      period.status === "Open" ? t("statusOpen") :
+      period.status === "Closed" ? t("statusClosed") :
+      period.status === "Locked" ? t("statusLocked") : period.status;
+    return (
+      period.name.toLowerCase().includes(term) ||
+      statusLabel.toLowerCase().includes(term) ||
+      formatDate(period.startDate).toLowerCase().includes(term) ||
+      formatDate(period.endDate).toLowerCase().includes(term)
+    );
+  });
+
   // Auth guard
   if (authLoading) {
     return (
@@ -635,12 +652,28 @@ export default function FiscalPeriodsPage() {
           </div>
         )}
 
+        {/* Search */}
+        <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder={t("searchFiscalPeriods")}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors"
+            />
+          </div>
+        </div>
+
         {/* Loading */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-orange-600 border-t-transparent" />
           </div>
-        ) : periods.length === 0 ? (
+        ) : filteredPeriods.length === 0 ? (
           /* Empty state */
           <div className="bg-white rounded-xl shadow-sm p-12 text-center">
             <CalendarIcon className="mx-auto h-12 w-12 text-gray-300" />
@@ -691,7 +724,7 @@ export default function FiscalPeriodsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
-                  {periods.map((period) => (
+                  {filteredPeriods.map((period) => (
                     <tr key={period.id} className="hover:bg-gray-50 transition-colors">
                       <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
                         {period.name}

@@ -64,6 +64,7 @@ export default function PostingMappingsPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [modeChecked, setModeChecked] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Guard: redirect if DoubleEntry is not enabled
   useEffect(() => {
@@ -231,6 +232,23 @@ export default function PostingMappingsPage() {
     );
   };
 
+  const filteredMappings = mappings.filter((m) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    const sourceLabel = getSourceLabel(m).toLowerCase();
+    const targetAccount = `${m.ledgerAccountNumber} – ${m.ledgerAccountName}`.toLowerCase();
+    const taxAccount = m.taxLedgerAccountNumber
+      ? `${m.taxLedgerAccountNumber} – ${m.taxLedgerAccountName}`.toLowerCase()
+      : "";
+    const typeLabel = m.mappingType.toLowerCase();
+    return (
+      sourceLabel.includes(term) ||
+      targetAccount.includes(term) ||
+      taxAccount.includes(term) ||
+      typeLabel.includes(term)
+    );
+  });
+
   if (!canReadFinance) return null;
 
   return (
@@ -257,6 +275,22 @@ export default function PostingMappingsPage() {
           )}
         </div>
 
+        {/* Search */}
+        <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder={ta("searchPostingMappings")}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors"
+            />
+          </div>
+        </div>
+
         {/* Error */}
         {error && (
           <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">{error}</div>
@@ -270,12 +304,12 @@ export default function PostingMappingsPage() {
         )}
 
         {/* Empty */}
-        {!loading && mappings.length === 0 && (
+        {!loading && filteredMappings.length === 0 && (
           <div className="rounded-xl bg-white p-6 text-center text-gray-500 shadow-sm">{ta("noMappings")}</div>
         )}
 
         {/* Table */}
-        {!loading && mappings.length > 0 && (
+        {!loading && filteredMappings.length > 0 && (
           <div className="overflow-x-auto rounded-xl bg-white p-6 shadow-sm">
             <table className="w-full text-left">
               <thead>
@@ -288,7 +322,7 @@ export default function PostingMappingsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {mappings.map((m) => (
+                {filteredMappings.map((m) => (
                   <tr key={m.id} className="text-sm">
                     <td className="py-3">{typeBadge(m.mappingType)}</td>
                     <td className="py-3 text-gray-900">{getSourceLabel(m)}</td>

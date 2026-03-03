@@ -51,6 +51,7 @@ export default function BankImportPage() {
   apiRef.current = api;
 
   const [imports, setImports] = useState<BankImport[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -237,6 +238,17 @@ export default function BankImportPage() {
     [viewingImport, viewImportItems]
   );
 
+  const filteredImports = imports.filter((imp) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      imp.fileName?.toLowerCase().includes(term) ||
+      imp.status?.toLowerCase().includes(term) ||
+      new Date(imp.importDate).toLocaleDateString("de-CH").includes(term) ||
+      String(imp.itemCount).includes(term)
+    );
+  });
+
   const statusBadge = (status: string) => {
     const map: Record<string, { cls: string; label: () => string }> = {
       Pending: {
@@ -398,13 +410,31 @@ export default function BankImportPage() {
           </div>
         )}
 
+        {/* Search */}
+        {!loading && !viewingImport && (
+          <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+            <div className="relative">
+              <svg className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                placeholder={t("searchBankImports")}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors"
+              />
+            </div>
+          </div>
+        )}
+
         {/* Import History */}
         {!loading && !viewingImport && (
           <div className="rounded-xl bg-white p-6 shadow-sm">
             <h2 className="mb-4 text-lg font-semibold text-gray-900">
               {t("importHistory")}
             </h2>
-            {imports.length === 0 ? (
+            {filteredImports.length === 0 ? (
               <div className="py-12 text-center text-gray-500">
                 {t("noImports")}
               </div>
@@ -431,7 +461,7 @@ export default function BankImportPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {imports.map((imp) => (
+                    {filteredImports.map((imp) => (
                       <tr key={imp.id} className="hover:bg-gray-50">
                         <td className="px-4 py-3 text-sm text-gray-900">
                           {new Date(imp.importDate).toLocaleDateString("de-CH")}

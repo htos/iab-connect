@@ -40,6 +40,17 @@ export default function ReceiptsPage() {
 
   const [file, setFile] = useState<File | null>(null);
   const [notes, setNotes] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredReceipts = receipts.filter((r) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      r.fileName.toLowerCase().includes(term) ||
+      r.notes?.toLowerCase().includes(term) ||
+      new Date(r.createdAt).toLocaleDateString("de-CH").includes(term)
+    );
+  });
 
   const fetchReceipts = useCallback(async () => {
     try {
@@ -181,6 +192,22 @@ export default function ReceiptsPage() {
           )}
         </div>
 
+        {/* Search */}
+        <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder={t("searchReceipts")}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors"
+            />
+          </div>
+        </div>
+
         {/* Error Banner */}
         {error && (
           <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
@@ -202,16 +229,16 @@ export default function ReceiptsPage() {
         )}
 
         {/* Empty State */}
-        {!loading && receipts.length === 0 && (
+        {!loading && filteredReceipts.length === 0 && (
           <div className="rounded-xl bg-white p-6 text-center text-gray-500 shadow-sm">
             {t("noReceipts")}
           </div>
         )}
 
         {/* Receipts Grid */}
-        {!loading && receipts.length > 0 && (
+        {!loading && filteredReceipts.length > 0 && (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {receipts.map((receipt) => (
+            {filteredReceipts.map((receipt) => (
               <div
                 key={receipt.id}
                 className="flex flex-col gap-3 rounded-xl bg-white p-6 shadow-sm"

@@ -42,6 +42,7 @@ const emptyForm: ClaimFormData = {
 
 export default function ExpenseClaimsPage() {
   const t = useTranslations("expenseClaims");
+  const tFinance = useTranslations("finance");
   const { canReadFinance, canWriteFinance, isKassier, isVorstand, isAdmin, user } =
     useAuth();
   const api = useApiClient();
@@ -59,6 +60,7 @@ export default function ExpenseClaimsPage() {
   // Filters
   const [statusFilter, setStatusFilter] = useState<ExpenseClaimStatus | "all">("all");
   const [myClaimsOnly, setMyClaimsOnly] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Create/Edit modal
   const [showFormModal, setShowFormModal] = useState(false);
@@ -251,6 +253,17 @@ export default function ExpenseClaimsPage() {
   const canDelete = (c: ExpenseClaim) =>
     c.status === "Draft" && (c.claimantId === user?.email || isAdmin);
 
+  const filteredClaims = claims.filter((c) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      c.title.toLowerCase().includes(term) ||
+      (c.description && c.description.toLowerCase().includes(term)) ||
+      (c.claimantName && c.claimantName.toLowerCase().includes(term)) ||
+      formatAmount(c.amount, c.currency).toLowerCase().includes(term)
+    );
+  });
+
   if (!canReadFinance) {
     return (
       <div className="flex h-64 items-center justify-center text-gray-500">
@@ -298,7 +311,20 @@ export default function ExpenseClaimsPage() {
         )}
 
         {/* Filters */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative flex-1">
+            <svg className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder={tFinance("searchExpenseClaims")}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors"
+            />
+          </div>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as ExpenseClaimStatus | "all")}
@@ -319,8 +345,9 @@ export default function ExpenseClaimsPage() {
               onChange={(e) => setMyClaimsOnly(e.target.checked)}
               className="rounded border-gray-300 text-orange-600 focus:ring-orange-500"
             />
-            {t("myClaimsOnly")}
-          </label>
+              {t("myClaimsOnly")}
+            </label>
+          </div>
         </div>
 
         {/* Loading */}
@@ -331,7 +358,7 @@ export default function ExpenseClaimsPage() {
         )}
 
         {/* Claims Table */}
-        {!loading && claims.length === 0 && (
+        {!loading && filteredClaims.length === 0 && (
           <div className="rounded-xl bg-white p-12 text-center shadow-sm">
             <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" />
@@ -341,7 +368,7 @@ export default function ExpenseClaimsPage() {
           </div>
         )}
 
-        {!loading && claims.length > 0 && (
+        {!loading && filteredClaims.length > 0 && (
           <div className="overflow-hidden rounded-xl bg-white shadow-sm">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
@@ -368,7 +395,7 @@ export default function ExpenseClaimsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {claims.map((c) => (
+                  {filteredClaims.map((c) => (
                     <tr
                       key={c.id}
                       className="cursor-pointer hover:bg-gray-50"

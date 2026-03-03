@@ -549,7 +549,7 @@ namespace IabConnect.Infrastructure.Migrations
 
                     b.HasIndex("Name");
 
-                    b.ToTable("EmailTemplates", (string)null);
+                    b.ToTable("EmailTemplates");
                 });
 
             modelBuilder.Entity("IabConnect.Domain.Communication.EmailTemplateVariable", b =>
@@ -582,7 +582,7 @@ namespace IabConnect.Infrastructure.Migrations
 
                     b.HasIndex("EmailTemplateId");
 
-                    b.ToTable("EmailTemplateVariable", (string)null);
+                    b.ToTable("EmailTemplateVariable");
                 });
 
             modelBuilder.Entity("IabConnect.Domain.Documents.Document", b =>
@@ -3517,6 +3517,325 @@ namespace IabConnect.Infrastructure.Migrations
                     b.ToTable("deletion_requests", (string)null);
                 });
 
+            modelBuilder.Entity("IabConnect.Domain.Sponsors.ContractLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("LinkType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("link_type");
+
+                    b.Property<Guid?>("SponsorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sponsor_id");
+
+                    b.Property<Guid?>("SupplierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("supplier_id");
+
+                    b.Property<Guid>("TargetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("target_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SponsorId")
+                        .HasDatabaseName("ix_contract_links_sponsor_id");
+
+                    b.HasIndex("SupplierId")
+                        .HasDatabaseName("ix_contract_links_supplier_id");
+
+                    b.HasIndex("TargetId")
+                        .HasDatabaseName("ix_contract_links_target_id");
+
+                    b.ToTable("contract_links", (string)null);
+                });
+
+            modelBuilder.Entity("IabConnect.Domain.Sponsors.Sponsor", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateOnly?>("AgreementEnd")
+                        .HasColumnType("date")
+                        .HasColumnName("agreement_end");
+
+                    b.Property<DateOnly?>("AgreementStart")
+                        .HasColumnType("date")
+                        .HasColumnName("agreement_start");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("city");
+
+                    b.Property<string>("CompanyName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("company_name");
+
+                    b.Property<string>("ContactPerson")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("contact_person");
+
+                    b.Property<string>("Country")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("country");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("email");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("notes");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("phone");
+
+                    b.Property<string>("PostalCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("postal_code");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Street")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("street");
+
+                    b.Property<string>("Tier")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("tier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<string>("Website")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("website");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyName")
+                        .HasDatabaseName("ix_sponsors_company_name");
+
+                    b.HasIndex("IsDeleted")
+                        .HasDatabaseName("ix_sponsors_is_deleted");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_sponsors_status");
+
+                    b.ToTable("sponsors", (string)null);
+                });
+
+            modelBuilder.Entity("IabConnect.Domain.Sponsors.SponsorPackage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal?>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<string>("Currency")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("SponsorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sponsor_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SponsorId")
+                        .HasDatabaseName("ix_sponsor_packages_sponsor_id");
+
+                    b.ToTable("sponsor_packages", (string)null);
+                });
+
+            modelBuilder.Entity("IabConnect.Domain.Sponsors.Supplier", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Category")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("category");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("city");
+
+                    b.Property<string>("CompanyName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("company_name");
+
+                    b.Property<string>("ContactPerson")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("contact_person");
+
+                    b.Property<string>("Country")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("country");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("email");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("notes");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("phone");
+
+                    b.Property<string>("PostalCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("postal_code");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Street")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("street");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<string>("Website")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("website");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyName")
+                        .HasDatabaseName("ix_suppliers_company_name");
+
+                    b.HasIndex("IsDeleted")
+                        .HasDatabaseName("ix_suppliers_is_deleted");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_suppliers_status");
+
+                    b.ToTable("suppliers", (string)null);
+                });
+
             modelBuilder.Entity("IabConnect.Domain.Communication.EmailRecipient", b =>
                 {
                     b.HasOne("IabConnect.Domain.Communication.EmailCampaign", null)
@@ -3844,13 +4163,35 @@ namespace IabConnect.Infrastructure.Migrations
 
                             b1.HasKey("MemberId");
 
-                            b1.ToTable("members", (string)null);
+                            b1.ToTable("members");
 
                             b1.WithOwner()
                                 .HasForeignKey("MemberId");
                         });
 
                     b.Navigation("Address")
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("IabConnect.Domain.Sponsors.ContractLink", b =>
+                {
+                    b.HasOne("IabConnect.Domain.Sponsors.Sponsor", null)
+                        .WithMany("ContractLinks")
+                        .HasForeignKey("SponsorId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("IabConnect.Domain.Sponsors.Supplier", null)
+                        .WithMany("ContractLinks")
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Cascade);
+                });
+
+            modelBuilder.Entity("IabConnect.Domain.Sponsors.SponsorPackage", b =>
+                {
+                    b.HasOne("IabConnect.Domain.Sponsors.Sponsor", null)
+                        .WithMany("Packages")
+                        .HasForeignKey("SponsorId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
@@ -3893,6 +4234,18 @@ namespace IabConnect.Infrastructure.Migrations
             modelBuilder.Entity("IabConnect.Domain.Finance.JournalEntry", b =>
                 {
                     b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("IabConnect.Domain.Sponsors.Sponsor", b =>
+                {
+                    b.Navigation("ContractLinks");
+
+                    b.Navigation("Packages");
+                });
+
+            modelBuilder.Entity("IabConnect.Domain.Sponsors.Supplier", b =>
+                {
+                    b.Navigation("ContractLinks");
                 });
 #pragma warning restore 612, 618
         }

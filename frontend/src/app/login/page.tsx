@@ -75,10 +75,10 @@ export default function LoginPage() {
         {/* Logo and Title */}
         <div className="text-center mb-8">
           <div className="mx-auto h-20 w-20 bg-orange-600 rounded-full flex items-center justify-center mb-4">
-            <span className="text-3xl text-white font-bold">IAB</span>
+            <span className="text-3xl text-white font-bold">ACA</span>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">IAB Connect</h1>
-          <p className="text-gray-600 mt-2">Indischer Kulturverein Bern</p>
+          <h1 className="text-3xl font-bold text-gray-900">Association Connect</h1>
+          <p className="text-gray-600 mt-2">Vereins Applikation</p>
         </div>
 
         {/* Login Card */}
@@ -173,7 +173,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <p className="mt-8 text-center text-sm text-gray-500">
-          © {new Date().getFullYear()} Indischer Kulturverein Bern
+          © {new Date().getFullYear()} Association Connect
         </p>
       </div>
 

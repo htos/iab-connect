@@ -22,6 +22,7 @@ Keine verschachtelten Listen. Kein Fettdruck. Klartext.
 
 Arbeitsweise
 
+0. Dateien aus 99_Requirements_Aanlysis und TestCases kannst du ignorieren
 1. Immer zuerst diese Datei lesen
 2. Danach prüfen, welche docs Dateien existieren
 3. Fehlende Dateien erstellen, bestehende konsistent aktualisieren

@@ -115,6 +115,7 @@ export default function ActivityAreasPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -313,6 +314,17 @@ export default function ActivityAreasPage() {
   const totalExpense = reportRows.reduce((sum, r) => sum + r.totalExpense, 0);
   const totalBalance = reportRows.reduce((sum, r) => sum + r.balance, 0);
 
+  // --- Client-side search filtering ---
+  const filteredAreas = areas.filter((area) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      area.name.toLowerCase().includes(term) ||
+      area.code.toLowerCase().includes(term) ||
+      (area.description?.toLowerCase().includes(term) ?? false)
+    );
+  });
+
   // --- Render ---
 
   if (authLoading || loading) {
@@ -400,8 +412,23 @@ export default function ActivityAreasPage() {
 
         {/* ====== MANAGE TAB ====== */}
         {activeTab === "manage" && (
+          <>
+          <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+            <div className="relative">
+              <svg className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                placeholder={t("searchActivityAreas")}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors"
+              />
+            </div>
+          </div>
           <div className="overflow-hidden rounded-xl bg-white shadow-sm">
-            {areas.length === 0 ? (
+            {filteredAreas.length === 0 ? (
               <div className="p-12 text-center">
                 <p className="text-lg font-medium text-gray-900">
                   {t("noActivityAreas")}
@@ -440,7 +467,7 @@ export default function ActivityAreasPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
-                  {areas.map((area) => (
+                  {filteredAreas.map((area) => (
                     <tr key={area.id} className={`hover:bg-gray-50 ${!area.isActive ? "opacity-60" : ""}`}>
                       <td className="whitespace-nowrap px-6 py-4 text-sm font-mono font-medium text-gray-900">
                         {area.code}
@@ -536,6 +563,7 @@ export default function ActivityAreasPage() {
               </table>
             )}
           </div>
+          </>
         )}
 
         {/* ====== REPORT TAB ====== */}

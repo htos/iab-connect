@@ -188,6 +188,7 @@ export default function TransactionsPage() {
   const [filterType, setFilterType] = useState<"" | "Income" | "Expense">("");
   const [filterAccountId, setFilterAccountId] = useState("");
   const [filterCategoryId, setFilterCategoryId] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Modal state
   const [editingTransaction, setEditingTransaction] =
@@ -565,6 +566,18 @@ export default function TransactionsPage() {
 
         {/* Filters */}
         <div className="rounded-xl bg-white p-6 shadow-sm">
+          <div className="relative mb-4">
+            <svg className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder={t("searchTransactions")}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors"
+            />
+          </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
             {/* Date from */}
             <div>
@@ -656,7 +669,24 @@ export default function TransactionsPage() {
             <div className="flex items-center justify-center py-12">
               <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-orange-600"></div>
             </div>
-          ) : transactions.length === 0 ? (
+          ) : (() => {
+            const lowerSearch = searchTerm.toLowerCase();
+            const filteredTransactions = searchTerm
+              ? transactions.filter((tx) => {
+                  const amountStr = tx.amount.toFixed(2);
+                  return (
+                    tx.description.toLowerCase().includes(lowerSearch) ||
+                    tx.categoryName.toLowerCase().includes(lowerSearch) ||
+                    tx.accountName.toLowerCase().includes(lowerSearch) ||
+                    (tx.reference && tx.reference.toLowerCase().includes(lowerSearch)) ||
+                    (tx.notes && tx.notes.toLowerCase().includes(lowerSearch)) ||
+                    (tx.activityAreaName && tx.activityAreaName.toLowerCase().includes(lowerSearch)) ||
+                    (tx.activityAreaCode && tx.activityAreaCode.toLowerCase().includes(lowerSearch)) ||
+                    amountStr.includes(lowerSearch)
+                  );
+                })
+              : transactions;
+            return filteredTransactions.length === 0 ? (
             <div className="py-12 text-center text-gray-500">
               {t("noTransactions")}
             </div>
@@ -697,7 +727,7 @@ export default function TransactionsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {transactions.map((tx) => (
+                  {filteredTransactions.map((tx) => (
                     <tr
                       key={tx.id}
                       className="transition-colors hover:bg-gray-50"
@@ -803,7 +833,8 @@ export default function TransactionsPage() {
                 </tbody>
               </table>
             </div>
-          )}
+          ); })()
+          }
         </div>
       </div>
 

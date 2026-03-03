@@ -149,6 +149,7 @@ export default function InvoicesPage() {
   const [filterStatus, setFilterStatus] = useState<StatusFilter>("");
   const [filterFrom, setFilterFrom] = useState("");
   const [filterTo, setFilterTo] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Confirmations
   const [confirmSendId, setConfirmSendId] = useState<string | null>(null);
@@ -261,6 +262,19 @@ export default function InvoicesPage() {
     return map[status];
   }, []);
 
+  // --- Client-side search filtering ---
+
+  const filteredInvoices = invoices.filter((inv) => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      inv.invoiceNumber.toLowerCase().includes(term) ||
+      inv.recipientName.toLowerCase().includes(term) ||
+      formatCHF(inv.total).toLowerCase().includes(term) ||
+      inv.status.toLowerCase().includes(term)
+    );
+  });
+
   // --- Render guards ---
 
   if (authLoading) {
@@ -309,6 +323,20 @@ export default function InvoicesPage() {
       {/* Filters */}
       <div className="rounded-xl bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-end gap-4">
+          {/* Search */}
+          <div className="relative flex-1">
+            <svg className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder={t("invoicesSearchPlaceholder")}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors"
+            />
+          </div>
+
           {/* Status filter */}
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700">
@@ -362,7 +390,7 @@ export default function InvoicesPage() {
           <div className="flex items-center justify-center py-12">
             <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-orange-600" />
           </div>
-        ) : invoices.length === 0 ? (
+        ) : filteredInvoices.length === 0 ? (
           <div className="py-12 text-center text-gray-500">
             {t("noInvoices")}
           </div>
@@ -387,7 +415,7 @@ export default function InvoicesPage() {
                 </tr>
               </thead>
               <tbody>
-                {invoices.map((invoice) => (
+                {filteredInvoices.map((invoice) => (
                   <tr
                     key={invoice.id}
                     className="border-b border-gray-100 hover:bg-gray-50"

@@ -63,6 +63,7 @@ export default function PaymentsPage() {
   apiRef.current = api;
 
   const [activeTab, setActiveTab] = useState<"open" | "all">("open");
+  const [searchTerm, setSearchTerm] = useState("");
   const [payments, setPayments] = useState<Payment[]>([]);
   const [openInvoices, setOpenInvoices] = useState<OpenInvoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -480,6 +481,22 @@ export default function PaymentsPage() {
           </nav>
         </div>
 
+        {/* Search */}
+        <div className="bg-white rounded-xl shadow-sm p-4">
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder={t("searchPayments")}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors"
+            />
+          </div>
+        </div>
+
         {/* Loading */}
         {loading && (
           <div className="flex h-48 items-center justify-center">
@@ -488,9 +505,21 @@ export default function PaymentsPage() {
         )}
 
         {/* Open Items Tab */}
-        {!loading && activeTab === "open" && (
+        {!loading && activeTab === "open" && (() => {
+          const term = searchTerm.toLowerCase();
+          const filteredOpen = term
+            ? openInvoices.filter((inv) =>
+                inv.invoiceNumber.toLowerCase().includes(term) ||
+                inv.recipientName.toLowerCase().includes(term) ||
+                formatCHF(inv.total).toLowerCase().includes(term) ||
+                formatCHF(inv.paidAmount).toLowerCase().includes(term) ||
+                formatCHF(inv.total - inv.paidAmount).toLowerCase().includes(term) ||
+                new Date(inv.dueDate).toLocaleDateString("de-CH").includes(term)
+              )
+            : openInvoices;
+          return (
           <div className="rounded-xl bg-white p-6 shadow-sm">
-            {openInvoices.length === 0 ? (
+            {filteredOpen.length === 0 ? (
               <div className="py-12 text-center text-gray-500">
                 {t("noOpenItems")}
               </div>
@@ -525,7 +554,7 @@ export default function PaymentsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {openInvoices.map((inv) => (
+                    {filteredOpen.map((inv) => (
                       <tr key={inv.id} className="hover:bg-gray-50">
                         <td className="px-4 py-3 text-sm text-gray-900">
                           {inv.invoiceNumber}
@@ -562,12 +591,27 @@ export default function PaymentsPage() {
               </div>
             )}
           </div>
-        )}
+          );
+        })()}
 
         {/* All Payments Tab */}
-        {!loading && activeTab === "all" && (
+        {!loading && activeTab === "all" && (() => {
+          const term = searchTerm.toLowerCase();
+          const filteredPayments = term
+            ? payments.filter((p) =>
+                formatCHF(p.amount).toLowerCase().includes(term) ||
+                p.reference.toLowerCase().includes(term) ||
+                p.invoiceNumber.toLowerCase().includes(term) ||
+                p.notes.toLowerCase().includes(term) ||
+                p.direction.toLowerCase().includes(term) ||
+                p.method.toLowerCase().includes(term) ||
+                p.status.toLowerCase().includes(term) ||
+                new Date(p.date).toLocaleDateString("de-CH").includes(term)
+              )
+            : payments;
+          return (
           <div className="rounded-xl bg-white p-6 shadow-sm">
-            {payments.length === 0 ? (
+            {filteredPayments.length === 0 ? (
               <div className="py-12 text-center text-gray-500">
                 {t("noPayments")}
               </div>
@@ -606,7 +650,7 @@ export default function PaymentsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {payments.map((p) => (
+                    {filteredPayments.map((p) => (
                       <tr key={p.id} className="hover:bg-gray-50">
                         <td className="px-4 py-3 text-sm text-gray-900">
                           {new Date(p.date).toLocaleDateString("de-CH")}
@@ -753,7 +797,8 @@ export default function PaymentsPage() {
               </div>
             )}
           </div>
-        )}
+          );
+        })()}
 
         {/* Record / Edit Payment Modal */}
         {showModal && (
