@@ -334,6 +334,48 @@ public sealed class EventRegistration : Entity
     }
 
     /// <summary>
+    /// Setzt den No-Show-Status zurück auf Bestätigt.
+    /// </summary>
+    public void RevertNoShow()
+    {
+        if (Status != RegistrationStatus.NoShow)
+            throw new InvalidOperationException("Can only revert a no-show registration");
+
+        IsNoShow = false;
+        Status = RegistrationStatus.Confirmed;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Setzt den Check-In-Status zurück auf Bestätigt.
+    /// </summary>
+    public void RevertCheckIn()
+    {
+        if (Status != RegistrationStatus.CheckedIn)
+            throw new InvalidOperationException("Can only revert a checked-in registration");
+
+        CheckedInAt = null;
+        CheckedInBy = null;
+        Status = RegistrationStatus.Confirmed;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Setzt die Stornierung zurück auf Bestätigt.
+    /// </summary>
+    public void RevertCancellation()
+    {
+        if (Status != RegistrationStatus.Cancelled)
+            throw new InvalidOperationException("Can only revert a cancelled registration");
+
+        CancelledAt = null;
+        CancellationReason = null;
+        CancelledByParticipant = false;
+        Status = RegistrationStatus.Confirmed;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
     /// Verschiebt auf die Warteliste.
     /// </summary>
     public void MoveToWaitlist(int position)

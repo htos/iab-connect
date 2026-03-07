@@ -460,6 +460,27 @@ export async function markRegistrationAsNoShow(
   return apiPost<EventRegistrationDto>(`/events/${eventId}/registrations/${registrationId}/no-show`, {});
 }
 
+export async function revertRegistrationNoShow(
+  eventId: string,
+  registrationId: string
+): Promise<ApiResult<EventRegistrationDto>> {
+  return apiPost<EventRegistrationDto>(`/events/${eventId}/registrations/${registrationId}/revert-no-show`, {});
+}
+
+export async function revertRegistrationCheckIn(
+  eventId: string,
+  registrationId: string
+): Promise<ApiResult<EventRegistrationDto>> {
+  return apiPost<EventRegistrationDto>(`/events/${eventId}/registrations/${registrationId}/revert-check-in`, {});
+}
+
+export async function revertRegistrationCancellation(
+  eventId: string,
+  registrationId: string
+): Promise<ApiResult<EventRegistrationDto>> {
+  return apiPost<EventRegistrationDto>(`/events/${eventId}/registrations/${registrationId}/revert-cancellation`, {});
+}
+
 export async function getEventRegistrationStatistics(
   eventId: string
 ): Promise<ApiResult<EventRegistrationStatistics>> {
@@ -486,6 +507,21 @@ export async function checkInByQrCode(
 
 export async function getMyRegistrations(): Promise<ApiResult<EventRegistrationDto[]>> {
   return apiGet<EventRegistrationDto[]>('/my-registrations');
+}
+
+// REQ-021: Waitlist position for current user
+export interface WaitlistPositionDto {
+  registrationId: string;
+  eventId: string;
+  position: number;
+  totalOnWaitlist: number;
+  registeredAt: string;
+}
+
+export async function getMyWaitlistPosition(
+  eventId: string
+): Promise<ApiResult<WaitlistPositionDto>> {
+  return apiGet<WaitlistPositionDto>(`/events/${eventId}/registrations/my-position`);
 }
 
 // === Registration Utility Functions ===

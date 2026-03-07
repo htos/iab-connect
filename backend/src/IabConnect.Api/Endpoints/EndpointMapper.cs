@@ -64,6 +64,9 @@ public static class EndpointMapper
         app.MapPostingMappingEndpoints();
         app.MapAccountingReportEndpoints();
 
+        // REQ-050/051: Reporting & Exports
+        app.MapReportEndpoints();
+
         return app;
     }
 

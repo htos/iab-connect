@@ -38,6 +38,7 @@ export default function MembersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<MembershipStatus | "">("");
   const [typeFilter, setTypeFilter] = useState<MembershipType | "">("");
+  const [exportLoading, setExportLoading] = useState(false);
 
   const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
 
@@ -140,6 +141,31 @@ export default function MembersPage() {
     filtersChanged.current = true;
   }, [page, searchTerm, statusFilter, typeFilter, accessToken, fetchMembers]);
 
+  const handleExportCsv = async () => {
+    const token = accessTokenRef.current;
+    if (!token) return;
+    setExportLoading(true);
+    try {
+      const response = await fetch(`${baseUrl}/api/v1/reports/export/members`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error(t("members.exportFailed"));
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Mitglieder_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      setError(t("members.exportFailed"));
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
@@ -193,15 +219,29 @@ export default function MembersPage() {
               {t("members.totalMembers", { count: totalCount })}
             </p>
           </div>
-          <Link
-            href="/members/new"
-            className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-700 transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            {t("members.addMember")}
-          </Link>
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <button
+                onClick={handleExportCsv}
+                disabled={exportLoading}
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                {exportLoading ? t("common.loading") : t("members.exportCsv")}
+              </button>
+            )}
+            <Link
+              href="/members/new"
+              className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-700 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              {t("members.addMember")}
+            </Link>
+          </div>
         </div>
 
         {/* Statistics Cards */}

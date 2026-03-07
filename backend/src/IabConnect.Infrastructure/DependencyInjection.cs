@@ -172,6 +172,12 @@ public static class DependencyInjection
         // TECH-003: Dunning email service (sends dunning notice emails)
         services.AddScoped<IDunningEmailService, DunningEmailService>();
 
+        // REQ-021: Event notification service (waitlist, promotion, registration emails)
+        services.AddScoped<IabConnect.Application.Events.IEventNotificationService, Events.EventNotificationService>();
+
+        // Event registration PDF export
+        services.AddSingleton<IabConnect.Application.Events.IRegistrationPdfExporter, Events.EventRegistrationPdfExporter>();
+
         // REQ-034: Document Storage (RustFS via S3 SDK)
         services.Configure<DocumentStorageSettings>(configuration.GetSection(DocumentStorageSettings.SectionName));
         var storageSettings = configuration.GetSection(DocumentStorageSettings.SectionName).Get<DocumentStorageSettings>()

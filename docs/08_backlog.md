@@ -59,7 +59,7 @@ REQ-080 Probe Bilanz Bericht Trial Balance
 REQ-081 Bilanz und Erfolgsrechnung aus Hauptbuch
 REQ-082 Mapping UI für Kategorien Konten und Steuercodes
 REQ-083 Verknüpfung Subledger zu Hauptbuch
-REQ-084 Backfill für bestehende Daten bei DoubleEntry Aktivierung
+REQ-084 ✅ Backfill für bestehende Daten bei DoubleEntry Aktivierung (Done Sprint 8)
 REQ-085 Tests für Posting und Balance Regeln
 
 Öffentlicher Bereich
@@ -67,8 +67,8 @@ REQ-046 Öffentliche Eventseite
 REQ-049 Kontaktformular und Spam Schutz
 
 Reporting und Daten
-REQ-050 Dashboards und KPIs
-REQ-051 Exports CSV und Excel
+REQ-050 ✅ Dashboards und KPIs (Done Sprint 9)
+REQ-051 ✅ Exports CSV und Excel (Done Sprint 9)
 REQ-052 Such und Filterfunktionen
 
 Betrieb und Qualität
@@ -88,7 +88,7 @@ REQ-017 Segmentierung und Verteiler
 REQ-018 Dubletten Erkennung
 
 Events
-REQ-021 Warteliste und Nachrücken
+REQ-021 Warteliste und Nachrücken ✅ Done (Sprint 8)
 REQ-022 Ticketing und Gebühren optional
 REQ-024 Helferplanung und Aufgaben
 
@@ -121,7 +121,7 @@ REQ-080 Probe Bilanz Bericht
 REQ-081 Bilanz und Erfolgsrechnung
 REQ-082 Mapping UI für Kategorien Konten Steuercodes
 REQ-083 Verknüpfung Subledger zu Hauptbuch
-REQ-084 Backfill für bestehende Daten
+REQ-084 ✅ Backfill für bestehende Daten (Done Sprint 8)
 REQ-085 Tests für Posting und Balance Regeln
 
 Öffentlicher Bereich

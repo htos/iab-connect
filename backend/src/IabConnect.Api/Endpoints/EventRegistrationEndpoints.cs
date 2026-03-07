@@ -1,3 +1,4 @@
+using IabConnect.Application.Events;
 using IabConnect.Domain.Events;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -16,17 +17,19 @@ public static class EventRegistrationEndpoints
         var group = endpoints.MapGroup("/api/v1/events/{eventId:guid}/registrations")
             .WithTags("Event Registrations");
 
-        // Public endpoints (for public events)
+        // Protected endpoints
+        var protectedGroup = group.RequireAuthorization();
+
+        // Public endpoints MUST be mapped after RequireAuthorization and use AllowAnonymous
+        // to override the group-level auth requirement
         group.MapPost("/public", RegisterPublic)
+            .AllowAnonymous()
             .WithName("RegisterPublicEvent")
             .WithSummary("Öffentliche Anmeldung für ein Event")
             .Produces<EventRegistrationDto>(StatusCodes.Status201Created)
             .Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status404NotFound)
             .Produces(StatusCodes.Status409Conflict);
-
-        // Protected endpoints
-        var protectedGroup = group.RequireAuthorization();
 
         protectedGroup.MapGet("/", GetRegistrations)
             .RequireAuthorization(policy => policy.RequireRole("admin", "vorstand", "event-manager"))
@@ -84,11 +87,39 @@ public static class EventRegistrationEndpoints
             .Produces<EventRegistrationDto>()
             .Produces(StatusCodes.Status404NotFound);
 
+        protectedGroup.MapPost("/{registrationId:guid}/revert-no-show", RevertNoShow)
+            .RequireAuthorization(policy => policy.RequireRole("admin", "vorstand", "event-manager"))
+            .WithName("RevertEventRegistrationNoShow")
+            .WithSummary("No-Show-Status zurücksetzen auf Bestätigt")
+            .Produces<EventRegistrationDto>()
+            .Produces(StatusCodes.Status404NotFound);
+
+        protectedGroup.MapPost("/{registrationId:guid}/revert-check-in", RevertCheckIn)
+            .RequireAuthorization(policy => policy.RequireRole("admin", "vorstand", "event-manager"))
+            .WithName("RevertEventRegistrationCheckIn")
+            .WithSummary("Check-In-Status zurücksetzen auf Bestätigt")
+            .Produces<EventRegistrationDto>()
+            .Produces(StatusCodes.Status404NotFound);
+
+        protectedGroup.MapPost("/{registrationId:guid}/revert-cancellation", RevertCancellation)
+            .RequireAuthorization(policy => policy.RequireRole("admin", "vorstand", "event-manager"))
+            .WithName("RevertEventRegistrationCancellation")
+            .WithSummary("Stornierung zurücksetzen auf Bestätigt")
+            .Produces<EventRegistrationDto>()
+            .Produces(StatusCodes.Status404NotFound);
+
         protectedGroup.MapGet("/statistics", GetStatistics)
             .RequireAuthorization(policy => policy.RequireRole("admin", "vorstand", "event-manager"))
             .WithName("GetEventRegistrationStatistics")
             .WithSummary("Statistiken für Event-Anmeldungen")
             .Produces<EventRegistrationStatistics>();
+
+        protectedGroup.MapGet("/export-pdf", ExportRegistrationsPdf)
+            .RequireAuthorization(policy => policy.RequireRole("admin", "vorstand", "event-manager"))
+            .WithName("ExportEventRegistrationsPdf")
+            .WithSummary("Anmeldeliste als PDF exportieren")
+            .Produces(200, contentType: "application/pdf")
+            .Produces(StatusCodes.Status404NotFound);
 
         protectedGroup.MapGet("/waitlist", GetWaitlist)
             .RequireAuthorization(policy => policy.RequireRole("admin", "vorstand", "event-manager"))
@@ -101,6 +132,14 @@ public static class EventRegistrationEndpoints
             .WithName("PromoteFromWaitlist")
             .WithSummary("Nächste Person von der Warteliste nachrücken lassen")
             .Produces<EventRegistrationDto>()
+            .Produces(StatusCodes.Status404NotFound);
+
+        // REQ-021: My waitlist position endpoint
+        protectedGroup.MapGet("/my-position", GetMyWaitlistPosition)
+            .RequireAuthorization()
+            .WithName("GetMyWaitlistPosition")
+            .WithSummary("Eigene Wartelisten-Position abfragen")
+            .Produces<WaitlistPositionDto>()
             .Produces(StatusCodes.Status404NotFound);
 
         // QR Code check-in endpoint
@@ -127,7 +166,8 @@ public static class EventRegistrationEndpoints
         Guid eventId,
         RegisterPublicRequest request,
         IEventRepository eventRepository,
-        IEventRegistrationRepository registrationRepository)
+        IEventRegistrationRepository registrationRepository,
+        IEventNotificationService notificationService)
     {
         var evt = await eventRepository.GetByIdAsync(eventId);
         if (evt == null)
@@ -186,6 +226,16 @@ public static class EventRegistrationEndpoints
 
         await registrationRepository.AddAsync(registration);
 
+        // REQ-021: Send notification email (waitlist or confirmation)
+        try
+        {
+            if (registration.IsWaitlisted)
+                await notificationService.SendWaitlistConfirmationAsync(registration, evt);
+            else
+                await notificationService.SendRegistrationConfirmationAsync(registration, evt);
+        }
+        catch { /* Email failure should not break registration */ }
+
         return Results.Created(
             $"/api/v1/events/{eventId}/registrations/{registration.Id}",
             MapToDto(registration));
@@ -196,6 +246,7 @@ public static class EventRegistrationEndpoints
         RegisterMemberRequest request,
         IEventRepository eventRepository,
         IEventRegistrationRepository registrationRepository,
+        IEventNotificationService notificationService,
         ClaimsPrincipal user)
     {
         var evt = await eventRepository.GetByIdAsync(eventId);
@@ -269,6 +320,16 @@ public static class EventRegistrationEndpoints
         }
 
         await registrationRepository.AddAsync(registration);
+
+        // REQ-021: Send notification email (waitlist or confirmation)
+        try
+        {
+            if (registration.IsWaitlisted)
+                await notificationService.SendWaitlistConfirmationAsync(registration, evt);
+            else
+                await notificationService.SendRegistrationConfirmationAsync(registration, evt);
+        }
+        catch { /* Email failure should not break registration */ }
 
         return Results.Created(
             $"/api/v1/events/{eventId}/registrations/{registration.Id}",
@@ -345,6 +406,7 @@ public static class EventRegistrationEndpoints
         CancelRegistrationRequest? request,
         IEventRegistrationRepository registrationRepository,
         IEventRepository eventRepository,
+        IEventNotificationService notificationService,
         ClaimsPrincipal user)
     {
         var registration = await registrationRepository.GetByIdAsync(registrationId);
@@ -373,9 +435,22 @@ public static class EventRegistrationEndpoints
             {
                 nextOnWaitlist.PromoteFromWaitlist();
                 await registrationRepository.UpdateAsync(nextOnWaitlist);
-                // TODO: Send notification to promoted person
+                // REQ-021: Send promotion notification
+                try
+                {
+                    await notificationService.SendWaitlistPromotionAsync(nextOnWaitlist, evt);
+                }
+                catch { /* Email failure should not break cancellation */ }
             }
         }
+
+        // REQ-021: Send cancellation notification
+        try
+        {
+            if (evt != null)
+                await notificationService.SendCancellationNotificationAsync(registration, evt);
+        }
+        catch { /* Email failure should not break cancellation */ }
 
         return Results.Ok(MapToDto(registration));
     }
@@ -431,12 +506,77 @@ public static class EventRegistrationEndpoints
         return Results.Ok(MapToDto(registration));
     }
 
+    private static async Task<IResult> RevertNoShow(
+        Guid eventId,
+        Guid registrationId,
+        IEventRegistrationRepository registrationRepository)
+    {
+        var registration = await registrationRepository.GetByIdAsync(registrationId);
+        if (registration == null || registration.EventId != eventId)
+            return Results.NotFound(new { message = "Registration not found" });
+
+        registration.RevertNoShow();
+        await registrationRepository.UpdateAsync(registration);
+
+        return Results.Ok(MapToDto(registration));
+    }
+
+    private static async Task<IResult> RevertCheckIn(
+        Guid eventId,
+        Guid registrationId,
+        IEventRegistrationRepository registrationRepository)
+    {
+        var registration = await registrationRepository.GetByIdAsync(registrationId);
+        if (registration == null || registration.EventId != eventId)
+            return Results.NotFound(new { message = "Registration not found" });
+
+        registration.RevertCheckIn();
+        await registrationRepository.UpdateAsync(registration);
+
+        return Results.Ok(MapToDto(registration));
+    }
+
+    private static async Task<IResult> RevertCancellation(
+        Guid eventId,
+        Guid registrationId,
+        IEventRegistrationRepository registrationRepository)
+    {
+        var registration = await registrationRepository.GetByIdAsync(registrationId);
+        if (registration == null || registration.EventId != eventId)
+            return Results.NotFound(new { message = "Registration not found" });
+
+        registration.RevertCancellation();
+        await registrationRepository.UpdateAsync(registration);
+
+        return Results.Ok(MapToDto(registration));
+    }
+
     private static async Task<IResult> GetStatistics(
         Guid eventId,
         IEventRegistrationRepository registrationRepository)
     {
         var statistics = await registrationRepository.GetStatisticsAsync(eventId);
         return Results.Ok(statistics);
+    }
+
+    private static async Task<IResult> ExportRegistrationsPdf(
+        Guid eventId,
+        IEventRepository eventRepository,
+        IEventRegistrationRepository registrationRepository,
+        IRegistrationPdfExporter pdfExporter)
+    {
+        var evt = await eventRepository.GetByIdAsync(eventId);
+        if (evt == null)
+            return Results.NotFound(new { message = "Event not found" });
+
+        var registrations = await registrationRepository.GetByEventIdAsync(eventId);
+        var statistics = await registrationRepository.GetStatisticsAsync(eventId);
+        var pdfBytes = await pdfExporter.GenerateRegistrationListPdfAsync(evt, registrations, statistics);
+
+        var safeTitle = string.Join("_", evt.Title.Split(Path.GetInvalidFileNameChars()));
+        var fileName = $"Anmeldeliste_{safeTitle}_{DateTime.UtcNow:yyyyMMdd}.pdf";
+
+        return Results.File(pdfBytes, contentType: "application/pdf", fileDownloadName: fileName);
     }
 
     private static async Task<IResult> GetWaitlist(
@@ -449,7 +589,9 @@ public static class EventRegistrationEndpoints
 
     private static async Task<IResult> PromoteFromWaitlist(
         Guid eventId,
-        IEventRegistrationRepository registrationRepository)
+        IEventRegistrationRepository registrationRepository,
+        IEventRepository eventRepository,
+        IEventNotificationService notificationService)
     {
         var nextOnWaitlist = await registrationRepository.GetNextOnWaitlistAsync(eventId);
         if (nextOnWaitlist == null)
@@ -457,7 +599,17 @@ public static class EventRegistrationEndpoints
 
         nextOnWaitlist.PromoteFromWaitlist();
         await registrationRepository.UpdateAsync(nextOnWaitlist);
-        // TODO: Send notification
+
+        // REQ-021: Send promotion notification
+        var evt = await eventRepository.GetByIdAsync(eventId);
+        if (evt != null)
+        {
+            try
+            {
+                await notificationService.SendWaitlistPromotionAsync(nextOnWaitlist, evt);
+            }
+            catch { /* Email failure should not break promotion */ }
+        }
 
         // Update remaining waitlist positions
         var remainingWaitlist = await registrationRepository.GetWaitlistAsync(eventId);
@@ -504,6 +656,34 @@ public static class EventRegistrationEndpoints
 
         var registrations = await registrationRepository.GetByUserIdAsync(userId);
         return Results.Ok(registrations.Select(MapToDto).ToList());
+    }
+
+    private static async Task<IResult> GetMyWaitlistPosition(
+        Guid eventId,
+        IEventRegistrationRepository registrationRepository,
+        ClaimsPrincipal user)
+    {
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                       ?? user.FindFirst("sub")?.Value;
+        if (!Guid.TryParse(userIdClaim, out var userId))
+            return Results.BadRequest(new { message = "User ID not found" });
+
+        var registrations = await registrationRepository.GetByUserIdAsync(userId);
+        var registration = registrations.FirstOrDefault(r => r.EventId == eventId && r.IsWaitlisted);
+
+        if (registration == null)
+            return Results.NotFound(new { message = "You are not on the waitlist for this event" });
+
+        var totalWaitlisted = await registrationRepository.CountWaitlistedAsync(eventId);
+
+        return Results.Ok(new WaitlistPositionDto
+        {
+            RegistrationId = registration.Id,
+            EventId = eventId,
+            Position = registration.WaitlistPosition ?? 0,
+            TotalOnWaitlist = totalWaitlisted,
+            RegisteredAt = registration.RegisteredAt
+        });
     }
 
     private static EventRegistrationDto MapToDto(EventRegistration r) => new()
@@ -592,4 +772,13 @@ public record PagedResult<T>
     public int Page { get; init; }
     public int PageSize { get; init; }
     public int TotalPages { get; init; }
+}
+
+public record WaitlistPositionDto
+{
+    public Guid RegistrationId { get; init; }
+    public Guid EventId { get; init; }
+    public int Position { get; init; }
+    public int TotalOnWaitlist { get; init; }
+    public DateTime RegisteredAt { get; init; }
 }

@@ -1707,12 +1707,12 @@ Vorstand, Kassier, Event-Manager
 Abhängigkeiten
 
 
-Status: Backlog
-StatusSeit: 2026 01 30
+Status: Done
+StatusSeit: 2025 07 19
 Owner:
-SprintOderRelease:
+SprintOderRelease: Sprint 9
 TicketLink:
-Notizen:
+Notizen: Zentrales Dashboard mit KPI-Cards (Mitglieder, Events, Finanzen). Backend: GetDashboardOverviewQuery/Handler, GET /api/v1/reports/dashboard (RequireVorstand). Frontend: KPI-Cards im Haupt-Dashboard integriert. 8 Unit-Tests.
 
 ID: REQ-051
 Bereich: Reporting & Daten
@@ -1741,12 +1741,12 @@ Admin, Kassier
 Abhängigkeiten
 
 
-Status: Backlog
-StatusSeit: 2026 01 30
+Status: Done
+StatusSeit: 2025 07 19
 Owner:
-SprintOderRelease:
+SprintOderRelease: Sprint 9
 TicketLink:
-Notizen:
+Notizen: CSV-Exporte für Mitglieder (GET /api/v1/reports/export/members, RequireAdmin) und Event-Anmeldungen (GET /api/v1/reports/export/events/{id}/registrations, RequireVorstand). Semikolon-getrennt, Audit-Logging. Frontend: CSV-Export-Buttons auf Mitgliederliste und Event-Registrierungen. 11 Unit-Tests.
 
 ID: REQ-052
 Bereich: Reporting & Daten

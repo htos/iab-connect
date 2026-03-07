@@ -1,4 +1,5 @@
 using IabConnect.Api.Extensions;
+using IabConnect.Application.Finance.Accounting;
 using IabConnect.Application.Finance.Commands;
 using IabConnect.Application.Finance.FinanceProfiles.Commands;
 using IabConnect.Application.Finance.FinanceProfiles.Queries;
@@ -41,6 +42,14 @@ public static class FinanceProfileEndpoints
             .WithName("ResetAllFinanceData")
             .WithSummary("Delete ALL finance data")
             .WithDescription("Irreversibly deletes all finance data including transactions, invoices, journal entries, accounts, etc.");
+
+        // REQ-084: Backfill existing data when enabling DoubleEntry
+        routes.MapPost("/api/v1/finance/backfill-double-entry", BackfillDoubleEntry)
+            .RequireAuthorization("RequireFinanceWrite")
+            .WithTags("Finance - Profile")
+            .WithName("BackfillDoubleEntry")
+            .WithSummary("Backfill journal entries for existing transactions/payments")
+            .WithDescription("REQ-084: Creates journal entries for all existing transactions and paid payments from the given cut-off date. Idempotent – safe to re-run.");
     }
 
     private static async Task<IResult> GetActiveProfile(ISender sender, CancellationToken ct)
@@ -116,7 +125,27 @@ public static class FinanceProfileEndpoints
         return Results.Ok(new { Message = "All finance data has been deleted." });
     }
 
+    private static async Task<IResult> BackfillDoubleEntry(
+        BackfillDoubleEntryRequest request, HttpContext ctx, ISender sender, CancellationToken ct)
+    {
+        try
+        {
+            var result = await sender.Send(new BackfillDoubleEntryCommand
+            {
+                CutOffDate = request.CutOffDate,
+                UserName = ctx.GetUserName()
+            }, ct);
+            return Results.Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(new { Message = ex.Message });
+        }
+    }
+
     // DTOs
+    public sealed record BackfillDoubleEntryRequest(DateTime CutOffDate);
+
     public sealed record CreateFinanceProfileRequest(
         string Jurisdiction, string? CountryCode, string Currency, int FiscalYearStartMonth,
         string OrganizationName, string OrganizationAddress, string OrganizationCity,

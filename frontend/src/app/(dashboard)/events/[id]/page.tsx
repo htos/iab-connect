@@ -10,6 +10,16 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/lib/auth';
+import {
+  getEventRegistrationStatistics,
+  getEventWaitlist,
+  promoteFromWaitlist,
+  registerForEvent,
+  getMyRegistrations,
+  cancelEventRegistration,
+  type EventRegistrationDto,
+  type EventRegistrationStatistics,
+} from '@/lib/services/events';
 
 interface EventDto {
   id: string;
@@ -100,6 +110,22 @@ export default function EventPage({ params }: EventPageProps) {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [regStats, setRegStats] = useState<EventRegistrationStatistics | null>(null);
+  const [waitlistEntries, setWaitlistEntries] = useState<EventRegistrationDto[]>([]);
+  const [waitlistLoading, setWaitlistLoading] = useState(false);
+  const [promoteLoading, setPromoteLoading] = useState(false);
+
+  // Member registration state
+  const [myRegistration, setMyRegistration] = useState<EventRegistrationDto | null>(null);
+  const [myRegLoading, setMyRegLoading] = useState(false);
+  const [showRegForm, setShowRegForm] = useState(false);
+  const [regNumberOfGuests, setRegNumberOfGuests] = useState(0);
+  const [regSpecialRequirements, setRegSpecialRequirements] = useState('');
+  const [regSubmitting, setRegSubmitting] = useState(false);
+  const [regSuccess, setRegSuccess] = useState<{ isWaitlisted: boolean; waitlistPosition?: number } | null>(null);
+  const [cancellingReg, setCancellingReg] = useState(false);
+  const [showCancelRegDialog, setShowCancelRegDialog] = useState(false);
+  const [cancelRegReason, setCancelRegReason] = useState('');
 
   const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000';
   const canManageEvents = isVorstand || isAdmin;
@@ -149,6 +175,123 @@ export default function EventPage({ params }: EventPageProps) {
       loadEvent();
     }
   }, [authLoading, isAuthenticated, accessToken, router, loadEvent]);
+
+  const loadRegistrationData = useCallback(async () => {
+    if (!canManageEvents || !event?.registrationRequired) return;
+    setWaitlistLoading(true);
+    try {
+      const [statsResult, waitlistResult] = await Promise.all([
+        getEventRegistrationStatistics(resolvedParams.id),
+        event.waitlistEnabled ? getEventWaitlist(resolvedParams.id) : Promise.resolve({ data: [] as EventRegistrationDto[], error: undefined }),
+      ]);
+      if (statsResult.data) setRegStats(statsResult.data);
+      if (waitlistResult.data) setWaitlistEntries(waitlistResult.data);
+    } catch {
+      // Silent fail - stats are supplementary info
+    } finally {
+      setWaitlistLoading(false);
+    }
+  }, [canManageEvents, event?.registrationRequired, event?.waitlistEnabled, resolvedParams.id]);
+
+  useEffect(() => {
+    if (event && canManageEvents) {
+      loadRegistrationData();
+    }
+  }, [event, canManageEvents, loadRegistrationData]);
+
+  const handlePromoteFromWaitlist = async () => {
+    setPromoteLoading(true);
+    try {
+      const result = await promoteFromWaitlist(resolvedParams.id);
+      if (result.data) {
+        await loadRegistrationData();
+      } else {
+        setError(t('registration.promoteFailed'));
+      }
+    } catch {
+      setError(t('registration.promoteFailed'));
+    } finally {
+      setPromoteLoading(false);
+    }
+  };
+
+  // Load current user's registration for this event
+  const loadMyRegistration = useCallback(async () => {
+    if (!event?.registrationRequired) return;
+    setMyRegLoading(true);
+    try {
+      const result = await getMyRegistrations();
+      if (result.data) {
+        const mine = result.data.find(
+          (r) => r.eventId === resolvedParams.id && r.status !== 'Cancelled'
+        );
+        setMyRegistration(mine ?? null);
+      }
+    } catch {
+      // Silent fail
+    } finally {
+      setMyRegLoading(false);
+    }
+  }, [event?.registrationRequired, resolvedParams.id]);
+
+  useEffect(() => {
+    if (event && isAuthenticated) {
+      loadMyRegistration();
+    }
+  }, [event, isAuthenticated, loadMyRegistration]);
+
+  const handleRegister = async () => {
+    setRegSubmitting(true);
+    setRegSuccess(null);
+    try {
+      const result = await registerForEvent(resolvedParams.id, {
+        numberOfGuests: regNumberOfGuests,
+        specialRequirements: regSpecialRequirements || undefined,
+      });
+      if (result.data) {
+        setRegSuccess({
+          isWaitlisted: result.data.isWaitlisted,
+          waitlistPosition: result.data.waitlistPosition,
+        });
+        setMyRegistration(result.data);
+        setShowRegForm(false);
+        setRegNumberOfGuests(0);
+        setRegSpecialRequirements('');
+        if (canManageEvents) await loadRegistrationData();
+      } else {
+        setError(result.error || t('registration.registrationFailed'));
+      }
+    } catch {
+      setError(t('registration.registrationFailed'));
+    } finally {
+      setRegSubmitting(false);
+    }
+  };
+
+  const handleCancelMyRegistration = async () => {
+    if (!myRegistration) return;
+    setCancellingReg(true);
+    try {
+      const result = await cancelEventRegistration(
+        resolvedParams.id,
+        myRegistration.id,
+        cancelRegReason || undefined
+      );
+      if (result.data) {
+        setMyRegistration(null);
+        setShowCancelRegDialog(false);
+        setCancelRegReason('');
+        setRegSuccess(null);
+        if (canManageEvents) await loadRegistrationData();
+      } else {
+        setError(result.error || t('registration.cancelFailed'));
+      }
+    } catch {
+      setError(t('registration.cancelFailed'));
+    } finally {
+      setCancellingReg(false);
+    }
+  };
 
   const handlePublish = async () => {
     if (!event || !accessToken) return;
@@ -542,6 +685,92 @@ export default function EventPage({ params }: EventPageProps) {
                     <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">{t('registration.closed')}</span>
                   )}
                 </div>
+
+                {/* Member registration section */}
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  {myRegLoading ? (
+                    <div className="animate-pulse h-10 bg-gray-100 rounded-lg" />
+                  ) : regSuccess ? (
+                    <div className={`rounded-lg p-3 ${regSuccess.isWaitlisted ? 'bg-yellow-50 border border-yellow-200' : 'bg-green-50 border border-green-200'}`}>
+                      <p className={`text-sm font-medium ${regSuccess.isWaitlisted ? 'text-yellow-800' : 'text-green-800'}`}>
+                        {regSuccess.isWaitlisted
+                          ? t('registration.waitlistSuccess', { position: regSuccess.waitlistPosition ?? 0 })
+                          : t('registration.successMessage')}
+                      </p>
+                    </div>
+                  ) : myRegistration ? (
+                    <div className="space-y-3">
+                      <div className={`rounded-lg p-3 ${myRegistration.isWaitlisted ? 'bg-yellow-50 border border-yellow-200' : 'bg-green-50 border border-green-200'}`}>
+                        <p className={`text-sm font-medium ${myRegistration.isWaitlisted ? 'text-yellow-800' : 'text-green-800'}`}>
+                          {myRegistration.isWaitlisted
+                            ? t('registration.waitlistPositionShort', { position: myRegistration.waitlistPosition ?? 0 })
+                            : t('registration.registered')}
+                        </p>
+                        {myRegistration.numberOfGuests > 0 && (
+                          <p className="text-xs text-gray-600 mt-1">
+                            {t('registration.guestCount')}: {myRegistration.numberOfGuests}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => setShowCancelRegDialog(true)}
+                        className="w-full rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 transition-colors"
+                      >
+                        {t('registration.cancelRegistration')}
+                      </button>
+                    </div>
+                  ) : event.isRegistrationOpen ? (
+                    showRegForm ? (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">{t('registration.guestCount')}</label>
+                          <input
+                            type="number"
+                            min={0}
+                            max={10}
+                            value={regNumberOfGuests}
+                            onChange={(e) => setRegNumberOfGuests(Math.max(0, parseInt(e.target.value) || 0))}
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">{t('registration.specialRequirementsOptional')}</label>
+                          <textarea
+                            value={regSpecialRequirements}
+                            onChange={(e) => setRegSpecialRequirements(e.target.value)}
+                            placeholder={t('registration.specialRequirementsPlaceholder')}
+                            rows={2}
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none resize-none"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleRegister}
+                            disabled={regSubmitting}
+                            className="flex-1 rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-50 transition-colors"
+                          >
+                            {regSubmitting ? tCommon('loading') : t('registration.register')}
+                          </button>
+                          <button
+                            onClick={() => setShowRegForm(false)}
+                            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                          >
+                            {tCommon('back')}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setShowRegForm(true)}
+                        className="w-full rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 transition-colors"
+                      >
+                        {t('registration.registerNow')}
+                      </button>
+                    )
+                  ) : (
+                    <p className="text-sm text-gray-500">{t('registration.notPossible')}</p>
+                  )}
+                </div>
               </div>
             )}
 
@@ -580,6 +809,120 @@ export default function EventPage({ params }: EventPageProps) {
           </div>
         </div>
 
+        {/* REQ-021: Registrations & Waitlist Management Panel */}
+        {canManageEvents && event.registrationRequired && (
+          <div className="mt-6 bg-white rounded-xl shadow-sm p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-100 rounded-lg">
+                  <svg className="h-5 w-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <h2 className="text-lg font-semibold text-gray-900">{t('registration.registrationsOverview')}</h2>
+              </div>
+              <Link
+                href={`/events/${event.id}/registrations`}
+                className="text-sm text-orange-600 hover:text-orange-700 font-medium"
+              >
+                {t('registration.showAllRegistrations')}
+              </Link>
+            </div>
+
+            {/* Statistics Summary */}
+            {regStats && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 mb-6">
+                <div className="bg-gray-50 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-gray-900">{regStats.totalRegistrations}</p>
+                  <p className="text-xs text-gray-500">{t('registration.total')}</p>
+                </div>
+                <div className="bg-green-50 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-green-700">{regStats.confirmedCount}</p>
+                  <p className="text-xs text-green-600">{t('registration.confirmed')}</p>
+                </div>
+                <div className="bg-yellow-50 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-yellow-700">{regStats.waitlistedCount}</p>
+                  <p className="text-xs text-yellow-600">{t('registration.waitlisted')}</p>
+                </div>
+                <div className="bg-blue-50 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-blue-700">{regStats.checkedInCount}</p>
+                  <p className="text-xs text-blue-600">{t('registration.checkedIn')}</p>
+                </div>
+                <div className="bg-red-50 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-red-700">{regStats.cancelledCount}</p>
+                  <p className="text-xs text-red-600">{t('registration.cancelledShort')}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-gray-700">{regStats.noShowCount}</p>
+                  <p className="text-xs text-gray-500">{t('registration.noShow')}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Waitlist Section */}
+            {event.waitlistEnabled && (
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-base font-semibold text-gray-900">{t('registration.waitlistManagement')}</h3>
+                  {waitlistEntries.length > 0 && (
+                    <button
+                      onClick={handlePromoteFromWaitlist}
+                      disabled={promoteLoading}
+                      className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-50 transition-colors"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                      </svg>
+                      {promoteLoading ? tCommon('loading') : t('registration.promoteNext')}
+                    </button>
+                  )}
+                </div>
+
+                {waitlistLoading ? (
+                  <div className="animate-pulse space-y-2">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="h-12 bg-gray-100 rounded-lg" />
+                    ))}
+                  </div>
+                ) : waitlistEntries.length === 0 ? (
+                  <p className="text-sm text-gray-500 py-4 text-center">{t('registration.waitlistEmpty')}</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200">
+                          <th className="text-left py-2 px-3 font-medium text-gray-500">{t('registration.position')}</th>
+                          <th className="text-left py-2 px-3 font-medium text-gray-500">{t('registration.participant')}</th>
+                          <th className="text-left py-2 px-3 font-medium text-gray-500">{t('registration.email')}</th>
+                          <th className="text-right py-2 px-3 font-medium text-gray-500">{t('registration.guests')}</th>
+                          <th className="text-left py-2 px-3 font-medium text-gray-500">{t('registration.registeredAt')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {waitlistEntries.map((entry) => (
+                          <tr key={entry.id} className="border-b border-gray-100 hover:bg-gray-50">
+                            <td className="py-2 px-3">
+                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-yellow-100 text-yellow-800 text-xs font-bold">
+                                {entry.waitlistPosition ?? '-'}
+                              </span>
+                            </td>
+                            <td className="py-2 px-3 font-medium text-gray-900">{entry.participantName}</td>
+                            <td className="py-2 px-3 text-gray-600">{entry.participantEmail}</td>
+                            <td className="py-2 px-3 text-right text-gray-600">{entry.numberOfGuests}</td>
+                            <td className="py-2 px-3 text-gray-500">
+                              {new Date(entry.registeredAt).toLocaleDateString('de-CH', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Cancel Dialog */}
         {showCancelDialog && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -607,6 +950,30 @@ export default function EventPage({ params }: EventPageProps) {
               <div className="flex gap-3 justify-end">
                 <button onClick={() => setShowDeleteDialog(false)} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">{tCommon('back')}</button>
                 <button onClick={handleDelete} disabled={actionLoading} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 transition-colors">{actionLoading ? tCommon('loading') : t('actions.delete')}</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Cancel Registration Dialog */}
+        {showCancelRegDialog && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('registration.cancelRegistration')}</h3>
+              <p className="text-gray-600 text-sm mb-4">{t('registration.confirmCancelDescription')}</p>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('registration.cancelReason')}</label>
+                <textarea
+                  value={cancelRegReason}
+                  onChange={(e) => setCancelRegReason(e.target.value)}
+                  placeholder={t('registration.cancelReasonPlaceholder')}
+                  rows={2}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none resize-none"
+                />
+              </div>
+              <div className="flex gap-3 justify-end">
+                <button onClick={() => { setShowCancelRegDialog(false); setCancelRegReason(''); }} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">{tCommon('back')}</button>
+                <button onClick={handleCancelMyRegistration} disabled={cancellingReg} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 transition-colors">{cancellingReg ? tCommon('loading') : t('registration.cancel')}</button>
               </div>
             </div>
           </div>

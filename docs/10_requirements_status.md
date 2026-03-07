@@ -161,7 +161,7 @@ StatusSeit: 2026 02 01
 Owner: Implementation Agent
 SprintOderRelease: Sprint 1
 TicketLink:
-Notizen: Eventverwaltung vollständig implementiert. Backend: (1) Event-Entity mit umfassenden Properties (Titel, Beschreibung, Ort, Datum/Zeit, Kategorie, Sichtbarkeit, Status, Anmeldung, Kosten, Kontakt). (2) EventEnums: EventVisibility (MembersOnly/Public/InviteOnly/Hidden), EventStatus (Draft/Published/Cancelled/Completed), EventCategory (11 Typen), RecurrencePattern. (3) IEventRepository mit EventFilterOptions für flexible Abfragen. (4) EventEndpoints: 12 Endpunkte (Public: GET /events/public, /events/public/{id}; Protected: CRUD, /upcoming, /statistics, /publish, /unpublish, /cancel). Frontend: (1) /events - Event-Liste mit Listen- und Kalenderansicht, Filter nach Status/Kategorie, Paginierung. (2) /events/[id] - Detailseite mit Aktionen (Publish/Unpublish/Cancel/Delete). (3) /events/new und /events/[id]/edit - Formulare für Event-Erstellung und -Bearbeitung. (4) events.ts Service mit 13 API-Funktionen und Utility-Helpers. Tests: 58 Unit-Tests für Event-Entity (Creation, Updates, State Transitions, Validations).
+Notizen: Eventverwaltung vollständig implementiert. Backend: (1) Event-Entity mit umfassenden Properties (Titel, Beschreibung, Ort, Datum/Zeit, Kategorie, Sichtbarkeit, Status, Anmeldung, Kosten, Kontakt). (2) EventEnums: EventVisibility (MembersOnly/Public/InviteOnly/Hidden), EventStatus (Draft/Published/Cancelled/Completed), EventCategory (11 Typen), RecurrencePattern. (3) IEventRepository mit EventFilterOptions für flexible Abfragen. (4) EventEndpoints: 12 Endpunkte (Public: GET /events/public, /events/public/{id}; Protected: CRUD, /upcoming, /statistics, /publish, /unpublish, /cancel). Frontend: (1) /events - Event-Liste mit Listen- und Kalenderansicht, Filter nach Status/Kategorie, Paginierung. (2) /events/[id] - Detailseite mit Aktionen (Publish/Unpublish/Cancel/Delete). (3) /events/new und /events/[id]/edit - Formulare für Event-Erstellung und -Bearbeitung. (4) events.ts Service mit 13 API-Funktionen und Utility-Helpers. Tests: 58 Unit-Tests für Event-Entity (Creation, Updates, State Transitions, Validations). Bugfix (Sprint 9): Member-Event-Registrierung im Dashboard fehlte — Registrierungs-Button, Formular (Gäste, Anforderungen), Status-Anzeige und Stornierungsoption zur Event-Detail-Seite hinzugefügt.
 
 ID: REQ-020
 Status: Done
@@ -172,12 +172,12 @@ TicketLink:
 Notizen: Event-Anmeldung (RSVP) vollständig implementiert. Backend: (1) EventRegistration-Entity mit Factory-Methods (CreateForMember, CreateForGuest, CreateWaitlisted), State-Transitions (Confirm, Cancel, CheckIn, MarkAsNoShow, MoveToWaitlist, PromoteFromWaitlist), QR-Code-Token-Generierung. (2) RegistrationStatus-Enum (Pending, Confirmed, Cancelled, Waitlisted, CheckedIn, NoShow). (3) IEventRegistrationRepository mit Filter- und Statistik-Funktionen. (4) EventRegistrationEndpoints: 15+ Endpunkte (Public: POST /public; Protected: CRUD, /cancel, /confirm, /check-in, /no-show, /statistics, /waitlist, /promote-from-waitlist, /check-in/{qrCodeToken}, /my-registrations). Frontend: (1) EventRegistration-Komponente für Anmeldeformular. (2) EventParticipantsList-Komponente für Admin-Verwaltung mit Filter, Export. (3) MyRegistrations-Komponente für persönliche Anmeldungen. (4) EventCheckIn-Komponente für QR-Code-Scan. (5) EventTicket-Komponente für Ticket-Anzeige. (6) events.ts Service erweitert mit 15+ Registration-Funktionen. Tests: 41 Unit-Tests für EventRegistration-Entity, alle bestanden.
 
 ID: REQ-021
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 02 08
+Owner: Implementation Agent
+SprintOderRelease: Sprint 8
 TicketLink:
-Notizen:
+Notizen: Event-Warteliste & Benachrichtigungen vollständig implementiert. Backend: (1) IEventNotificationService Interface mit 4 Methoden (WaitlistConfirmation, WaitlistPromotion, RegistrationConfirmation, CancellationNotification). (2) EventNotificationService mit HTML+Plain-Text E-Mail-Templates (IAB Connect branded, orange #EA580C header). (3) Fehlerresilienz: Email-Fehler brechen den Registrierungsfluss nicht ab. (4) Integration in EventRegistrationEndpoints: RegisterPublic, RegisterMember, CancelRegistration, PromoteFromWaitlist senden automatisch Benachrichtigungen. (5) Neuer Endpoint GET /my-position für Wartelisten-Position. (6) DI-Registration in Infrastructure/DependencyInjection.cs. Frontend: (1) Public Event Page zeigt Wartelisten-Position nach Anmeldung (gelb=Warteliste, grün=bestätigt). (2) Admin Wartelisten-Management Panel mit Statistik-Übersicht und Promote-Button. (3) events.ts Service erweitert mit WaitlistPositionDto und getMyWaitlistPosition. (4) 19 neue i18n-Keys für Wartelisten-Verwaltung in de/en. Tests: 6 Unit-Tests für EventNotificationService (E-Mail-Versand, Fehlerresilienz, Logger-Verifizierung), alle bestanden.
 
 ID: REQ-022
 Status: Backlog
@@ -404,20 +404,20 @@ TicketLink:
 Notizen: Kontaktformular mit Spam-Schutz implementiert. Backend: ContactMessage Domain-Entity (AggregateRoot) mit Name, Email, Subject, Message, Status (New/Read/Responded/Archived), MarkAsRead/MarkAsResponded/Archive. ContactMessageRepository, EF-Config. Public Endpoint: POST /api/v1/public/contact mit Honeypot-Spam-Schutz (verstecktes "website" Feld). Admin Endpoints: GET/POST-read/POST-respond/POST-archive/DELETE unter /api/v1/contact-messages (RequireVorstand). Frontend: /public/contact Zwei-Spalten-Layout (Formular + Kontakt-Info Sidebar mit Email, Telefon, Adresse, Öffnungszeiten). 9 Unit-Tests + 11 Repository-Integration-Tests.
 
 ID: REQ-050
-Status: Backlog
-StatusSeit: 2026 01 30
+Status: Done
+StatusSeit: 2025 07 19
 Owner:
-SprintOderRelease:
+SprintOderRelease: Sprint 9
 TicketLink:
-Notizen:
+Notizen: Zentrales Dashboard mit KPIs für Mitglieder (Gesamt, Aktiv, Neu im Monat, Trend), Events (Gesamt, Bevorstehend, Teilnehmer, Kategorien-Aufschlüsselung) und Finanzen (Einnahmen, Ausgaben, Saldo, offene Rechnungen). Backend: GetDashboardOverviewQuery/Handler in CQRS, ReportEndpoints (GET /api/v1/reports/dashboard, RequireVorstand). Frontend: KPI-Cards im Haupt-Dashboard (page.tsx) integriert für Vorstand/Admin. 8 Unit-Tests.
 
 ID: REQ-051
-Status: Backlog
-StatusSeit: 2026 01 30
+Status: Done
+StatusSeit: 2025 07 19
 Owner:
-SprintOderRelease:
+SprintOderRelease: Sprint 9
 TicketLink:
-Notizen:
+Notizen: CSV-Datenexporte für Mitglieder und Event-Anmeldungen. Backend: ExportMembersQuery/Handler (GET /api/v1/reports/export/members, RequireAdmin) und ExportEventRegistrationsQuery/Handler (GET /api/v1/reports/export/events/{id}/registrations, RequireVorstand). Semikolon-getrennte CSV mit EscapeCsv-Sanitizing. Audit-Logging (DataExported). Frontend: CSV-Export-Buttons auf Mitgliederliste (nur Admin) und Event-Anmeldungen-Seite.
 
 ID: REQ-052
 Status: Backlog
@@ -676,12 +676,12 @@ TicketLink:
 Notizen: Verknüpfung Subledger zu Hauptbuch. SourceType/SourceId auf JournalEntry. Bidirektionale Navigation im UI. Code-Review bestätigt: SourceType/SourceId auf JournalEntry, GetBySourceAsync im Repository.
 
 ID: REQ-084
-Status: Ready
-StatusSeit: 2026 02 28
+Status: Done
+StatusSeit: 2026 07 14
 Owner: Implementation Agent
-SprintOderRelease: Sprint 6
+SprintOderRelease: Sprint 8
 TicketLink:
-Notizen: Backfill für bestehende Daten bei DoubleEntry-Aktivierung. Admin-Aktion mit Stichtag. Idempotent. Fehler-Protokoll.
+Notizen: Backfill für bestehende Daten bei DoubleEntry-Aktivierung. Admin-Aktion mit Stichtag. Idempotent. Fehler-Protokoll. Backend: BackfillDoubleEntryCommand/Handler mit MediatR CQRS, POST /api/v1/finance/backfill-double-entry Endpoint. Frontend: Backfill-Panel in Finance Settings (Doppelte Buchhaltung Sektion), Datumspicker, Ergebnis-Anzeige mit Statistiken und Fehler-Tabelle. 8 Unit Tests (alle grün).
 
 ID: REQ-085
 Status: Done

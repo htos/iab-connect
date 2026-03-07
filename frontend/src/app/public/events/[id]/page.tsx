@@ -67,6 +67,10 @@ export default function PublicEventDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [registrationResult, setRegistrationResult] = useState<{
+    isWaitlisted: boolean;
+    waitlistPosition?: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -119,13 +123,24 @@ export default function PublicEventDetailPage() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
+          body: JSON.stringify({
+            name: form.participantName,
+            email: form.participantEmail,
+            phone: form.participantPhone || undefined,
+            numberOfGuests: form.numberOfGuests,
+            specialRequirements: form.specialRequirements || undefined,
+          }),
         },
       );
       if (!res.ok) {
         const body = await res.text();
         throw new Error(body || `HTTP ${res.status}`);
       }
+      const data = await res.json();
+      setRegistrationResult({
+        isWaitlisted: data.isWaitlisted,
+        waitlistPosition: data.waitlistPosition,
+      });
       setSubmitSuccess(true);
       setForm({
         participantName: "",
@@ -465,26 +480,55 @@ export default function PublicEventDetailPage() {
                     {t("registrationClosed")}
                   </div>
                 ) : submitSuccess ? (
-                  <div className="mt-4 rounded-lg border border-green-200 bg-green-50 p-6 text-center">
+                  <div className={`mt-4 rounded-lg border p-6 text-center ${
+                    registrationResult?.isWaitlisted
+                      ? "border-yellow-200 bg-yellow-50"
+                      : "border-green-200 bg-green-50"
+                  }`}>
                     <svg
-                      className="mx-auto h-10 w-10 text-green-500"
+                      className={`mx-auto h-10 w-10 ${
+                        registrationResult?.isWaitlisted
+                          ? "text-yellow-500"
+                          : "text-green-500"
+                      }`}
                       fill="none"
                       viewBox="0 0 24 24"
                       strokeWidth={1.5}
                       stroke="currentColor"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
+                      {registrationResult?.isWaitlisted ? (
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      ) : (
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      )}
                     </svg>
-                    <p className="mt-3 font-medium text-green-800">
-                      {t("registrationSuccess")}
-                    </p>
-                    <p className="mt-1 text-sm text-green-700">
-                      {t("registrationSuccessDetail")}
-                    </p>
+                    {registrationResult?.isWaitlisted ? (
+                      <>
+                        <p className="mt-3 font-medium text-yellow-800">
+                          {t("registration.waitlistSuccess", { position: registrationResult.waitlistPosition ?? 0 })}
+                        </p>
+                        <p className="mt-1 text-sm text-yellow-700">
+                          {t("registration.waitlistPosition", { position: registrationResult.waitlistPosition ?? 0 })}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="mt-3 font-medium text-green-800">
+                          {t("registrationSuccess")}
+                        </p>
+                        <p className="mt-1 text-sm text-green-700">
+                          {t("registrationSuccessDetail")}
+                        </p>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <form onSubmit={handleSubmit} className="mt-4 space-y-4">

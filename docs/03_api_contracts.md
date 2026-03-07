@@ -257,6 +257,9 @@ Reporting
 GET /api/v1/reports/members/statistics
 GET /api/v1/reports/finance
 GET /api/v1/reports/export/{type}
+GET /api/v1/reports/dashboard — Dashboard KPIs (Mitglieder, Events, Finanzen) mit optionalem Zeitraumfilter (RequireVorstand) [REQ-050, Sprint 9]
+GET /api/v1/reports/export/members — CSV-Export aller Mitglieder (RequireAdmin) [REQ-051, Sprint 9]
+GET /api/v1/reports/export/events/{eventId}/registrations — CSV-Export der Event-Anmeldungen (RequireVorstand) [REQ-051, Sprint 9]
 
 Privacy and DSGVO (REQ-012)
 GET /api/v1/privacy/consents

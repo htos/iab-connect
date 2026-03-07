@@ -392,3 +392,68 @@ Separate BlogTag Entity mit M:N Beziehung. JSON Array in PostgreSQL.
 
 Auswirkung
 Tags Feld in blog_posts Tabelle als String. EF Core ValueConverter für List zu comma-separated String Konvertierung. Filterung über LIKE Query.
+
+Datum
+2026 02 08
+
+Entscheidung
+Event-Benachrichtigungen als synchrone in-process E-Mails mit Silent-Fail statt Hangfire-Queue.
+
+Begründung
+Wartelisten-Benachrichtigungen sind zeitkritisch (sofortiges Feedback), aber nicht geschäftskritisch. Silent-Fail (try/catch ohne rethrow) verhindert, dass E-Mail-Fehler den Registrierungsfluss brechen. Einfacher als Hangfire-Queue für diesen Use-Case, da kein Retry nötig.
+
+Alternativen
+Hangfire-Queue (wie EmailCampaignJobService), Domain Events mit MediatR Notifications.
+
+Auswirkung
+EventNotificationService wird direkt in EventRegistrationEndpoints injiziert und synchron aufgerufen. E-Mail-Versand-Fehler werden geloggt, aber nicht propagiert. Bei Bedarf kann später auf Hangfire-Queue umgestellt werden.
+
+---
+
+Bereich
+Finanzen / Buchhaltung
+
+Datum
+2026 07 14
+
+Entscheidung
+REQ-084: Backfill als MediatR Command mit Idempotenz-Prüfung über JournalEntry.GetBySourceAsync.
+
+Begründung
+Backfill muss sicher mehrfach ausführbar sein (idempotent). Pro Transaction/Payment wird geprüft, ob bereits ein JournalEntry mit SourceType+SourceId existiert. Fehler werden gesammelt statt abzubrechen — ein einzelner fehlerhafter Eintrag blockiert nicht die gesamte Migration. Audit-Logging dokumentiert jeden Backfill-Lauf.
+
+Alternativen
+Datenbank-Migration (zu riskant, nicht wiederholbar), Hangfire-Background-Job (unnötig komplex für einmalige Admin-Aktion).
+
+Auswirkung
+Admin-Panel in Finance Settings zeigt Backfill-Panel nur bei aktivierter doppelter Buchhaltung. Endpoint POST /api/v1/finance/backfill-double-entry mit FinanceWrite-Berechtigung. 8 Unit Tests verifizieren Idempotenz, Filterung, Fehlerbehandlung.
+
+Datum
+2025 07 19
+
+Entscheidung
+REQ-050/REQ-051 (Sprint 9): Dashboard KPIs als Cards im Haupt-Dashboard statt separater Seite, CSV-Exporte mit Semikolon-Trennung.
+
+Begründung
+KPI-Übersicht direkt im Dashboard vermeidet unnötige Navigation. Semikolon-getrennte CSV ist Standard in DACH-Region (Excel-Kompatibilität). Audit-Logging für alle Datenexporte (DSGVO-Compliance). ReportEndpoints gruppiert Dashboard und Export-Endpunkte unter /api/v1/reports/.
+
+Alternativen
+Separate Dashboard-Seite mit eigener Navigation (verworfen: User-Feedback bevorzugt integrierte Ansicht). Excel-Export mit ClosedXML (verworfen: CSV reicht für MVP, weniger Dependencies).
+
+Auswirkung
+Backend: GetDashboardOverviewQuery/Handler aggregiert Daten aus 8 Repositories. ExportMembers/ExportEventRegistrations-Handler generieren CSV mit EscapeCsv-Helper. 3 neue API-Endpunkte unter /api/v1/reports/. Frontend: KPI-Cards im Haupt-Dashboard (page.tsx) für Vorstand/Admin. CSV-Export-Buttons auf Mitgliederliste (Admin only) und Event-Registrierungen. 19 Unit-Tests.
+
+Datum
+2025 07 19
+
+Entscheidung
+Bugfix REQ-019/REQ-021: Fehlende Member-Event-Registrierung im Dashboard hinzugefügt.
+
+Begründung
+Backend-Endpoint POST /api/v1/events/{eventId}/registrations und Frontend-Service registerForEvent() waren implementiert, aber die Event-Detail-Seite (Dashboard) hatte keinen Registrierungs-Button. Nur die öffentliche Seite (/public/events/{id}) hatte ein Registrierungsformular.
+
+Alternativen
+Keine — war ein Bug (fehlende UI-Integration).
+
+Auswirkung
+Event-Detail-Seite zeigt nun: Registrierungs-Button wenn offen, Formular (Gäste, spezielle Anforderungen), Status-Anzeige wenn bereits registriert, Stornierungsoption mit Dialog. Nutzt bestehende i18n-Keys und Service-Funktionen.

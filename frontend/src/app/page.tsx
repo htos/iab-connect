@@ -4,15 +4,51 @@
  * Dashboard / Home Page for IAB Connect
  * REQ-001: Shows different content based on authentication status
  * REQ-007: Includes onboarding banner for incomplete profiles
+ * REQ-050: Dashboard KPIs for Vorstand/Admin
  */
 import Link from "next/link";
-import { useAuth } from "@/lib/auth";
+import { useAuth, useApiClient } from "@/lib/auth";
 import { useTranslations } from "next-intl";
 import { OnboardingBanner } from "@/components/OnboardingBanner";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { formatCHF } from "@/lib/utils";
 
 export default function HomePage() {
-  const { isAuthenticated, isLoading, user, roles, isAdmin, isVorstand, isMember } = useAuth();
+  const { isAuthenticated, isLoading, user, roles, isAdmin, isVorstand, isMember, canReadFinance } = useAuth();
   const t = useTranslations();
+  const tDash = useTranslations("dashboard");
+  const api = useApiClient();
+  const apiRef = useRef(api);
+  apiRef.current = api;
+
+  const canViewKpis = isVorstand || isAdmin;
+
+  const [kpiData, setKpiData] = useState<DashboardOverview | null>(null);
+  const [kpiLoading, setKpiLoading] = useState(false);
+  const [kpiError, setKpiError] = useState<string | null>(null);
+
+  const fetchKpis = useCallback(async () => {
+    setKpiLoading(true);
+    setKpiError(null);
+    try {
+      const res = await apiRef.current.get<DashboardOverview>("/api/v1/reports/dashboard");
+      if (res.error) {
+        setKpiError(res.error);
+      } else if (res.data) {
+        setKpiData(res.data);
+      }
+    } catch {
+      setKpiError(t("common.error"));
+    } finally {
+      setKpiLoading(false);
+    }
+  }, [t]);
+
+  useEffect(() => {
+    if (isAuthenticated && canViewKpis) {
+      fetchKpis();
+    }
+  }, [isAuthenticated, canViewKpis, fetchKpis]);
 
   if (isLoading) {
     return (
@@ -248,7 +284,235 @@ export default function HomePage() {
             </Link>
           )}
         </div>
+
+        {/* REQ-050: Dashboard KPIs for Vorstand/Admin */}
+        {canViewKpis && (
+          <div className="mt-8 space-y-8">
+            {kpiLoading && (
+              <div className="flex items-center justify-center py-12">
+                <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-orange-600"></div>
+              </div>
+            )}
+
+            {kpiError && (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                {kpiError}
+              </div>
+            )}
+
+            {kpiData && (
+              <>
+                {/* Member KPIs */}
+                <section>
+                  <div className="mb-4 flex items-center justify-between">
+                    <h2 className="text-lg font-semibold text-gray-900">{tDash("members.title")}</h2>
+                    <Link href="/members" className="text-sm font-medium text-orange-600 hover:text-orange-700">
+                      {tDash("members.viewAll")} &rarr;
+                    </Link>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+                    <KpiCard label={tDash("members.total")} value={kpiData.members.totalMembers} />
+                    <KpiCard label={tDash("members.active")} value={kpiData.members.activeMembers} color="green" />
+                    <KpiCard label={tDash("members.pending")} value={kpiData.members.pendingMembers} color="yellow" />
+                    <KpiCard label={tDash("members.inactive")} value={kpiData.members.inactiveMembers} color="gray" />
+                    <KpiCard label={tDash("members.suspended")} value={kpiData.members.suspendedMembers} color="red" />
+                    <KpiCard label={tDash("members.newInPeriod")} value={kpiData.members.newMembersInPeriod} color="blue" />
+                  </div>
+
+                  {kpiData.members.monthlyTrend.length > 0 && (
+                    <div className="mt-4 overflow-hidden rounded-xl bg-white shadow-sm">
+                      <div className="border-b border-gray-200 px-6 py-4">
+                        <h3 className="text-sm font-semibold text-gray-900">{tDash("members.trend")}</h3>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                          <thead className="border-b border-gray-200 bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-3 font-medium text-gray-700">{tDash("members.month")}</th>
+                              <th className="px-4 py-3 text-right font-medium text-gray-700">{tDash("members.newMembers")}</th>
+                              <th className="px-4 py-3 text-right font-medium text-gray-700">{tDash("members.totalAtEnd")}</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {kpiData.members.monthlyTrend.map((item) => (
+                              <tr key={item.month} className="hover:bg-gray-50">
+                                <td className="px-4 py-3 text-gray-900">{item.month}</td>
+                                <td className="px-4 py-3 text-right tabular-nums text-gray-900">
+                                  {item.newMembers > 0 ? `+${item.newMembers}` : item.newMembers}
+                                </td>
+                                <td className="px-4 py-3 text-right tabular-nums text-gray-500">{item.totalAtEndOfMonth}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </section>
+
+                {/* Event KPIs */}
+                <section>
+                  <div className="mb-4 flex items-center justify-between">
+                    <h2 className="text-lg font-semibold text-gray-900">{tDash("events.title")}</h2>
+                    <Link href="/events" className="text-sm font-medium text-orange-600 hover:text-orange-700">
+                      {tDash("events.viewAll")} &rarr;
+                    </Link>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+                    <KpiCard label={tDash("events.total")} value={kpiData.events.totalEvents} />
+                    <KpiCard label={tDash("events.upcoming")} value={kpiData.events.upcomingEvents} color="blue" />
+                    <KpiCard label={tDash("events.completed")} value={kpiData.events.completedEvents} color="green" />
+                    <KpiCard label={tDash("events.cancelled")} value={kpiData.events.cancelledEvents} color="red" />
+                    <KpiCard label={tDash("events.registrations")} value={kpiData.events.totalRegistrations} />
+                    <KpiCard label={tDash("events.participants")} value={kpiData.events.totalParticipantsConfirmed} color="green" />
+                  </div>
+
+                  {kpiData.events.byCategory.length > 0 && (
+                    <div className="mt-4 overflow-hidden rounded-xl bg-white shadow-sm">
+                      <div className="border-b border-gray-200 px-6 py-4">
+                        <h3 className="text-sm font-semibold text-gray-900">{tDash("events.byCategory")}</h3>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                          <thead className="border-b border-gray-200 bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-3 font-medium text-gray-700">{tDash("events.category")}</th>
+                              <th className="px-4 py-3 text-right font-medium text-gray-700">{tDash("events.count")}</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {kpiData.events.byCategory.map((cat) => (
+                              <tr key={cat.category} className="hover:bg-gray-50">
+                                <td className="px-4 py-3 text-gray-900">{cat.category}</td>
+                                <td className="px-4 py-3 text-right tabular-nums text-gray-900">{cat.count}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </section>
+
+                {/* Finance KPIs */}
+                {canReadFinance && (
+                  <section>
+                    <div className="mb-4 flex items-center justify-between">
+                      <h2 className="text-lg font-semibold text-gray-900">{tDash("finance.title")}</h2>
+                      <Link href="/finance" className="text-sm font-medium text-orange-600 hover:text-orange-700">
+                        {tDash("finance.viewAll")} &rarr;
+                      </Link>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-7">
+                      <KpiCard label={tDash("finance.income")} value={formatCHF(kpiData.finance.totalIncome)} color="green" />
+                      <KpiCard label={tDash("finance.expense")} value={formatCHF(kpiData.finance.totalExpense)} color="red" />
+                      <KpiCard label={tDash("finance.balance")} value={formatCHF(kpiData.finance.balance)} color={kpiData.finance.balance >= 0 ? "green" : "red"} />
+                      <KpiCard label={tDash("finance.openInvoices")} value={kpiData.finance.openInvoiceCount} color="yellow" />
+                      <KpiCard label={tDash("finance.overdueInvoices")} value={kpiData.finance.overdueInvoiceCount} color="red" />
+                      <KpiCard label={tDash("finance.pendingPayments")} value={kpiData.finance.pendingPaymentCount} color="yellow" />
+                      <KpiCard label={tDash("finance.pendingClaims")} value={kpiData.finance.pendingExpenseClaimCount} color="yellow" />
+                    </div>
+                    {kpiData.finance.currentFiscalPeriod && (
+                      <div className="mt-4 rounded-xl bg-white p-4 shadow-sm">
+                        <p className="text-xs text-gray-500">{tDash("finance.fiscalPeriod")}</p>
+                        <p className="text-sm font-medium text-gray-900">
+                          {kpiData.finance.currentFiscalPeriod} ({kpiData.finance.currentPeriodStatus})
+                        </p>
+                      </div>
+                    )}
+                  </section>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
     </main>
+  );
+}
+
+// --- Types for REQ-050 KPIs ---
+
+interface MemberTrendItem {
+  month: string;
+  newMembers: number;
+  totalAtEndOfMonth: number;
+}
+
+interface MemberKpis {
+  totalMembers: number;
+  activeMembers: number;
+  pendingMembers: number;
+  inactiveMembers: number;
+  suspendedMembers: number;
+  newMembersInPeriod: number;
+  monthlyTrend: MemberTrendItem[];
+}
+
+interface EventCategoryBreakdown {
+  category: string;
+  count: number;
+  totalRegistrations: number;
+}
+
+interface EventKpis {
+  totalEvents: number;
+  upcomingEvents: number;
+  completedEvents: number;
+  cancelledEvents: number;
+  totalRegistrations: number;
+  totalParticipantsConfirmed: number;
+  totalEventRevenue: number;
+  byCategory: EventCategoryBreakdown[];
+}
+
+interface FinanceKpis {
+  totalIncome: number;
+  totalExpense: number;
+  balance: number;
+  outstandingInvoices: number;
+  overdueInvoiceCount: number;
+  overdueAmount: number;
+  openInvoiceCount: number;
+  pendingPayments: number;
+  pendingPaymentCount: number;
+  pendingExpenseClaims: number;
+  pendingExpenseClaimCount: number;
+  currentFiscalPeriod: string | null;
+  currentPeriodStatus: string | null;
+}
+
+interface DashboardOverview {
+  members: MemberKpis;
+  events: EventKpis;
+  finance: FinanceKpis;
+}
+
+// --- KPI Card Component ---
+
+function KpiCard({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: string | number;
+  color?: "green" | "red" | "yellow" | "blue" | "gray";
+}) {
+  const colorClasses: Record<string, string> = {
+    green: "text-green-700",
+    red: "text-red-600",
+    yellow: "text-yellow-700",
+    blue: "text-blue-700",
+    gray: "text-gray-500",
+  };
+
+  return (
+    <div className="rounded-xl bg-white p-4 shadow-sm">
+      <p className="mb-1 text-xs text-gray-500">{label}</p>
+      <p className={`text-lg font-semibold tabular-nums ${color ? colorClasses[color] : "text-gray-900"}`}>
+        {value}
+      </p>
+    </div>
   );
 }
