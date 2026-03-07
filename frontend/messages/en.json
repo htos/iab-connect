@@ -179,7 +179,15 @@
     "contactDetails": "Contact Details",
     "contact": "Contact",
     "address": "Address",
-    "emailCannotBeChanged": "Email address cannot be changed. Contact the board if needed."
+    "emailCannotBeChanged": "Email address cannot be changed. Contact the board if needed.",
+    "consentPreferences": "Privacy & Consent",
+    "consentDescription": "Manage your communication preferences.",
+    "consentNewsletter": "Newsletter",
+    "consentNewsletterDesc": "Receive association newsletters and updates via email.",
+    "consentEventNotifications": "Event Notifications",
+    "consentEventNotificationsDesc": "Receive notifications about upcoming events.",
+    "consentSaved": "Preferences saved.",
+    "consentError": "Error saving preferences."
   },
   "members": {
     "title": "Member Management",
@@ -415,6 +423,7 @@
     "allCategories": "All Categories",
     "allStatuses": "All Statuses",
     "showPastEvents": "Show past events",
+    "editEvent": "Edit Event",
     "new": {
       "title": "Create New Event",
       "subtitle": "Fill in the details to create a new event."
@@ -517,7 +526,8 @@
       "imageAltPlaceholder": "Description for accessibility",
       "preview": "Preview",
       "cancelReason": "Reason for Cancellation",
-      "cancelReasonPlaceholder": "Why is the event being cancelled?"
+      "cancelReasonPlaceholder": "Why is the event being cancelled?",
+      "editDescription": "Change the details of the event. All changes must be saved."
     },
     "actions": {
       "create": "Create Event",
@@ -537,7 +547,8 @@
       "confirmDelete": "Really delete event?",
       "confirmDeleteDesc": "This action cannot be undone. The event and all registrations will be deleted.",
       "confirmCancel": "Really cancel event?",
-      "confirmCancelDesc": "All registered participants will be notified."
+      "confirmCancelDesc": "All registered participants will be notified.",
+      "backToEvent": "Back to Event"
     },
     "status": {
       "draft": "Draft",
@@ -560,8 +571,8 @@
     },
     "visibility": {
       "public": "Public",
-      "membersOnly": "Members Only",
-      "inviteOnly": "Invite Only",
+      "membersonly": "Members Only",
+      "inviteonly": "Invite Only",
       "hidden": "Hidden"
     },
     "errors": {
@@ -1791,6 +1802,7 @@
     "events": "Events",
     "sponsors": "Sponsors",
     "blog": "Blog",
+    "newsletter": "Newsletter",
     "contact": "Contact",
     "login": "Sign In",
     "closeMenu": "Close menu",
@@ -1802,6 +1814,7 @@
     "events": "Events",
     "sponsors": "Sponsors",
     "blog": "Blog",
+    "newsletter": "Newsletter",
     "contact": "Contact",
     "legal": "Legal",
     "privacy": "Privacy Policy",
@@ -1901,5 +1914,44 @@
     "share": "Share",
     "copyLink": "Copy Link",
     "allPosts": "View All Posts"
+  },
+  "unsubscribe": {
+    "title": "Unsubscribe from Newsletter",
+    "loading": "Verifying link...",
+    "invalidToken": "Invalid or expired unsubscribe link.",
+    "alreadyUnsubscribed": "This email address has already been unsubscribed.",
+    "confirmTitle": "Confirm Newsletter Unsubscribe",
+    "confirmText": "Do you want to unsubscribe {email} from the newsletter?",
+    "confirmButton": "Unsubscribe",
+    "success": "Successfully Unsubscribed",
+    "successText": "You will no longer receive newsletter emails.",
+    "error": "Error unsubscribing. Please try again."
+  },
+  "newsletter": {
+    "title": "Newsletter",
+    "subscribeTitle": "Subscribe to Newsletter",
+    "subscribeDescription": "Receive news, events, and updates from the Indian Association Bern directly in your inbox.",
+    "emailLabel": "Email Address",
+    "emailPlaceholder": "your@email.com",
+    "firstNameLabel": "First Name (optional)",
+    "firstNamePlaceholder": "Your first name",
+    "lastNameLabel": "Last Name (optional)",
+    "lastNamePlaceholder": "Your last name",
+    "subscribeButton": "Subscribe",
+    "subscribing": "Subscribing...",
+    "subscribeSuccess": "Successfully Subscribed!",
+    "subscribeSuccessText": "Thank you! You will now receive our newsletter.",
+    "subscribeError": "Error subscribing. Please try again.",
+    "subscribeAnother": "Subscribe another email",
+    "unsubscribeTitle": "Unsubscribe from Newsletter",
+    "unsubscribeDescription": "Enter your email address to unsubscribe from the newsletter.",
+    "unsubscribeButton": "Unsubscribe",
+    "unsubscribing": "Unsubscribing...",
+    "unsubscribeSuccess": "Unsubscribe Successful",
+    "unsubscribeSuccessText": "If this email was registered, it has been successfully unsubscribed.",
+    "unsubscribeError": "Error unsubscribing. Please try again.",
+    "unsubscribeAnother": "Unsubscribe another email",
+    "switchToUnsubscribe": "Want to unsubscribe?",
+    "switchToSubscribe": "Want to subscribe?"
   }
 }

@@ -179,7 +179,15 @@
     "contactDetails": "Kontaktdaten",
     "contact": "Kontakt",
     "address": "Adresse",
-    "emailCannotBeChanged": "E-Mail-Adresse kann nicht geändert werden. Kontaktiere den Vorstand bei Bedarf."
+    "emailCannotBeChanged": "E-Mail-Adresse kann nicht geändert werden. Kontaktiere den Vorstand bei Bedarf.",
+    "consentPreferences": "Datenschutz & Einwilligungen",
+    "consentDescription": "Verwalte deine Kommunikationseinstellungen.",
+    "consentNewsletter": "Newsletter",
+    "consentNewsletterDesc": "Vereins-Newsletter und Updates per E-Mail erhalten.",
+    "consentEventNotifications": "Event-Benachrichtigungen",
+    "consentEventNotificationsDesc": "Benachrichtigungen über kommende Veranstaltungen erhalten.",
+    "consentSaved": "Einstellungen gespeichert.",
+    "consentError": "Fehler beim Speichern der Einstellungen."
   },
   "members": {
     "title": "Mitgliederverwaltung",
@@ -415,13 +423,15 @@
     "allCategories": "Alle Kategorien",
     "allStatuses": "Alle Status",
     "showPastEvents": "Vergangene Events anzeigen",
+    "editEvent": "Event bearbeiten",
     "new": {
       "title": "Neues Event erstellen",
       "subtitle": "Füllen Sie die Details aus, um ein neues Event zu erstellen."
     },
     "edit": {
       "title": "Event bearbeiten",
-      "subtitle": "Ändern Sie die Details des Events."
+      "subtitle": "Ändern Sie die Details des Events.",
+      "editEvent": "Event bearbeiten"
     },
     "detail": {
       "description": "Beschreibung",
@@ -517,7 +527,8 @@
       "imageAltPlaceholder": "Beschreibung für Barrierefreiheit",
       "preview": "Vorschau",
       "cancelReason": "Absagegrund",
-      "cancelReasonPlaceholder": "Warum wird das Event abgesagt?"
+      "cancelReasonPlaceholder": "Warum wird das Event abgesagt?",
+      "editDescription": "Ändere die Details des Events. Alle Änderungen müssen gespeichert werden."
     },
     "actions": {
       "create": "Event erstellen",
@@ -537,7 +548,8 @@
       "confirmDelete": "Event wirklich löschen?",
       "confirmDeleteDesc": "Diese Aktion kann nicht rückgängig gemacht werden. Das Event und alle Anmeldungen werden gelöscht.",
       "confirmCancel": "Event wirklich absagen?",
-      "confirmCancelDesc": "Alle angemeldeten Teilnehmer werden benachrichtigt."
+      "confirmCancelDesc": "Alle angemeldeten Teilnehmer werden benachrichtigt.",
+      "backToEvent": "Zurück zum Event"
     },
     "status": {
       "draft": "Entwurf",
@@ -560,8 +572,8 @@
     },
     "visibility": {
       "public": "Öffentlich",
-      "membersOnly": "Nur Mitglieder",
-      "inviteOnly": "Nur auf Einladung",
+      "membersonly": "Nur Mitglieder",
+      "inviteonly": "Nur auf Einladung",
       "hidden": "Versteckt"
     },
     "errors": {
@@ -1791,6 +1803,7 @@
     "events": "Veranstaltungen",
     "sponsors": "Sponsoren",
     "blog": "Blog",
+    "newsletter": "Newsletter",
     "contact": "Kontakt",
     "login": "Anmelden",
     "closeMenu": "Menü schliessen",
@@ -1802,6 +1815,7 @@
     "events": "Veranstaltungen",
     "sponsors": "Sponsoren",
     "blog": "Blog",
+    "newsletter": "Newsletter",
     "contact": "Kontakt",
     "legal": "Rechtliches",
     "privacy": "Datenschutz",
@@ -1901,5 +1915,44 @@
     "share": "Teilen",
     "copyLink": "Link kopieren",
     "allPosts": "Alle Beiträge anzeigen"
+  },
+  "unsubscribe": {
+    "title": "Newsletter abmelden",
+    "loading": "Link wird überprüft...",
+    "invalidToken": "Ungültiger oder abgelaufener Abmeldelink.",
+    "alreadyUnsubscribed": "Diese E-Mail-Adresse wurde bereits abgemeldet.",
+    "confirmTitle": "Newsletter-Abmeldung bestätigen",
+    "confirmText": "Möchten Sie die E-Mail-Adresse {email} vom Newsletter abmelden?",
+    "confirmButton": "Abmelden",
+    "success": "Erfolgreich abgemeldet",
+    "successText": "Sie erhalten keine Newsletter-E-Mails mehr.",
+    "error": "Fehler bei der Abmeldung. Bitte versuchen Sie es erneut."
+  },
+  "newsletter": {
+    "title": "Newsletter",
+    "subscribeTitle": "Newsletter abonnieren",
+    "subscribeDescription": "Erhalten Sie Neuigkeiten, Events und Updates vom Indischen Kulturverein Bern direkt in Ihr Postfach.",
+    "emailLabel": "E-Mail-Adresse",
+    "emailPlaceholder": "ihre@email.ch",
+    "firstNameLabel": "Vorname (optional)",
+    "firstNamePlaceholder": "Ihr Vorname",
+    "lastNameLabel": "Nachname (optional)",
+    "lastNamePlaceholder": "Ihr Nachname",
+    "subscribeButton": "Abonnieren",
+    "subscribing": "Wird angemeldet...",
+    "subscribeSuccess": "Erfolgreich angemeldet!",
+    "subscribeSuccessText": "Vielen Dank! Sie erhalten ab sofort unseren Newsletter.",
+    "subscribeError": "Fehler beim Anmelden. Bitte versuchen Sie es erneut.",
+    "subscribeAnother": "Weitere E-Mail anmelden",
+    "unsubscribeTitle": "Newsletter abbestellen",
+    "unsubscribeDescription": "Geben Sie Ihre E-Mail-Adresse ein, um sich vom Newsletter abzumelden.",
+    "unsubscribeButton": "Abmelden",
+    "unsubscribing": "Wird abgemeldet...",
+    "unsubscribeSuccess": "Abmeldung erfolgreich",
+    "unsubscribeSuccessText": "Falls diese E-Mail registriert war, wurde sie erfolgreich abgemeldet.",
+    "unsubscribeError": "Fehler beim Abmelden. Bitte versuchen Sie es erneut.",
+    "unsubscribeAnother": "Weitere E-Mail abmelden",
+    "switchToUnsubscribe": "Möchten Sie sich abmelden?",
+    "switchToSubscribe": "Möchten Sie sich anmelden?"
   }
 }

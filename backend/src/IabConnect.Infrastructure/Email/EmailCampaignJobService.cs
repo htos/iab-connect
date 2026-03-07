@@ -1,6 +1,9 @@
 using Hangfire;
+using IabConnect.Application.Communication;
 using IabConnect.Domain.Communication;
 using IabConnect.Domain.Members;
+using IabConnect.Domain.Privacy;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace IabConnect.Infrastructure.Email;
@@ -67,18 +70,30 @@ public sealed class EmailCampaignSendJob
 {
     private readonly IEmailCampaignRepository _campaignRepository;
     private readonly IMemberRepository _memberRepository;
+    private readonly IConsentRepository _consentRepository;
+    private readonly INewsletterSubscriberRepository _subscriberRepository;
     private readonly IEmailSender _emailSender;
+    private readonly IUnsubscribeTokenService _tokenService;
+    private readonly string _frontendBaseUrl;
     private readonly ILogger<EmailCampaignSendJob> _logger;
 
     public EmailCampaignSendJob(
         IEmailCampaignRepository campaignRepository,
         IMemberRepository memberRepository,
+        IConsentRepository consentRepository,
+        INewsletterSubscriberRepository subscriberRepository,
         IEmailSender emailSender,
+        IUnsubscribeTokenService tokenService,
+        IConfiguration configuration,
         ILogger<EmailCampaignSendJob> logger)
     {
         _campaignRepository = campaignRepository;
         _memberRepository = memberRepository;
+        _consentRepository = consentRepository;
+        _subscriberRepository = subscriberRepository;
         _emailSender = emailSender;
+        _tokenService = tokenService;
+        _frontendBaseUrl = configuration["Frontend:BaseUrl"] ?? "http://localhost:3000";
         _logger = logger;
     }
 
@@ -201,13 +216,23 @@ public sealed class EmailCampaignSendJob
     {
         var recipients = new List<EmailRecipient>();
 
-        // Für MVP: Alle aktiven Mitglieder (gleiche Logik wie in EmailCampaignEndpoints)
         var (members, _) = await _memberRepository.GetPagedAsync(
             page: 1,
             pageSize: 10000,
             status: MembershipStatus.Active);
 
-        foreach (var member in members.Where(m => !string.IsNullOrEmpty(m.Email)))
+        var activeWithEmail = members.Where(m => !string.IsNullOrEmpty(m.Email)).ToList();
+
+        // REQ-029: Filter by newsletter consent when segment is NewsletterSubscribers
+        if (campaign.SegmentType == RecipientSegmentType.NewsletterSubscribers)
+        {
+            var consentedUserIds = await _consentRepository.GetUsersWithConsentAsync(ConsentType.Newsletter);
+            activeWithEmail = activeWithEmail
+                .Where(m => m.KeycloakUserId.HasValue && consentedUserIds.Contains(m.KeycloakUserId.Value))
+                .ToList();
+        }
+
+        foreach (var member in activeWithEmail)
         {
             recipients.Add(EmailRecipient.CreateForMember(
                 campaign.Id,
@@ -217,15 +242,40 @@ public sealed class EmailCampaignSendJob
                 member.LastName));
         }
 
+        // Include external newsletter subscribers
+        if (campaign.SegmentType == RecipientSegmentType.NewsletterSubscribers)
+        {
+            var subscribers = await _subscriberRepository.GetActiveSubscribersAsync();
+            var memberEmails = new HashSet<string>(recipients.Select(r => r.Email), StringComparer.OrdinalIgnoreCase);
+            foreach (var sub in subscribers.Where(s => !memberEmails.Contains(s.Email)))
+            {
+                recipients.Add(EmailRecipient.CreateExternal(
+                    campaign.Id,
+                    sub.Email,
+                    sub.FirstName,
+                    sub.LastName));
+            }
+        }
+
         return recipients;
     }
 
-    private static string PersonalizeContent(string content, EmailRecipient recipient)
+    private string PersonalizeContent(string content, EmailRecipient recipient)
     {
-        return content
+        var result = content
             .Replace("{{firstName}}", recipient.FirstName ?? "")
             .Replace("{{lastName}}", recipient.LastName ?? "")
             .Replace("{{email}}", recipient.Email)
             .Replace("{{fullName}}", recipient.FullName);
+
+        // REQ-029: Inject unsubscribe link
+        if (result.Contains("{{unsubscribeLink}}"))
+        {
+            var token = _tokenService.GenerateToken(recipient.Id);
+            var unsubscribeUrl = $"{_frontendBaseUrl}/unsubscribe/{token}";
+            result = result.Replace("{{unsubscribeLink}}", unsubscribeUrl);
+        }
+
+        return result;
     }
 }

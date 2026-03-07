@@ -44,6 +44,9 @@ public interface IEmailCampaignRepository
         int pageSize = 50,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Empfänger nach ID abrufen</summary>
+    Task<EmailRecipient?> GetRecipientByIdAsync(Guid recipientId, CancellationToken cancellationToken = default);
+
     /// <summary>Empfänger nach externem Message-ID abrufen</summary>
     Task<EmailRecipient?> GetRecipientByExternalIdAsync(
         string externalMessageId,

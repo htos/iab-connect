@@ -472,8 +472,8 @@ export default function EditEventPage({ params }: EditEventPageProps) {
                       className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition-colors bg-white"
                     >
                       <option value={EventVisibility.Public}>{t('visibility.public')}</option>
-                      <option value={EventVisibility.MembersOnly}>{t('visibility.membersOnly')}</option>
-                      <option value={EventVisibility.InviteOnly}>{t('visibility.inviteOnly')}</option>
+                      <option value={EventVisibility.MembersOnly}>{t('visibility.membersonly')}</option>
+                      <option value={EventVisibility.InviteOnly}>{t('visibility.inviteonly')}</option>
                       <option value={EventVisibility.Hidden}>{t('visibility.hidden')}</option>
                     </select>
                   </div>

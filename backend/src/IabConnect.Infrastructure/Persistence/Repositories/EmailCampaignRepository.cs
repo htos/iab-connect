@@ -157,6 +157,14 @@ public sealed class EmailCampaignRepository : IEmailCampaignRepository
         return (items, totalCount);
     }
 
+    public async Task<EmailRecipient?> GetRecipientByIdAsync(
+        Guid recipientId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.EmailRecipients
+            .FirstOrDefaultAsync(r => r.Id == recipientId, cancellationToken);
+    }
+
     public async Task<EmailRecipient?> GetRecipientByExternalIdAsync(
         string externalMessageId,
         CancellationToken cancellationToken = default)

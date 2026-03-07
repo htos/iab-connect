@@ -10,6 +10,7 @@ const navLinks = [
   { href: "/public/events", tKey: "events" },
   { href: "/public/sponsors", tKey: "sponsors" },
   { href: "/public/blog", tKey: "blog" },
+  { href: "/public/newsletter", tKey: "newsletter" },
   { href: "/public/contact", tKey: "contact" },
 ] as const;
 

@@ -13,6 +13,7 @@ public static class EndpointMapper
 
         // Public Endpoints (no auth required)
         app.MapRegistrationEndpoints(); // Public registration
+        app.MapUnsubscribeEndpoints(); // REQ-029: Newsletter unsubscribe
 
         // Module Endpoints - REQ-001: Identity first
         api.MapIdentityEndpoints();

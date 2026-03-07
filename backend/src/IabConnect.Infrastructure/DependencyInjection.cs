@@ -69,6 +69,7 @@ public static class DependencyInjection
         services.AddScoped<IEventRegistrationRepository, EventRegistrationRepository>();
         services.AddScoped<IEmailCampaignRepository, EmailCampaignRepository>();
         services.AddScoped<IEmailTemplateRepository, EmailTemplateRepository>();
+        services.AddScoped<INewsletterSubscriberRepository, NewsletterSubscriberRepository>();
 
         // REQ-059: System Settings & Custom Roles
         services.AddScoped<ISystemSettingsRepository, SystemSettingsRepository>();
@@ -157,6 +158,9 @@ public static class DependencyInjection
         services.AddScoped<IEmailCampaignJobService, EmailCampaignJobService>();
         services.AddScoped<EmailCampaignSendJob>();
 
+        // REQ-029: Unsubscribe token service (HMAC-based)
+        services.AddSingleton<IUnsubscribeTokenService, UnsubscribeTokenService>();
+
         // REQ-039: Background job — mark overdue invoices
         services.AddScoped<IMarkInvoicesOverdueService, MarkInvoicesOverdueService>();
         services.AddScoped<MarkInvoicesOverdueJob>();
@@ -164,6 +168,9 @@ public static class DependencyInjection
         // REQ-042: Background job — generate dunning notices
         services.AddScoped<IDunningScheduleService, DunningScheduleService>();
         services.AddScoped<DunningScheduleGenerationJob>();
+
+        // TECH-003: Dunning email service (sends dunning notice emails)
+        services.AddScoped<IDunningEmailService, DunningEmailService>();
 
         // REQ-034: Document Storage (RustFS via S3 SDK)
         services.Configure<DocumentStorageSettings>(configuration.GetSection(DocumentStorageSettings.SectionName));

@@ -993,12 +993,12 @@ Kommunikation
 Abhängigkeiten
 
 
-Status: Backlog
-StatusSeit: 2026 01 30
+Status: Done
+StatusSeit: 2026 03 08
 Owner:
 SprintOderRelease:
 TicketLink:
-Notizen:
+Notizen: MVP-Umsetzung: Newsletter-Consent-Filterung bei Kampagnenversand, HMAC-basierter Abmeldelink ({{unsubscribeLink}}), öffentlicher Unsubscribe-Endpoint, Consent-UI im Profil. Public Subscribe/Unsubscribe ohne Account (nur E-Mail), NewsletterSubscriber-Entity für externe Abonnenten, Kampagnenversand inkl. externer Abonnenten. Bounce-Handling via bestehende EmailRecipient-Infrastruktur.
 
 ID: REQ-030
 Bereich: Kommunikation
@@ -2510,3 +2510,4 @@ Owner: Implementation Agent
 SprintOderRelease: Sprint 5
 TicketLink:
 Notizen: pain.001 Export implementiert. Pain001Generator mit CH SPS und SEPA Profil-Unterstützung. Format pain.001.001.09. POST /exports/pain001 und POST /exports/pain001/validate Endpoints. IBAN/BIC Validierung.
+

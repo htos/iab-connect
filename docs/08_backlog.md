@@ -31,7 +31,7 @@ REQ-020 Event Anmeldung RSVP
 Kommunikation
 REQ-026 E Mail Verwaltung Automatisiertes Mailing
 REQ-027 Template Editor und Vorlagenpflege
-REQ-029 Newsletter Opt in Opt out und Bounces
+REQ-029 Newsletter Opt in Opt out und Bounces — **Done (2026-03-08)**: Consent-Filterung, HMAC-Unsubscribe-Token, öffentlicher Endpoint, Consent-UI im Profil, Unsubscribe-Seite, Public Newsletter Subscribe/Unsubscribe (ohne Account, nur E-Mail), NewsletterSubscriber-Entity für externe Abonnenten, Kampagnenversand inkl. externer Abonnenten
 
 Sponsoren und Lieferanten
 REQ-031 Sponsorenverwaltung
@@ -166,24 +166,28 @@ Abhängigkeit: REQ-002 REQ-003
 
 TECH-002 Invoice Number Race Condition
 Beschreibung: Bei gleichzeitiger Erstellung mehrerer Rechnungen kann es zu doppelten Rechnungsnummern kommen, da die Nummernvergabe nicht atomar ist.
-Lösung: Datenbank-Sequenz oder Advisory Lock für Rechnungsnummern-Generierung.
+Lösung: PostgreSQL UPSERT (INSERT ON CONFLICT DO UPDATE) mit Row-Level Locking in GetNextInvoiceNumberAsync. Unique constraint auf (finance_profile_id, fiscal_year). Concurrency-Tests mit 20 parallelen Requests bestätigen Korrektheit.
+Status: Done (2026-02-28)
 Priorität: Medium
 Abhängigkeit: REQ-039
 
 TECH-003 Dunning Email Sending
 Beschreibung: Mahnungen werden erstellt und als Sent markiert, aber der tatsächliche E-Mail-Versand ist noch nicht implementiert.
-Lösung: Integration mit Communication Modul (EmailTemplate + EmailCampaign) für automatisierten Mahnungsversand.
+Lösung: IDunningEmailService Interface in Application Layer, DunningEmailService Implementation in Infrastructure mit IEmailSender Integration. Löst Empfänger-Email aus Member/Sponsor/Supplier auf. Level-basierte HTML Email Templates (Zahlungserinnerung, 2. Mahnung, letzte Mahnung). SendDunningNoticeCommandHandler sendet Email vor MarkAsSent. 4 Unit Tests.
+Status: Done (2026-03-07)
 Priorität: Medium
 Abhängigkeit: REQ-042 REQ-026
 
 TECH-004 Pagination auf Finance List Endpoints
 Beschreibung: Finance List Endpoints (Transactions, Invoices, Payments, Receipts) geben aktuell alle Einträge zurück ohne Pagination.
-Lösung: Standard Pagination Query Parameter (page, pageSize, sort) auf allen Finance List Endpoints implementieren.
+Lösung: Alle 32+ Finance Query Handler verwenden PagedResult<T> mit PaginationHelper (Sort, Filter, Page, PageSize). Dynamisches Sorting und Filtering über Query Parameter.
+Status: Done (2026-02-16)
 Priorität: Medium
 Abhängigkeit: REQ-038 REQ-039 REQ-040
 
 TECH-005 Overdue Invoice Scheduler
 Beschreibung: Rechnungen werden aktuell nicht automatisch auf Overdue gesetzt wenn das Fälligkeitsdatum überschritten ist.
-Lösung: Background Job (Hangfire) der täglich offene Rechnungen prüft und überfällige auf Status Overdue setzt.
+Lösung: MarkInvoicesOverdueJob als Hangfire Recurring Job (Cron.Daily). Prüft alle Sent-Invoices mit DueDate < heute, ruft Invoice.MarkAsOverdue auf. AutomaticRetry(3). DunningScheduleGenerationJob läuft wöchentlich für automatische Mahnungserstellung.
+Status: Done (2026-02-28)
 Priorität: Medium
 Abhängigkeit: REQ-039 REQ-042

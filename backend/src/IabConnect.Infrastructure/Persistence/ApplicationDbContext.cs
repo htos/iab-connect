@@ -33,6 +33,7 @@ public sealed class ApplicationDbContext : DbContext
     public DbSet<EmailCampaign> EmailCampaigns => Set<EmailCampaign>();
     public DbSet<EmailRecipient> EmailRecipients => Set<EmailRecipient>();
     public DbSet<EmailTemplate> EmailTemplates => Set<EmailTemplate>();
+    public DbSet<NewsletterSubscriber> NewsletterSubscribers => Set<NewsletterSubscriber>();
     public DbSet<SystemSettings> SystemSettings => Set<SystemSettings>();
     public DbSet<CustomRole> CustomRoles => Set<CustomRole>();
 

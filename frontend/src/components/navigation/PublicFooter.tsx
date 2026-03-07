@@ -55,6 +55,14 @@ export default function PublicFooter() {
               </li>
               <li>
                 <Link
+                  href="/public/newsletter"
+                  className="text-sm text-gray-300 transition-colors hover:text-white"
+                >
+                  {t("newsletter")}
+                </Link>
+              </li>
+              <li>
+                <Link
                   href="/public/contact"
                   className="text-sm text-gray-300 transition-colors hover:text-white"
                 >

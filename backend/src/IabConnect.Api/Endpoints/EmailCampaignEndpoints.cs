@@ -2,6 +2,7 @@ using Hangfire;
 using IabConnect.Api.Extensions;
 using IabConnect.Domain.Communication;
 using IabConnect.Domain.Members;
+using IabConnect.Domain.Privacy;
 using IabConnect.Infrastructure.Email;
 using Microsoft.AspNetCore.Mvc;
 
@@ -179,6 +180,8 @@ public static class EmailCampaignEndpoints
     private static async Task<IResult> SendCampaign(
         [FromServices] IEmailCampaignRepository repository,
         [FromServices] IMemberRepository memberRepository,
+        [FromServices] IConsentRepository consentRepository,
+        [FromServices] INewsletterSubscriberRepository subscriberRepository,
         [FromServices] IEmailCampaignJobService jobService,
         Guid id)
     {
@@ -187,7 +190,7 @@ public static class EmailCampaignEndpoints
             return Results.NotFound();
 
             // Empfänger basierend auf Segment laden
-            var recipients = await LoadRecipientsForCampaign(campaign, memberRepository);
+            var recipients = await LoadRecipientsForCampaign(campaign, memberRepository, consentRepository, subscriberRepository);
             foreach (var recipient in recipients)
             {
                 campaign.AddRecipient(recipient);
@@ -237,6 +240,8 @@ public static class EmailCampaignEndpoints
     private static async Task<IResult> ScheduleCampaign(
         [FromServices] IEmailCampaignRepository repository,
         [FromServices] IMemberRepository memberRepository,
+        [FromServices] IConsentRepository consentRepository,
+        [FromServices] INewsletterSubscriberRepository subscriberRepository,
         [FromServices] IEmailCampaignJobService jobService,
         Guid id,
         [FromBody] ScheduleCampaignRequest request)
@@ -246,7 +251,7 @@ public static class EmailCampaignEndpoints
             return Results.NotFound();
 
             // Empfänger vorab laden
-            var recipients = await LoadRecipientsForCampaign(campaign, memberRepository);
+            var recipients = await LoadRecipientsForCampaign(campaign, memberRepository, consentRepository, subscriberRepository);
             foreach (var recipient in recipients)
             {
                 campaign.AddRecipient(recipient);
@@ -389,21 +394,34 @@ public static class EmailCampaignEndpoints
     /// </summary>
     private static async Task<IResult> PreviewRecipients(
         [FromServices] IMemberRepository memberRepository,
+        [FromServices] IConsentRepository consentRepository,
+        [FromServices] INewsletterSubscriberRepository subscriberRepository,
         Guid id,
         [FromBody] PreviewRecipientsRequest request)
     {
-        var members = await GetMembersForSegment(memberRepository, request.SegmentType, request.SegmentFilter);
+        var members = await GetMembersForSegment(memberRepository, consentRepository, request.SegmentType, request.SegmentFilter);
+
+        var memberPreviews = members.Take(10).Select(m => new
+        {
+            m.Id,
+            m.Email,
+            m.FirstName,
+            m.LastName
+        }).ToList();
+
+        var totalCount = members.Count;
+
+        // Include external newsletter subscribers in preview
+        if (request.SegmentType == RecipientSegmentType.NewsletterSubscribers)
+        {
+            var subscribers = await subscriberRepository.GetActiveSubscribersAsync();
+            totalCount += subscribers.Count;
+        }
 
         return Results.Ok(new
         {
-            totalCount = members.Count,
-            preview = members.Take(10).Select(m => new
-            {
-                m.Id,
-                m.Email,
-                m.FirstName,
-                m.LastName
-            })
+            totalCount,
+            preview = memberPreviews
         });
     }
 
@@ -427,30 +445,60 @@ public static class EmailCampaignEndpoints
 
     private static async Task<List<EmailRecipient>> LoadRecipientsForCampaign(
         EmailCampaign campaign,
-        IMemberRepository memberRepository)
+        IMemberRepository memberRepository,
+        IConsentRepository consentRepository,
+        INewsletterSubscriberRepository subscriberRepository)
     {
-        var members = await GetMembersForSegment(memberRepository, campaign.SegmentType, campaign.SegmentFilter);
+        var members = await GetMembersForSegment(memberRepository, consentRepository, campaign.SegmentType, campaign.SegmentFilter);
 
-        return members.Select(m => EmailRecipient.CreateForMember(
+        var recipients = members.Select(m => EmailRecipient.CreateForMember(
             campaign.Id,
             m.Id,
             m.Email,
             m.FirstName,
             m.LastName)).ToList();
+
+        // Include external newsletter subscribers
+        if (campaign.SegmentType == RecipientSegmentType.NewsletterSubscribers)
+        {
+            var subscribers = await subscriberRepository.GetActiveSubscribersAsync();
+            var memberEmails = new HashSet<string>(recipients.Select(r => r.Email), StringComparer.OrdinalIgnoreCase);
+            foreach (var sub in subscribers.Where(s => !memberEmails.Contains(s.Email)))
+            {
+                recipients.Add(EmailRecipient.CreateExternal(
+                    campaign.Id,
+                    sub.Email,
+                    sub.FirstName,
+                    sub.LastName));
+            }
+        }
+
+        return recipients;
     }
 
     private static async Task<List<Member>> GetMembersForSegment(
         IMemberRepository memberRepository,
+        IConsentRepository consentRepository,
         RecipientSegmentType segmentType,
         string? segmentFilter)
     {
-        // Für MVP: Alle aktiven Mitglieder
         var (members, _) = await memberRepository.GetPagedAsync(
             page: 1,
             pageSize: 10000,
             status: MembershipStatus.Active);
 
-        return members.Where(m => !string.IsNullOrEmpty(m.Email)).ToList();
+        var activeWithEmail = members.Where(m => !string.IsNullOrEmpty(m.Email)).ToList();
+
+        // REQ-029: Filter by newsletter consent when segment is NewsletterSubscribers
+        if (segmentType == RecipientSegmentType.NewsletterSubscribers)
+        {
+            var consentedUserIds = await consentRepository.GetUsersWithConsentAsync(ConsentType.Newsletter);
+            activeWithEmail = activeWithEmail
+                .Where(m => m.KeycloakUserId.HasValue && consentedUserIds.Contains(m.KeycloakUserId.Value))
+                .ToList();
+        }
+
+        return activeWithEmail;
     }
 
     private static async Task SendEmailsAsync(
@@ -497,13 +545,18 @@ public static class EmailCampaignEndpoints
         await repository.UpdateAsync(campaign);
     }
 
-    private static string PersonalizeContent(string content, EmailRecipient recipient)
+    private static string PersonalizeContent(string content, EmailRecipient recipient, string? unsubscribeLink = null)
     {
-        return content
+        var result = content
             .Replace("{{firstName}}", recipient.FirstName ?? "")
             .Replace("{{lastName}}", recipient.LastName ?? "")
             .Replace("{{email}}", recipient.Email)
             .Replace("{{fullName}}", recipient.FullName);
+
+        if (unsubscribeLink != null)
+            result = result.Replace("{{unsubscribeLink}}", unsubscribeLink);
+
+        return result;
     }
 
     // DTO Mappings

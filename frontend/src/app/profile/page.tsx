@@ -16,6 +16,7 @@ import {
   getStatusTranslationKey,
   getTypeTranslationKey,
 } from "@/lib/api/members";
+import { ConsentDto, getConsents, grantConsent, revokeConsent } from "@/lib/api/privacy";
 import { useTranslations } from "next-intl";
 
 export default function ProfilePage() {
@@ -37,6 +38,11 @@ export default function ProfilePage() {
     country: "",
     phone: "",
   });
+
+  // REQ-029: Consent preferences
+  const [consents, setConsents] = useState<ConsentDto[]>([]);
+  const [consentSaving, setConsentSaving] = useState(false);
+  const [consentMessage, setConsentMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
 
@@ -86,6 +92,38 @@ export default function ProfilePage() {
     }
   }, [baseUrl, t]);
 
+  const fetchConsents = useCallback(async () => {
+    const token = accessTokenRef.current;
+    if (!token) return;
+    try {
+      const data = await getConsents(token);
+      setConsents(data);
+    } catch {
+      // Consent loading failure is non-critical
+    }
+  }, []);
+
+  const handleConsentToggle = async (consentType: string, currentlyGranted: boolean) => {
+    const token = accessTokenRef.current;
+    if (!token) return;
+    setConsentSaving(true);
+    setConsentMessage(null);
+    try {
+      if (currentlyGranted) {
+        await revokeConsent(token, consentType);
+      } else {
+        await grantConsent(token, consentType);
+      }
+      await fetchConsents();
+      setConsentMessage({ type: "success", text: t("profile.consentSaved") });
+      setTimeout(() => setConsentMessage(null), 3000);
+    } catch {
+      setConsentMessage({ type: "error", text: t("profile.consentError") });
+    } finally {
+      setConsentSaving(false);
+    }
+  };
+
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push("/login");
@@ -105,8 +143,9 @@ export default function ProfilePage() {
     if (isAuthenticated && isMember && accessToken && !initialFetchDone.current) {
       initialFetchDone.current = true;
       fetchProfile();
+      fetchConsents();
     }
-  }, [isAuthenticated, isMember, accessToken, fetchProfile]);
+  }, [isAuthenticated, isMember, accessToken, fetchProfile, fetchConsents]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -437,6 +476,43 @@ export default function ProfilePage() {
                     {member.postalCode} {member.city}<br />
                     {member.country}
                   </address>
+                </div>
+
+                {/* REQ-029: Consent Preferences */}
+                <div className="bg-white rounded-xl shadow-sm p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1">{t("profile.consentPreferences")}</h3>
+                  <p className="text-sm text-gray-500 mb-4">{t("profile.consentDescription")}</p>
+
+                  {consentMessage && (
+                    <div className={`rounded-lg p-3 mb-4 text-sm ${consentMessage.type === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
+                      {consentMessage.text}
+                    </div>
+                  )}
+
+                  <div className="space-y-4">
+                    {[
+                      { type: "Newsletter", label: t("profile.consentNewsletter"), desc: t("profile.consentNewsletterDesc") },
+                      { type: "EventNotifications", label: t("profile.consentEventNotifications"), desc: t("profile.consentEventNotificationsDesc") },
+                    ].map(({ type, label, desc }) => {
+                      const consent = consents.find((c) => c.type === type);
+                      const isGranted = consent?.isGranted ?? false;
+                      return (
+                        <label key={type} className="flex items-start gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            disabled={consentSaving}
+                            checked={isGranted}
+                            onChange={() => handleConsentToggle(type, isGranted)}
+                            className="mt-0.5 h-5 w-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500 disabled:opacity-50"
+                          />
+                          <div>
+                            <span className="text-sm font-medium text-gray-900">{label}</span>
+                            <p className="text-sm text-gray-500">{desc}</p>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             )}

@@ -236,12 +236,12 @@ TicketLink:
 Notizen:
 
 ID: REQ-029
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
+Status: Done
+StatusSeit: 2026 03 08
+Owner: Implementation Agent
 SprintOderRelease:
 TicketLink:
-Notizen:
+Notizen: Newsletter-Consent-Filterung, HMAC-Unsubscribe-Token, öffentlicher Abmelde-Endpoint, Consent-UI im Profil, Unsubscribe-Seite (Frontend).
 
 ID: REQ-030
 Status: Backlog
