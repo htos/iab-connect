@@ -112,3 +112,5 @@ Dont
 10) **KEINE blauen Buttons** (bg-blue-*) - immer orange-600 verwenden!
 11) **KEINE abweichenden Layouts** - immer das Standard-Layout verwenden
 12) **KEINE container mx-auto px-4 py-8** - immer `<main>` mit Standard-Klassen
+13) **KEINE inline `api.get/post` Aufrufe in Event-Handlern** für Daten-Refresh nach Mutationen. Stattdessen: `refreshKey` State-Variable + `useEffect` mit `cancelled`-Flag für den Datenabruf. Handler machen nur die Mutation und setzen `setRefreshKey(k => k + 1)`. Inline-Fetches in onClick/onSubmit-Handlern führen zu permanentem Loading wegen Closure- und Race-Condition-Problemen.
+14) **KEINE private Backing-Field Manipulationen für EF-tracked Collections** zum Speichern neuer Child-Entities. Statt `aggregate.AddChild()` + `dbContext.SaveChangesAsync()` → immer `dbContext.Set<ChildEntity>().Add(child)` direkt nutzen, da EF Core Change-Tracking über private Backing-Fields bei Aggregate-Patterns zu `DbUpdateConcurrencyException` führen kann.

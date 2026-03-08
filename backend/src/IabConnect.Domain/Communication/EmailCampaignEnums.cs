@@ -88,5 +88,8 @@ public enum RecipientSegmentType
     EventParticipants = 3,
 
     /// <summary>Nur Newsletter-Abonnenten</summary>
-    NewsletterSubscribers = 4
+    NewsletterSubscribers = 4,
+
+    /// <summary>Mitglieder-Segment (REQ-017)</summary>
+    MemberSegment = 5
 }

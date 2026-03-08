@@ -117,6 +117,8 @@
     "dashboard": "Dashboard",
     "myProfile": "Mein Profil",
     "members": "Mitglieder",
+    "membersList": "Mitgliederliste",
+    "memberSegments": "Segmente",
     "events": "Events",
     "documents": "Dokumente",
     "communication": "Kommunikation",
@@ -987,6 +989,9 @@
       "customFilter": "Filter (SQL-ähnlich)",
       "customFilterPlaceholder": "z.B. membershipType = 'Regular'",
       "customFilterHint": "Verfügbare Felder: membershipType, status, memberSince",
+      "selectSegment": "Segment auswählen",
+      "searchSegmentPlaceholder": "Segment suchen...",
+      "noSegmentsFound": "Keine Segmente gefunden.",
       "content": "Inhalt",
       "contentDescription": "E-Mail Text und Design",
       "loadFromTemplate": "Aus Vorlage laden",
@@ -2207,6 +2212,83 @@
       "invoices": "Rechnungen",
       "sponsors": "Sponsoren",
       "blog": "Blog"
+    }
+  },
+  "segments": {
+    "title": "Segmente",
+    "subtitle": "Mitglieder-Segmente und Verteiler verwalten",
+    "newSegment": "Neues Segment",
+    "newSegmentDesc": "Erstelle ein neues Mitglieder-Segment.",
+    "editSegment": "Segment bearbeiten",
+    "notFound": "Segment nicht gefunden.",
+    "backToList": "Zurück zur Liste",
+    "backToDetail": "Zurück zum Segment",
+    "empty": "Keine Segmente gefunden.",
+    "searchPlaceholder": "Segmente durchsuchen...",
+    "totalCount": "{count} Segmente insgesamt",
+    "previewResult": "{count} Mitglieder entsprechen den Kriterien",
+    "noMembers": "Keine Mitglieder in diesem Segment.",
+    "searchMemberPlaceholder": "Mitglied suchen (Name oder E-Mail)...",
+    "noSearchResults": "Keine Mitglieder gefunden.",
+    "typeNotEditable": "Der Segmenttyp kann nach der Erstellung nicht geändert werden.",
+    "criteriaDesc": "Definiere Kriterien, um Mitglieder automatisch zuzuordnen.",
+    "from": "Von",
+    "to": "Bis",
+    "type": {
+      "static": "Statisch",
+      "dynamic": "Dynamisch"
+    },
+    "typeHint": {
+      "static": "Mitglieder werden manuell hinzugefügt und entfernt.",
+      "dynamic": "Mitglieder werden automatisch anhand von Kriterien zugeordnet."
+    },
+    "status": {
+      "active": "Aktiv",
+      "inactive": "Inaktiv"
+    },
+    "filter": {
+      "allTypes": "Alle Typen",
+      "allStatus": "Alle Status",
+      "active": "Aktiv",
+      "inactive": "Inaktiv"
+    },
+    "table": {
+      "name": "Name",
+      "type": "Typ",
+      "members": "Mitglieder",
+      "status": "Status",
+      "actions": "Aktionen"
+    },
+    "section": {
+      "basicInfo": "Grundinformationen",
+      "criteria": "Filterkriterien",
+      "details": "Details",
+      "stats": "Statistiken",
+      "members": "Mitglieder"
+    },
+    "field": {
+      "name": "Name",
+      "description": "Beschreibung",
+      "type": "Segmenttyp",
+      "color": "Farbe",
+      "isActive": "Segment aktiv",
+      "createdAt": "Erstellt am"
+    },
+    "criteria": {
+      "status": "Mitgliedsstatus",
+      "type": "Mitgliedstyp",
+      "memberSince": "Mitglied seit",
+      "memberSinceFrom": "Mitglied seit (von)",
+      "memberSinceTo": "Mitglied seit (bis)",
+      "city": "Stadt",
+      "country": "Land"
+    },
+    "action": {
+      "create": "Segment erstellen",
+      "export": "CSV exportieren",
+      "preview": "Vorschau",
+      "addMember": "Mitglied hinzufügen",
+      "remove": "Entfernen"
     }
   }
 }

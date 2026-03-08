@@ -68,6 +68,7 @@ public static class DependencyInjection
 
         // Repositories
         services.AddScoped<IMemberRepository, MemberRepository>();
+        services.AddScoped<IMemberSegmentRepository, MemberSegmentRepository>();
         services.AddScoped<IAuditEventRepository, AuditEventRepository>();
         services.AddScoped<IConsentRepository, ConsentRepository>();
         services.AddScoped<IDeletionRequestRepository, DeletionRequestRepository>();

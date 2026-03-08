@@ -19,6 +19,7 @@ public static class EndpointMapper
         api.MapIdentityEndpoints();
         app.MapUserEndpoints(); // REQ-002: Benutzerverwaltung (direct mapping, no prefix)
         api.MapMemberEndpoints();
+        app.MapMemberSegmentEndpoints(); // REQ-017: Segmentierung & Verteiler
         app.MapAuditEndpoints(); // REQ-011: Audit Log
         api.MapPrivacyEndpoints(); // REQ-012: Datenschutz & Einwilligungen (DSGVO)
         app.MapEventEndpoints(); // REQ-019: Eventverwaltung (uses EventEndpoints.cs)

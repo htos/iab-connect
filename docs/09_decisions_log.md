@@ -517,3 +517,18 @@ Hardcodierte Retention Rules (verworfen: fehlende Flexibilität für verschieden
 
 Auswirkung
 Backend: RetentionPolicy Entity mit EF Core. AnonymizeAuditLogsAsync (Raw SQL für Performance), DeleteOldBackupsAsync. Wöchentlicher Hangfire Job. Admin UI für Konfiguration.
+
+Datum
+2026 03 10
+
+Entscheidung
+REQ-017 (Sprint 11): Mitglieder-Segmentierung mit Static und Dynamic Segmenten.
+
+Begründung
+Statische Segmente erlauben manuelle Zuweisung von Mitgliedern. Dynamische Segmente definieren Kriterien (Status, Mitgliedstyp, MemberSince, Stadt, Land) als JSON, die zur Laufzeit ausgewertet werden. CriteriaJson als PostgreSQL jsonb für flexible Erweiterbarkeit. CSV-Export mit BOM und Semikolon-Trennung für DACH-Standard.
+
+Alternativen
+Nur statische Gruppen (verworfen: zu unflexibel für wiederkehrende Abfragen). Separate Filter-Engine (verworfen: YAGNI, IQueryable reicht für aktuelle Kriterien).
+
+Auswirkung
+Backend: MemberSegment AggregateRoot, MemberSegmentAssignment Entity, 10 API Endpoints, EF Migration. Frontend: 4 Seiten mit Criteria Builder. 37 Tests (22 Unit, 15 Integration).

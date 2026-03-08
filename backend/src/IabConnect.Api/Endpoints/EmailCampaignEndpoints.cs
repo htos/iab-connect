@@ -4,7 +4,10 @@ using IabConnect.Domain.Communication;
 using IabConnect.Domain.Members;
 using IabConnect.Domain.Privacy;
 using IabConnect.Infrastructure.Email;
+using IabConnect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace IabConnect.Api.Endpoints;
 
@@ -182,6 +185,8 @@ public static class EmailCampaignEndpoints
         [FromServices] IMemberRepository memberRepository,
         [FromServices] IConsentRepository consentRepository,
         [FromServices] INewsletterSubscriberRepository subscriberRepository,
+        [FromServices] IMemberSegmentRepository memberSegmentRepository,
+        [FromServices] ApplicationDbContext dbContext,
         [FromServices] IEmailCampaignJobService jobService,
         Guid id)
     {
@@ -190,7 +195,7 @@ public static class EmailCampaignEndpoints
             return Results.NotFound();
 
             // Empfänger basierend auf Segment laden
-            var recipients = await LoadRecipientsForCampaign(campaign, memberRepository, consentRepository, subscriberRepository);
+            var recipients = await LoadRecipientsForCampaign(campaign, memberRepository, consentRepository, subscriberRepository, memberSegmentRepository, dbContext);
             foreach (var recipient in recipients)
             {
                 campaign.AddRecipient(recipient);
@@ -242,6 +247,8 @@ public static class EmailCampaignEndpoints
         [FromServices] IMemberRepository memberRepository,
         [FromServices] IConsentRepository consentRepository,
         [FromServices] INewsletterSubscriberRepository subscriberRepository,
+        [FromServices] IMemberSegmentRepository memberSegmentRepository,
+        [FromServices] ApplicationDbContext dbContext,
         [FromServices] IEmailCampaignJobService jobService,
         Guid id,
         [FromBody] ScheduleCampaignRequest request)
@@ -251,7 +258,7 @@ public static class EmailCampaignEndpoints
             return Results.NotFound();
 
             // Empfänger vorab laden
-            var recipients = await LoadRecipientsForCampaign(campaign, memberRepository, consentRepository, subscriberRepository);
+            var recipients = await LoadRecipientsForCampaign(campaign, memberRepository, consentRepository, subscriberRepository, memberSegmentRepository, dbContext);
             foreach (var recipient in recipients)
             {
                 campaign.AddRecipient(recipient);
@@ -396,10 +403,12 @@ public static class EmailCampaignEndpoints
         [FromServices] IMemberRepository memberRepository,
         [FromServices] IConsentRepository consentRepository,
         [FromServices] INewsletterSubscriberRepository subscriberRepository,
+        [FromServices] IMemberSegmentRepository memberSegmentRepository,
+        [FromServices] ApplicationDbContext dbContext,
         Guid id,
         [FromBody] PreviewRecipientsRequest request)
     {
-        var members = await GetMembersForSegment(memberRepository, consentRepository, request.SegmentType, request.SegmentFilter);
+        var members = await GetMembersForSegment(memberRepository, consentRepository, request.SegmentType, request.SegmentFilter, memberSegmentRepository, dbContext);
 
         var memberPreviews = members.Take(10).Select(m => new
         {
@@ -447,9 +456,11 @@ public static class EmailCampaignEndpoints
         EmailCampaign campaign,
         IMemberRepository memberRepository,
         IConsentRepository consentRepository,
-        INewsletterSubscriberRepository subscriberRepository)
+        INewsletterSubscriberRepository subscriberRepository,
+        IMemberSegmentRepository? memberSegmentRepository = null,
+        ApplicationDbContext? dbContext = null)
     {
-        var members = await GetMembersForSegment(memberRepository, consentRepository, campaign.SegmentType, campaign.SegmentFilter);
+        var members = await GetMembersForSegment(memberRepository, consentRepository, campaign.SegmentType, campaign.SegmentFilter, memberSegmentRepository, dbContext);
 
         var recipients = members.Select(m => EmailRecipient.CreateForMember(
             campaign.Id,
@@ -480,8 +491,38 @@ public static class EmailCampaignEndpoints
         IMemberRepository memberRepository,
         IConsentRepository consentRepository,
         RecipientSegmentType segmentType,
-        string? segmentFilter)
+        string? segmentFilter,
+        IMemberSegmentRepository? memberSegmentRepository = null,
+        ApplicationDbContext? dbContext = null)
     {
+        // REQ-017: Handle MemberSegment type
+        if (segmentType == RecipientSegmentType.MemberSegment
+            && memberSegmentRepository != null
+            && dbContext != null
+            && Guid.TryParse(segmentFilter, out var segmentId))
+        {
+            var segment = await memberSegmentRepository.GetByIdWithAssignmentsAsync(segmentId);
+            if (segment == null) return [];
+
+            IQueryable<Member> membersQuery;
+            if (segment.SegmentType == SegmentType.Dynamic && !string.IsNullOrWhiteSpace(segment.CriteriaJson))
+            {
+                var criteria = JsonSerializer.Deserialize<SegmentCriteria>(
+                    segment.CriteriaJson,
+                    MemberSegmentEndpoints.JsonOptionsInternal);
+                membersQuery = dbContext.Members.AsQueryable();
+                if (criteria != null)
+                    membersQuery = MemberSegmentEndpoints.ApplyCriteria(membersQuery, criteria);
+            }
+            else
+            {
+                var memberIds = segment.Assignments.Select(a => a.MemberId).ToList();
+                membersQuery = dbContext.Members.Where(m => memberIds.Contains(m.Id));
+            }
+
+            return await membersQuery.Where(m => !string.IsNullOrEmpty(m.Email)).ToListAsync();
+        }
+
         var (members, _) = await memberRepository.GetPagedAsync(
             page: 1,
             pageSize: 10000,

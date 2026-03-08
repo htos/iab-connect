@@ -117,6 +117,8 @@
     "dashboard": "Dashboard",
     "myProfile": "My Profile",
     "members": "Members",
+    "membersList": "Members List",
+    "memberSegments": "Segments",
     "events": "Events",
     "documents": "Documents",
     "communication": "Communication",
@@ -986,6 +988,9 @@
       "customFilter": "Filter (SQL-like)",
       "customFilterPlaceholder": "e.g. membershipType = 'Regular'",
       "customFilterHint": "Available fields: membershipType, status, memberSince",
+      "selectSegment": "Select segment",
+      "searchSegmentPlaceholder": "Search segment...",
+      "noSegmentsFound": "No segments found.",
       "content": "Content",
       "contentDescription": "Email text and design",
       "loadFromTemplate": "Load from Template",
@@ -2206,6 +2211,83 @@
       "invoices": "Invoices",
       "sponsors": "Sponsors",
       "blog": "Blog"
+    }
+  },
+  "segments": {
+    "title": "Segments",
+    "subtitle": "Manage member segments and distribution lists",
+    "newSegment": "New Segment",
+    "newSegmentDesc": "Create a new member segment.",
+    "editSegment": "Edit Segment",
+    "notFound": "Segment not found.",
+    "backToList": "Back to list",
+    "backToDetail": "Back to segment",
+    "empty": "No segments found.",
+    "searchPlaceholder": "Search segments...",
+    "totalCount": "{count} segments total",
+    "previewResult": "{count} members match the criteria",
+    "noMembers": "No members in this segment.",
+    "searchMemberPlaceholder": "Search member (name or email)...",
+    "noSearchResults": "No members found.",
+    "typeNotEditable": "Segment type cannot be changed after creation.",
+    "criteriaDesc": "Define criteria to automatically assign members.",
+    "from": "From",
+    "to": "To",
+    "type": {
+      "static": "Static",
+      "dynamic": "Dynamic"
+    },
+    "typeHint": {
+      "static": "Members are added and removed manually.",
+      "dynamic": "Members are assigned automatically based on criteria."
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "filter": {
+      "allTypes": "All types",
+      "allStatus": "All status",
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "table": {
+      "name": "Name",
+      "type": "Type",
+      "members": "Members",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "section": {
+      "basicInfo": "Basic Information",
+      "criteria": "Filter Criteria",
+      "details": "Details",
+      "stats": "Statistics",
+      "members": "Members"
+    },
+    "field": {
+      "name": "Name",
+      "description": "Description",
+      "type": "Segment Type",
+      "color": "Color",
+      "isActive": "Segment active",
+      "createdAt": "Created at"
+    },
+    "criteria": {
+      "status": "Member Status",
+      "type": "Membership Type",
+      "memberSince": "Member Since",
+      "memberSinceFrom": "Member since (from)",
+      "memberSinceTo": "Member since (to)",
+      "city": "City",
+      "country": "Country"
+    },
+    "action": {
+      "create": "Create Segment",
+      "export": "Export CSV",
+      "preview": "Preview",
+      "addMember": "Add Member",
+      "remove": "Remove"
     }
   }
 }

@@ -26,6 +26,8 @@ public sealed class ApplicationDbContext : DbContext
     }
 
     public DbSet<Member> Members => Set<Member>();
+    public DbSet<MemberSegment> MemberSegments => Set<MemberSegment>();
+    public DbSet<MemberSegmentAssignment> MemberSegmentAssignments => Set<MemberSegmentAssignment>();
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
     public DbSet<Consent> Consents => Set<Consent>();
     public DbSet<DeletionRequest> DeletionRequests => Set<DeletionRequest>();

@@ -64,7 +64,6 @@ const navItems: NavItem[] = [
   },
   {
     labelKey: "nav.members",
-    href: "/members",
     icon: (
       <svg
         className="h-5 w-5"
@@ -81,6 +80,18 @@ const navItems: NavItem[] = [
       </svg>
     ),
     requiredRoles: [ROLES.VORSTAND, ROLES.ADMIN],
+    submenu: [
+      {
+        labelKey: "nav.membersList",
+        href: "/members",
+        icon: <></>,
+      },
+      {
+        labelKey: "nav.memberSegments",
+        href: "/members/segments",
+        icon: <></>,
+      },
+    ],
   },
   {
     labelKey: "nav.events",

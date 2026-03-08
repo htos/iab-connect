@@ -28,7 +28,8 @@ export type RecipientSegmentType =
   | "Custom"
   | "Manual"
   | "EventParticipants"
-  | "NewsletterSubscribers";
+  | "NewsletterSubscribers"
+  | "MemberSegment";
 
 export type BounceType = "Hard" | "Soft";
 
@@ -190,6 +191,8 @@ export function getSegmentTypeLabel(type: RecipientSegmentType): string {
       return "Event-Teilnehmer";
     case "NewsletterSubscribers":
       return "Newsletter-Abonnenten";
+    case "MemberSegment":
+      return "Mitglieder-Segment";
     default:
       return type;
   }

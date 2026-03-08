@@ -140,12 +140,12 @@ TicketLink:
 Notizen: Mitgliederliste: /members mit Suche, Filter nach Status/Typ, Paginierung. Detailansicht: /members/[id]. Self-Service Profil: /profile (für Mitglieder-Rolle).
 
 ID: REQ-017
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 03 10
+Owner: Implementation Agent
+SprintOderRelease: Sprint 11
 TicketLink:
-Notizen:
+Notizen: Mitglieder-Segmentierung implementiert. Backend: MemberSegment AggregateRoot mit Static/Dynamic Typen, CriteriaJson (jsonb), MemberSegmentAssignment Entity, IMemberSegmentRepository mit Paging/Filtering/Search, 10 Minimal API Endpoints inkl. CSV-Export und Dynamic-Preview. EF Core Migration AddMemberSegments. Frontend: 4 Seiten (Liste, Neu, Detail, Bearbeiten), Criteria Builder für Dynamic Segments, Farbauswahl, Member-Zuweisung für Static. 22 Unit Tests (Domain), 15 Integration Tests (Testcontainers PostgreSQL). Alle 1402 Tests grün.
 
 ID: REQ-018
 Status: Backlog

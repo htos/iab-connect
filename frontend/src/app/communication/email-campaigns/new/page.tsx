@@ -6,7 +6,7 @@
 
 import { useAuth } from "@/lib/auth";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import {
@@ -20,6 +20,13 @@ import {
   RichTextEditor,
   HtmlSourceEditor,
 } from "@/components/ui/rich-text-editor";
+
+interface ActiveSegment {
+  id: string;
+  name: string;
+  segmentType: string;
+  color?: string;
+}
 
 type EditorMode = "visual" | "html";
 
@@ -40,6 +47,11 @@ export default function NewEmailCampaignPage() {
   const [editorMode, setEditorMode] = useState<EditorMode>("visual");
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [availableSegments, setAvailableSegments] = useState<ActiveSegment[]>([]);
+  const [segmentSearch, setSegmentSearch] = useState("");
+  const [segmentDropdownOpen, setSegmentDropdownOpen] = useState(false);
+  const [selectedSegmentName, setSelectedSegmentName] = useState("");
+  const segmentSearchRef = useRef<HTMLDivElement>(null);
   const [formData, setFormData] = useState<CreateEmailCampaignRequest>({
     name: "",
     subject: "",
@@ -74,6 +86,29 @@ export default function NewEmailCampaignPage() {
         .catch(() => {});
     }
   }, [accessToken]);
+
+  // Load available member segments
+  useEffect(() => {
+    if (accessToken) {
+      fetch(`${baseUrl}/api/v1/member-segments/active`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+        .then((res) => res.json())
+        .then((data) => setAvailableSegments(data))
+        .catch(() => {});
+    }
+  }, [accessToken, baseUrl]);
+
+  // Close segment dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (segmentSearchRef.current && !segmentSearchRef.current.contains(e.target as Node)) {
+        setSegmentDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleLoadTemplate = async (templateId: string) => {
     setSelectedTemplateId(templateId);
@@ -393,7 +428,13 @@ export default function NewEmailCampaignPage() {
               <select
                 name="segmentType"
                 value={formData.segmentType}
-                onChange={handleChange}
+                onChange={(e) => {
+                  handleChange(e);
+                  if (e.target.value !== "MemberSegment") {
+                    setFormData((prev) => ({ ...prev, segmentFilter: "" }));
+                    setSelectedSegmentName("");
+                  }
+                }}
                 className="w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
               >
                 {(
@@ -401,6 +442,7 @@ export default function NewEmailCampaignPage() {
                     "AllActiveMembers",
                     "NewsletterSubscribers",
                     "EventParticipants",
+                    "MemberSegment",
                     "Custom",
                   ] as RecipientSegmentType[]
                 ).map((type) => (
@@ -410,6 +452,65 @@ export default function NewEmailCampaignPage() {
                 ))}
               </select>
             </div>
+            {formData.segmentType === "MemberSegment" && (
+              <div className="mt-4">
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  {t("form.selectSegment")}
+                </label>
+                <div className="relative" ref={segmentSearchRef}>
+                  <input
+                    type="text"
+                    placeholder={t("form.searchSegmentPlaceholder")}
+                    value={segmentSearch || selectedSegmentName}
+                    onChange={(e) => {
+                      setSegmentSearch(e.target.value);
+                      setSegmentDropdownOpen(true);
+                      if (!e.target.value) {
+                        setSelectedSegmentName("");
+                        setFormData((prev) => ({ ...prev, segmentFilter: "" }));
+                      }
+                    }}
+                    onFocus={() => setSegmentDropdownOpen(true)}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
+                  />
+                  {segmentDropdownOpen && (
+                    <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+                      {availableSegments
+                        .filter((s) =>
+                          s.name.toLowerCase().includes((segmentSearch || "").toLowerCase())
+                        )
+                        .map((seg) => (
+                          <button
+                            key={seg.id}
+                            type="button"
+                            onClick={() => {
+                              setFormData((prev) => ({ ...prev, segmentFilter: seg.id }));
+                              setSelectedSegmentName(seg.name);
+                              setSegmentSearch("");
+                              setSegmentDropdownOpen(false);
+                            }}
+                            className="w-full text-left px-4 py-3 hover:bg-orange-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                          >
+                            <span className="text-sm font-medium text-gray-900">{seg.name}</span>
+                            <span className={`ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                              seg.segmentType === "Dynamic" ? "bg-purple-100 text-purple-800" : "bg-blue-100 text-blue-800"
+                            }`}>
+                              {seg.segmentType === "Dynamic" ? "Dynamisch" : "Statisch"}
+                            </span>
+                          </button>
+                        ))}
+                      {availableSegments.filter((s) =>
+                        s.name.toLowerCase().includes((segmentSearch || "").toLowerCase())
+                      ).length === 0 && (
+                        <p className="px-4 py-3 text-sm text-gray-500 text-center">
+                          {t("form.noSegmentsFound")}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
             {formData.segmentType === "Custom" && (
               <div className="mt-4">
                 <label className="mb-1 block text-sm font-medium text-gray-700">
