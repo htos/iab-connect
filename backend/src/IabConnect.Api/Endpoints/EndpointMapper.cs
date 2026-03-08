@@ -67,6 +67,15 @@ public static class EndpointMapper
         // REQ-050/051: Reporting & Exports
         app.MapReportEndpoints();
 
+        // REQ-052: Global Search
+        app.MapSearchEndpoints();
+
+        // REQ-053: Backup & Restore
+        app.MapBackupEndpoints();
+
+        // REQ-057: Retention Policies
+        app.MapRetentionEndpoints();
+
         return app;
     }
 

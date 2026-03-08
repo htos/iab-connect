@@ -16,9 +16,9 @@ Komponenten
 
 Module im Monolith
 Identity and Access
-Verantwortlichkeit Auth Integration, Rollen, Policies, Benutzer Zuordnung, Audit
-Haupt Entities User, Role, Permission, AuditEntry
-API Bereiche auth, users, roles, audit
+Verantwortlichkeit Auth Integration, Rollen, Policies, Benutzer Zuordnung, Audit, CustomRoles
+Haupt Entities User, Role, Permission, AuditEvent, CustomRole, SystemSettings
+API Bereiche identity, users, roles, audit, custom-roles, settings
 
 Members
 Verantwortlichkeit Mitglieder, Mitgliedschaft, Beiträge Bezug
@@ -26,24 +26,25 @@ Haupt Entities Member, Membership, MemberSegment
 API Bereiche members, memberships
 
 Events
-Verantwortlichkeit Events, Anmeldung, Teilnehmer, Check in, Helfer
-Haupt Entities Event, Registration, Attendance, Shift
-API Bereiche events, registrations, checkin, shifts
+Verantwortlichkeit Events, Anmeldung, Teilnehmer, Check in, Helfer, Warteliste, No-Show
+Haupt Entities Event, EventRegistration, Attendance, Shift
+API Bereiche events, events/{id}/registrations, checkin, shifts, my/registrations
 
 Communication
-Verantwortlichkeit Mailing, Templates, Automationen
-Haupt Entities EmailTemplate, EmailCampaign, EmailLog, AutomationRule
-API Bereiche emails, templates, campaigns, automations
+Verantwortlichkeit Mailing, Templates, Kampagnen, Newsletter-Abonnenten, Template-Variablen, Automationen
+Haupt Entities EmailTemplate, EmailTemplateVariable, EmailCampaign, EmailRecipient, EmailLog, NewsletterSubscriber, AutomationRule
+API Bereiche emails, templates, campaigns, automations, newsletter
 
 Documents
-Verantwortlichkeit Upload, Rechte, Tags, Versionen
-Haupt Entities Document, DocumentVersion, DocumentTag, DocumentPermission
-API Bereiche documents
+Verantwortlichkeit Upload, Rechte, Tags, Versionen, Ordner, Ordnerberechtigungen
+Haupt Entities Document, DocumentVersion, DocumentTag, DocumentPermission, DocumentFolder, FolderPermission
+API Bereiche documents, documents/folders
 
 Finance
-Verantwortlichkeit Buchungen, Rechnungen, Zahlungen, Mahnungen, Belege, Steuercodes, Finanzprofil, PDF-Generierung
-Haupt Entities Account, Category, Transaction, Invoice, InvoiceItem, Payment, BankImport, BankImportItem, DunningNotice, Receipt, TaxCode, FinanceProfile
-API Bereiche finance/accounts, finance/categories, finance/transactions, finance/invoices, finance/payments, finance/bank-imports, finance/dunning, finance/receipts, finance/exports, finance/profile, finance/tax-codes
+Verantwortlichkeit Buchungen, Rechnungen, Zahlungen, Mahnungen, Belege, Steuercodes, Finanzprofil, PDF-Generierung, Geschäftsjahre, Tätigkeitsbereiche, Spesenabrechnung, Rechnungsvorlagen, Archivierung, Genehmigungsworkflows
+Haupt Entities Account, Category, Transaction, Invoice, InvoiceItem, Payment, BankImport, BankImportItem, DunningNotice, Receipt, TaxCode, FinanceProfile, LedgerAccount, JournalEntry, JournalEntryLine, PostingMapping, InvoiceNumberCounter, InvoiceTemplate, FiscalPeriod, ActivityArea, ExpenseClaim
+API Bereiche finance/accounts, finance/categories, finance/transactions, finance/invoices, finance/payments, finance/bank-imports, finance/dunning, finance/receipts, finance/exports, finance/profile, finance/tax-codes, finance/fiscal-periods, finance/activity-areas, finance/expense-claims, finance/invoice-templates, finance/archive, finance/dashboard
+Background Jobs MarkInvoicesOverdueJob (täglich), DunningScheduleGenerationJob (wöchentlich)
 
 Reporting
 Verantwortlichkeit Dashboards und Exporte
@@ -65,6 +66,27 @@ Verantwortlichkeit Öffentlich zugängliche Seiten ohne Authentifizierung
 Haupt Entities ContactMessage
 API Bereiche public/contact, public/events, public/sponsors, public/blog
 Frontend Bereiche /public/* mit eigenem Layout (PublicHeader, PublicFooter)
+
+Operations
+Verantwortlichkeit Backup und Restore, globale Suche, Aufbewahrungsrichtlinien, Logging
+Haupt Entities BackupRecord, RetentionPolicy
+API Bereiche admin/backups, admin/retention, search
+Background Jobs ScheduledBackupJob (konfigurierbar via Admin UI), RetentionEnforcementJob (wöchentlich)
+Backup Technik pg_dump und pg_restore via Docker exec im PostgreSQL Container
+Suche ILIKE Volltextsuche über 6 Entitäten mit Relevanz-Scoring
+
+Privacy und DSGVO
+Verantwortlichkeit Einwilligungen, Löschanträge, Datenexport, Aufbewahrungsfristen
+Haupt Entities Consent, DeletionRequest
+API Bereiche privacy/consents, privacy/deletion-requests, privacy/data-export
+
+Background Jobs (Hangfire)
+Alle Hangfire Jobs laufen im Backend-Prozess. Registrierung erfolgt in DependencyInjection.cs.
+
+1. MarkInvoicesOverdueJob — täglich (Cron.Daily) — markiert fällige Rechnungen als überfällig
+2. DunningScheduleGenerationJob — wöchentlich (Cron.Weekly) — generiert Mahnungen für überfällige Rechnungen
+3. RetentionEnforcementJob — wöchentlich (Cron.Weekly) — erzwingt Aufbewahrungsrichtlinien für abgelaufene Daten
+4. ScheduledBackupJob — dynamisch konfigurierbar via Admin-UI (täglich, wöchentlich, monatlich oder custom Cron) — erstellt automatische Datenbank-Backups
 
 Deployment
 Lokale Entwicklung

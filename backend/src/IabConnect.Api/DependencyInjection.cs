@@ -5,6 +5,7 @@ using Hangfire;
 using IabConnect.Api.Authorization;
 using IabConnect.Api.Middleware;
 using IabConnect.Infrastructure.Finance.Jobs;
+using IabConnect.Infrastructure.Retention;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
@@ -140,14 +141,18 @@ public static class DependencyInjection
             .AddPolicy("RequireFinanceRead", policy =>
                 policy.RequireRole("admin", "kassier", "auditor"))
             .AddPolicy("RequireFinanceWrite", policy =>
-                policy.RequireRole("admin", "kassier"));
+                policy.RequireRole("admin", "kassier"))
+            .AddPolicy("RequireSearch", policy =>
+                policy.RequireRole("admin", "vorstand", "kassier"));
 
         // REQ-004: Permission-based authorization handler
         services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
         services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 
-        // Health Checks
-        services.AddHealthChecks();
+        // REQ-054: Health Checks with DB & Keycloak probes
+        services.AddHealthChecks()
+            .AddCheck<HealthChecks.DatabaseHealthCheck>("database", tags: ["db", "ready"])
+            .AddCheck<HealthChecks.KeycloakHealthCheck>("keycloak", tags: ["auth", "ready"]);
 
         return services;
     }
@@ -199,6 +204,9 @@ public static class DependencyInjection
             app.UseHsts();
         }
 
+        // REQ-054: Correlation ID tracking (before exception handling)
+        app.UseMiddleware<CorrelationIdMiddleware>();
+
         // Global exception handling
         app.UseMiddleware<ExceptionHandlingMiddleware>();
 
@@ -249,10 +257,42 @@ public static class DependencyInjection
                 job => job.ExecuteAsync(CancellationToken.None),
                 Cron.Weekly,
                 new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+            jobManager.AddOrUpdate<RetentionEnforcementJob>(
+                "enforce-retention-policies",
+                job => job.ExecuteAsync(CancellationToken.None),
+                Cron.Weekly,
+                new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
         }
 
-        // Health checks
+        // REQ-054: Health check endpoints (basic + detailed)
         app.MapHealthChecks("/health");
+        app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+        {
+            Predicate = check => check.Tags.Contains("ready"),
+            ResponseWriter = WriteHealthCheckResponse
+        });
+        app.MapGet("/health/detail", async (
+            Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckService healthCheckService) =>
+        {
+            var report = await healthCheckService.CheckHealthAsync();
+            var response = new
+            {
+                status = report.Status.ToString(),
+                totalDuration = report.TotalDuration.TotalMilliseconds,
+                entries = report.Entries.Select(e => new
+                {
+                    name = e.Key,
+                    status = e.Value.Status.ToString(),
+                    description = e.Value.Description,
+                    duration = e.Value.Duration.TotalMilliseconds,
+                    exception = e.Value.Exception?.Message
+                })
+            };
+            return report.Status == Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy
+                ? Results.Ok(response)
+                : Results.Json(response, statusCode: 503);
+        }).RequireAuthorization("RequireAdmin");
 
         // API Endpoints
         app.MapApiEndpoints();
@@ -260,5 +300,23 @@ public static class DependencyInjection
         return app;
     }
 
+    /// <summary>
+    /// REQ-054: Writes a JSON response for the /health/ready endpoint.
+    /// </summary>
+    private static async Task WriteHealthCheckResponse(HttpContext context, Microsoft.Extensions.Diagnostics.HealthChecks.HealthReport report)
+    {
+        context.Response.ContentType = "application/json";
+        var result = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            status = report.Status.ToString(),
+            checks = report.Entries.Select(e => new
+            {
+                name = e.Key,
+                status = e.Value.Status.ToString(),
+                description = e.Value.Description
+            })
+        });
+        await context.Response.WriteAsync(result);
+    }
 
 }

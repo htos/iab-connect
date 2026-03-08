@@ -9,6 +9,7 @@ using IabConnect.Domain.Members;
 using IabConnect.Domain.Privacy;
 using IabConnect.Domain.Blog;
 using IabConnect.Domain.Sponsors;
+using IabConnect.Domain.Operations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
@@ -73,6 +74,12 @@ public sealed class ApplicationDbContext : DbContext
 
     // Contact Messages (REQ-049)
     public DbSet<ContactMessage> ContactMessages => Set<ContactMessage>();
+
+    // Backup Records (REQ-053)
+    public DbSet<BackupRecord> BackupRecords => Set<BackupRecord>();
+
+    // Retention Policies (REQ-057)
+    public DbSet<RetentionPolicy> RetentionPolicies => Set<RetentionPolicy>();
 
     // Documents (REQ-034..037)
     public DbSet<DocumentFolder> DocumentFolders => Set<DocumentFolder>();

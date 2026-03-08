@@ -69,12 +69,12 @@ REQ-049 Kontaktformular und Spam Schutz
 Reporting und Daten
 REQ-050 ✅ Dashboards und KPIs (Done Sprint 9)
 REQ-051 ✅ Exports CSV und Excel (Done Sprint 9)
-REQ-052 Such und Filterfunktionen
+REQ-052 ✅ Such und Filterfunktionen (Done Sprint 10)
 
 Betrieb und Qualität
-REQ-053 Backup und Restore Konzept
-REQ-057 Datenaufbewahrung und Archivierung
-REQ-059 Konfiguration und Systemeinstellungen
+REQ-053 ✅ Backup und Restore Konzept (Done Sprint 10)
+REQ-057 ✅ Datenaufbewahrung und Archivierung (Done Sprint 10)
+REQ-059 ✅ Konfiguration und Systemeinstellungen (Done Sprint 2)
 
 Später Should have
 
@@ -128,7 +128,7 @@ REQ-085 Tests für Posting und Balance Regeln
 REQ-048 Sponsorenseite
 
 Betrieb und Qualität
-REQ-054 Logging und Monitoring
+REQ-054 ✅ Logging und Monitoring (Done Sprint 10)
 REQ-056 Barrierefreiheit Basis
 
 Später Could have

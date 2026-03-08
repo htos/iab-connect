@@ -450,6 +450,138 @@
     "quickInfo": {
       "title": "Quick Info",
       "description": "Select a section to start administering."
+    },
+    "backups": {
+      "title": "Backups",
+      "subtitle": "Manage and download database backups",
+      "description": "Create, manage and restore database backups",
+      "backToAdmin": "Back to Administration",
+      "createBackup": "Create Backup",
+      "uploadBackup": "Upload Backup",
+      "refresh": "Refresh",
+      "noBackups": "No backups available",
+      "noBackupsDescription": "No backups have been created yet. Create your first backup.",
+      "createSuccess": "Backup was created successfully.",
+      "deleteSuccess": "Backup was deleted successfully.",
+      "restoreSuccess": "Database was restored successfully.",
+      "uploadSuccess": "Backup was uploaded successfully.",
+      "restoredInfo": "Restored on {date} by {user}",
+      "stats": {
+        "total": "Total Backups",
+        "completed": "Completed",
+        "totalSize": "Total Size"
+      },
+      "table": {
+        "fileName": "File Name",
+        "type": "Type",
+        "status": "Status",
+        "size": "Size",
+        "createdAt": "Created At",
+        "createdBy": "Created By",
+        "actions": "Actions"
+      },
+      "types": {
+        "manual": "Manual",
+        "scheduled": "Scheduled",
+        "upload": "Uploaded"
+      },
+      "statuses": {
+        "inprogress": "In Progress",
+        "completed": "Completed",
+        "failed": "Failed"
+      },
+      "actions": {
+        "download": "Download",
+        "restore": "Restore",
+        "retry": "Retry",
+        "delete": "Delete"
+      },
+      "retrySuccess": "Backup is being re-created.",
+      "createModal": {
+        "title": "Create New Backup",
+        "description": "A full database backup will be created. This may take a few minutes.",
+        "notes": "Notes (optional)",
+        "notesPlaceholder": "e.g. Backup before update...",
+        "confirm": "Start Backup"
+      },
+      "uploadModal": {
+        "title": "Upload Backup",
+        "description": "Upload a PostgreSQL backup file (.sql, .dump). You can restore it afterwards.",
+        "file": "Backup File",
+        "notes": "Notes (optional)",
+        "notesPlaceholder": "e.g. Backup from another server...",
+        "confirm": "Upload"
+      },
+      "errors": {
+        "loadFailed": "Failed to load backups.",
+        "createFailed": "Failed to create backup.",
+        "downloadFailed": "Failed to download backup.",
+        "deleteFailed": "Failed to delete backup.",
+        "restoreFailed": "Failed to restore database.",
+        "uploadFailed": "Failed to upload backup."
+      },
+      "schedule": {
+        "title": "Automatic Backups",
+        "description": "Configure an automatic backup schedule. Backups will be created at the specified times.",
+        "interval": "Interval",
+        "daily": "Daily (02:00 AM)",
+        "weekly": "Weekly (Monday, 02:00 AM)",
+        "monthly": "Monthly (1st of month, 02:00 AM)",
+        "custom": "Custom (Cron)",
+        "cronExpression": "Cron Expression",
+        "save": "Save Schedule",
+        "disable": "Disable",
+        "active": "Automatic backups active: {cron}",
+        "saveSuccess": "Backup schedule has been saved.",
+        "saveFailed": "Failed to save backup schedule.",
+        "disableSuccess": "Automatic backups have been disabled.",
+        "disableFailed": "Failed to disable automatic backups."
+      }
+    },
+    "retention": {
+      "title": "Retention Policies",
+      "subtitle": "Data retention and archival according to legal requirements",
+      "description": "Manage retention periods and archival rules",
+      "backToAdmin": "Back to Administration",
+      "enforceNow": "Enforce Now",
+      "updateSuccess": "Policy was updated successfully.",
+      "enforceSuccess": "{count} record(s) were processed.",
+      "noPolicies": "No retention policies available.",
+      "inactive": "Inactive",
+      "infoText": "Retention policies define how long data is kept and what happens after expiration. Changes to legally required periods (e.g. OR Art. 958f) should only be made after consultation with the board.",
+      "months": "{count} months",
+      "years": "{count} years",
+      "fields": {
+        "displayName": "Display Name",
+        "retentionMonths": "Retention Period (Months)",
+        "action": "Action After Expiry",
+        "legalBasis": "Legal Basis",
+        "active": "Active",
+        "category": "Category",
+        "retention": "Retention"
+      },
+      "actions": {
+        "anonymize": "Anonymize",
+        "archive": "Archive",
+        "delete": "Delete"
+      },
+      "errors": {
+        "loadFailed": "Failed to load retention policies.",
+        "updateFailed": "Failed to update retention policy.",
+        "enforceFailed": "Failed to enforce retention policies."
+      }
+    },
+    "health": {
+      "title": "System Health",
+      "subtitle": "Monitor system components and service availability",
+      "description": "Monitor system health and service availability",
+      "overallStatus": "Overall Status",
+      "totalDuration": "Total Duration",
+      "lastChecked": "Last Checked",
+      "refresh": "Refresh",
+      "refreshing": "Checking...",
+      "autoRefreshInfo": "Status is automatically refreshed every 30 seconds.",
+      "fetchError": "Failed to retrieve system health status."
     }
   },
   "events": {
@@ -2055,5 +2187,25 @@
     "unsubscribeAnother": "Unsubscribe another email",
     "switchToUnsubscribe": "Want to unsubscribe?",
     "switchToSubscribe": "Want to subscribe?"
+  },
+  "search": {
+    "placeholder": "Search...",
+    "shortcut": "Open search (Ctrl+K)",
+    "inputPlaceholder": "Search members, events, documents, invoices...",
+    "noResults": "No results found.",
+    "minChars": "Enter at least 2 characters.",
+    "hint": "Type to search across all modules.",
+    "results": "results",
+    "navigate": "Navigate",
+    "open": "Open",
+    "close": "Close",
+    "scopes": {
+      "members": "Members",
+      "events": "Events",
+      "documents": "Documents",
+      "invoices": "Invoices",
+      "sponsors": "Sponsors",
+      "blog": "Blog"
+    }
   }
 }

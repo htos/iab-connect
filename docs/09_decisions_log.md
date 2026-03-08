@@ -457,3 +457,63 @@ Keine — war ein Bug (fehlende UI-Integration).
 
 Auswirkung
 Event-Detail-Seite zeigt nun: Registrierungs-Button wenn offen, Formular (Gäste, spezielle Anforderungen), Status-Anzeige wenn bereits registriert, Stornierungsoption mit Dialog. Nutzt bestehende i18n-Keys und Service-Funktionen.
+
+Datum
+2026 03 08
+
+Entscheidung
+REQ-052 (Sprint 10): Globale Suche mit ILIKE-Pattern über 6 Entitäten und RequireSearch Policy.
+
+Begründung
+PostgreSQL ILIKE bietet einfache Volltextsuche ohne zusätzliche Infrastruktur (Elasticsearch etc.). Relevanz-Scoring ermöglicht sinnvolle Sortierung. Zugriff auf admin, vorstand und kassier beschränkt (RequireSearch Policy) da Suchergebnisse sensible Daten enthalten können.
+
+Alternativen
+PostgreSQL Full-Text Search mit tsvector (verworfen: zu komplex für MVP). Elasticsearch (verworfen: zusätzliche Infrastruktur).
+
+Auswirkung
+Backend: PostgresGlobalSearchService sucht sequentiell über Members, Events, Documents, Invoices, Sponsors, Blog. Max 50 Ergebnisse pro Scope. Frontend: Suchleiste im Header mit Scope-Filter und Ergebnisliste.
+
+Datum
+2026 03 08
+
+Entscheidung
+REQ-053 (Sprint 10): Backup via Docker exec statt direktem pg_dump auf Host.
+
+Begründung
+PostgreSQL läuft im Docker Container. Der Host hat kein pg_dump installiert. Docker exec im Container ist die zuverlässigste Methode. Backup-Dateien werden via docker cp zwischen Container und Host transferiert.
+
+Alternativen
+pg_dump auf Host installieren (verworfen: zusätzliche Abhängigkeit, Versions-Mismatch-Risiko). pg_dump über TCP-Verbindung (verworfen: Container-Netzwerk-Konfiguration nötig).
+
+Auswirkung
+Backend: PostgresBackupService nutzt docker exec, docker cp für alle DB-Operationen. Konfigurierbar über Backup:DockerContainer Setting (default: iabconnect-postgres). 10 REST Endpoints für CRUD, Download, Restore, Upload, Schedule. Automatische Backups via Hangfire mit konfigurierbarem Cron-Zeitplan über Admin UI. Hangfire Storage wird für Persistenz des Zeitplans genutzt.
+
+Datum
+2026 03 08
+
+Entscheidung
+REQ-054 (Sprint 10): Serilog mit Console und File Sink, CorrelationId Middleware.
+
+Begründung
+Serilog ist Standard für strukturiertes Logging in ASP.NET Core. File Sink mit täglicher Rotation und 30 Tagen Aufbewahrung ist für MVP ausreichend. CorrelationId ermöglicht Request-Tracing.
+
+Alternativen
+Application Insights (verworfen: Cloud-Abhängigkeit). Seq (verworfen: zusätzliche Infrastruktur für MVP).
+
+Auswirkung
+Logs in logs/ Verzeichnis. CorrelationId in jedem Log-Eintrag. X-Correlation-Id Header für distributed tracing.
+
+Datum
+2026 03 08
+
+Entscheidung
+REQ-057 (Sprint 10): Aufbewahrungsrichtlinien mit 6 Datenkategorien und 3 Aktionen.
+
+Begründung
+DSGVO Art. 17 verlangt Löschkonzept. OR Art. 958f verlangt Aufbewahrungspflichten für Finanzdaten. Konfigurierbare Policies pro Kategorie bieten Flexibilität. Standard-Werte werden automatisch initialisiert.
+
+Alternativen
+Hardcodierte Retention Rules (verworfen: fehlende Flexibilität für verschiedene Rechtslagen).
+
+Auswirkung
+Backend: RetentionPolicy Entity mit EF Core. AnonymizeAuditLogsAsync (Raw SQL für Performance), DeleteOldBackupsAsync. Wöchentlicher Hangfire Job. Admin UI für Konfiguration.

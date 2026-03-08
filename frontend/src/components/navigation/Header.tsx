@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/auth";
 import { useAppSettings } from "@/components/providers/AppSettingsProvider";
 import { useSidebar } from "./SidebarContext";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { GlobalSearch } from "@/components/search/GlobalSearch";
 
 export function Header() {
   const pathname = usePathname();
@@ -106,6 +107,11 @@ export function Header() {
               {settings.applicationName}
             </span>
           </Link>
+        </div>
+
+        {/* Center: Global Search */}
+        <div className="flex-1 flex justify-center px-4">
+          {isAuthenticated && <GlobalSearch />}
         </div>
 
         {/* Right: User area */}

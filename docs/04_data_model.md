@@ -150,41 +150,166 @@ Indizes
 start_at
 
 Name
-Registration
+EventRegistration
 
 Beschreibung
-Anmeldung zu einem Event.
+Anmeldung zu einem Event mit vollständigem Status-Workflow.
 
 Wichtige Felder
 id
 event_id
-member_id
-status
+user_id (nullable)
+member_id (nullable)
+participant_name
+participant_email
+participant_phone
+number_of_guests
+status (Pending, Confirmed, Cancelled, Waitlisted, CheckedIn, NoShow)
+is_waitlisted
+waitlist_position
 registered_at
+confirmed_at (nullable)
+cancelled_at (nullable)
+cancellation_reason (nullable)
+cancelled_by_participant
+checked_in_at (nullable)
+checked_in_by (nullable)
+is_no_show
 
 Beziehungen
-Registration zu Event
-Registration zu Member
+EventRegistration zu Event
+EventRegistration zu Member (optional)
 
 Indizes
 event_id
 member_id
+user_id
 
 Name
 EmailTemplate
 
 Beschreibung
-Vorlage für Mails.
+Vorlage für Mails mit Variablen und Versionierung.
 
 Wichtige Felder
 id
 name
 subject
-body
+html_content
+text_content
+category
+description
+version
 is_active
+created_at
+updated_at
+created_by
+updated_by
+is_deleted
+variables (Liste von EmailTemplateVariable)
 
 Indizes
 name unique
+
+Name
+EmailTemplateVariable
+
+Beschreibung
+Variable in einer E-Mail-Vorlage.
+
+Wichtige Felder
+id
+email_template_id
+name
+description
+default_value
+is_required
+
+Beziehungen
+EmailTemplateVariable zu EmailTemplate
+
+Name
+EmailCampaign
+
+Beschreibung
+E-Mail-Kampagne mit Empfänger-Segmentierung und Tracking.
+
+Wichtige Felder
+id
+name
+subject
+html_content
+plain_text_content
+from_name
+from_email
+reply_to_email
+segment_type (AllActiveMembers, Custom, Manual, EventParticipants, NewsletterSubscribers)
+segment_filter
+event_id (nullable)
+status (Draft, Scheduled, Sending, Sent, Cancelled, Failed)
+scheduled_at (nullable)
+sent_at (nullable)
+completed_at (nullable)
+total_recipients
+sent_count
+delivered_count
+opened_count
+clicked_count
+bounced_count
+failed_count
+created_by_id
+created_by_name
+
+Beziehungen
+EmailCampaign zu EmailRecipient (one-to-many)
+
+Indizes
+status
+scheduled_at
+
+Name
+EmailRecipient
+
+Beschreibung
+Empfänger einer E-Mail-Kampagne mit Zustellungs-Tracking.
+
+Wichtige Felder
+id
+campaign_id
+member_id (nullable)
+email
+first_name
+last_name
+status (Pending, Sent, Delivered, Opened, Clicked, Bounced, Complained, Unsubscribed, Failed, Skipped)
+sent_at, delivered_at, opened_at, clicked_at, bounced_at, unsubscribed_at (nullable)
+bounce_type (None, Soft, Hard)
+bounce_message
+error_message
+external_message_id
+
+Beziehungen
+EmailRecipient zu EmailCampaign
+EmailRecipient zu Member (optional)
+
+Name
+NewsletterSubscriber
+
+Beschreibung
+Newsletter-Abonnent (öffentlich, ohne Mitgliedschaft).
+
+Wichtige Felder
+id
+email
+first_name
+last_name
+is_active
+subscribed_at
+unsubscribed_at (nullable)
+confirmed_at (nullable)
+ip_address
+
+Indizes
+email unique
 
 Name
 Document
@@ -855,6 +980,123 @@ is_default
 Validierungen
 name ist nicht leer
 
+Name
+ActivityArea
+
+Beschreibung
+Aktivitätsbereich für die Zuordnung von Transaktionen und Buchungen zu Sparten/Projekten (REQ-068).
+
+Wichtige Felder
+id
+name
+code
+description
+color
+is_active
+sort_order
+created_at
+updated_at
+is_deleted
+deleted_at
+deleted_by
+
+Beziehungen
+ActivityArea zu Transaction (optional)
+ActivityArea zu InvoiceItem (optional)
+ActivityArea zu JournalEntryLine (optional)
+
+Indizes
+code unique
+is_active
+
+Validierungen
+name ist nicht leer
+code ist nicht leer
+
+Name
+FiscalPeriod
+
+Beschreibung
+Fiskalperiode (Monat) mit Status-Workflow für Periodensperre (REQ-066).
+
+Wichtige Felder
+id
+name
+year
+month
+start_date
+end_date
+status (Open, Closed, Locked)
+locked_at (nullable)
+locked_by (nullable)
+unlocked_at (nullable)
+unlocked_by (nullable)
+lock_notes
+total_income
+total_expense
+closing_balance
+created_at
+updated_at
+
+Beziehungen
+FiscalPeriod zu JournalEntry
+
+Indizes
+year, month unique
+status
+
+Validierungen
+end_date > start_date
+Lock nur im Status Open möglich
+
+Name
+ExpenseClaim
+
+Beschreibung
+Spesenabrechnung mit Genehmigungs-Workflow: Draft, Submitted, UnderReview, Approved, Rejected, Reimbursed (REQ-067).
+
+Wichtige Felder
+id
+title
+description
+amount
+currency (CHF, EUR)
+date
+status (Draft, Submitted, UnderReview, Approved, Rejected, Reimbursed)
+claimant_id
+claimant_name
+receipt_id (nullable)
+reviewed_by (nullable)
+reviewed_at (nullable)
+review_comment
+approved_by (nullable)
+approved_at (nullable)
+approval_comment
+rejected_by (nullable)
+rejected_at (nullable)
+rejection_reason
+payment_id (nullable)
+reimbursed_at (nullable)
+reimbursed_by (nullable)
+created_at
+created_by
+updated_at
+updated_by
+is_deleted
+
+Beziehungen
+ExpenseClaim zu Receipt (optional)
+ExpenseClaim zu Payment (optional)
+
+Indizes
+status
+claimant_id
+date
+
+Validierungen
+amount > 0
+title ist nicht leer
+
 Document Management Entities
 
 Name
@@ -1193,3 +1435,191 @@ name ist nicht leer
 email ist nicht leer
 subject ist nicht leer
 message ist nicht leer
+
+---
+
+Name
+BackupRecord
+
+Beschreibung
+Datensatz für Datenbank-Backups mit Status-Tracking und Wiederherstellungs-Info.
+
+Wichtige Felder
+id (UUID)
+file_name
+file_size_bytes (long)
+type (Manual, Scheduled, Upload)
+status (InProgress, Completed, Failed)
+notes (optional)
+error_message (optional)
+created_by
+created_at
+completed_at (nullable)
+restored_at (nullable)
+restored_by (nullable)
+
+Beziehungen
+Keine direkten FK-Beziehungen
+
+Indizes
+status
+created_at
+
+Validierungen
+file_name ist nicht leer
+created_by ist nicht leer
+Automatische Stuck-Erkennung nach 10 Minuten InProgress
+
+---
+
+Name
+RetentionPolicy
+
+Beschreibung
+Aufbewahrungsrichtlinie für verschiedene Datenkategorien gemäss DSGVO und OR.
+
+Wichtige Felder
+id (UUID)
+data_category (AuditLogs, MemberData, FinanceData, Documents, Backups, Events)
+retention_months (int, mindestens 1)
+action (Anonymize, Archive, Delete)
+is_active (bool)
+description
+legal_basis (optional)
+created_at
+updated_at
+
+Beziehungen
+Keine direkten FK-Beziehungen
+
+Indizes
+data_category unique
+
+Validierungen
+retention_months >= 1
+data_category und action sind gültige Enum-Werte
+6 Standard-Richtlinien werden beim Start automatisch initialisiert
+
+Privacy und Datenschutz Entities
+
+Name
+Consent
+
+Beschreibung
+Einwilligung eines Benutzers für verschiedene Zwecke (DSGVO-konform).
+
+Wichtige Felder
+id
+user_id
+type (DataProcessing, Newsletter, Marketing, EventNotifications, PhotoUsage)
+is_granted
+granted_at
+revoked_at (nullable)
+policy_version
+ip_address
+user_agent
+updated_at
+
+Beziehungen
+Consent zu User
+
+Indizes
+user_id, type unique
+
+Name
+DeletionRequest
+
+Beschreibung
+Löschantrag eines Benutzers mit Bestätigungs-Workflow (DSGVO Art. 17).
+
+Wichtige Felder
+id
+user_id
+email
+status (Pending, Confirmed, UnderReview, Completed, Cancelled, Rejected)
+requested_at
+confirmed_at (nullable)
+completed_at (nullable)
+confirmation_token
+token_expires_at
+reason
+admin_notes
+ip_address
+
+Beziehungen
+DeletionRequest zu User
+
+Indizes
+user_id
+status
+
+Authorization Entities
+
+Name
+CustomRole
+
+Beschreibung
+Benutzerdefinierte Rolle für flexible Rollenverwaltung.
+
+Wichtige Felder
+id
+name
+description
+linked_role
+is_active
+color
+sort_order
+created_at
+created_by
+updated_at
+updated_by
+
+Indizes
+name unique
+
+Name
+SystemSettings
+
+Beschreibung
+Globale Anwendungseinstellungen.
+
+Wichtige Felder
+id
+application_name
+logo_text
+logo_background_color
+logo_text_color
+updated_at
+updated_by
+
+Audit Entity
+
+Name
+AuditEvent
+
+Beschreibung
+Revisionssicherer Protokolleintrag für alle sicherheitsrelevanten Aktionen.
+
+Wichtige Felder
+id
+timestamp
+event_type (30+ Typen: LoginSuccess, LoginFailure, MemberCreated, FinanceCreated etc.)
+category (Authentication, UserManagement, MemberManagement, Finance, DataAccess, System)
+severity (Info, Warning, Critical)
+user_id
+user_name
+ip_address
+user_agent
+entity_type
+entity_id
+action
+details (JSON)
+success
+error_message
+
+Indizes
+timestamp
+event_type
+category
+user_id
+entity_type, entity_id

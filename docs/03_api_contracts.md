@@ -85,8 +85,27 @@ POST /api/v1/events/{id}/publish
 POST /api/v1/events/{id}/unpublish
 POST /api/v1/events/{id}/cancel
 DELETE /api/v1/events/{id}
-POST /api/v1/events/{eventId}/registrations
-GET /api/v1/events/{eventId}/registrations
+
+Event Registrations
+POST /api/v1/events/{eventId}/registrations/public (Öffentlich, keine Auth)
+GET /api/v1/events/{eventId}/registrations (Admin, Vorstand, Event-Manager)
+GET /api/v1/events/{eventId}/registrations/{registrationId} (Admin, Vorstand, Event-Manager)
+POST /api/v1/events/{eventId}/registrations (Member, angemeldete Mitglieder)
+PUT /api/v1/events/{eventId}/registrations/{registrationId} (Admin, Vorstand, Event-Manager)
+POST /api/v1/events/{eventId}/registrations/{registrationId}/cancel (Member)
+POST /api/v1/events/{eventId}/registrations/{registrationId}/confirm (Admin, Vorstand, Event-Manager)
+POST /api/v1/events/{eventId}/registrations/{registrationId}/check-in (Admin, Vorstand, Event-Manager)
+POST /api/v1/events/{eventId}/registrations/{registrationId}/no-show (Admin, Vorstand, Event-Manager)
+POST /api/v1/events/{eventId}/registrations/{registrationId}/revert-no-show (Admin, Vorstand, Event-Manager)
+POST /api/v1/events/{eventId}/registrations/{registrationId}/revert-check-in (Admin, Vorstand, Event-Manager)
+POST /api/v1/events/{eventId}/registrations/{registrationId}/revert-cancellation (Admin, Vorstand, Event-Manager)
+GET /api/v1/events/{eventId}/registrations/statistics (Admin, Vorstand, Event-Manager)
+GET /api/v1/events/{eventId}/registrations/export-pdf (Admin, Vorstand, Event-Manager)
+GET /api/v1/events/{eventId}/registrations/waitlist (Admin, Vorstand, Event-Manager)
+POST /api/v1/events/{eventId}/registrations/promote-from-waitlist (Admin, Vorstand, Event-Manager)
+GET /api/v1/events/{eventId}/registrations/my-position (Authentifiziert)
+POST /api/v1/registrations/check-in/{qrCodeToken} (Admin, Vorstand, Event-Manager)
+GET /api/v1/my-registrations (Authentifiziert, eigene Anmeldungen)
 
 Communication
 POST /api/v1/communication/newsletter
@@ -194,6 +213,12 @@ GET /api/v1/finance/payments
 POST /api/v1/finance/payments
 PUT /api/v1/finance/payments/{id}
 DELETE /api/v1/finance/payments/{id}
+POST /api/v1/finance/payments/{id}/submit (RequireFinanceWrite, Zur Genehmigung einreichen REQ-067)
+POST /api/v1/finance/payments/{id}/approve (RequireVorstand, Zahlung genehmigen REQ-067)
+POST /api/v1/finance/payments/{id}/reject (RequireVorstand, Zahlung ablehnen REQ-067)
+POST /api/v1/finance/payments/{id}/mark-paid (RequireFinanceWrite)
+POST /api/v1/finance/payments/{id}/receipt (RequireFinanceWrite, Beleg anhängen REQ-061)
+DELETE /api/v1/finance/payments/{id}/receipt (RequireFinanceWrite, Beleg trennen REQ-061)
 
 GET /api/v1/finance/bank-imports
 POST /api/v1/finance/bank-imports
@@ -230,6 +255,52 @@ GET /api/v1/finance/tax-codes
 POST /api/v1/finance/tax-codes
 PUT /api/v1/finance/tax-codes/{id}
 DELETE /api/v1/finance/tax-codes/{id}
+
+Finance Dashboard
+GET /api/v1/finance/dashboard (RequireFinanceRead, Finanz-Übersicht mit Transaktionssummen, Rechnungs-, Zahlungs- und Spesenstatistiken)
+
+Aktivitätsbereiche (REQ-068)
+GET /api/v1/finance/activity-areas (RequireFinanceRead, Liste aktiver Aktivitätsbereiche)
+GET /api/v1/finance/activity-areas/report (RequireFinanceRead, Erfolgsrechnung nach Aktivitätsbereich)
+POST /api/v1/finance/activity-areas (RequireFinanceWrite)
+PUT /api/v1/finance/activity-areas/{id} (RequireFinanceWrite)
+DELETE /api/v1/finance/activity-areas/{id} (RequireFinanceWrite, Soft-Delete)
+
+Fiskalperioden (REQ-066)
+GET /api/v1/finance/fiscal-periods (RequireFinanceRead)
+GET /api/v1/finance/fiscal-periods/{id} (RequireFinanceRead)
+POST /api/v1/finance/fiscal-periods/generate (RequireFinanceWrite, Perioden für ein Jahr generieren)
+POST /api/v1/finance/fiscal-periods/{id}/lock (RequireFinanceWrite)
+POST /api/v1/finance/fiscal-periods/{id}/unlock (RequireAdmin)
+POST /api/v1/finance/fiscal-periods/{id}/close (RequireFinanceWrite)
+POST /api/v1/finance/fiscal-periods/{id}/reopen (RequireAdmin)
+
+Spesenabrechnungen (REQ-067)
+GET /api/v1/finance/expense-claims (RequireFinanceRead)
+GET /api/v1/finance/expense-claims/{id} (RequireFinanceRead)
+POST /api/v1/finance/expense-claims (RequireMember, erstellen)
+PUT /api/v1/finance/expense-claims/{id} (RequireMember)
+DELETE /api/v1/finance/expense-claims/{id} (RequireMember)
+POST /api/v1/finance/expense-claims/{id}/submit (RequireMember, Zur Prüfung einreichen)
+POST /api/v1/finance/expense-claims/{id}/review (RequireFinanceWrite, Prüfen)
+POST /api/v1/finance/expense-claims/{id}/approve (RequireVorstand, Genehmigen)
+POST /api/v1/finance/expense-claims/{id}/reject (RequireFinanceWrite, Ablehnen)
+POST /api/v1/finance/expense-claims/{id}/reimburse (RequireFinanceWrite, Erstatten)
+
+Rechnungsvorlagen (REQ-064)
+GET /api/v1/finance/invoice-templates (RequireFinanceRead)
+GET /api/v1/finance/invoice-templates/{id} (RequireFinanceRead)
+POST /api/v1/finance/invoice-templates (RequireFinanceWrite, EU-Compliance-Felder)
+PUT /api/v1/finance/invoice-templates/{id} (RequireFinanceWrite)
+DELETE /api/v1/finance/invoice-templates/{id} (RequireFinanceWrite)
+
+Archivierung (REQ-070)
+POST /api/v1/finance/receipts/{id}/archive (RequireFinanceWrite, Beleg archivieren)
+POST /api/v1/finance/receipts/{id}/restore (RequireAdmin, Beleg aus Archiv wiederherstellen)
+POST /api/v1/finance/invoices/{id}/archive (RequireFinanceWrite, Rechnung archivieren)
+POST /api/v1/finance/invoices/{id}/restore (RequireAdmin, Rechnung aus Archiv wiederherstellen)
+POST /api/v1/admin/finance/purge-archived (RequireAdmin, Abgelaufene archivierte Belege löschen)
+GET /api/v1/admin/finance/archived (RequireFinanceRead, Alle archivierten Elemente auflisten)
 
 Doppelte Buchhaltung (REQ-074 bis REQ-085)
 GET /api/v1/finance/ledger-accounts
@@ -322,3 +393,27 @@ POST /api/v1/public/newsletter/subscribe (Öffentlich, Newsletter abonnieren mit
 POST /api/v1/public/newsletter/unsubscribe (Öffentlich, Newsletter abmelden mit E-Mail)
 GET /api/v1/public/newsletter/unsubscribe/{token} (Öffentlich, Token-basierte Abmeldung verifizieren)
 POST /api/v1/public/newsletter/unsubscribe/{token} (Öffentlich, Token-basierte Abmeldung bestätigen)
+
+Globale Suche (REQ-052)
+GET /api/v1/search?query={text}&scope={scope}&page={page}&pageSize={pageSize} (RequireSearch: admin, vorstand, kassier)
+Scope Werte: all, members, events, documents, invoices, sponsors, blog
+Mindestens 2 Zeichen erforderlich. Max 50 Ergebnisse pro Scope.
+Response: items (Scope, Id, Title, Subtitle, Relevance), totalCount, countsByScope
+
+Backup und Restore (REQ-053)
+GET /api/v1/admin/backups (Admin, Liste aller Backups)
+POST /api/v1/admin/backups (Admin, neues Backup erstellen)
+GET /api/v1/admin/backups/{id} (Admin, Backup Details)
+GET /api/v1/admin/backups/{id}/download (Admin, Backup-Datei herunterladen)
+POST /api/v1/admin/backups/{id}/restore (Admin, Datenbank aus Backup wiederherstellen)
+POST /api/v1/admin/backups/upload (Admin, Backup-Datei hochladen, Multipart, max 500MB)
+DELETE /api/v1/admin/backups/{id} (Admin, Backup löschen)
+GET /api/v1/admin/backups/schedule (Admin, aktuellen Backup-Zeitplan abrufen)
+PUT /api/v1/admin/backups/schedule (Admin, automatischen Backup-Zeitplan konfigurieren via Cron)
+DELETE /api/v1/admin/backups/schedule (Admin, automatische Backups deaktivieren)
+
+Aufbewahrungsrichtlinien (REQ-057)
+GET /api/v1/admin/retention (Admin, alle Richtlinien)
+GET /api/v1/admin/retention/{id} (Admin, einzelne Richtlinie)
+PUT /api/v1/admin/retention/{id} (Admin, Richtlinie aktualisieren)
+POST /api/v1/admin/retention/enforce (Admin, Aufbewahrung manuell durchsetzen)

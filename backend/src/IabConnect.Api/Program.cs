@@ -75,6 +75,18 @@ try
                 await db.Database.MigrateAsync();
                 Log.Information("Database migrations applied successfully");
             }
+
+            // REQ-057: Seed default retention policies (idempotent — skips if already exist)
+            try
+            {
+                var retentionService = scope.ServiceProvider.GetRequiredService<IabConnect.Application.Retention.IRetentionPolicyService>();
+                await retentionService.SeedDefaultPoliciesAsync();
+                Log.Information("Retention policies seeded");
+            }
+            catch (Exception rpEx)
+            {
+                Log.Warning(rpEx, "Retention policy seeding failed (non-fatal, continuing startup)");
+            }
         }
     }
     catch (Exception ex)

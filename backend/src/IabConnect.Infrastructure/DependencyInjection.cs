@@ -9,6 +9,9 @@ using IabConnect.Application.Finance;
 using IabConnect.Application.Finance.EInvoice;
 using IabConnect.Application.Finance.Invoices;
 using IabConnect.Application.Finance.Jobs;
+using IabConnect.Application.Backup;
+using IabConnect.Application.Retention;
+using IabConnect.Application.Search;
 using IabConnect.Domain.Audit;
 using IabConnect.Domain.Communication;
 using IabConnect.Domain.Documents;
@@ -25,6 +28,9 @@ using IabConnect.Infrastructure.Finance.Jobs;
 using IabConnect.Infrastructure.Identity;
 using IabConnect.Infrastructure.Persistence;
 using IabConnect.Infrastructure.Persistence.Repositories;
+using IabConnect.Infrastructure.Backup;
+using IabConnect.Infrastructure.Retention;
+using IabConnect.Infrastructure.Search;
 using IabConnect.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -101,6 +107,18 @@ public static class DependencyInjection
 
         // REQ-047: Blog repository
         services.AddScoped<IBlogPostRepository, BlogPostRepository>();
+
+        // REQ-052: Global search service
+        services.AddScoped<IGlobalSearchService, PostgresGlobalSearchService>();
+
+        // REQ-053: Backup service
+        services.AddScoped<IBackupService, PostgresBackupService>();
+        services.AddScoped<ScheduledBackupJob>();
+
+        // REQ-057: Retention policy & enforcement services
+        services.AddScoped<IRetentionPolicyService, PostgresRetentionPolicyService>();
+        services.AddScoped<IRetentionEnforcementService, RetentionEnforcementService>();
+        services.AddScoped<RetentionEnforcementJob>();
 
         // REQ-049: Contact message repository
         services.AddScoped<IContactMessageRepository, ContactMessageRepository>();

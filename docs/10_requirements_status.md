@@ -420,28 +420,28 @@ TicketLink:
 Notizen: CSV-Datenexporte für Mitglieder und Event-Anmeldungen. Backend: ExportMembersQuery/Handler (GET /api/v1/reports/export/members, RequireAdmin) und ExportEventRegistrationsQuery/Handler (GET /api/v1/reports/export/events/{id}/registrations, RequireVorstand). Semikolon-getrennte CSV mit EscapeCsv-Sanitizing. Audit-Logging (DataExported). Frontend: CSV-Export-Buttons auf Mitgliederliste (nur Admin) und Event-Anmeldungen-Seite.
 
 ID: REQ-052
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 03 08
+Owner: Implementation Agent
+SprintOderRelease: Sprint 10
 TicketLink:
-Notizen:
+Notizen: Globale Suche implementiert. Backend: GlobalSearchQuery/Handler, PostgresGlobalSearchService (ILIKE über 6 Tabellen: Members, Events, Documents, Invoices, Sponsors, Blog). GET /api/v1/search?query=&scope=&page=&pageSize=. Scopes: all, members, events, documents, invoices, sponsors, blog. Mindestens 2 Zeichen, max 50 Ergebnisse pro Scope. Relevanz-Scoring (1.0 exakt bis 0.1 default). RequireSearch Policy (admin, vorstand, kassier). Frontend: Suchseite mit Scope-Filter und Ergebnisliste. 7 Unit-Tests.
 
 ID: REQ-053
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 03 08
+Owner: Implementation Agent
+SprintOderRelease: Sprint 10
 TicketLink:
-Notizen:
+Notizen: Backup & Restore vollständig implementiert. Backend: BackupRecord Entity (Manual/Scheduled/Upload Typen, InProgress/Completed/Failed Status, RestoreAt/RestoredBy Tracking). PostgresBackupService mit Docker exec für pg_dump/pg_restore (Container: iabconnect-postgres). IBackupService mit 7 Methoden. 10 REST Endpoints: CRUD, Download, Restore, Upload (Multipart 500MB), Schedule (GET/PUT/DELETE). Automatische Backups via Hangfire ScheduledBackupJob mit konfigurierbarem Cron über Admin UI. Zeitplan-Persistenz via Hangfire Storage. Stuck-Erkennung (>10min InProgress wird Failed). Retry-Button für fehlgeschlagene Backups. Frontend: Admin-Seite mit Backup-Tabelle, Statistiken, Erstellen-Dialog, Download, 2-Schritt-Restore-Bestätigung, Upload-Modal, Zeitplan-Konfiguration (Preset Dropdown: täglich/wöchentlich/monatlich/benutzerdefiniert), grüner Aktivitäts-Banner. i18n in DE und EN. 9 Unit-Tests.
 
 ID: REQ-054
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 07 15
+Owner: Implementation Agent
+SprintOderRelease: Sprint 10
 TicketLink:
-Notizen:
+Notizen: Logging & Monitoring implementiert. Backend: CorrelationIdMiddleware (X-Correlation-Id Header + Serilog LogContext), DatabaseHealthCheck (PostgreSQL), KeycloakHealthCheck (OIDC). Health Endpoints: /health (basic), /health/ready (tagged JSON), /health/detail (admin-only, vollständiger Report). Serilog File Sink mit Rolling Interval (logs/iabconnect-.log). Frontend: Admin Health-Seite mit Echtzeit-Status, Auto-Refresh (30s), Dienst-Karten. 9 Tests (5 Middleware + 4 Integration).
 
 ID: REQ-055
 Status: Backlog
@@ -460,12 +460,12 @@ TicketLink:
 Notizen:
 
 ID: REQ-057
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: Done
+StatusSeit: 2026 07 15
+Owner: Implementation Agent
+SprintOderRelease: Sprint 10
 TicketLink:
-Notizen:
+Notizen: Aufbewahrungsrichtlinien implementiert. Backend: RetentionPolicy Entity mit DataCategories, RetentionAction (Anonymize/Archive/Delete). IRetentionPolicyService + IRetentionEnforcementService. 6 Default-Policies (AuditLogs 24Mo/DSGVO, MemberData 36Mo/DSGVO, FinanceData 120Mo/OR Art. 958f, Documents 60Mo, Backups 6Mo, Events 48Mo). Enforcement: AuditLog-Anonymisierung + Backup-Löschung. Hangfire Weekly Job. API: GET/PUT/POST enforce (/api/v1/admin/retention). Frontend: Policy-Verwaltung mit Inline-Bearbeitung. 11 Unit-Tests.
 
 ID: REQ-058
 Status: Backlog

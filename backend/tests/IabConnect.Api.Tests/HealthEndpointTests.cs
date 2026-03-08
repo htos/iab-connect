@@ -81,4 +81,38 @@ public class HealthEndpointTests : IClassFixture<TestWebApplicationFactory>
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
+
+    [Fact]
+    public async Task HealthReady_ReturnsJsonWithStatus()
+    {
+        // Act
+        var response = await _client.GetAsync("/health/ready", TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain("status");
+    }
+
+    [Fact]
+    public async Task HealthDetail_RequiresAuthentication()
+    {
+        // Act — no bearer token provided
+        var response = await _client.GetAsync("/health/detail", TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task CorrelationId_IsReturnedInResponseHeaders()
+    {
+        // Act
+        var response = await _client.GetAsync("/health", TestContext.Current.CancellationToken);
+
+        // Assert
+        response.Headers.Contains("X-Correlation-Id").Should().BeTrue();
+        var correlationId = response.Headers.GetValues("X-Correlation-Id").First();
+        correlationId.Should().NotBeNullOrEmpty();
+    }
 }

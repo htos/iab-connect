@@ -450,6 +450,138 @@
     "quickInfo": {
       "title": "Schnellinfo",
       "description": "Wählen Sie einen Bereich aus, um mit der Administration zu beginnen."
+    },
+    "backups": {
+      "title": "Backups",
+      "subtitle": "Datenbank-Backups verwalten und herunterladen",
+      "description": "Datenbank-Backups erstellen, verwalten und wiederherstellen",
+      "backToAdmin": "Zurück zur Administration",
+      "createBackup": "Backup erstellen",
+      "uploadBackup": "Backup hochladen",
+      "refresh": "Aktualisieren",
+      "noBackups": "Keine Backups vorhanden",
+      "noBackupsDescription": "Es wurden noch keine Backups erstellt. Erstellen Sie Ihr erstes Backup.",
+      "createSuccess": "Backup wurde erfolgreich erstellt.",
+      "deleteSuccess": "Backup wurde erfolgreich gelöscht.",
+      "restoreSuccess": "Datenbank wurde erfolgreich wiederhergestellt.",
+      "uploadSuccess": "Backup wurde erfolgreich hochgeladen.",
+      "restoredInfo": "Wiederhergestellt am {date} von {user}",
+      "stats": {
+        "total": "Backups gesamt",
+        "completed": "Erfolgreich",
+        "totalSize": "Gesamtgrösse"
+      },
+      "table": {
+        "fileName": "Dateiname",
+        "type": "Typ",
+        "status": "Status",
+        "size": "Grösse",
+        "createdAt": "Erstellt am",
+        "createdBy": "Erstellt von",
+        "actions": "Aktionen"
+      },
+      "types": {
+        "manual": "Manuell",
+        "scheduled": "Geplant",
+        "upload": "Hochgeladen"
+      },
+      "statuses": {
+        "inprogress": "In Bearbeitung",
+        "completed": "Abgeschlossen",
+        "failed": "Fehlgeschlagen"
+      },
+      "actions": {
+        "download": "Herunterladen",
+        "restore": "Wiederherstellen",
+        "retry": "Wiederholen",
+        "delete": "Löschen"
+      },
+      "retrySuccess": "Backup wird erneut erstellt.",
+      "createModal": {
+        "title": "Neues Backup erstellen",
+        "description": "Ein vollständiges Datenbank-Backup wird erstellt. Dies kann einige Minuten dauern.",
+        "notes": "Notizen (optional)",
+        "notesPlaceholder": "z.B. Backup vor Update...",
+        "confirm": "Backup starten"
+      },
+      "uploadModal": {
+        "title": "Backup hochladen",
+        "description": "Laden Sie eine PostgreSQL-Backupdatei (.sql, .dump) hoch. Sie können diese anschliessend wiederherstellen.",
+        "file": "Backup-Datei",
+        "notes": "Notizen (optional)",
+        "notesPlaceholder": "z.B. Backup von anderem Server...",
+        "confirm": "Hochladen"
+      },
+      "errors": {
+        "loadFailed": "Backups konnten nicht geladen werden.",
+        "createFailed": "Backup konnte nicht erstellt werden.",
+        "downloadFailed": "Backup konnte nicht heruntergeladen werden.",
+        "deleteFailed": "Backup konnte nicht gelöscht werden.",
+        "restoreFailed": "Datenbank konnte nicht wiederhergestellt werden.",
+        "uploadFailed": "Backup konnte nicht hochgeladen werden."
+      },
+      "schedule": {
+        "title": "Automatische Backups",
+        "description": "Konfigurieren Sie einen automatischen Backup-Zeitplan. Backups werden zu den festgelegten Zeiten erstellt.",
+        "interval": "Intervall",
+        "daily": "Täglich (02:00 Uhr)",
+        "weekly": "Wöchentlich (Montag, 02:00 Uhr)",
+        "monthly": "Monatlich (1. des Monats, 02:00 Uhr)",
+        "custom": "Benutzerdefiniert (Cron)",
+        "cronExpression": "Cron-Ausdruck",
+        "save": "Zeitplan speichern",
+        "disable": "Deaktivieren",
+        "active": "Automatische Backups aktiv: {cron}",
+        "saveSuccess": "Backup-Zeitplan wurde gespeichert.",
+        "saveFailed": "Backup-Zeitplan konnte nicht gespeichert werden.",
+        "disableSuccess": "Automatische Backups wurden deaktiviert.",
+        "disableFailed": "Automatische Backups konnten nicht deaktiviert werden."
+      }
+    },
+    "retention": {
+      "title": "Aufbewahrungsrichtlinien",
+      "subtitle": "Datenaufbewahrung und Archivierung gemäss gesetzlichen Vorgaben",
+      "description": "Aufbewahrungsfristen und Archivierungsregeln verwalten",
+      "backToAdmin": "Zurück zur Administration",
+      "enforceNow": "Jetzt ausführen",
+      "updateSuccess": "Richtlinie wurde erfolgreich aktualisiert.",
+      "enforceSuccess": "{count} Datensätze wurden verarbeitet.",
+      "noPolicies": "Keine Aufbewahrungsrichtlinien vorhanden.",
+      "inactive": "Inaktiv",
+      "infoText": "Aufbewahrungsrichtlinien legen fest, wie lange Daten aufbewahrt werden und was nach Ablauf geschieht. Änderungen an gesetzlich vorgeschriebenen Fristen (z.B. OR Art. 958f) sollten nur nach Rücksprache mit dem Vorstand vorgenommen werden.",
+      "months": "{count} Monate",
+      "years": "{count} Jahre",
+      "fields": {
+        "displayName": "Bezeichnung",
+        "retentionMonths": "Aufbewahrungsdauer (Monate)",
+        "action": "Aktion nach Ablauf",
+        "legalBasis": "Rechtsgrundlage",
+        "active": "Aktiv",
+        "category": "Kategorie",
+        "retention": "Aufbewahrung"
+      },
+      "actions": {
+        "anonymize": "Anonymisieren",
+        "archive": "Archivieren",
+        "delete": "Löschen"
+      },
+      "errors": {
+        "loadFailed": "Richtlinien konnten nicht geladen werden.",
+        "updateFailed": "Richtlinie konnte nicht aktualisiert werden.",
+        "enforceFailed": "Aufbewahrungsregeln konnten nicht ausgeführt werden."
+      }
+    },
+    "health": {
+      "title": "Systemstatus",
+      "subtitle": "Überwachung der Systemkomponenten und Dienste",
+      "description": "Systemgesundheit und Dienstverfügbarkeit überwachen",
+      "overallStatus": "Gesamtstatus",
+      "totalDuration": "Gesamtdauer",
+      "lastChecked": "Letzte Prüfung",
+      "refresh": "Aktualisieren",
+      "refreshing": "Wird geprüft...",
+      "autoRefreshInfo": "Die Statusanzeige wird automatisch alle 30 Sekunden aktualisiert.",
+      "fetchError": "Systemstatus konnte nicht abgerufen werden."
     }
   },
   "events": {
@@ -2056,5 +2188,25 @@
     "unsubscribeAnother": "Weitere E-Mail abmelden",
     "switchToUnsubscribe": "Möchten Sie sich abmelden?",
     "switchToSubscribe": "Möchten Sie sich anmelden?"
+  },
+  "search": {
+    "placeholder": "Suchen...",
+    "shortcut": "Suche öffnen (Ctrl+K)",
+    "inputPlaceholder": "Mitglieder, Events, Dokumente, Rechnungen suchen...",
+    "noResults": "Keine Ergebnisse gefunden.",
+    "minChars": "Mindestens 2 Zeichen eingeben.",
+    "hint": "Suchbegriff eingeben, um Ergebnisse zu sehen.",
+    "results": "Ergebnisse",
+    "navigate": "Navigieren",
+    "open": "Öffnen",
+    "close": "Schliessen",
+    "scopes": {
+      "members": "Mitglieder",
+      "events": "Events",
+      "documents": "Dokumente",
+      "invoices": "Rechnungen",
+      "sponsors": "Sponsoren",
+      "blog": "Blog"
+    }
   }
 }
