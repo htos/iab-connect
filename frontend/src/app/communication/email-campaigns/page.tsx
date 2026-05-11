@@ -148,7 +148,7 @@ export default function EmailCampaignsPage() {
           </div>
           <Link
             href="/communication/email-campaigns/new"
-            className="inline-flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-700 transition-colors"
+            className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-700 transition-colors"
           >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -180,7 +180,7 @@ export default function EmailCampaignsPage() {
                 setStatusFilter(e.target.value as EmailCampaignStatus | "");
                 setPage(1);
               }}
-              className="border rounded-xl px-3 py-2 text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+              className="border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors bg-white"
             >
               <option value="">{t("allStatuses")}</option>
               <option value="Draft">{t("statusDraft")}</option>
@@ -259,12 +259,24 @@ export default function EmailCampaignsPage() {
                     {campaign.status === "Sent" || campaign.status === "Sending" ? (
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-green-600">✓ {campaign.sentCount}</span>
-                          <span className="text-blue-600">👁 {campaign.openedCount}</span>
-                          <span className="text-purple-600">🖱 {campaign.clickedCount}</span>
+                          <span className="inline-flex items-center gap-1 text-green-600">
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                            {campaign.sentCount}
+                          </span>
+                          <span className="inline-flex items-center gap-1 text-blue-600">
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                            {campaign.openedCount}
+                          </span>
+                          <span className="inline-flex items-center gap-1 text-purple-600">
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" /></svg>
+                            {campaign.clickedCount}
+                          </span>
                         </div>
                         {campaign.bouncedCount > 0 && (
-                          <span className="text-red-600">⚠ {campaign.bouncedCount} {t("bounces")}</span>
+                          <span className="inline-flex items-center gap-1 text-red-600">
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                            {campaign.bouncedCount} {t("bounces")}
+                          </span>
                         )}
                       </div>
                     ) : (
@@ -312,7 +324,7 @@ export default function EmailCampaignsPage() {
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="px-4 py-2 border rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
           >
             {t("previous")}
           </button>
@@ -322,7 +334,7 @@ export default function EmailCampaignsPage() {
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            className="px-4 py-2 border rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
           >
             {t("next")}
           </button>

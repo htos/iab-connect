@@ -94,3 +94,8 @@ TestResults/
 #  Docker
 # ───────────────────────────────────────────────
 docker-compose.override.yml
+
+# ───────────────────────────────────────────────
+#  Seed data (not for production)
+# ───────────────────────────────────────────────
+**/RealisticDataSeeder.cs

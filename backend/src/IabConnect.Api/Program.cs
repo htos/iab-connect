@@ -67,6 +67,19 @@ try
                 {
                     Log.Warning(seedEx, "Development data seeding failed (non-fatal, continuing startup)");
                 }
+
+                // Seed realistic production-like data (idempotent)
+                // Uncomment to re-seed: RealisticDataSeeder populates all domains with realistic data
+                // try
+                // {
+                //     Log.Information("Seeding realistic data...");
+                //     await RealisticDataSeeder.SeedAsync(app.Services);
+                //     Log.Information("Realistic data seeding completed");
+                // }
+                // catch (Exception realisticEx)
+                // {
+                //     Log.Warning(realisticEx, "Realistic data seeding failed (non-fatal, continuing startup)");
+                // }
             }
             else
             {
