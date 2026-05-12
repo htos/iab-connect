@@ -6,6 +6,7 @@
  */
 
 import { useAuth } from "@/lib/auth";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useCallback, useRef } from "react";
 import {
@@ -21,12 +22,20 @@ import { useTranslations } from "next-intl";
 
 export default function ProfilePage() {
   const t = useTranslations();
-  const { isAuthenticated, isLoading: authLoading, isMember, accessToken } = useAuth();
+  const {
+    isAuthenticated,
+    isLoading: authLoading,
+    isMember,
+    isAdmin,
+    isVorstand,
+    accessToken,
+  } = useAuth();
   const router = useRouter();
 
   const [member, setMember] = useState<MemberDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [noMemberRecord, setNoMemberRecord] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<UpdateOwnProfileRequest>({
@@ -56,6 +65,7 @@ export default function ProfilePage() {
 
     setLoading(true);
     setError(null);
+    setNoMemberRecord(false);
 
     try {
       const response = await fetch(`${baseUrl}/api/v1/members/me`, {
@@ -66,7 +76,7 @@ export default function ProfilePage() {
       });
 
       if (response.status === 404) {
-        setError(t("profile.noProfileFound"));
+        setNoMemberRecord(true);
         return;
       }
 
@@ -211,6 +221,42 @@ export default function ProfilePage() {
 
   if (!isAuthenticated || !isMember) {
     return null;
+  }
+
+  if (noMemberRecord && !member) {
+    const showAdminLink = isAdmin || isVorstand;
+    return (
+      <main className="min-h-[calc(100vh-4rem)] p-4 md:p-8 bg-gray-50">
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">
+              {t("profile.noProfileTitle")}
+            </h2>
+            <p className="text-gray-600 mb-6">
+              {showAdminLink
+                ? t("profile.noProfileMessageAdmin")
+                : t("profile.noProfileMessageMember")}
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Link
+                href="/profile/security"
+                className="inline-flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+              >
+                {t("profile.goToSecurity")}
+              </Link>
+              {showAdminLink && (
+                <Link
+                  href="/admin"
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  {t("profile.goToAdmin")}
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+      </main>
+    );
   }
 
   if (error && !member) {
