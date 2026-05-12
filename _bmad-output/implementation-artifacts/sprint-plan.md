@@ -1,7 +1,6 @@
-# IAB Connect Sprint Plan
+# IAB Connect Multi-Epic Implementation Plan
 
 Date: 2026-05-12
-Sprint: Sprint 1
 Status: Planned
 Planning source:
 
@@ -9,99 +8,131 @@ Planning source:
 - `_bmad-output/planning-artifacts/architecture.md`
 - `_bmad-output/planning-artifacts/ux-design.md`
 - `_bmad-output/planning-artifacts/epics-and-stories.md`
-- `_bmad-output/planning-artifacts/implementation-readiness-report.md`
+- `_bmad-output/planning-artifacts/implementation-readiness-report-2026-05-12.md`
 
-## Sprint Goal
+## Planning Goal
 
-Establish the security and identity foundation for future implementation by preparing and delivering the first Keycloak-backed account security slice: MFA enforcement policy, session/device visibility, and session revocation.
+Plan implementation iteratively across all remaining Backlog scope. This replaces the previous E1-only sprint plan.
 
-This sprint deliberately avoids social/enterprise login provider federation because Google/Microsoft provider setup needs environment-specific decisions and credentials.
+The current planning scope is:
 
-## Planning Refresh
+- 8 epics
+- 33 stories
+- 14 open Backlog requirements
+- 8 optional epic retrospectives
 
-Refreshed on 2026-05-12. The selected scope remains valid after checking the readiness report, UX artifact, and Epic E1 story definitions. No scope changes are required.
+Each story must go through `bmad-create-story` and story validation before development. The epics-and-stories artifact is planning input, not direct coding input.
 
-## Selected Scope
+## Readiness Summary
 
-| Order | Story | Requirement | Title | Sprint Status | Notes |
-| --- | --- | --- | --- | --- | --- |
-| 1 | E1-S1 | REQ-009 | Configure Role-Based MFA Policy | Next | First story to create and validate. |
-| 2 | E1-S3 | REQ-010 | Add Session and Device Visibility | Planned | Depends on Keycloak session API inspection. |
-| 3 | E1-S4 | REQ-010 | Add Session Revocation | Planned | Should follow session visibility. |
+Implementation readiness status: READY WITH CONDITIONS.
 
-## Stretch / Follow-Up Candidates
+Conditions:
 
-| Story | Requirement | Title | Decision |
-| --- | --- | --- | --- |
-| E1-S2 | REQ-009 | Add Admin MFA Support Operations | Conditional stretch if Keycloak console-only support is not enough. |
-| E1-S5 | REQ-006 | Add Social and Enterprise Identity Providers | Defer until provider credentials, scopes, and account-linking policy are decided. |
+- Convert story acceptance criteria into concrete testable scenarios during story creation.
+- Scope large stories tightly before development.
+- Keep provider-dependent stories later unless credentials, provider policy, signing policy, or event whitelist decisions are available.
+- Include all UI states, permissions, i18n, accessibility checks, and manual validation evidence for UI-heavy stories.
 
-## Out of Scope for Sprint 1
+## Iterative Delivery Waves
 
-- Social/enterprise login provider setup.
-- Duplicate member detection and merge.
-- Event check-in, volunteer planning, calendar, or ticketing work.
-- Automations, multi-channel messaging, budgets/cost centers, webhooks/API clients.
-- Broad accessibility audit beyond pages touched by Sprint 1 stories.
+### Wave 1: Security Foundation
 
-## Story Preparation Rules
+Goal: establish identity/session safety before sensitive admin, provider, and integration work.
 
-Before each selected story enters development:
+| Order | Story | Requirement | Title | Notes |
+| --- | --- | --- | --- | --- |
+| 1 | E1-S1 | REQ-009 | Configure Role-Based MFA Policy | Keycloak config/evidence story; start here. |
+| 2 | E1-S3 | REQ-010 | Add Session and Device Visibility | Inspect Keycloak session data limits. |
+| 3 | E1-S4 | REQ-010 | Add Session Revocation | Should follow visibility. |
+| 4 | E1-S2 | REQ-009 | Add Admin MFA Support Operations | Pull forward if console-only support is insufficient. |
+| 5 | E1-S5 | REQ-006 | Add Social and Enterprise Identity Providers | Defer until provider credentials/scopes/account-linking decisions exist. |
 
-1. Run `bmad-create-story` for the next story.
-2. Inspect existing code locations.
-3. Confirm backend authorization and audit expectations.
-4. Confirm Keycloak Admin API or realm configuration touch points.
-5. Confirm frontend route/component/API wrapper touch points.
-6. Define backend and frontend tests.
-7. Define manual Keycloak validation steps.
+### Wave 2: Member Data Quality
 
-## Expected Code Areas
+Goal: reduce duplicate member risk before broad communications and automations.
 
-These are planning hypotheses only; `bmad-create-story` must verify exact files.
+| Order | Story | Requirement | Title | Notes |
+| --- | --- | --- | --- | --- |
+| 1 | E2-S1 | REQ-018 | Add Duplicate Candidate Detection | Backend/Application rules first. |
+| 2 | E2-S2 | REQ-018 | Show Duplicate Warnings in Member Create/Edit | UI warnings after detection query exists. |
+| 3 | E2-S4 | REQ-018 | Add Duplicate Review UI | Can follow candidate grouping. |
+| 4 | E2-S3 | REQ-018 | Implement Safe Member Merge | High-risk; scope carefully and add integration tests. |
 
-Backend:
+### Wave 3: Event Operations
 
-- `backend/src/IabConnect.Api/Endpoints`
-- `backend/src/IabConnect.Application`
-- `backend/src/IabConnect.Infrastructure`
-- Existing Keycloak admin integration/service code
-- Existing audit/security logging services
+Goal: complete event-day operational capability before paid-event workflows.
 
-Frontend:
+| Order | Story | Requirement | Title | Notes |
+| --- | --- | --- | --- | --- |
+| 1 | E3-S1 | REQ-023 | Add Event Check-in Roster and Export | Enables offline fallback. |
+| 2 | E3-S2 | REQ-023 | Add QR and Manual Check-in Flow | Must be idempotent and auditable. |
+| 3 | E3-S3 | REQ-024 | Add Volunteer Planning Domain and API | Backend/domain slice. |
+| 4 | E3-S4 | REQ-024 | Add Volunteer Planning UI and Reminders | UI plus optional reminder scheduling. |
+| 5 | E3-S5 | REQ-025 | Add Calendar Feed and ICS Export | Can run after event visibility rules are confirmed. |
 
-- `frontend/src/app/profile`
-- `frontend/src/app/admin/users`
-- `frontend/src/lib/api` or `frontend/src/lib/services`
-- `frontend/src/components/ui`
-- `frontend/messages`
+### Wave 4: Event Monetization
 
-Infrastructure / configuration:
+Goal: add paid registration using existing finance compliance patterns.
 
-- `infra/keycloak/realms`
-- Development Keycloak realm/client settings
-- Environment configuration for Keycloak admin service, if needed
+| Order | Story | Requirement | Title | Notes |
+| --- | --- | --- | --- | --- |
+| 1 | E4-S1 | REQ-022 | Add Event Fee Configuration | Event-side fee setup. |
+| 2 | E4-S2 | REQ-022 | Connect Paid Registration to Finance | Highest risk in this wave; requires transaction/cancellation rules. |
+| 3 | E4-S3 | REQ-022 | Add Paid Registration UI | Should follow API and finance link. |
 
-## Validation Gates
+### Wave 5: Communication Automation
 
-Sprint-level validation should include:
+Goal: add consent-aware automation, then optional channel expansion.
 
-- Backend build/tests relevant to touched modules.
-- API authorization tests for any new backend endpoints.
-- Manual Keycloak validation for MFA/session scenarios.
-- Frontend typecheck and lint for touched frontend stories.
-- UI manual validation for loading, empty, error, permission-denied, success, and confirmation states.
-- Audit/security event verification where application-level operations are added.
+| Order | Story | Requirement | Title | Notes |
+| --- | --- | --- | --- | --- |
+| 1 | E5-S1 | REQ-028 | Add Automation Definition Model and API | Definitions and validation first. |
+| 2 | E5-S2 | REQ-028 | Add Automation Execution Engine | Large story; define minimum trigger scope. |
+| 3 | E5-S3 | REQ-028 | Add Automation Management UI | Uses prior backend execution/status state. |
+| 4 | E5-S4 | REQ-030 | Add Multi-channel Messaging Abstraction | Defer provider specifics or use disabled/stub adapter. |
+| 5 | E5-S5 | REQ-030 | Add User Channel Preferences | Requires channel availability and consent rules. |
 
-## Risks
+### Wave 6: Finance Planning
 
-| Risk | Impact | Mitigation |
-| --- | --- | --- |
-| Keycloak role-based MFA may be mostly realm configuration rather than application code. | Story E1-S1 may produce config/docs rather than code. | Treat story output as configuration plus verification evidence if no app code is needed. |
-| Keycloak session/device metadata may be limited. | UI may not show rich device information. | Degrade gracefully and document limitations. |
-| Session revocation behavior depends on token/session cache timing. | Revocation may not appear instant in every UI state. | Validate at next protected request and document expected timing. |
-| Admin MFA reset may be needed sooner than planned. | Support operations may be blocked. | Pull E1-S2 into sprint only after E1-S1 confirms operational gap. |
+Goal: add cost center and budget planning without weakening existing finance rules.
+
+| Order | Story | Requirement | Title | Notes |
+| --- | --- | --- | --- | --- |
+| 1 | E6-S1 | REQ-044 | Add Cost Center and Budget Model | Finance domain/persistence first. |
+| 2 | E6-S2 | REQ-044 | Associate Finance Records with Cost Centers | Must preserve locked-period and posted-entry rules. |
+| 3 | E6-S3 | REQ-044 | Add Budget vs Actual Reports | Read model/reporting slice. |
+
+### Wave 7: Quality Baseline
+
+Goal: establish accessibility and localization foundations, then apply them to touched flows.
+
+| Order | Story | Requirement | Title | Notes |
+| --- | --- | --- | --- | --- |
+| 1 | E7-S1 | REQ-056 | Define Accessibility Baseline and Audit Critical Pages | Should happen early enough to influence UI stories. |
+| 2 | E7-S2 | REQ-056 | Improve Shared Component Accessibility | Shared UI leverage. |
+| 3 | E7-S3 | REQ-055 | Add Hindi Translation Expansion Path | Message structure and fallback. |
+| 4 | E7-S4 | REQ-055 | Add Content Language Metadata Where Needed | Only where product-approved content models need it. |
+
+### Wave 8: External Integration Surface
+
+Goal: add external API and webhook surfaces after authorization and signing decisions are clear.
+
+| Order | Story | Requirement | Title | Notes |
+| --- | --- | --- | --- | --- |
+| 1 | E8-S1 | REQ-058 | Add API Credentials and Scopes | Token-safe storage and scopes first. |
+| 2 | E8-S2 | REQ-058 | Add Read API Endpoints | Integration-safe DTOs and rate limits. |
+| 3 | E8-S3 | REQ-058 | Add Webhook Subscriptions and Signing | Requires event whitelist/signing policy. |
+| 4 | E8-S4 | REQ-058 | Add Webhook Delivery, Retry, and History | Large story; consider delivery engine before admin UI if needed. |
+
+## Cross-Wave Rules
+
+1. Do not start development directly from this plan. Create and validate each story first.
+2. Each story output must include file-level code context, authorization, audit/privacy/finance impact, migration need, tests, and manual validation.
+3. UI-heavy stories must include loading, empty, error, permission-denied, validation, success, i18n, and accessibility states.
+4. Sensitive workflows require backend authorization tests or explicit manual validation evidence.
+5. Provider-dependent stories remain backlog until the external configuration decisions are available.
 
 ## Next Action
 
-Run `bmad-create-story` for `E1-S1 Configure Role-Based MFA Policy`.
+Run `bmad-create-story` for `E1-S1 Configure Role-Based MFA Policy`, then validate it before development.
