@@ -14,6 +14,7 @@ import {
   getUsers,
   setUserEnabled,
   sendPasswordReset,
+  resetUserMfa,
   deleteUser,
   User,
   UserListResponse,
@@ -109,6 +110,25 @@ export default function UsersPage() {
       alert(t("passwordResetSent"));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send password reset");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Handle MFA reset
+  const handleMfaReset = async (user: User) => {
+    if (!accessToken) return;
+
+    if (!confirm(t("confirmMfaReset", { email: user.email ?? "" }))) {
+      return;
+    }
+
+    setActionLoading(user.id);
+    try {
+      await resetUserMfa(accessToken, user.id);
+      alert(t("mfaResetSent"));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to reset MFA");
     } finally {
       setActionLoading(null);
     }
@@ -387,6 +407,26 @@ export default function UsersPage() {
                             strokeLinejoin="round"
                             strokeWidth={2}
                             d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handleMfaReset(user)}
+                        disabled={actionLoading === user.id}
+                        className="text-orange-600 hover:text-orange-900"
+                        title={t("resetMfa")}
+                      >
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 11c.828 0 1.5-.672 1.5-1.5S12.828 8 12 8s-1.5.672-1.5 1.5S11.172 11 12 11zm0 0v3m0 0h.01M5 11V7a7 7 0 0114 0v4m-1 0h1a1 1 0 011 1v8a1 1 0 01-1 1H5a1 1 0 01-1-1v-8a1 1 0 011-1h1z"
                           />
                         </svg>
                       </button>

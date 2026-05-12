@@ -12,6 +12,37 @@ Rollen und Policies
 2) Jede sensible Aktion hat eine Policy
 3) Finance Daten nur für Finance Rolle
 
+MFA fuer Hochrisiko Rollen
+1) Keycloak bleibt die Identity Authority fuer MFA Enrollment und MFA Pruefung.
+2) Die Rollen admin und kassier enthalten die Composite Marker Rolle mfa-required.
+3) Der Keycloak Browser Flow iabconnect browser role mfa erzwingt OTP fuer mfa-required und ueberspringt OTP fuer Rollen ohne diesen Marker.
+4) TOTP wird ueber Keycloak Configure OTP aktiviert; Recovery Authentication Codes sind als Backup Code Pfad aktiviert.
+5) MFA Secrets und Recovery Codes werden nicht in IAB Connect gespeichert.
+6) Manuelle Validierung nach Realm Import: admin@iabconnect.ch und kassier@iabconnect.ch muessen OTP einrichten oder bestaetigen; member@iabconnect.ch darf durch diese Policy nicht zu OTP gezwungen werden.
+7) Login, Credential Update und Required Action Events werden in Keycloak Events erfasst. App-seitige MFA Reset oder Support Aktionen sind separater Scope und muessen in den jeweiligen Backend Endpoints auditiert werden.
+
+Admin MFA Support Flow
+1) Admins koennen fuer einen Benutzer ueber `/api/v1/users/{userId}/reset-mfa` einen kontrollierten MFA Reset starten.
+2) Der Endpoint ist durch `RequireAdmin` geschuetzt; UI Rollenchecks ersetzen diese Backend Authorisierung nicht.
+3) Der Reset entfernt in Keycloak nur MFA Credentials vom Typ `otp` und `recovery-authn-codes`; Passwort Credentials bleiben unveraendert.
+4) Nach dem Entfernen sendet Keycloak eine Execute Actions Email fuer `CONFIGURE_TOTP` und `CONFIGURE_RECOVERY_AUTHN_CODES`, damit der Benutzer MFA neu einrichtet.
+5) Erfolgreiche und fehlgeschlagene Reset-Versuche werden ueber den Security Audit Logger protokolliert. Fehlermeldungen an die UI bleiben generisch und geben keine Keycloak Interna preis.
+
+Session- und Geraetesichtbarkeit (REQ-010)
+1) Authentifizierte Benutzer koennen ihre aktiven Keycloak Sessions ueber `GET /api/v1/identity/sessions` abfragen. Endpoint erfordert nur Anmeldung, kein zusaetzliches Recht.
+2) Administratoren koennen die aktiven Sessions eines Benutzers ueber `GET /api/v1/users/{userId}/sessions` abfragen. Endpoint ist durch `RequireAdmin` geschuetzt.
+3) Beide Endpoints rufen die Keycloak Admin API `GET /admin/realms/{realm}/users/{userId}/sessions` auf und liefern eine Liste mit id, ipAddress, start, lastAccess und beteiligten Clients.
+4) Datenqualitaet ist best effort. Keycloak kann ipAddress oder Zeitstempel weglassen, abhaengig von Provider- und Event-Konfiguration; die DTO erlaubt nullbare Werte und die UI degradiert anstatt zu raten.
+5) Admin Sessionsabrufe werden ueber den Security Audit Logger protokolliert (LogAccessGranted mit SessionCount; LogAccessDenied wenn der Zielbenutzer nicht existiert).
+
+Session Revocation (REQ-010)
+1) Authentifizierte Benutzer koennen eigene Sessions ueber `DELETE /api/v1/identity/sessions/{sessionId}` beenden. Der Endpoint prueft serverseitig, dass die angegebene Session zum aufrufenden Benutzer gehoert (Ownership Gate), bevor er an Keycloak weiterleitet. Fremde Session-IDs ergeben 404.
+2) Administratoren koennen eine Session eines anderen Benutzers ueber `DELETE /api/v1/users/{userId}/sessions/{sessionId}` beenden. Endpoint ist durch `RequireAdmin` geschuetzt.
+3) Beide Endpoints rufen Keycloak Admin API `DELETE /admin/realms/{realm}/sessions/{sessionId}` auf. Lokale Session-Authority oder gespiegelter Session-State existiert in IAB Connect nicht.
+4) Wirkung: Nach erfolgreicher Revocation wird das Access Token bei der naechsten geschuetzten Interaktion (`RequireAuthorization`) von der Token-Validierung abgelehnt, weil die Keycloak Session nicht mehr existiert. Browser-clientseitig wird beim naechsten Refresh-Token-Versuch ein 4xx zurueckkommen und der Login-Flow neu gestartet.
+5) Audit: Eigene Revocation wird ueber `SecurityAuditLogger.LogAccessGranted` (Resource Session, Action RevokeOwn) protokolliert. Admin Revocation laeuft ueber `LogAccessGranted` (Action RevokeForUser) mit TargetUserId und TargetEmail. Fehlversuche (nicht zugehoerige Session, fehlender Zielbenutzer) ergeben `LogAccessDenied`.
+6) Timeouts: Zusaetzlich zur expliziten Revocation enden Sessions automatisch bei Erreichen des Keycloak SSO Session Idle Timeout (Standard 30 Minuten) oder des SSO Session Max Lifetime (Standard 10 Stunden). Diese Werte werden in der Realm-Konfiguration `infra/keycloak/realms/iabconnect-realm.json` gepflegt und sind nicht app-seitig konfigurierbar.
+
 Definierte Authorization Policies
 RequireAdmin: admin
 RequireVorstand: admin, vorstand

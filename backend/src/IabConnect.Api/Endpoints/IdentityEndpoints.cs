@@ -1,5 +1,8 @@
 using System.Security.Claims;
+using IabConnect.Application.Authorization;
+using IabConnect.Infrastructure.Identity;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace IabConnect.Api.Endpoints;
 
@@ -63,6 +66,23 @@ public static class IdentityEndpoints
             .Produces<AccessCheckResponse>(200)
             .Produces(401)
             .Produces(403);
+
+        // REQ-010: Get current user's active Keycloak sessions
+        identity.MapGet("/sessions", GetCurrentUserSessions)
+            .RequireAuthorization()
+            .WithName("GetCurrentUserSessions")
+            .WithDescription("REQ-010: Gibt die aktiven Keycloak-Sessions des aktuell angemeldeten Benutzers zurück")
+            .Produces<SessionListResponse>(200)
+            .Produces(401);
+
+        // REQ-010: Revoke one of the current user's own Keycloak sessions
+        identity.MapDelete("/sessions/{sessionId}", RevokeCurrentUserSession)
+            .RequireAuthorization()
+            .WithName("RevokeCurrentUserSession")
+            .WithDescription("REQ-010: Beendet eine eigene Keycloak-Session des aktuell angemeldeten Benutzers")
+            .Produces(204)
+            .Produces(401)
+            .Produces(404);
 
         return group;
     }
@@ -147,6 +167,104 @@ public static class IdentityEndpoints
             AccessLevel = "member",
             Message = "Mitglied-Zugriff bestätigt"
         });
+    }
+
+    private static async Task<Results<Ok<SessionListResponse>, UnauthorizedHttpResult, ProblemHttpResult>> GetCurrentUserSessions(
+        ClaimsPrincipal user,
+        IKeycloakAdminService keycloakAdmin,
+        ILogger<KeycloakAdminService> logger,
+        CancellationToken ct)
+    {
+        var userId = user.FindFirst("sub")?.Value
+            ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrEmpty(userId))
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        try
+        {
+            var sessions = await keycloakAdmin.GetUserSessionsAsync(userId, ct);
+            var response = new SessionListResponse
+            {
+                Sessions = sessions.Select(SessionMapper.ToDto).ToList()
+            };
+            return TypedResults.Ok(response);
+        }
+        catch (KeycloakNotFoundException)
+        {
+            // User exists in token but not in Keycloak Admin view — return empty list rather than 500.
+            return TypedResults.Ok(new SessionListResponse { Sessions = new List<SessionDto>() });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to fetch sessions for current user {UserId}", userId);
+            return TypedResults.Problem(
+                detail: "An internal error occurred. Please try again later.",
+                statusCode: 500,
+                title: "Failed to fetch sessions");
+        }
+    }
+
+    private static async Task<Results<NoContent, UnauthorizedHttpResult, NotFound, ProblemHttpResult>> RevokeCurrentUserSession(
+        string sessionId,
+        ClaimsPrincipal user,
+        HttpContext httpContext,
+        IKeycloakAdminService keycloakAdmin,
+        ISecurityAuditLogger auditLogger,
+        ILogger<KeycloakAdminService> logger,
+        CancellationToken ct)
+    {
+        var userId = user.FindFirst("sub")?.Value
+            ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrEmpty(userId))
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        try
+        {
+            // Ownership gate: only allow revoking a session that belongs to the calling user.
+            // Without this check, an authenticated user could revoke any session by guessing the sessionId.
+            var ownedSessions = await keycloakAdmin.GetUserSessionsAsync(userId, ct);
+            var matched = ownedSessions.FirstOrDefault(s => s.Id == sessionId);
+
+            if (matched is null)
+            {
+                auditLogger.LogAccessDenied(
+                    user,
+                    "Session",
+                    "RevokeOwn",
+                    "Session does not belong to caller or does not exist",
+                    sessionId);
+                return TypedResults.NotFound();
+            }
+
+            await keycloakAdmin.RevokeSessionAsync(sessionId, ct);
+
+            auditLogger.LogAccessGranted(
+                user,
+                "Session",
+                "RevokeOwn",
+                sessionId);
+
+            return TypedResults.NoContent();
+        }
+        catch (KeycloakNotFoundException)
+        {
+            // Session disappeared between the ownership check and the delete — treat as success.
+            return TypedResults.NoContent();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to revoke own session {SessionId} for user {UserId}", sessionId, userId);
+            return TypedResults.Problem(
+                detail: "An internal error occurred. Please try again later.",
+                statusCode: 500,
+                title: "Failed to revoke session");
+        }
     }
 
     private static List<string> ExtractRoles(ClaimsPrincipal user)
@@ -243,4 +361,35 @@ public record AccessCheckResponse
     public required bool HasAccess { get; init; }
     public required string AccessLevel { get; init; }
     public required string Message { get; init; }
+}
+
+// REQ-010: Session visibility DTOs
+public record SessionDto
+{
+    public required string Id { get; init; }
+    public string? IpAddress { get; init; }
+    public DateTime? Start { get; init; }
+    public DateTime? LastAccess { get; init; }
+    public List<string> Clients { get; init; } = new();
+}
+
+public record SessionListResponse
+{
+    public required List<SessionDto> Sessions { get; init; }
+}
+
+internal static class SessionMapper
+{
+    public static SessionDto ToDto(KeycloakSessionRepresentation session) => new()
+    {
+        Id = session.Id ?? "",
+        IpAddress = session.IpAddress,
+        Start = session.Start.HasValue
+            ? DateTimeOffset.FromUnixTimeMilliseconds(session.Start.Value).UtcDateTime
+            : null,
+        LastAccess = session.LastAccess.HasValue
+            ? DateTimeOffset.FromUnixTimeMilliseconds(session.LastAccess.Value).UtcDateTime
+            : null,
+        Clients = session.Clients?.Values.Where(v => !string.IsNullOrWhiteSpace(v)).ToList() ?? new List<string>()
+    };
 }

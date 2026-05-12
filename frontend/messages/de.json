@@ -33,7 +33,8 @@
     "noMembersFound": "Keine Mitglieder gefunden",
     "tryDifferentFilter": "Versuche andere Filterkriterien.",
     "addFirstMember": "Füge dein erstes Mitglied hinzu.",
-    "dismiss": "Ausblenden"
+    "dismiss": "Ausblenden",
+    "refresh": "Aktualisieren"
   },
   "auth": {
     "signIn": "Anmelden",
@@ -219,6 +220,11 @@
     "title": "Mein Profil",
     "managePersonalData": "Verwalte deine persönlichen Daten",
     "noProfileFound": "Kein Mitgliederprofil gefunden. Bitte kontaktiere den Vorstand.",
+    "noProfileTitle": "Kein Mitglieder-Profil",
+    "noProfileMessageAdmin": "Dein Konto hat in dieser App keinen Mitglieder-Datensatz, weil es ein Admin- oder Vorstandskonto ist. Persönliche Daten verwalten wir nur für Mitglieder. Du kannst aber deine Sicherheits- und Sitzungs-Einstellungen einsehen oder zum Admin-Bereich gehen.",
+    "noProfileMessageMember": "Wir haben für dein Konto noch keinen Mitglieder-Datensatz gefunden. Bitte wende dich an den Vorstand, damit dein Profil angelegt wird. Sicherheits- und Sitzungs-Einstellungen kannst du trotzdem öffnen.",
+    "goToSecurity": "Sicherheit & Sitzungen",
+    "goToAdmin": "Admin-Bereich",
     "memberSince": "Mitglied seit {date}",
     "personalInfo": "Persönliche Daten",
     "contactDetails": "Kontaktdaten",
@@ -347,6 +353,9 @@
     "confirmDelete": "Möchtest du den Benutzer {email} wirklich löschen?",
     "confirmPasswordReset": "Möchtest du einen Passwort-Reset-Link an {email} senden?",
     "passwordResetSent": "Passwort-Reset-E-Mail wurde gesendet.",
+    "resetMfa": "MFA zurücksetzen",
+    "confirmMfaReset": "Möchtest du MFA für {email} zurücksetzen? Bestehende Authenticator- und Wiederherstellungscodes werden entfernt.",
+    "mfaResetSent": "MFA-Reset wurde gestartet. Der Benutzer erhält eine E-Mail zur Neukonfiguration.",
     "accountSetup": "Konto-Einrichtung",
     "sendInvitationEmail": "Einladungs-E-Mail senden",
     "sendInvitationDescription": "Der Benutzer erhält eine E-Mail mit einem Link zum Setzen des Passworts.",
@@ -2290,5 +2299,26 @@
       "addMember": "Mitglied hinzufügen",
       "remove": "Entfernen"
     }
+  },
+  "profileSecurity": {
+    "title": "Sicherheit & Sitzungen",
+    "description": "Übersicht über deine aktiven Anmeldungen und Geräte. Details stammen aus Keycloak und können je nach Browser oder Provider eingeschränkt sein.",
+    "activeSessionsTitle": "Aktive Sitzungen",
+    "noSessions": "Aktuell sind keine aktiven Sitzungen registriert.",
+    "ipAddress": "IP-Adresse",
+    "start": "Beginn",
+    "lastAccess": "Letzte Aktivität",
+    "clients": "Anwendungen",
+    "notAvailable": "Nicht verfügbar",
+    "dataLimitsNote": "Sitzungs- und Gerätedaten stammen aus Keycloak und können unvollständig sein, wenn der Identity-Provider keine zusätzlichen Metadaten liefert.",
+    "timeoutsNote": "Sitzungen werden ausserdem automatisch beendet, wenn das Keycloak-Idle-Timeout (Standard 30 Minuten Inaktivität) oder das maximale Sitzungsende (Standard 10 Stunden) erreicht wird.",
+    "adminTitle": "Aktive Sitzungen des Nutzers",
+    "adminEmpty": "Für diesen Nutzer sind aktuell keine aktiven Sitzungen registriert.",
+    "revoke": "Beenden",
+    "revoking": "Wird beendet...",
+    "revokeConfirm": "Diese Sitzung wirklich beenden? Du musst dich an diesem Gerät neu anmelden.",
+    "revokeConfirmAdmin": "Diese Sitzung des Nutzers wirklich beenden? Der Nutzer muss sich an diesem Gerät neu anmelden.",
+    "revokeSuccess": "Sitzung wurde beendet.",
+    "revokeError": "Sitzung konnte nicht beendet werden. Bitte später erneut versuchen."
   }
 }

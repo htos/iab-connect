@@ -1,4 +1,5 @@
 using IabConnect.Domain.Members;
+using IabConnect.Application.Authorization;
 using IabConnect.Infrastructure.Identity;
 using IabConnect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -49,9 +50,21 @@ public static class UserEndpoints
             .WithName("SendPasswordReset")
             .WithSummary("Send password reset email");
 
+        group.MapPost("/{userId}/reset-mfa", ResetUserMfa)
+            .WithName("ResetUserMfa")
+            .WithSummary("Reset MFA credentials and send reconfiguration email");
+
         group.MapGet("/{userId}/roles", GetUserRoles)
             .WithName("GetUserRoles")
             .WithSummary("Get user roles");
+
+        group.MapGet("/{userId}/sessions", GetUserSessions)
+            .WithName("GetUserSessions")
+            .WithSummary("Get active Keycloak sessions for a user (Admin)");
+
+        group.MapDelete("/{userId}/sessions/{sessionId}", RevokeUserSession)
+            .WithName("RevokeUserSession")
+            .WithSummary("Revoke a specific Keycloak session for a user (Admin)");
 
         group.MapPut("/{userId}/roles", UpdateUserRoles)
             .WithName("UpdateUserRoles")
@@ -413,6 +426,195 @@ public static class UserEndpoints
                 detail: "An internal error occurred. Please try again later.",
                 statusCode: 500,
                 title: "Failed to send password reset email");
+        }
+    }
+
+    private static async Task<Results<NoContent, NotFound, ProblemHttpResult>> ResetUserMfa(
+        string userId,
+        HttpContext httpContext,
+        IKeycloakAdminService keycloakAdmin,
+        ISecurityAuditLogger auditLogger,
+        ILogger<Program> logger,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var existingUser = await keycloakAdmin.GetUserByIdAsync(userId, ct);
+            if (existingUser == null)
+            {
+                auditLogger.LogAccessDenied(
+                    httpContext.User,
+                    "User",
+                    "ResetMfa",
+                    "Target user not found",
+                    userId);
+
+                return TypedResults.NotFound();
+            }
+
+            await keycloakAdmin.ResetUserMfaAsync(userId, ct);
+
+            auditLogger.LogAccessGranted(
+                httpContext.User,
+                "User",
+                "ResetMfa",
+                userId,
+                new Dictionary<string, object>
+                {
+                    ["TargetEmail"] = existingUser.Email ?? "",
+                    ["TargetUsername"] = existingUser.Username ?? ""
+                });
+
+            return TypedResults.NoContent();
+        }
+        catch (KeycloakNotFoundException)
+        {
+            auditLogger.LogAccessDenied(
+                httpContext.User,
+                "User",
+                "ResetMfa",
+                "Target user not found during Keycloak MFA reset",
+                userId);
+
+            return TypedResults.NotFound();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to reset MFA for user {UserId}", userId);
+
+            auditLogger.LogAccessDenied(
+                httpContext.User,
+                "User",
+                "ResetMfa",
+                "Keycloak MFA reset failed",
+                userId,
+                new Dictionary<string, object> { ["ErrorType"] = ex.GetType().Name });
+
+            return TypedResults.Problem(
+                detail: "An internal error occurred. Please try again later.",
+                statusCode: 500,
+                title: "Failed to reset MFA");
+        }
+    }
+
+    private static async Task<Results<Ok<SessionListResponse>, NotFound, ProblemHttpResult>> GetUserSessions(
+        string userId,
+        HttpContext httpContext,
+        IKeycloakAdminService keycloakAdmin,
+        ISecurityAuditLogger auditLogger,
+        ILogger<Program> logger,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var existingUser = await keycloakAdmin.GetUserByIdAsync(userId, ct);
+            if (existingUser == null)
+            {
+                auditLogger.LogAccessDenied(
+                    httpContext.User,
+                    "User",
+                    "ViewSessions",
+                    "Target user not found",
+                    userId);
+                return TypedResults.NotFound();
+            }
+
+            var sessions = await keycloakAdmin.GetUserSessionsAsync(userId, ct);
+            var response = new SessionListResponse
+            {
+                Sessions = sessions.Select(SessionMapper.ToDto).ToList()
+            };
+
+            auditLogger.LogAccessGranted(
+                httpContext.User,
+                "User",
+                "ViewSessions",
+                userId,
+                new Dictionary<string, object>
+                {
+                    ["SessionCount"] = response.Sessions.Count
+                });
+
+            return TypedResults.Ok(response);
+        }
+        catch (KeycloakNotFoundException)
+        {
+            return TypedResults.NotFound();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to fetch sessions for user {UserId}", userId);
+            return TypedResults.Problem(
+                detail: "An internal error occurred. Please try again later.",
+                statusCode: 500,
+                title: "Failed to fetch sessions");
+        }
+    }
+
+    private static async Task<Results<NoContent, NotFound, ProblemHttpResult>> RevokeUserSession(
+        string userId,
+        string sessionId,
+        HttpContext httpContext,
+        IKeycloakAdminService keycloakAdmin,
+        ISecurityAuditLogger auditLogger,
+        ILogger<Program> logger,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var existingUser = await keycloakAdmin.GetUserByIdAsync(userId, ct);
+            if (existingUser == null)
+            {
+                auditLogger.LogAccessDenied(
+                    httpContext.User,
+                    "Session",
+                    "RevokeForUser",
+                    "Target user not found",
+                    sessionId,
+                    new Dictionary<string, object> { ["TargetUserId"] = userId });
+                return TypedResults.NotFound();
+            }
+
+            var sessions = await keycloakAdmin.GetUserSessionsAsync(userId, ct);
+            var matched = sessions.FirstOrDefault(s => s.Id == sessionId);
+            if (matched is null)
+            {
+                auditLogger.LogAccessDenied(
+                    httpContext.User,
+                    "Session",
+                    "RevokeForUser",
+                    "Session not found for target user",
+                    sessionId,
+                    new Dictionary<string, object> { ["TargetUserId"] = userId });
+                return TypedResults.NotFound();
+            }
+
+            await keycloakAdmin.RevokeSessionAsync(sessionId, ct);
+
+            auditLogger.LogAccessGranted(
+                httpContext.User,
+                "Session",
+                "RevokeForUser",
+                sessionId,
+                new Dictionary<string, object>
+                {
+                    ["TargetUserId"] = userId,
+                    ["TargetEmail"] = existingUser.Email ?? ""
+                });
+
+            return TypedResults.NoContent();
+        }
+        catch (KeycloakNotFoundException)
+        {
+            return TypedResults.NotFound();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to revoke session {SessionId} for user {UserId}", sessionId, userId);
+            return TypedResults.Problem(
+                detail: "An internal error occurred. Please try again later.",
+                statusCode: 500,
+                title: "Failed to revoke session");
         }
     }
 

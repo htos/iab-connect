@@ -22,10 +22,13 @@ public interface IKeycloakAdminService
     Task DeleteUserAsync(string userId, CancellationToken ct = default);
     Task SetUserEnabledAsync(string userId, bool enabled, CancellationToken ct = default);
     Task SendPasswordResetEmailAsync(string userId, CancellationToken ct = default);
+    Task ResetUserMfaAsync(string userId, CancellationToken ct = default);
     Task<IReadOnlyList<KeycloakRole>> GetUserRolesAsync(string userId, CancellationToken ct = default);
     Task AssignRolesToUserAsync(string userId, IEnumerable<string> roleNames, CancellationToken ct = default);
     Task RemoveRolesFromUserAsync(string userId, IEnumerable<string> roleNames, CancellationToken ct = default);
     Task<IReadOnlyList<KeycloakRole>> GetAvailableRolesAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<KeycloakSessionRepresentation>> GetUserSessionsAsync(string userId, CancellationToken ct = default);
+    Task RevokeSessionAsync(string sessionId, CancellationToken ct = default);
 }
 
 public class KeycloakAdminService : IKeycloakAdminService
@@ -212,6 +215,47 @@ public class KeycloakAdminService : IKeycloakAdminService
         _logger.LogInformation("Sent password reset email to Keycloak user {UserId}", userId);
     }
 
+    public async Task ResetUserMfaAsync(string userId, CancellationToken ct = default)
+    {
+        var credentialsRequest = await CreateRequestAsync(HttpMethod.Get, $"{AdminApiBase}/users/{userId}/credentials", ct);
+        var credentialsResponse = await _httpClient.SendAsync(credentialsRequest, ct);
+
+        if (credentialsResponse.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            throw new KeycloakNotFoundException($"User {userId} was not found");
+        }
+
+        credentialsResponse.EnsureSuccessStatusCode();
+
+        var credentials = await credentialsResponse.Content.ReadFromJsonAsync<List<KeycloakCredentialRepresentation>>(JsonOptions, ct) ?? [];
+        var mfaCredentials = credentials
+            .Where(credential => IsMfaCredentialType(credential.Type))
+            .ToList();
+
+        foreach (var credential in mfaCredentials)
+        {
+            if (string.IsNullOrWhiteSpace(credential.Id))
+                continue;
+
+            var deleteRequest = await CreateRequestAsync(HttpMethod.Delete, $"{AdminApiBase}/users/{userId}/credentials/{credential.Id}", ct);
+            var deleteResponse = await _httpClient.SendAsync(deleteRequest, ct);
+            deleteResponse.EnsureSuccessStatusCode();
+        }
+
+        var actionsRequest = await CreateRequestAsync(HttpMethod.Put, $"{AdminApiBase}/users/{userId}/execute-actions-email", ct);
+        actionsRequest.Content = JsonContent.Create(
+            new[] { "CONFIGURE_TOTP", "CONFIGURE_RECOVERY_AUTHN_CODES" },
+            options: JsonOptions);
+
+        var actionsResponse = await _httpClient.SendAsync(actionsRequest, ct);
+        actionsResponse.EnsureSuccessStatusCode();
+
+        _logger.LogInformation(
+            "Reset MFA credentials for Keycloak user {UserId}; removed {CredentialCount} MFA credentials and sent reconfiguration actions",
+            userId,
+            mfaCredentials.Count);
+    }
+
     public async Task<IReadOnlyList<KeycloakRole>> GetUserRolesAsync(string userId, CancellationToken ct = default)
     {
         var request = await CreateRequestAsync(HttpMethod.Get, $"{AdminApiBase}/users/{userId}/role-mappings/realm", ct);
@@ -269,6 +313,42 @@ public class KeycloakAdminService : IKeycloakAdminService
 
         _logger.LogInformation("Removed roles {Roles} from user {UserId}", string.Join(", ", roleNames), userId);
     }
+
+    public async Task<IReadOnlyList<KeycloakSessionRepresentation>> GetUserSessionsAsync(string userId, CancellationToken ct = default)
+    {
+        var request = await CreateRequestAsync(HttpMethod.Get, $"{AdminApiBase}/users/{userId}/sessions", ct);
+        var response = await _httpClient.SendAsync(request, ct);
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            throw new KeycloakNotFoundException($"User {userId} was not found");
+        }
+
+        response.EnsureSuccessStatusCode();
+
+        var sessions = await response.Content.ReadFromJsonAsync<List<KeycloakSessionRepresentation>>(JsonOptions, ct) ?? [];
+        return sessions;
+    }
+
+    public async Task RevokeSessionAsync(string sessionId, CancellationToken ct = default)
+    {
+        var request = await CreateRequestAsync(HttpMethod.Delete, $"{AdminApiBase}/sessions/{sessionId}", ct);
+        var response = await _httpClient.SendAsync(request, ct);
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            throw new KeycloakNotFoundException($"Session {sessionId} was not found");
+        }
+
+        response.EnsureSuccessStatusCode();
+
+        _logger.LogInformation("Revoked Keycloak session {SessionId}", sessionId);
+    }
+
+    private static bool IsMfaCredentialType(string? credentialType) =>
+        credentialType is not null
+        && (credentialType.Equals("otp", StringComparison.OrdinalIgnoreCase)
+            || credentialType.Equals("recovery-authn-codes", StringComparison.OrdinalIgnoreCase));
 }
 
 public class KeycloakAdminSettings
@@ -308,6 +388,31 @@ public class KeycloakRole
     public string? Description { get; set; }
 }
 
+public class KeycloakCredentialRepresentation
+{
+    public string? Id { get; set; }
+    public string? Type { get; set; }
+    public string? UserLabel { get; set; }
+    public long? CreatedDate { get; set; }
+}
+
+/// <summary>
+/// Keycloak UserSessionRepresentation. Mirrors the Admin REST API response
+/// from GET /admin/realms/{realm}/users/{userId}/sessions.
+/// All fields except Id are best-effort; Keycloak may omit details (e.g. IpAddress)
+/// depending on event/session configuration and provider data.
+/// </summary>
+public class KeycloakSessionRepresentation
+{
+    public string? Id { get; set; }
+    public string? Username { get; set; }
+    public string? UserId { get; set; }
+    public string? IpAddress { get; set; }
+    public long? Start { get; set; }
+    public long? LastAccess { get; set; }
+    public Dictionary<string, string>? Clients { get; set; }
+}
+
 public class CreateKeycloakUserRequest
 {
     public string? Username { get; set; }
@@ -340,4 +445,9 @@ public class CredentialRepresentation
 public class KeycloakConflictException : Exception
 {
     public KeycloakConflictException(string message) : base(message) { }
+}
+
+public class KeycloakNotFoundException : Exception
+{
+    public KeycloakNotFoundException(string message) : base(message) { }
 }

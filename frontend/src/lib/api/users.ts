@@ -47,6 +47,22 @@ export interface Role {
 }
 
 /**
+ * Keycloak session for a user (REQ-010).
+ * Fields are best-effort — Keycloak may omit some values depending on event/session configuration.
+ */
+export interface UserSession {
+  id: string;
+  ipAddress: string | null;
+  start: string | null;
+  lastAccess: string | null;
+  clients: string[];
+}
+
+export interface SessionListResponse {
+  sessions: UserSession[];
+}
+
+/**
  * Get paginated list of users
  */
 export async function getUsers(
@@ -246,6 +262,28 @@ export async function sendPasswordReset(
 }
 
 /**
+ * Reset MFA credentials and send reconfiguration email
+ */
+export async function resetUserMfa(
+  accessToken: string,
+  userId: string
+): Promise<void> {
+  const response = await fetch(`${API_BASE}/api/v1/users/${userId}/reset-mfa`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error("User not found");
+    }
+    throw new Error(`Failed to reset MFA: ${response.status}`);
+  }
+}
+
+/**
  * Get user roles
  */
 export async function getUserRoles(
@@ -310,6 +348,104 @@ export async function getAvailableRoles(accessToken: string): Promise<Role[]> {
   }
 
   return response.json();
+}
+
+/**
+ * Get active Keycloak sessions for the currently authenticated user (REQ-010).
+ * Returns an empty list (not an error) if Keycloak has no admin record for the user.
+ */
+export async function getMySessions(
+  accessToken: string
+): Promise<SessionListResponse> {
+  const response = await fetch(`${API_BASE}/api/v1/identity/sessions`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch sessions: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get active Keycloak sessions for any user — Admin only (REQ-010).
+ */
+export async function getUserSessions(
+  accessToken: string,
+  userId: string
+): Promise<SessionListResponse> {
+  const response = await fetch(
+    `${API_BASE}/api/v1/users/${userId}/sessions`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error("User not found");
+    }
+    throw new Error(`Failed to fetch user sessions: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Revoke one of the current user's own Keycloak sessions (REQ-010).
+ * Backend verifies ownership before forwarding to Keycloak.
+ */
+export async function revokeMySession(
+  accessToken: string,
+  sessionId: string
+): Promise<void> {
+  const response = await fetch(
+    `${API_BASE}/api/v1/identity/sessions/${sessionId}`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error("Session not found");
+    }
+    throw new Error(`Failed to revoke session: ${response.status}`);
+  }
+}
+
+/**
+ * Revoke a specific Keycloak session for any user — Admin only (REQ-010).
+ */
+export async function revokeUserSession(
+  accessToken: string,
+  userId: string,
+  sessionId: string
+): Promise<void> {
+  const response = await fetch(
+    `${API_BASE}/api/v1/users/${userId}/sessions/${sessionId}`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error("Session not found");
+    }
+    throw new Error(`Failed to revoke session: ${response.status}`);
+  }
 }
 
 /**
