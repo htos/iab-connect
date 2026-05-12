@@ -1,0 +1,187 @@
+﻿{
+    "workflow_version":  "1.2.0",
+    "timestamps":  {
+                       "started":  "2026-05-12T10:12:49+02:00",
+                       "last_updated":  "2026-05-12T10:13:34+02:00",
+                       "completed":  "2026-05-12T10:13:34+02:00"
+                   },
+    "mode":  "full_rescan",
+    "scan_level":  "deep",
+    "project_root":  "B:\\Projects\\IAB Connect\\iab-connect",
+    "project_knowledge":  "B:\\Projects\\IAB Connect\\iab-connect\\docs",
+    "completed_steps":  [
+                            {
+                                "step":  "step_1",
+                                "status":  "completed",
+                                "timestamp":  "2026-05-12T10:12:49+02:00",
+                                "summary":  "Reclassified as multi-part full-stack Brownfield application with backend, frontend, and infrastructure parts"
+                            },
+                            {
+                                "step":  "step_2",
+                                "status":  "completed",
+                                "timestamp":  "2026-05-12T10:12:49+02:00",
+                                "summary":  "Reviewed existing documentation inventory and preserved numbered source documents"
+                            },
+                            {
+                                "step":  "step_3",
+                                "status":  "completed",
+                                "timestamp":  "2026-05-12T10:12:49+02:00",
+                                "summary":  "Analyzed technology stack from backend csproj/package manifests, frontend package/config files, and Docker Compose"
+                            },
+                            {
+                                "step":  "step_4",
+                                "status":  "completed",
+                                "timestamp":  "2026-05-12T10:12:49+02:00",
+                                "summary":  "Performed deep conditional scan for API endpoints, data models, UI components, infrastructure, tests, and integration points"
+                            },
+                            {
+                                "step":  "step_5",
+                                "status":  "completed",
+                                "timestamp":  "2026-05-12T10:12:49+02:00",
+                                "summary":  "Validated source tree and project part metadata against current repository structure"
+                            },
+                            {
+                                "step":  "step_6",
+                                "status":  "completed",
+                                "timestamp":  "2026-05-12T10:13:34+02:00",
+                                "summary":  "Analyzed deployment and local infrastructure configuration from Docker Compose and project docs"
+                            },
+                            {
+                                "step":  "step_7",
+                                "status":  "completed",
+                                "timestamp":  "2026-05-12T10:13:34+02:00",
+                                "summary":  "Analyzed cross-part integration between frontend, backend, Keycloak, PostgreSQL, RustFS, SMTP, Hangfire, and logging"
+                            },
+                            {
+                                "step":  "step_8",
+                                "status":  "completed",
+                                "timestamp":  "2026-05-12T10:12:49+02:00",
+                                "summary":  "Updated backend and frontend architecture docs with current endpoint, route, persistence, and testing observations"
+                            },
+                            {
+                                "step":  "step_9",
+                                "status":  "completed",
+                                "timestamp":  "2026-05-12T10:12:49+02:00",
+                                "summary":  "Updated API contracts, data models, component inventory, development, deployment, and overview docs"
+                            },
+                            {
+                                "step":  "step_10",
+                                "status":  "completed",
+                                "timestamp":  "2026-05-12T10:12:49+02:00",
+                                "summary":  "Updated master documentation index"
+                            },
+                            {
+                                "step":  "step_11",
+                                "status":  "completed",
+                                "timestamp":  "2026-05-12T10:12:49+02:00",
+                                "summary":  "Validated generated files and checked for incomplete documentation markers"
+                            },
+                            {
+                                "step":  "step_12",
+                                "status":  "completed",
+                                "timestamp":  "2026-05-12T10:12:49+02:00",
+                                "summary":  "Workflow complete"
+                            }
+                        ],
+    "current_step":  "completed",
+    "findings":  {
+                     "project_classification":  "Multi-part full-stack app: .NET backend API in backend/, Next.js web frontend in frontend/, Docker/Keycloak/PostgreSQL/RustFS infrastructure in infra/.",
+                     "project_parts":  [
+                                           {
+                                               "part_id":  "backend",
+                                               "project_type_id":  "backend",
+                                               "display_name":  "Backend API",
+                                               "root_path":  "backend",
+                                               "entry_point":  "backend/src/IabConnect.Api/Program.cs"
+                                           },
+                                           {
+                                               "part_id":  "frontend",
+                                               "project_type_id":  "web",
+                                               "display_name":  "Frontend Web App",
+                                               "root_path":  "frontend",
+                                               "entry_point":  "frontend/src/app/layout.tsx"
+                                           },
+                                           {
+                                               "part_id":  "infra",
+                                               "project_type_id":  "infra",
+                                               "display_name":  "Infrastructure",
+                                               "root_path":  "infra",
+                                               "entry_point":  "infra/docker-compose.yml"
+                                           }
+                                       ],
+                     "existing_documentation":  "README, docs/00-13, startup troubleshooting, requirements CSV/status, GitHub/agent context, and prior BMAD generated docs found.",
+                     "user_context":  "User selected full project rescan.",
+                     "technology_stack":  "Backend .NET 10/ASP.NET Core/EF Core/PostgreSQL/MediatR/Hangfire/QuestPDF; frontend Next.js 16/React 19/TypeScript/Tailwind/next-auth/next-intl/TanStack Query; infra Docker Compose with PostgreSQL 17, Keycloak 26.5.2, RustFS, MailHog, Seq.",
+                     "rescan_metrics":  {
+                                            "repository_files_scanned":  973,
+                                            "backend_endpoint_modules":  44,
+                                            "backend_route_operations_approx":  315,
+                                            "ef_configurations":  42,
+                                            "first_class_migrations":  32,
+                                            "frontend_route_groups":  14,
+                                            "shared_ui_primitives":  16
+                                        },
+                     "batches_completed":  [
+                                               {
+                                                   "path":  "backend/src/IabConnect.Api/Endpoints",
+                                                   "files_scanned":  44,
+                                                   "summary":  "Endpoint modules inventoried and operation counts summarized."
+                                               },
+                                               {
+                                                   "path":  "backend/src/IabConnect.Infrastructure/Persistence",
+                                                   "files_scanned":  43,
+                                                   "summary":  "DbContext and EF configuration files inventoried."
+                                               },
+                                               {
+                                                   "path":  "backend/src/IabConnect.Infrastructure/Migrations",
+                                                   "files_scanned":  32,
+                                                   "summary":  "First-class migrations counted, excluding designer snapshots."
+                                               },
+                                               {
+                                                   "path":  "frontend/src/app",
+                                                   "files_scanned":  80,
+                                                   "summary":  "App Router route groups inventoried."
+                                               },
+                                               {
+                                                   "path":  "frontend/src/components",
+                                                   "files_scanned":  27,
+                                                   "summary":  "Navigation, provider, search, feature, and UI components inventoried."
+                                               }
+                                           ],
+                     "validation":  "Generated files exist; index has no exact incomplete marker; rescan metrics inserted into overview, API, data model, component inventory, architecture, and index docs."
+                 },
+    "project_types":  [
+                          {
+                              "part_id":  "backend",
+                              "project_type_id":  "backend",
+                              "display_name":  "Backend API"
+                          },
+                          {
+                              "part_id":  "frontend",
+                              "project_type_id":  "web",
+                              "display_name":  "Frontend Web App"
+                          },
+                          {
+                              "part_id":  "infra",
+                              "project_type_id":  "infra",
+                              "display_name":  "Infrastructure"
+                          }
+                      ],
+    "outputs_generated":  [
+                              "project-scan-report.json",
+                              "project-overview.md",
+                              "source-tree-analysis.md",
+                              "project-parts.json",
+                              "architecture-backend.md",
+                              "architecture-frontend.md",
+                              "architecture-infra.md",
+                              "integration-architecture.md",
+                              "api-contracts-backend.md",
+                              "data-models-backend.md",
+                              "component-inventory-frontend.md",
+                              "development-guide.md",
+                              "deployment-guide.md",
+                              "index.md"
+                          ],
+    "resume_instructions":  "Workflow completed; use docs/index.md as the primary entry point for Brownfield PRD and future BMAD workflows."
+}

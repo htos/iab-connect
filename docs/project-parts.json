@@ -1,0 +1,61 @@
+{
+  "repository_type": "multi-part",
+  "parts": [
+    {
+      "part_id": "backend",
+      "name": "Backend API",
+      "project_type": "backend",
+      "root_path": "backend",
+      "entry_point": "backend/src/IabConnect.Api/Program.cs",
+      "technology_stack": [".NET 10", "ASP.NET Core", "EF Core", "PostgreSQL", "MediatR", "FluentValidation", "Hangfire", "Serilog"]
+    },
+    {
+      "part_id": "frontend",
+      "name": "Frontend Web App",
+      "project_type": "web",
+      "root_path": "frontend",
+      "entry_point": "frontend/src/app/layout.tsx",
+      "technology_stack": ["Next.js 16", "React 19", "TypeScript", "Tailwind CSS 4", "next-auth", "next-intl", "TanStack Query"]
+    },
+    {
+      "part_id": "infra",
+      "name": "Infrastructure",
+      "project_type": "infra",
+      "root_path": "infra",
+      "entry_point": "infra/docker-compose.yml",
+      "technology_stack": ["Docker Compose", "PostgreSQL 17", "Keycloak 26.5.2", "RustFS", "MailHog", "Seq"]
+    }
+  ],
+  "integration_points": [
+    {
+      "from_part": "frontend",
+      "to_part": "backend",
+      "type": "HTTP API",
+      "details": "Frontend calls backend endpoints under NEXT_PUBLIC_API_URL, defaulting to http://localhost:5000."
+    },
+    {
+      "from_part": "frontend",
+      "to_part": "Keycloak",
+      "type": "OIDC through next-auth",
+      "details": "Frontend uses next-auth with Keycloak and exposes access tokens to API helper code."
+    },
+    {
+      "from_part": "backend",
+      "to_part": "Keycloak",
+      "type": "JWT validation and admin API",
+      "details": "Backend validates bearer tokens and uses a Keycloak admin service for user management."
+    },
+    {
+      "from_part": "backend",
+      "to_part": "PostgreSQL",
+      "type": "EF Core and Hangfire storage",
+      "details": "ApplicationDbContext and Hangfire both use PostgreSQL."
+    },
+    {
+      "from_part": "backend",
+      "to_part": "RustFS",
+      "type": "S3-compatible object storage",
+      "details": "Document storage uses AWS S3 SDK against RustFS."
+    }
+  ]
+}

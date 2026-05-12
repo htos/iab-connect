@@ -1,0 +1,47 @@
+project: iab-connect
+generated_at: "2026-05-12"
+sprint: "Sprint 1"
+status: planned
+goal: "Establish the security and identity foundation: MFA policy, session/device visibility, and session revocation."
+planning_artifacts:
+  prd: "_bmad-output/planning-artifacts/prd.md"
+  architecture: "_bmad-output/planning-artifacts/architecture.md"
+  ux_design: "_bmad-output/planning-artifacts/ux-design.md"
+  epics_and_stories: "_bmad-output/planning-artifacts/epics-and-stories.md"
+  readiness_report: "_bmad-output/planning-artifacts/implementation-readiness-report.md"
+selected_stories:
+  - id: "E1-S1"
+    requirement: "REQ-009"
+    title: "Configure Role-Based MFA Policy"
+    status: "next"
+    next_workflow: "bmad-create-story"
+  - id: "E1-S3"
+    requirement: "REQ-010"
+    title: "Add Session and Device Visibility"
+    status: "planned"
+    next_workflow: "bmad-create-story"
+  - id: "E1-S4"
+    requirement: "REQ-010"
+    title: "Add Session Revocation"
+    status: "planned"
+    next_workflow: "bmad-create-story"
+stretch_candidates:
+  - id: "E1-S2"
+    requirement: "REQ-009"
+    title: "Add Admin MFA Support Operations"
+    condition: "Pull in only if Keycloak console-only support is insufficient."
+deferred:
+  - id: "E1-S5"
+    requirement: "REQ-006"
+    title: "Add Social and Enterprise Identity Providers"
+    reason: "Needs Google/Microsoft provider credentials, scopes, and account-linking decisions."
+next_action:
+  workflow: "bmad-create-story"
+  story_id: "E1-S1"
+  title: "Configure Role-Based MFA Policy"
+last_refreshed: "2026-05-12"
+readiness:
+  sprint_planning: true
+  direct_coding: false
+  requires_story_creation: true
+  requires_story_validation: true
