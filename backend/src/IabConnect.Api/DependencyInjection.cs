@@ -5,6 +5,7 @@ using Hangfire;
 using IabConnect.Api.Authorization;
 using IabConnect.Api.Middleware;
 using IabConnect.Infrastructure.Finance.Jobs;
+using IabConnect.Infrastructure.Events.Jobs;
 using IabConnect.Infrastructure.Retention;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -138,6 +139,8 @@ public static class DependencyInjection
                 policy.RequireRole("admin", "vorstand"))
             .AddPolicy("RequireMember", policy =>
                 policy.RequireRole("admin", "vorstand", "member"))
+            .AddPolicy("RequireEventStaff", policy =>
+                policy.RequireRole("admin", "vorstand", "event-manager"))
             .AddPolicy("RequireFinanceRead", policy =>
                 policy.RequireRole("admin", "kassier", "auditor"))
             .AddPolicy("RequireFinanceWrite", policy =>
@@ -263,6 +266,20 @@ public static class DependencyInjection
                 job => job.ExecuteAsync(CancellationToken.None),
                 Cron.Weekly,
                 new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+            // REQ-024 (E3.S4): Daily 09:00 Europe/Zurich (first non-UTC schedule in the project).
+            // Local timezone matches the operations expectation that recipients see the reminder
+            // on the morning of the day BEFORE their shift in their own time.
+            // REQ-024 (E3.S4 review M-S4-5): Windows containers without ICU cannot resolve the
+            // IANA id "Europe/Zurich" and would crash on boot. Try the Windows id, then UTC
+            // as a last resort; log loudly so the operator notices the degraded schedule.
+            var reminderJobTimeZone = ResolveReminderJobTimeZone(
+                app.Services.GetRequiredService<ILogger<RecurringJobOptions>>());
+            jobManager.AddOrUpdate<VolunteerShiftReminderJob>(
+                "send-volunteer-shift-reminders",
+                job => job.ExecuteAsync(CancellationToken.None),
+                "0 9 * * *",
+                new RecurringJobOptions { TimeZone = reminderJobTimeZone });
         }
 
         // REQ-054: Health check endpoints (basic + detailed)
@@ -298,6 +315,29 @@ public static class DependencyInjection
         app.MapApiEndpoints();
 
         return app;
+    }
+
+    /// <summary>
+    /// REQ-024 (E3.S4 review M-S4-5): Resolves the Europe/Zurich timezone with a Windows
+    /// fallback. Tries the IANA id first (Linux / macOS / Windows-with-ICU), then the legacy
+    /// Windows id, then UTC as a last-ditch fallback so the recurring job still registers
+    /// instead of crashing the API at boot. Logs a warning when a fallback is used so ops
+    /// can fix the host configuration.
+    /// </summary>
+    private static TimeZoneInfo ResolveReminderJobTimeZone(Microsoft.Extensions.Logging.ILogger logger)
+    {
+        foreach (var id in new[] { "Europe/Zurich", "W. Europe Standard Time" })
+        {
+            try
+            {
+                return TimeZoneInfo.FindSystemTimeZoneById(id);
+            }
+            catch (TimeZoneNotFoundException) { }
+            catch (InvalidTimeZoneException) { }
+        }
+        logger.LogWarning(
+            "VolunteerShiftReminder: Europe/Zurich timezone could not be resolved on this host; falling back to UTC for the recurring schedule. Install ICU (Windows) or tzdata (Linux) to restore local-time semantics.");
+        return TimeZoneInfo.Utc;
     }
 
     /// <summary>

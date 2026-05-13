@@ -8,6 +8,13 @@ public interface IMemberRepository
     Task<Member?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<Member?> GetByEmailAsync(string email, CancellationToken cancellationToken = default);
     Task<Member?> GetByKeycloakUserIdAsync(Guid keycloakUserId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// REQ-025 (E3.S5): Resolves the calling calendar client's opaque token to its Member.
+    /// Soft-retire-aware: returns null when the matching row is Inactive or merged-retired,
+    /// so revoked memberships stop emitting feeds without the caller needing extra branching.
+    /// </summary>
+    Task<Member?> GetByCalendarTokenAsync(string token, CancellationToken cancellationToken = default);
     
     Task<IReadOnlyList<Member>> GetAllAsync(CancellationToken cancellationToken = default);
     

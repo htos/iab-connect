@@ -1,5 +1,9 @@
+using System.Globalization;
+using System.Net;
 using IabConnect.Application.Events;
 using IabConnect.Domain.Events;
+using IabConnect.Domain.Events.Volunteers;
+using IabConnect.Domain.Members;
 using IabConnect.Infrastructure.Email;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -76,6 +80,169 @@ public sealed class EventNotificationService : IEventNotificationService
         _logger.LogInformation(
             "Cancellation notification sent to {Email} for event {EventTitle}",
             registration.ParticipantEmail, evt.Title);
+    }
+
+    // REQ-024 (E3.S4 review C3 + M-S4-5): Resolve Europe/Zurich once per process. Linux uses
+    // the IANA id "Europe/Zurich"; Windows-without-ICU falls back to the Windows id
+    // "W. Europe Standard Time". If neither resolves we surface the failure via a static
+    // null sentinel — callers convert times when the zone is available, otherwise leave UTC
+    // and tag the formatted line with "(UTC)" so volunteers are not misled.
+    private static readonly TimeZoneInfo? ZurichTimeZone = ResolveZurichTimeZone();
+
+    private static TimeZoneInfo? ResolveZurichTimeZone()
+    {
+        foreach (var id in new[] { "Europe/Zurich", "W. Europe Standard Time" })
+        {
+            try { return TimeZoneInfo.FindSystemTimeZoneById(id); }
+            catch (TimeZoneNotFoundException) { }
+            catch (InvalidTimeZoneException) { }
+        }
+        return null;
+    }
+
+    public async Task SendVolunteerShiftReminderAsync(
+        EventVolunteerAssignment assignment,
+        EventVolunteerShift shift,
+        EventVolunteerRole role,
+        Event evt,
+        Member member,
+        CancellationToken ct = default)
+    {
+        // REQ-024 (E3.S4 review H-S4-2): strip CR/LF from the subject to defuse header-injection
+        // via a malicious / sloppy event title (e.g. a title containing "\nBcc: attacker@…").
+        var safeEventTitle = SanitizeHeaderValue(evt.Title);
+        var subject = $"Erinnerung / Reminder — {safeEventTitle}";
+
+        // REQ-024 (E3.S4 review C3): the shift StartsAt/EndsAt are persisted as Kind=Utc — we
+        // convert to Europe/Zurich here so the email body says wall-clock local time, not UTC.
+        // If the zone is unavailable on the host we fall back to UTC and tag the formatted
+        // strings with "(UTC)" to keep the recipient honest.
+        var (startsFormatted, endsFormatted) = FormatShiftWindowInLocalZone(shift);
+
+        var html = BuildVolunteerShiftReminderHtml(shift, role, evt, member, startsFormatted, endsFormatted);
+        var plain = BuildVolunteerShiftReminderPlain(shift, role, evt, member, startsFormatted, endsFormatted);
+
+        // REQ-024 (E3.S4 review C2 + H-S4-1): bypass the swallowing SendEmailAsync wrapper so
+        // SMTP failures propagate to VolunteerShiftReminderService — that caller skips
+        // MarkReminderSentAsync when this throws, so a transient SMTP outage is retried on the
+        // next daily run instead of being silently marked-sent-forever.
+        await _emailSender.SendAsync(
+            member.Email, subject, html, plain,
+            _smtpSettings.FromName, _smtpSettings.FromEmail, ct);
+
+        _logger.LogInformation(
+            "Volunteer shift reminder sent to {Email} for shift {ShiftTitle} at event {EventTitle}",
+            member.Email, shift.Title, evt.Title);
+    }
+
+    private static string SanitizeHeaderValue(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return string.Empty;
+        // Drop CR, LF, and the NUL byte — the three characters that SMTP / RFC 5322 treat as
+        // header terminators. Collapse them to a single space to keep the title readable.
+        var sanitized = value.Replace('\r', ' ').Replace('\n', ' ').Replace('\0', ' ');
+        return sanitized.Trim();
+    }
+
+    private static (string StartsFormatted, string EndsFormatted) FormatShiftWindowInLocalZone(EventVolunteerShift shift)
+    {
+        var culture = CultureInfo.GetCultureInfo("de-CH");
+        if (ZurichTimeZone is null)
+        {
+            return (
+                shift.StartsAt.ToString("dd.MM.yyyy HH:mm", culture) + " (UTC)",
+                shift.EndsAt.ToString("dd.MM.yyyy HH:mm", culture) + " (UTC)");
+        }
+        // Assume Kind=Utc on the persisted aggregate; ConvertTimeFromUtc enforces that contract
+        // and throws ArgumentException on Kind=Local which would surface a data bug loudly.
+        var startsUtc = DateTime.SpecifyKind(shift.StartsAt, DateTimeKind.Utc);
+        var endsUtc = DateTime.SpecifyKind(shift.EndsAt, DateTimeKind.Utc);
+        var startsLocal = TimeZoneInfo.ConvertTimeFromUtc(startsUtc, ZurichTimeZone);
+        var endsLocal = TimeZoneInfo.ConvertTimeFromUtc(endsUtc, ZurichTimeZone);
+        return (
+            startsLocal.ToString("dd.MM.yyyy HH:mm", culture),
+            endsLocal.ToString("dd.MM.yyyy HH:mm", culture));
+    }
+
+    // REQ-024 (E3.S4) story decision D8: bilingual single-email reminder (DE + EN both
+    // concatenated). Strings stay as const literals here per the locked decision — no
+    // server-side i18n plumbing in this story.
+    private static string BuildVolunteerShiftReminderHtml(
+        EventVolunteerShift shift, EventVolunteerRole role, Event evt, Member member,
+        string startsLocal, string endsLocal)
+    {
+        var memberName = WebUtility.HtmlEncode($"{member.FirstName} {member.LastName}".Trim());
+        var eventTitle = WebUtility.HtmlEncode(evt.Title);
+        var roleName = WebUtility.HtmlEncode(role.Name);
+        var shiftTitle = WebUtility.HtmlEncode(shift.Title);
+        var location = WebUtility.HtmlEncode(evt.Location);
+
+        return $@"<!DOCTYPE html>
+<html>
+<body style=""font-family: sans-serif; color: #222;"">
+  <h2>Erinnerung: deine Helfer-Schicht</h2>
+  <p>Hallo {memberName},</p>
+  <p>Dies ist eine Erinnerung an deine bevorstehende Helfer-Schicht für <strong>{eventTitle}</strong>.</p>
+  <ul>
+    <li><strong>Rolle:</strong> {roleName}</li>
+    <li><strong>Schicht:</strong> {shiftTitle}</li>
+    <li><strong>Beginn:</strong> {startsLocal}</li>
+    <li><strong>Ende:</strong> {endsLocal}</li>
+    <li><strong>Ort:</strong> {location}</li>
+  </ul>
+  <p>Bitte sei pünktlich. Vielen Dank für deinen Einsatz!</p>
+  <hr>
+  <h2>Reminder: your volunteer shift</h2>
+  <p>Hello {memberName},</p>
+  <p>This is a reminder for your upcoming volunteer shift at <strong>{eventTitle}</strong>.</p>
+  <ul>
+    <li><strong>Role:</strong> {roleName}</li>
+    <li><strong>Shift:</strong> {shiftTitle}</li>
+    <li><strong>Start:</strong> {startsLocal}</li>
+    <li><strong>End:</strong> {endsLocal}</li>
+    <li><strong>Location:</strong> {location}</li>
+  </ul>
+  <p>Please arrive on time. Thanks for volunteering!</p>
+</body>
+</html>";
+    }
+
+    private static string BuildVolunteerShiftReminderPlain(
+        EventVolunteerShift shift, EventVolunteerRole role, Event evt, Member member,
+        string startsLocal, string endsLocal)
+    {
+        var memberName = $"{member.FirstName} {member.LastName}".Trim();
+
+        return $@"Erinnerung: deine Helfer-Schicht
+
+Hallo {memberName},
+
+Dies ist eine Erinnerung an deine bevorstehende Helfer-Schicht fuer {evt.Title}.
+
+Rolle:    {role.Name}
+Schicht:  {shift.Title}
+Beginn:   {startsLocal}
+Ende:     {endsLocal}
+Ort:      {evt.Location}
+
+Bitte sei puenktlich. Vielen Dank fuer deinen Einsatz!
+
+--- English ---
+
+Reminder: your volunteer shift
+
+Hello {memberName},
+
+This is a reminder for your upcoming volunteer shift at {evt.Title}.
+
+Role:     {role.Name}
+Shift:    {shift.Title}
+Start:    {startsLocal}
+End:      {endsLocal}
+Location: {evt.Location}
+
+Please arrive on time. Thanks for volunteering!
+";
     }
 
     private async Task SendEmailAsync(string to, string subject, string html, string plain, CancellationToken ct)

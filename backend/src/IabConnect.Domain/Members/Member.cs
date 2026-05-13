@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using IabConnect.Domain.Common;
 
 namespace IabConnect.Domain.Members;
@@ -25,6 +26,15 @@ public sealed class Member : AggregateRoot
     /// <c>GetByIdAsync</c> intentionally still returns the row.
     /// </summary>
     public Guid? MergedIntoMemberId { get; private set; }
+
+    /// <summary>
+    /// REQ-025 (E3.S5 post-review H-S5-1): SHA-256 hex digest of the member's opaque calendar
+    /// token. The cleartext token is returned by <see cref="RegenerateCalendarToken"/> exactly
+    /// once, given to the calendar client, and then NEVER persisted — a DB read no longer
+    /// discloses the active feed credential. Lookup hashes the incoming request token and
+    /// compares to this column. Null means the feed is currently revoked.
+    /// </summary>
+    public string? CalendarSubscriptionTokenHash { get; private set; }
 
     private Member() : base() { }
 
@@ -137,6 +147,49 @@ public sealed class Member : AggregateRoot
         MergedIntoMemberId = targetId;
         Deactivate();
         AddDomainEvent(new MemberMergedIntoEvent(Id, targetId, adminUserId));
+    }
+
+    /// <summary>
+    /// REQ-025 (E3.S5): Generates a fresh opaque calendar-subscription token (Base64URL of 32
+    /// random bytes ≈ 43 chars), assigns it, and returns it. Calling again invalidates the
+    /// previous token. Use <see cref="RevokeCalendarToken"/> to drop the feed entirely.
+    /// </summary>
+    public string RegenerateCalendarToken()
+    {
+        var bytes = RandomNumberGenerator.GetBytes(32);
+        // Base64 URL-safe (no padding) — ASCII-only, fits any URL.
+        var token = Convert.ToBase64String(bytes)
+            .TrimEnd('=')
+            .Replace('+', '-')
+            .Replace('/', '_');
+        // REQ-025 (E3.S5 post-review H-S5-1): persist only the SHA-256 hash. The cleartext
+        // token leaves this method via the return value, goes to the calendar client in the
+        // subscriptionUrl, and is never written to the database. A DB read therefore cannot
+        // disclose any active feed credential; only a successful preimage attack against
+        // SHA-256 would, which is computationally infeasible for 32 random bytes of input.
+        CalendarSubscriptionTokenHash = HashCalendarToken(token);
+        return token;
+    }
+
+    /// <summary>
+    /// REQ-025 (E3.S5): Clears the calendar-subscription token; subsequent feed fetches return 404.
+    /// </summary>
+    public void RevokeCalendarToken()
+    {
+        CalendarSubscriptionTokenHash = null;
+    }
+
+    /// <summary>
+    /// REQ-025 (E3.S5 post-review H-S5-1): canonical hash function used both at token-rotate
+    /// time (stored on the entity) and at request time (computed from the incoming token to
+    /// look up the matching member). Lowercase hex of the SHA-256 digest; ASCII-only.
+    /// </summary>
+    public static string HashCalendarToken(string token)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(token);
+        var bytes = System.Text.Encoding.UTF8.GetBytes(token);
+        var digest = System.Security.Cryptography.SHA256.HashData(bytes);
+        return Convert.ToHexString(digest).ToLowerInvariant();
     }
 
     public string FullName => $"{FirstName} {LastName}";

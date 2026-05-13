@@ -300,9 +300,11 @@ public class EventRegistrationTests
         var staffMemberId = Guid.NewGuid();
 
         // Act
-        registration.CheckIn(staffMemberId);
+        var result = registration.CheckIn(staffMemberId);
 
         // Assert
+        result.WasAlreadyCheckedIn.Should().BeFalse();
+        result.CheckedInBy.Should().Be(staffMemberId);
         registration.Status.Should().Be(RegistrationStatus.CheckedIn);
         registration.CheckedInAt.Should().NotBeNull();
         registration.CheckedInBy.Should().Be(staffMemberId);
@@ -330,7 +332,7 @@ public class EventRegistrationTests
     }
 
     [Fact]
-    public void CheckIn_WhenAlreadyCheckedIn_ShouldThrowException()
+    public void CheckIn_WhenAlreadyCheckedIn_ReturnsIdempotentResult_DoesNotMutateState()
     {
         // Arrange
         var registration = EventRegistration.CreateForMember(
@@ -339,14 +341,21 @@ public class EventRegistrationTests
             _testMemberId,
             "Test User",
             "test@example.com");
-        registration.CheckIn(Guid.NewGuid());
+        var originalStaffId = Guid.NewGuid();
+        var firstResult = registration.CheckIn(originalStaffId);
+        var originalCheckedInAt = registration.CheckedInAt;
+        var originalUpdatedAt = registration.UpdatedAt;
 
         // Act
-        var act = () => registration.CheckIn(Guid.NewGuid());
+        var result = registration.CheckIn(Guid.NewGuid());
 
         // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*already checked in*");
+        result.WasAlreadyCheckedIn.Should().BeTrue();
+        result.CheckedInAt.Should().Be(firstResult.CheckedInAt);
+        result.CheckedInBy.Should().Be(originalStaffId);
+        registration.CheckedInAt.Should().Be(originalCheckedInAt);
+        registration.CheckedInBy.Should().Be(originalStaffId);
+        registration.UpdatedAt.Should().Be(originalUpdatedAt);
     }
 
     [Fact]

@@ -499,14 +499,216 @@ export async function promoteFromWaitlist(
   return apiPost<EventRegistrationDto>(`/events/${eventId}/registrations/promote-from-waitlist`, {});
 }
 
+// REQ-023 (E3.S2): typed check-in result that includes the WasAlreadyCheckedIn flag and
+// typed conflict reasons so the UI doesn't string-match on error messages.
+export type CheckInOutcome = 'CheckedIn' | 'AlreadyCheckedIn' | 'NotFound' | 'Conflict';
+export type CheckInConflictReason = 'Cancelled' | 'Waitlisted';
+export interface CheckInResultDto {
+  outcome: CheckInOutcome;
+  registration?: EventRegistrationDto | null;
+  wasAlreadyCheckedIn: boolean;
+  conflict?: CheckInConflictReason | null;
+}
+
 export async function checkInByQrCode(
   qrCodeToken: string
-): Promise<ApiResult<EventRegistrationDto>> {
-  return apiPost<EventRegistrationDto>(`/registrations/check-in/${qrCodeToken}`, {});
+): Promise<ApiResult<CheckInResultDto>> {
+  // Post-review H-S2-3: URL-encode the token. Tokens containing `/`, `?`, `#`, or spaces
+  // would otherwise corrupt the route and produce surprising 404s or partial matches.
+  return apiPost<CheckInResultDto>(
+    `/registrations/check-in/${encodeURIComponent(qrCodeToken)}`,
+    {}
+  );
+}
+
+// REQ-023 (E3.S2): manual-search check-in — staff selects a roster row, optional
+// searchQuery hashed into searchQueryHash at the backend's audit log.
+export async function manualCheckIn(
+  eventId: string,
+  registrationId: string,
+  searchQuery?: string
+): Promise<ApiResult<CheckInResultDto>> {
+  return apiPost<CheckInResultDto>(
+    `/events/${eventId}/registrations/${registrationId}/manual-check-in`,
+    { searchQuery: searchQuery ?? null }
+  );
+}
+
+// REQ-023 (E3.S1): roster surface used by the manual-search fallback list and CSV export.
+export interface EventCheckInRosterItemDto {
+  registrationId: string;
+  qrCodeToken: string;
+  participantName: string;
+  numberOfGuests: number;
+  status: RegistrationStatus;
+  isWaitlisted: boolean;
+  isCheckedIn: boolean;
+  checkedInAt: string | null;
+  specialRequirements: string | null;
+}
+export interface EventCheckInRosterDto {
+  eventId: string;
+  eventTitle: string;
+  eventStartDate: string;
+  eventLocation: string;
+  generatedAt: string;
+  totalRegistrations: number;
+  checkedInCount: number;
+  items: EventCheckInRosterItemDto[];
+}
+
+export async function getEventCheckInRoster(
+  eventId: string,
+  options?: { includeWaitlisted?: boolean }
+): Promise<ApiResult<EventCheckInRosterDto>> {
+  const params = new URLSearchParams();
+  if (options?.includeWaitlisted) params.set('includeWaitlisted', 'true');
+  const qs = params.toString();
+  return apiGet<EventCheckInRosterDto>(
+    `/events/${eventId}/registrations/check-in-roster${qs ? `?${qs}` : ''}`
+  );
 }
 
 export async function getMyRegistrations(): Promise<ApiResult<EventRegistrationDto[]>> {
   return apiGet<EventRegistrationDto[]>('/my-registrations');
+}
+
+// ============================================
+// REQ-024 (E3.S3 + E3.S4): Volunteer planning
+// ============================================
+
+export type VolunteerAssignmentStatus = 'Confirmed' | 'Waitlisted' | 'Cancelled';
+export type VolunteerErrorCode = 'ShiftFull' | 'SignupNotAllowed' | 'AlreadyAssigned' | 'NoMemberLink';
+
+export interface EventVolunteerRoleDto {
+  id: string;
+  eventId: string;
+  name: string;
+  description?: string | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface EventVolunteerShiftDto {
+  id: string;
+  eventId: string;
+  roleId: string;
+  roleName: string;
+  title: string;
+  description?: string | null;
+  startsAt: string;
+  endsAt: string;
+  capacity: number;
+  confirmedCount: number;
+  waitlistCount: number;
+  allowWaitlist: boolean;
+  allowSelfSignup: boolean;
+  notes?: string | null;
+  createdAt: string;
+}
+
+export interface EventVolunteerAssignmentDto {
+  id: string;
+  shiftId: string;
+  roleId: string;
+  memberId: string;
+  memberDisplayName: string;
+  status: VolunteerAssignmentStatus;
+  position?: number | null;
+  assignedAt: string;
+}
+
+export async function getEventVolunteerRoles(eventId: string): Promise<ApiResult<EventVolunteerRoleDto[]>> {
+  return apiGet<EventVolunteerRoleDto[]>(`/events/${eventId}/volunteer-roles/`);
+}
+
+export async function createVolunteerRole(
+  eventId: string,
+  request: { name: string; description?: string | null }
+): Promise<ApiResult<EventVolunteerRoleDto>> {
+  return apiPost<EventVolunteerRoleDto>(`/events/${eventId}/volunteer-roles/`, request);
+}
+
+export async function updateVolunteerRole(
+  eventId: string,
+  roleId: string,
+  request: { name: string; description?: string | null; isActive: boolean }
+): Promise<ApiResult<EventVolunteerRoleDto>> {
+  return apiPut<EventVolunteerRoleDto>(`/events/${eventId}/volunteer-roles/${roleId}`, request);
+}
+
+export async function getEventVolunteerShifts(eventId: string): Promise<ApiResult<EventVolunteerShiftDto[]>> {
+  return apiGet<EventVolunteerShiftDto[]>(`/events/${eventId}/volunteer-shifts/`);
+}
+
+export interface CreateVolunteerShiftRequest {
+  roleId: string;
+  title: string;
+  description?: string | null;
+  startsAt: string;
+  endsAt: string;
+  capacity: number;
+  allowWaitlist: boolean;
+  allowSelfSignup: boolean;
+  notes?: string | null;
+}
+
+export async function createVolunteerShift(
+  eventId: string,
+  request: CreateVolunteerShiftRequest
+): Promise<ApiResult<EventVolunteerShiftDto>> {
+  return apiPost<EventVolunteerShiftDto>(`/events/${eventId}/volunteer-shifts/`, request);
+}
+
+export async function updateVolunteerShift(
+  eventId: string,
+  shiftId: string,
+  request: Omit<CreateVolunteerShiftRequest, 'roleId'>
+): Promise<ApiResult<EventVolunteerShiftDto>> {
+  return apiPut<EventVolunteerShiftDto>(`/events/${eventId}/volunteer-shifts/${shiftId}`, request);
+}
+
+export async function cancelVolunteerShift(
+  eventId: string,
+  shiftId: string,
+  reason?: string
+): Promise<ApiResult<{ cancelledAssignmentCount: number }>> {
+  return apiPost<{ cancelledAssignmentCount: number }>(
+    `/events/${eventId}/volunteer-shifts/${shiftId}/cancel`,
+    { reason: reason ?? null }
+  );
+}
+
+export async function getVolunteerShiftAssignments(
+  eventId: string,
+  shiftId: string
+): Promise<ApiResult<EventVolunteerAssignmentDto[]>> {
+  return apiGet<EventVolunteerAssignmentDto[]>(
+    `/events/${eventId}/volunteer-shifts/${shiftId}/assignments`
+  );
+}
+
+export async function signUpForVolunteerShift(
+  eventId: string,
+  shiftId: string,
+  allowWaitlistFallback = false
+): Promise<ApiResult<EventVolunteerAssignmentDto>> {
+  return apiPost<EventVolunteerAssignmentDto>(
+    `/events/${eventId}/volunteer-shifts/${shiftId}/self-signup`,
+    { allowWaitlistFallback }
+  );
+}
+
+export async function withdrawFromVolunteerShift(
+  eventId: string,
+  shiftId: string,
+  assignmentId: string,
+  reason?: string
+): Promise<ApiResult<EventVolunteerAssignmentDto>> {
+  return apiPost<EventVolunteerAssignmentDto>(
+    `/events/${eventId}/volunteer-shifts/${shiftId}/assignments/${assignmentId}/cancel`,
+    { reason: reason ?? null }
+  );
 }
 
 // REQ-021: Waitlist position for current user

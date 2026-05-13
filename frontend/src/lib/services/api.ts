@@ -11,6 +11,15 @@ export interface ApiResult<T> {
   success: boolean;
   data: T;
   error?: string;
+  /**
+   * REQ-024 (E3.S4): Parsed JSON body for non-OK responses. Lets endpoint consumers
+   * read typed error codes (e.g. `{ message, errorCode: "ShiftFull" }`) without
+   * re-parsing `error` string fragments. Undefined on success or when the body
+   * was not JSON.
+   */
+  errorBody?: Record<string, unknown>;
+  /** HTTP status code on non-OK responses; undefined on success or transport error. */
+  status?: number;
 }
 
 export type { PagedResult } from '@/types/common';
@@ -60,6 +69,8 @@ async function request<T>(
         success: false,
         data: undefined as unknown as T,
         error: errorData.message || errorData.title || `HTTP ${response.status}: ${response.statusText}`,
+        errorBody: errorData,
+        status: response.status,
       };
     }
 

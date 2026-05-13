@@ -36,6 +36,23 @@ public sealed class MemberRepository : IMemberRepository
             .FirstOrDefaultAsync(m => m.KeycloakUserId == keycloakUserId, cancellationToken);
     }
 
+    public async Task<Member?> GetByCalendarTokenAsync(string token, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+            return null;
+        // REQ-025 (E3.S5 post-review H-S5-1): hash the incoming token and look up by hash so a
+        // DB-read attacker cannot replay anyone's feed and so the SQL string-equality compare
+        // is over a uniformly-distributed digest (defeats timing-prefix enumeration).
+        var hash = Member.HashCalendarToken(token);
+        return await _context.Members
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                m => m.CalendarSubscriptionTokenHash == hash
+                  && m.MergedIntoMemberId == null
+                  && m.Status == MembershipStatus.Active,
+                cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Member>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         return await _context.Members

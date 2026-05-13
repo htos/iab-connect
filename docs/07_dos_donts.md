@@ -130,3 +130,70 @@ When in doubt, grep the class for the field name (e.g. `Email`, `FirstName`, `Ph
 - **Migration discipline when introducing a normalized variant.** When a `GetByXNormalizedAsync` / `XExistsNormalizedAsync` pair lands alongside a raw `GetByXAsync` / `XExistsAsync` pair, **every caller of the raw methods in `backend/src/` must be migrated to the normalized variant in the same change**. The legacy methods may stay registered for one further story (deprecation window) only if a follow-up story is already planned to remove them. Document each migrated callsite in the story's Debug Log so the next reviewer can confirm completeness. Tests that intentionally exercise the legacy methods are exempt and stay until the legacy methods themselves are removed.
 
 - **Soft-retire flag discipline.** When introducing a soft-retire flag (e.g., `Member.MergedIntoMemberId`, future `IsArchived`-like fields), **every read query whose semantics rely on "active records only" must filter the flag**. This is asymmetric exposure: a forensics-friendly `GetByIdAsync` should still return the retired row, but a duplicate-detection or autocomplete query MUST exclude it — otherwise the retired record reappears in user-facing surfaces and creates "ghost" matches. Audit every read on the aggregate when adding the flag; the test plan must include at least one negative-path test asserting the flag-filtered queries don't return retired rows. Document the audit in the story's Completion Notes.
+
+## Concurrency Checklist (Epic-2-Retro Action A6)
+
+When introducing **any** new transactional operation that mutates more than one row — merges, batch reassignments, capacity-bounded inserts, idempotent dismissals, anything moving references across aggregates — audit the code path for these four windows. Concurrent admin actions (or admin-vs-user races) WILL hit them in production; absence in tests is not evidence of absence in reality.
+
+1. **Transaction-first, then read.** Open the transaction (`_context.Database.BeginTransactionAsync`) **before** the blocker / pre-condition reads. If the blocker checks run before `BeginTransaction`, a concurrent writer can slip a row in between the check and the rewrite. For high-contention rows, take a row-level lock immediately after `BeginTransaction`:
+
+   ```csharp
+   await using var transaction = await _context.Database.BeginTransactionAsync(ct);
+   _ = await _context.Members
+       .FromSqlInterpolated($"SELECT * FROM members WHERE id = {sourceId} FOR UPDATE")
+       .AsTracking()
+       .ToListAsync(ct);
+   // … blocker reads + rewrites now run under the row lock
+   ```
+
+   Real example: `MemberMergeService.MergeAsync` (REQ-018 E2.S3) takes `FOR UPDATE` on the source `Member` row so a concurrent admin can't insert a draft invoice between the blocker count and the `ExecuteUpdate` rewrite.
+
+2. **Pre-dedupe every aggregate moved within the transaction.** When rewriting `MemberId` / `ClaimantId` / `RecipientId` / `EventId` references from source to target via `ExecuteUpdate`, **every table touched in the transaction must be audited for `(target_id, key)` collisions** — not just the one with a documented unique constraint. If a unique index will fire mid-transaction (`(CampaignId, MemberId)`, `(EventId, MemberId)`, `(SegmentId, MemberId)`, …), pre-delete the offending source rows via `ExecuteDelete` first, capture the count in the audit dictionary, and proceed. Symmetric guards across tables — fixing only `MemberSegmentAssignment` while ignoring `EmailRecipient` is the same bug class as fixing only `EmailExistsAsync` while ignoring `GetByEmailAsync`. Real example: `MemberMergeService` pre-dedupes `MemberSegmentAssignment` + `EmailRecipient` + `EventRegistration` in one transaction before any `ExecuteUpdate` fires.
+
+3. **Save between in-place mutations that hit a unique partial index.** EF Core orders `UPDATE` statements arbitrarily on `SaveChanges`. If two entities are mutated such that an intermediate state would violate a unique partial index (classic case: a single `KeycloakUserId` unique index where `keycloak_user_id IS NOT NULL`, when transferring the link from source to target), capture the value, clear the source, **`SaveChangesAsync`**, then set the target, **`SaveChangesAsync`** again. Both saves remain inside the same transaction. Don't rely on EF picking the safe order. Real example: `MemberMergeService` transfer branch — `source.ClearKeycloakLink(); SaveChanges(); target.LinkToKeycloak(captured); SaveChanges();`.
+
+4. **Catch-and-recover on unique-index violations for idempotent inserts.** "Read-null then insert" is a TOCTOU window. Two concurrent admins both see `GetByCanonicalPairAsync == null`, both `Add`, the second hits the unique index and surfaces a 500. For idempotent operations (dismissals, canonical-pair flags, "I've already done this" markers), catch `DbUpdateException` at the Infrastructure layer and re-fetch the winning row — return `(existing, created: false)`. Keep the `DbUpdateException` import out of the Application layer; expose it via a repository method like `AddAtomicAsync` returning `(entity, created)`. Real example: `IDuplicateCandidateDismissalRepository.AddAtomicAsync` (REQ-018 E2.S4).
+
+When in doubt, the test that proves a concurrency fix works is a **two-task xUnit integration test** that races two `Task`s against a real `postgres:18` Testcontainer — not a unit test with a mock.
+
+## Pattern Chars in User Input (Epic-2-Retro Action A7)
+
+When matching user-supplied text against a database column via `LIKE` / `ILIKE` / regex / `~`, **escape the pattern metacharacters of the matching engine** before composing the pattern. Failure to escape means the user can:
+
+- Cause false-positive matches (`john_doe@example.com` matches `johnXdoe@example.com` because `_` is a single-char wildcard).
+- Use the endpoint as an existence-enumeration oracle (probe email patterns until 409 fires).
+- Block legitimate writes when the engine throws on malformed escape sequences.
+
+For PostgreSQL `EF.Functions.ILike` / `LIKE`, the wildcards are `%`, `_`, and `\` (when `ESCAPE '\'` is configured). The three-argument `ILike(column, pattern, escapeChar)` overload supports an explicit escape character; combine it with an input-escape helper:
+
+```csharp
+private const string LikeEscapeChar = "\\";
+
+private static string EscapeLikePattern(string value)
+{
+    // Order matters: escape the escape char first, then the wildcards.
+    return value
+        .Replace("\\", "\\\\")
+        .Replace("%", "\\%")
+        .Replace("_", "\\_");
+}
+
+// Usage
+var pattern = EscapeLikePattern(normalizedInput);
+return await _context.Members
+    .AnyAsync(m => EF.Functions.ILike(m.Email, pattern, LikeEscapeChar), ct);
+```
+
+Real example: `MemberRepository.BuildNormalizedEmailPatterns` (REQ-018 review patch P1).
+
+For regex matchers (PostgreSQL `~`, C# `Regex`), escape via `Regex.Escape(input)` before composing the pattern. For `JSONPath` / `JMESPath` / future query DSLs, use the engine's parameterised-input API rather than string-concatenation.
+
+**Adversarial test data discipline (Action A8).** Every matcher / search / normalisation test suite MUST include at least one `[InlineData]` row exercising:
+
+- LIKE wildcards in the input (`a_b@x.com`, `a%b@x.com`, `a\b@x.com`).
+- Leading / trailing whitespace.
+- Mixed-case domain (`User@Example.Com`).
+- Unicode normalisation forms (NFC vs NFD: precomposed `ä` vs decomposed `ä`).
+- Control characters where the column allows them.
+
+A test suite that only covers the friendly normalisations (diacritics, case-folding, `+tag` aliases) is not enough to prove the matcher is safe. The LIKE-wildcard injection in `BuildNormalizedEmailPatterns` survived 17 repository tests + the full `DuplicateMatcherTests` suite because no row contained `_` or `%`.

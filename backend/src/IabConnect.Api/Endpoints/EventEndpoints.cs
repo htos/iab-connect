@@ -1,8 +1,13 @@
+using System.Security.Claims;
 using IabConnect.Application.Authorization;
+using IabConnect.Application.Events.Calendar;
 using IabConnect.Domain.Authorization;
 using IabConnect.Domain.Events;
+using IabConnect.Domain.Members;
 using IabConnect.Infrastructure.Persistence;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 
 namespace IabConnect.Api.Endpoints;
 
@@ -77,7 +82,191 @@ public static class EventEndpoints
             .WithName("GetEventStatistics")
             .WithSummary("Get event statistics");
 
+        // REQ-025 (E3.S5): Calendar feed endpoints (RFC 5545 ICS)
+        group.MapGet("/calendar.ics", GetPublicCalendar)
+            .WithName("GetPublicCalendarIcs")
+            .WithSummary("Public calendar feed (no authentication)");
+
+        group.MapGet("/my-calendar.ics", GetMemberCalendar)
+            .WithName("GetMemberCalendarIcs")
+            .WithSummary("Per-member calendar feed via opaque token");
+
+        group.MapGet("/{id:guid}/calendar.ics", GetSingleEventCalendar)
+            .WithName("GetSingleEventCalendarIcs")
+            .WithSummary("Per-event ICS download");
+
+        group.MapPost("/calendar/token/rotate", RotateCalendarToken)
+            .RequireAuthorization("RequireMember")
+            .WithName("RotateCalendarToken")
+            .WithSummary("Generate a new calendar-subscription token for the calling member");
+
+        group.MapDelete("/calendar/token", RevokeCalendarToken)
+            .RequireAuthorization("RequireMember")
+            .WithName("RevokeCalendarToken")
+            .WithSummary("Revoke the calling member's calendar-subscription token");
+
         return app;
+    }
+
+    // === REQ-025 (E3.S5) Calendar feed handlers ===
+
+    private static string ResolveBaseUrl(IConfiguration config)
+    {
+        // REQ-025 (E3.S5 post-review M-S5-6): fail loud rather than embed `https://localhost`
+        // URLs into ICS feeds that subscribers will then bookmark in their calendar clients.
+        // A misconfigured deployment is better surfaced as a 500 on the first feed fetch than
+        // as a silent corruption of every emitted subscription URL.
+        var configured = config["App:PublicBaseUrl"];
+        if (string.IsNullOrWhiteSpace(configured))
+            throw new InvalidOperationException(
+                "App:PublicBaseUrl is not configured. Calendar feeds embed this URL in every ICS body; refusing to fall back to localhost.");
+        return configured;
+    }
+
+    // REQ-025 (E3.S5 post-review M-S5-3): the public feed can stay `public, max-age=600`;
+    // the per-member token-bearing feed MUST be `private` so CDN/proxy caches don't serve
+    // one member's ICS to another (they share the same URL path with only the query token
+    // differing, which some intermediaries normalize away).
+    private static void SetPublicIcsResponseHeaders(HttpResponse response)
+    {
+        response.Headers.CacheControl = "public, max-age=600, stale-while-revalidate=300";
+    }
+
+    private static void SetPrivateIcsResponseHeaders(HttpResponse response)
+    {
+        response.Headers.CacheControl = "private, no-store";
+    }
+
+    private static async Task<IResult> GetPublicCalendar(
+        ISender sender,
+        IConfiguration config,
+        HttpContext httpContext,
+        CancellationToken ct)
+    {
+        var feed = await sender.Send(new GetPublicCalendarFeedQuery(ResolveBaseUrl(config)), ct);
+        SetPublicIcsResponseHeaders(httpContext.Response);
+        return Results.Text(feed.IcsContent, "text/calendar; charset=utf-8");
+    }
+
+    private static async Task<IResult> GetMemberCalendar(
+        [FromQuery] string? token,
+        ISender sender,
+        IConfiguration config,
+        HttpContext httpContext,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+            return Results.NotFound(new { message = "Calendar feed not found" });
+
+        var feed = await sender.Send(new GetMemberCalendarFeedQuery(token, ResolveBaseUrl(config)), ct);
+        if (feed is null)
+            return Results.NotFound(new { message = "Calendar feed not found" });
+
+        // Post-review M-S5-3: token-bearing feed is per-member; never let CDNs cache it.
+        SetPrivateIcsResponseHeaders(httpContext.Response);
+        return Results.Text(feed.IcsContent, "text/calendar; charset=utf-8");
+    }
+
+    private static async Task<IResult> GetSingleEventCalendar(
+        Guid id,
+        [FromQuery] string? token,
+        IEventRepository eventRepository,
+        IMemberRepository memberRepository,
+        ICalendarFeedBuilder builder,
+        IConfiguration config,
+        HttpContext httpContext,
+        CancellationToken ct)
+    {
+        var evt = await eventRepository.GetByIdAsync(id, ct);
+        if (evt is null || evt.IsDeleted || evt.Status != EventStatus.Published)
+            return Results.NotFound(new { message = "Event not found" });
+
+        if (evt.Visibility == EventVisibility.Public)
+        {
+            // OK — anonymous download.
+        }
+        else if (evt.Visibility == EventVisibility.MembersOnly)
+        {
+            // Token required; resolve to member.
+            if (string.IsNullOrWhiteSpace(token))
+                return Results.NotFound(new { message = "Event not found" });
+            var member = await memberRepository.GetByCalendarTokenAsync(token, ct);
+            if (member is null)
+                return Results.NotFound(new { message = "Event not found" });
+        }
+        else
+        {
+            // Hidden / InviteOnly never available via the calendar feed.
+            return Results.NotFound(new { message = "Event not found" });
+        }
+
+        var ics = builder.BuildSingle(evt, ResolveBaseUrl(config));
+        // Post-review M-S5-3: single-event endpoint may also carry a token (for MembersOnly).
+        // Treat it as private in that case; public visibility can stay cacheable.
+        if (evt.Visibility == EventVisibility.MembersOnly)
+            SetPrivateIcsResponseHeaders(httpContext.Response);
+        else
+            SetPublicIcsResponseHeaders(httpContext.Response);
+        return Results.Text(ics, "text/calendar; charset=utf-8");
+    }
+
+    private static async Task<IResult> RotateCalendarToken(
+        IMemberRepository memberRepository,
+        IUnitOfWork unitOfWork,
+        ISecurityAuditLogger auditLogger,
+        IConfiguration config,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        var keycloakId = ResolveKeycloakUserId(user);
+        if (keycloakId is null)
+            return Results.Forbid();
+
+        var member = await memberRepository.GetByKeycloakUserIdAsync(keycloakId.Value, ct);
+        if (member is null)
+            return Results.Json(
+                new { message = "Calendar feed requires an active membership" },
+                statusCode: StatusCodes.Status403Forbidden);
+
+        var token = member.RegenerateCalendarToken();
+        memberRepository.Update(member);
+        await unitOfWork.SaveChangesAsync(ct);
+
+        auditLogger.LogAccessGranted(user, "Member", "CalendarTokenRotated", member.Id.ToString());
+
+        var subscriptionUrl = $"{ResolveBaseUrl(config).TrimEnd('/')}/api/v1/events/my-calendar.ics?token={Uri.EscapeDataString(token)}";
+        return Results.Ok(new { token, subscriptionUrl });
+    }
+
+    private static async Task<IResult> RevokeCalendarToken(
+        IMemberRepository memberRepository,
+        IUnitOfWork unitOfWork,
+        ISecurityAuditLogger auditLogger,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        var keycloakId = ResolveKeycloakUserId(user);
+        if (keycloakId is null)
+            return Results.Forbid();
+
+        var member = await memberRepository.GetByKeycloakUserIdAsync(keycloakId.Value, ct);
+        if (member is null)
+            return Results.Json(
+                new { message = "Calendar feed requires an active membership" },
+                statusCode: StatusCodes.Status403Forbidden);
+
+        member.RevokeCalendarToken();
+        memberRepository.Update(member);
+        await unitOfWork.SaveChangesAsync(ct);
+
+        auditLogger.LogAccessGranted(user, "Member", "CalendarTokenRevoked", member.Id.ToString());
+        return Results.NoContent();
+    }
+
+    private static Guid? ResolveKeycloakUserId(ClaimsPrincipal user)
+    {
+        var claim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value;
+        return Guid.TryParse(claim, out var id) ? id : null;
     }
 
     // === Public Endpoints ===

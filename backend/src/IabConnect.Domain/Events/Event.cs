@@ -97,8 +97,8 @@ public sealed class Event : Entity
             Title = title.Trim(),
             Description = description.Trim(),
             Location = location.Trim(),
-            StartDate = startDate,
-            EndDate = endDate,
+            StartDate = DateTimeUtcGuard.EnsureUtc(startDate),
+            EndDate = DateTimeUtcGuard.EnsureUtc(endDate),
             OrganizerId = organizerId,
             OrganizerName = organizerName,
             Status = EventStatus.Draft,
@@ -146,8 +146,8 @@ public sealed class Event : Entity
         if (endDate < startDate)
             throw new ArgumentException("End date cannot be before start date", nameof(endDate));
 
-        StartDate = startDate;
-        EndDate = endDate;
+        StartDate = DateTimeUtcGuard.EnsureUtc(startDate);
+        EndDate = DateTimeUtcGuard.EnsureUtc(endDate);
         IsAllDay = isAllDay;
         TimeZone = timeZone;
         UpdatedAt = DateTime.UtcNow;
@@ -167,7 +167,7 @@ public sealed class Event : Entity
 
         RegistrationRequired = registrationRequired;
         MaxParticipants = maxParticipants;
-        RegistrationDeadline = registrationDeadline;
+        RegistrationDeadline = DateTimeUtcGuard.EnsureUtc(registrationDeadline);
         WaitlistEnabled = waitlistEnabled;
         UpdatedAt = DateTime.UtcNow;
     }

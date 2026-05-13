@@ -1,5 +1,5 @@
 # generated: 2026-05-12
-# last_updated: 2026-05-12
+# last_updated: 2026-05-13 (Epic-3 boundary code-review complete: 3 Critical + 23 High + 36 Medium findings; ALL 5 E3 stories flipped review→in-progress; report at epic-3-review-2026-05-13.md; per-story findings appended to each story file; next: bmad-dev-story pass per story to address findings, then re-run bmad-code-review.)
 # project: iab-connect
 # project_key: NOKEY
 # tracking_system: file-system
@@ -34,7 +34,7 @@
 # - Each story must go through bmad-create-story and validation before development.
 
 generated: "2026-05-12"
-last_updated: "2026-05-13 (Epic-2 closed: retrospective complete; epic-2-retro-2026-05-13.md saved; 6 action items A6-A11 captured; A4/A5 from Epic 1 retired in favour of multi-layer boundary review + developer-judgment mid-epic escalation; 26 deferred items inventoried; Epic 3 ready — first ready-for-dev story = e3-s1-add-event-check-in-roster-and-export)"
+last_updated: "2026-05-14 (Epic-3 boundary code-review Round 3 complete: 4 new Critical (CSV formula injection, 2 cross-event volunteer IDORs, calendar-token migration irreversibility) + 23 High + 21 Medium + 3 Low findings; 6 Decisions all resolved by user; 6 Defer logged; 12 Dismissed. ALL 5 E3 stories flipped review→in-progress. Report at epic-3-review-2026-05-13-round3.md; per-story Round-3 findings appended to each story file with Decision-resolutions noted in Status lines. Next: bmad-dev-story pass per story to address findings, then re-run bmad-code-review for Round 4.)"
 # 2026-05-13: Epic-Close-Gate after clearing all 11 [Review][Patch] findings per
 # sprint-change-proposal-2026-05-13.md. E1.S1-S4 flipped review -> done.
 # E1.S5 deferred -- pending provider credentials/scopes/whitelist decisions.
@@ -70,11 +70,11 @@ development_status:
   epic-2-retrospective: done
 
   epic-3: in-progress
-  e3-s1-add-event-check-in-roster-and-export: ready-for-dev
-  e3-s2-add-qr-and-manual-check-in-flow: ready-for-dev
-  e3-s3-add-volunteer-planning-domain-and-api: ready-for-dev
-  e3-s4-add-volunteer-planning-ui-and-reminders: ready-for-dev
-  e3-s5-add-calendar-feed-and-ics-export: ready-for-dev
+  e3-s1-add-event-check-in-roster-and-export: in-progress
+  e3-s2-add-qr-and-manual-check-in-flow: in-progress
+  e3-s3-add-volunteer-planning-domain-and-api: in-progress
+  e3-s4-add-volunteer-planning-ui-and-reminders: in-progress
+  e3-s5-add-calendar-feed-and-ics-export: in-progress
   epic-3-retrospective: optional
 
   epic-4: in-progress

@@ -73,6 +73,20 @@ public sealed class MemberConfiguration : IEntityTypeConfiguration<Member>
             .HasDatabaseName("ix_members_merged_into_member_id")
             .HasFilter("merged_into_member_id IS NOT NULL");
 
+        // REQ-025 (E3.S5 post-review H-S5-1): the column now stores the SHA-256 hex digest of
+        // the calendar token (64 lowercase hex chars), NOT the cleartext token. The column name
+        // is kept as `calendar_subscription_token` to avoid a destructive rename; semantics are
+        // documented here and on the entity property. Partial unique index unchanged — collision
+        // probability on SHA-256 hex is negligible, so uniqueness still holds.
+        builder.Property(m => m.CalendarSubscriptionTokenHash)
+            .HasColumnName("calendar_subscription_token")
+            .HasMaxLength(64);
+
+        builder.HasIndex(m => m.CalendarSubscriptionTokenHash)
+            .IsUnique()
+            .HasDatabaseName("ix_members_calendar_subscription_token")
+            .HasFilter("calendar_subscription_token IS NOT NULL");
+
         // REQ-018 review patch: changed from DeleteBehavior.SetNull to Restrict so a hard-delete of
         // the merge target does NOT silently null out the source's MergedIntoMemberId pointer (which
         // would resurrect the merged source row in GetAllNonMergedAsync and the duplicates UI).

@@ -1,5 +1,8 @@
+using IabConnect.Application.Authorization;
 using IabConnect.Application.Events;
+using IabConnect.Application.Events.CheckIn;
 using IabConnect.Domain.Events;
+using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -74,11 +77,25 @@ public static class EventRegistrationEndpoints
             .Produces(StatusCodes.Status404NotFound);
 
         protectedGroup.MapPost("/{registrationId:guid}/check-in", CheckInRegistration)
-            .RequireAuthorization(policy => policy.RequireRole("admin", "vorstand", "event-manager"))
+            .RequireAuthorization("RequireEventStaff")
             .WithName("CheckInEventRegistration")
             .WithSummary("Teilnehmer beim Event einchecken")
-            .Produces<EventRegistrationDto>()
-            .Produces(StatusCodes.Status404NotFound);
+            .Produces<CheckInResultDto>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status409Conflict);
+
+        // REQ-023 (E3.S2): Manual-search check-in entry point (separate audit verb)
+        protectedGroup.MapPost("/{registrationId:guid}/manual-check-in", ManualCheckIn)
+            .RequireAuthorization("RequireEventStaff")
+            .WithName("ManualCheckInEventRegistration")
+            .WithSummary("Manuelle Check-in über Teilnehmer-Suche")
+            .Produces<CheckInResultDto>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status409Conflict);
 
         protectedGroup.MapPost("/{registrationId:guid}/no-show", MarkAsNoShow)
             .RequireAuthorization(policy => policy.RequireRole("admin", "vorstand", "event-manager"))
@@ -121,6 +138,25 @@ public static class EventRegistrationEndpoints
             .Produces(200, contentType: "application/pdf")
             .Produces(StatusCodes.Status404NotFound);
 
+        // REQ-023: Check-in roster + offline CSV export (E3.S1)
+        protectedGroup.MapGet("/check-in-roster", GetCheckInRoster)
+            .RequireAuthorization("RequireEventStaff")
+            .WithName("GetEventCheckInRoster")
+            .WithSummary("Check-In-Liste für ein Event abrufen")
+            .Produces<EventCheckInRosterDto>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound);
+
+        protectedGroup.MapGet("/check-in-roster/export.csv", ExportCheckInRoster)
+            .RequireAuthorization("RequireEventStaff")
+            .WithName("ExportEventCheckInRoster")
+            .WithSummary("Check-In-Liste als CSV exportieren")
+            .Produces(200, contentType: "text/csv")
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound);
+
         protectedGroup.MapGet("/waitlist", GetWaitlist)
             .RequireAuthorization(policy => policy.RequireRole("admin", "vorstand", "event-manager"))
             .WithName("GetEventWaitlist")
@@ -144,12 +180,15 @@ public static class EventRegistrationEndpoints
 
         // QR Code check-in endpoint
         endpoints.MapPost("/api/v1/registrations/check-in/{qrCodeToken}", CheckInByQrCode)
-            .RequireAuthorization(policy => policy.RequireRole("admin", "vorstand", "event-manager"))
+            .RequireAuthorization("RequireEventStaff")
             .WithTags("Event Registrations")
             .WithName("CheckInByQrCode")
             .WithSummary("Check-in per QR-Code")
-            .Produces<EventRegistrationDto>()
-            .Produces(StatusCodes.Status404NotFound);
+            .Produces<CheckInResultDto>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status409Conflict);
 
         // My registrations endpoint
         endpoints.MapGet("/api/v1/my-registrations", GetMyRegistrations)
@@ -470,25 +509,46 @@ public static class EventRegistrationEndpoints
         return Results.Ok(MapToDto(registration));
     }
 
+    // REQ-023 (E3.S2): ID-based check-in. Delegates to MediatR; audit-logs on state change only.
     private static async Task<IResult> CheckInRegistration(
         Guid eventId,
         Guid registrationId,
-        IEventRegistrationRepository registrationRepository,
-        ClaimsPrincipal user)
+        ISender sender,
+        ISecurityAuditLogger auditLogger,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken)
     {
-        var registration = await registrationRepository.GetByIdAsync(registrationId);
-        if (registration == null || registration.EventId != eventId)
-            return Results.NotFound(new { message = "Registration not found" });
-
-        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                       ?? user.FindFirst("sub")?.Value;
-        if (!Guid.TryParse(userIdClaim, out var checkedInBy))
+        if (!TryGetUserId(user, out var checkedInBy))
             return Results.BadRequest(new { message = "User ID not found" });
 
-        registration.CheckIn(checkedInBy);
-        await registrationRepository.UpdateAsync(registration);
+        var result = await sender.Send(
+            new CheckInRegistrationCommand(eventId, registrationId, QrCodeToken: null, checkedInBy),
+            cancellationToken);
 
-        return Results.Ok(MapToDto(registration));
+        return MapCheckInResult(result, user, auditLogger, "EventCheckInById", "Registration not found",
+            searchQueryHash: null);
+    }
+
+    // REQ-023 (E3.S2): Manual-search check-in. Audit verb "EventCheckInManual" + searchQueryHash.
+    private static async Task<IResult> ManualCheckIn(
+        Guid eventId,
+        Guid registrationId,
+        ManualCheckInRequest? request,
+        ISender sender,
+        ISecurityAuditLogger auditLogger,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(user, out var checkedInBy))
+            return Results.BadRequest(new { message = "User ID not found" });
+
+        var result = await sender.Send(
+            new ManualCheckInRegistrationCommand(eventId, registrationId, checkedInBy),
+            cancellationToken);
+
+        var searchQueryHash = CheckInSearchHasher.Hash(request?.SearchQuery);
+        return MapCheckInResult(result, user, auditLogger, "EventCheckInManual", "Registration not found",
+            searchQueryHash: string.IsNullOrEmpty(searchQueryHash) ? null : searchQueryHash);
     }
 
     private static async Task<IResult> MarkAsNoShow(
@@ -579,6 +639,45 @@ public static class EventRegistrationEndpoints
         return Results.File(pdfBytes, contentType: "application/pdf", fileDownloadName: fileName);
     }
 
+    private static async Task<IResult> GetCheckInRoster(
+        Guid eventId,
+        ISender sender,
+        bool? includeWaitlisted,
+        CancellationToken cancellationToken)
+    {
+        var lookup = await sender.Send(
+            new GetEventCheckInRosterQuery(eventId, includeWaitlisted ?? false),
+            cancellationToken);
+
+        // REQ-023 (E3.S1 review H-S1-3): distinguish archive-expired from not-found per spec
+        // AC-7 — the message lets clients differentiate "URL is wrong / event was deleted"
+        // from "the event existed but its retention window has passed".
+        if (lookup.ArchiveExpired)
+            return Results.NotFound(new { message = "Event archive lookup expired" });
+        if (lookup.Roster is null)
+            return Results.NotFound(new { message = "Event not found" });
+
+        return Results.Ok(lookup.Roster);
+    }
+
+    private static async Task<IResult> ExportCheckInRoster(
+        Guid eventId,
+        ISender sender,
+        bool? includeWaitlisted,
+        CancellationToken cancellationToken)
+    {
+        var lookup = await sender.Send(
+            new ExportEventCheckInRosterQuery(eventId, includeWaitlisted ?? false),
+            cancellationToken);
+
+        if (lookup.ArchiveExpired)
+            return Results.NotFound(new { message = "Event archive lookup expired" });
+        if (lookup.File is null)
+            return Results.NotFound(new { message = "Event not found" });
+
+        return Results.File(lookup.File.Content, contentType: "text/csv", fileDownloadName: lookup.File.FileName);
+    }
+
     private static async Task<IResult> GetWaitlist(
         Guid eventId,
         IEventRegistrationRepository registrationRepository)
@@ -625,24 +724,98 @@ public static class EventRegistrationEndpoints
         return Results.Ok(MapToDto(nextOnWaitlist));
     }
 
+    // REQ-023 (E3.S2): QR-token check-in. Delegates to MediatR; audit verb "EventCheckInScanned".
     private static async Task<IResult> CheckInByQrCode(
         string qrCodeToken,
-        IEventRegistrationRepository registrationRepository,
-        ClaimsPrincipal user)
+        ISender sender,
+        ISecurityAuditLogger auditLogger,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken)
     {
-        var registration = await registrationRepository.GetByQrCodeTokenAsync(qrCodeToken);
-        if (registration == null)
-            return Results.NotFound(new { message = "Invalid QR code" });
-
-        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                       ?? user.FindFirst("sub")?.Value;
-        if (!Guid.TryParse(userIdClaim, out var checkedInBy))
+        if (!TryGetUserId(user, out var checkedInBy))
             return Results.BadRequest(new { message = "User ID not found" });
 
-        registration.CheckIn(checkedInBy);
-        await registrationRepository.UpdateAsync(registration);
+        var result = await sender.Send(
+            new CheckInRegistrationCommand(EventId: Guid.Empty, RegistrationId: null, qrCodeToken, checkedInBy),
+            cancellationToken);
 
-        return Results.Ok(MapToDto(registration));
+        // Preserve the existing 404 wording for the QR path per D7.
+        return MapCheckInResult(result, user, auditLogger, "EventCheckInScanned", "Invalid QR code",
+            searchQueryHash: null);
+    }
+
+    private static bool TryGetUserId(ClaimsPrincipal user, out Guid userId)
+    {
+        var claim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                 ?? user.FindFirst("sub")?.Value;
+        return Guid.TryParse(claim, out userId);
+    }
+
+    /// <summary>
+    /// REQ-023 (E3.S2): single result-mapper for all three check-in entry points.
+    /// Writes the <c>LogAccessGranted</c> audit row ONLY when the outcome is a real state
+    /// change (<see cref="CheckInOutcome.CheckedIn"/>) — idempotent already-checked-in returns
+    /// produce no audit row to keep the trail honest. Action verb is supplied by the caller
+    /// so the three endpoints stay distinguishable in audit forensics (D3 in the story).
+    /// </summary>
+    private static IResult MapCheckInResult(
+        CheckInResultDto result,
+        ClaimsPrincipal user,
+        ISecurityAuditLogger auditLogger,
+        string auditAction,
+        string notFoundMessage,
+        string? searchQueryHash)
+    {
+        // REQ-023 (E3.S2 review H-S2-1): redact the QR token from every check-in response. The
+        // token is a credential that triggers a state-changing check-in via the QR endpoint;
+        // leaking it back to clients (including the manual-check-in path and the conflict
+        // response) lets a script that observes one check-in replay or revert it.
+        var sanitized = RedactToken(result);
+
+        switch (sanitized.Outcome)
+        {
+            case CheckInOutcome.CheckedIn:
+                var registration = sanitized.Registration!;
+                var additionalData = new Dictionary<string, object>
+                {
+                    ["eventId"] = registration.EventId,
+                    ["wasAlreadyCheckedIn"] = false,
+                };
+                if (!string.IsNullOrEmpty(searchQueryHash))
+                    additionalData["searchQueryHash"] = searchQueryHash;
+                auditLogger.LogAccessGranted(
+                    user,
+                    resource: "EventRegistration",
+                    action: auditAction,
+                    resourceId: registration.Id.ToString(),
+                    additionalData: additionalData);
+                return Results.Ok(sanitized);
+
+            case CheckInOutcome.AlreadyCheckedIn:
+                // Idempotent return: same 200 shape, NO audit row (no state change occurred).
+                return Results.Ok(sanitized);
+
+            case CheckInOutcome.NotFound:
+                return Results.NotFound(new { message = notFoundMessage });
+
+            case CheckInOutcome.Conflict:
+                var reason = sanitized.Conflict?.ToString() ?? "Unknown";
+                var message = sanitized.Conflict == ConflictReason.Cancelled
+                    ? "Cannot check in a cancelled registration"
+                    : "Cannot check in a waitlisted registration";
+                return Results.Conflict(new { message, reason });
+
+            default:
+                throw new InvalidOperationException($"Unhandled check-in outcome '{sanitized.Outcome}'.");
+        }
+    }
+
+    private static CheckInResultDto RedactToken(CheckInResultDto result)
+    {
+        if (result.Registration is null)
+            return result;
+        var redacted = result.Registration with { QrCodeToken = string.Empty };
+        return result with { Registration = redacted };
     }
 
     private static async Task<IResult> GetMyRegistrations(
@@ -686,31 +859,7 @@ public static class EventRegistrationEndpoints
         });
     }
 
-    private static EventRegistrationDto MapToDto(EventRegistration r) => new()
-    {
-        Id = r.Id,
-        EventId = r.EventId,
-        UserId = r.UserId,
-        MemberId = r.MemberId,
-        ParticipantName = r.ParticipantName,
-        ParticipantEmail = r.ParticipantEmail,
-        ParticipantPhone = r.ParticipantPhone,
-        NumberOfGuests = r.NumberOfGuests,
-        Status = r.Status.ToString(),
-        IsWaitlisted = r.IsWaitlisted,
-        WaitlistPosition = r.WaitlistPosition,
-        RegisteredAt = r.RegisteredAt,
-        ConfirmedAt = r.ConfirmedAt,
-        CancelledAt = r.CancelledAt,
-        CancellationReason = r.CancellationReason,
-        CheckedInAt = r.CheckedInAt,
-        IsNoShow = r.IsNoShow,
-        Notes = r.Notes,
-        SpecialRequirements = r.SpecialRequirements,
-        QrCodeToken = r.QrCodeToken,
-        IsActive = r.IsActive,
-        IsCheckedIn = r.IsCheckedIn
-    };
+    private static EventRegistrationDto MapToDto(EventRegistration r) => EventRegistrationDto.FromEntity(r);
 }
 
 // Request/Response DTOs
@@ -739,31 +888,12 @@ public record UpdateRegistrationRequest(
 
 public record CancelRegistrationRequest(string? Reason = null);
 
-public record EventRegistrationDto
-{
-    public Guid Id { get; init; }
-    public Guid EventId { get; init; }
-    public Guid? UserId { get; init; }
-    public Guid? MemberId { get; init; }
-    public string ParticipantName { get; init; } = string.Empty;
-    public string ParticipantEmail { get; init; } = string.Empty;
-    public string? ParticipantPhone { get; init; }
-    public int NumberOfGuests { get; init; }
-    public string Status { get; init; } = string.Empty;
-    public bool IsWaitlisted { get; init; }
-    public int? WaitlistPosition { get; init; }
-    public DateTime RegisteredAt { get; init; }
-    public DateTime? ConfirmedAt { get; init; }
-    public DateTime? CancelledAt { get; init; }
-    public string? CancellationReason { get; init; }
-    public DateTime? CheckedInAt { get; init; }
-    public bool IsNoShow { get; init; }
-    public string? Notes { get; init; }
-    public string? SpecialRequirements { get; init; }
-    public string QrCodeToken { get; init; } = string.Empty;
-    public bool IsActive { get; init; }
-    public bool IsCheckedIn { get; init; }
-}
+/// <summary>
+/// REQ-023 (E3.S2): Body for the manual-search check-in endpoint. The optional
+/// <see cref="SearchQuery"/> is hashed into <c>searchQueryHash</c> for the audit
+/// trail; it is never persisted in raw form. See <see cref="CheckInSearchHasher"/>.
+/// </summary>
+public record ManualCheckInRequest(string? SearchQuery = null);
 
 public record PagedResult<T>
 {

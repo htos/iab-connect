@@ -73,6 +73,7 @@ public sealed class MemberMergeEndpointTests
         public Task<Member?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult<Member?>(null);
         public Task<Member?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) => Task.FromResult<Member?>(null);
         public Task<Member?> GetByKeycloakUserIdAsync(Guid keycloakUserId, CancellationToken cancellationToken = default) => Task.FromResult<Member?>(null);
+        public Task<Member?> GetByCalendarTokenAsync(string token, CancellationToken cancellationToken = default) => Task.FromResult<Member?>(null);
         public Task<IReadOnlyList<Member>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Member>>(Array.Empty<Member>());
         public Task<(IReadOnlyList<Member> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, string? searchTerm = null, MembershipStatus? status = null, DomainMembershipType? type = null, CancellationToken cancellationToken = default) => Task.FromResult<(IReadOnlyList<Member>, int)>((Array.Empty<Member>(), 0));
         public Task AddAsync(Member member, CancellationToken cancellationToken = default) => Task.CompletedTask;

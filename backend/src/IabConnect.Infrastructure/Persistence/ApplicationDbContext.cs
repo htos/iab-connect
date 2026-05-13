@@ -4,6 +4,7 @@ using IabConnect.Domain.Common;
 using IabConnect.Domain.Communication;
 using IabConnect.Domain.Documents;
 using IabConnect.Domain.Events;
+using IabConnect.Domain.Events.Volunteers;
 using IabConnect.Domain.Finance;
 using IabConnect.Domain.Members;
 using IabConnect.Domain.Privacy;
@@ -34,6 +35,11 @@ public sealed class ApplicationDbContext : DbContext
     public DbSet<DeletionRequest> DeletionRequests => Set<DeletionRequest>();
     public DbSet<Event> Events => Set<Event>();
     public DbSet<EventRegistration> EventRegistrations => Set<EventRegistration>();
+
+    // REQ-024 (E3.S3): Volunteer planning
+    public DbSet<EventVolunteerRole> EventVolunteerRoles => Set<EventVolunteerRole>();
+    public DbSet<EventVolunteerShift> EventVolunteerShifts => Set<EventVolunteerShift>();
+    public DbSet<EventVolunteerAssignment> EventVolunteerAssignments => Set<EventVolunteerAssignment>();
     public DbSet<EmailCampaign> EmailCampaigns => Set<EmailCampaign>();
     public DbSet<EmailRecipient> EmailRecipients => Set<EmailRecipient>();
     public DbSet<EmailTemplate> EmailTemplates => Set<EmailTemplate>();

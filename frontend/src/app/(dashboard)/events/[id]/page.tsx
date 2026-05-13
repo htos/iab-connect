@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/lib/auth';
+import { VolunteerSelfSignupSection } from './VolunteerSelfSignupSection';
 import {
   getEventRegistrationStatistics,
   getEventWaitlist,
@@ -978,6 +979,9 @@ export default function EventPage({ params }: EventPageProps) {
             </div>
           </div>
         )}
+
+        {/* REQ-024 (E3.S4): member self-signup volunteer-shift section */}
+        <VolunteerSelfSignupSection eventId={resolvedParams.id} eventCancelled={event.status === 'Cancelled'} />
       </div>
     </main>
   );

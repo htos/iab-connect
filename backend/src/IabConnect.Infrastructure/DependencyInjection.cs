@@ -75,6 +75,19 @@ public static class DependencyInjection
         services.AddScoped<IDeletionRequestRepository, DeletionRequestRepository>();
         services.AddScoped<IEventRepository, EventRepository>();
         services.AddScoped<IEventRegistrationRepository, EventRegistrationRepository>();
+
+        // REQ-024 (E3.S4): TimeProvider for testable time in the reminder service
+        services.AddSingleton(TimeProvider.System);
+
+        // REQ-024 (E3.S4): Hangfire wrapper for the volunteer-shift reminder job
+        services.AddScoped<Infrastructure.Events.Jobs.VolunteerShiftReminderJob>();
+
+        // REQ-024 (E3.S3): Volunteer-planning repositories + transactional assignment service
+        services.AddScoped<IabConnect.Domain.Events.Volunteers.IEventVolunteerRoleRepository, EventVolunteerRoleRepository>();
+        services.AddScoped<IabConnect.Domain.Events.Volunteers.IEventVolunteerShiftRepository, EventVolunteerShiftRepository>();
+        services.AddScoped<IabConnect.Domain.Events.Volunteers.IEventVolunteerAssignmentRepository, EventVolunteerAssignmentRepository>();
+        services.AddScoped<IabConnect.Application.Events.Volunteers.IEventVolunteerAssignmentService,
+            Infrastructure.Events.Volunteers.EventVolunteerAssignmentService>();
         services.AddScoped<IEmailCampaignRepository, EmailCampaignRepository>();
         services.AddScoped<IEmailTemplateRepository, EmailTemplateRepository>();
         services.AddScoped<INewsletterSubscriberRepository, NewsletterSubscriberRepository>();
@@ -203,6 +216,13 @@ public static class DependencyInjection
 
         // Event registration PDF export
         services.AddSingleton<IabConnect.Application.Events.IRegistrationPdfExporter, Events.EventRegistrationPdfExporter>();
+
+        // REQ-023: Event check-in roster CSV export
+        services.AddSingleton<IabConnect.Application.Events.CheckIn.IEventCheckInRosterCsvExporter, Events.EventCheckInRosterCsvExporter>();
+
+        // REQ-023 (E3.S2): Transactional, FOR UPDATE row-locked check-in service
+        services.AddScoped<IabConnect.Application.Events.CheckIn.IEventRegistrationCheckInService,
+            Events.EventRegistrationCheckInService>();
 
         // REQ-034: Document Storage (RustFS via S3 SDK)
         services.Configure<DocumentStorageSettings>(configuration.GetSection(DocumentStorageSettings.SectionName));

@@ -302,20 +302,45 @@ public sealed class EventRegistration : Entity
 
     /// <summary>
     /// Checkt den Teilnehmer ein.
+    /// REQ-023 (E3.S2): idempotent — calling twice returns the same <see cref="CheckInResult"/>
+    /// with <c>WasAlreadyCheckedIn = true</c>; entity state is NOT mutated on the second call.
     /// </summary>
-    public void CheckIn(Guid checkedInBy)
+    public CheckInResult CheckIn(Guid checkedInBy)
     {
+        // REQ-023 (E3.S2 review H-S2-4): reject Pending and NoShow up front. Roster discipline
+        // means only confirmed-and-not-cancelled rows are eligible to check in; allowing Pending
+        // (never confirmed) or NoShow (already decided absent) silently re-opens the front
+        // gate for invalid states.
         if (Status == RegistrationStatus.Cancelled)
             throw new InvalidOperationException("Cannot check in a cancelled registration");
         if (Status == RegistrationStatus.Waitlisted)
             throw new InvalidOperationException("Cannot check in a waitlisted registration");
+        if (Status == RegistrationStatus.Pending)
+            throw new InvalidOperationException("Cannot check in a pending (un-confirmed) registration");
+        if (Status == RegistrationStatus.NoShow)
+            throw new InvalidOperationException("Cannot check in a no-show registration; revert no-show first");
+
         if (CheckedInAt.HasValue)
-            throw new InvalidOperationException("Participant is already checked in");
+            return new CheckInResult(
+                // REQ-023 (E3.S2 review M-S2-1): preserve the original CheckedInBy on the idempotent
+                // path. The previous fallback `CheckedInBy ?? checkedInBy` would attribute a legacy
+                // null-attributed check-in to the second caller, which is wrong for audit. The
+                // CheckedInBy field is now never null after a successful first check-in, so the
+                // fallback can only fire on rows that pre-date the audit trail — surface those
+                // as "Guid.Empty (legacy)" rather than silently falsifying attribution.
+                WasAlreadyCheckedIn: true,
+                CheckedInAt: CheckedInAt.Value,
+                CheckedInBy: CheckedInBy ?? Guid.Empty);
 
         CheckedInAt = DateTime.UtcNow;
         CheckedInBy = checkedInBy;
         Status = RegistrationStatus.CheckedIn;
         UpdatedAt = DateTime.UtcNow;
+
+        return new CheckInResult(
+            WasAlreadyCheckedIn: false,
+            CheckedInAt: CheckedInAt.Value,
+            CheckedInBy: checkedInBy);
     }
 
     /// <summary>

@@ -42,6 +42,12 @@ public static class DependencyInjection
         // REQ-018: Duplicate-candidate matcher (pure, stateless -> singleton)
         services.AddSingleton<IDuplicateMatcher, DuplicateMatcher>();
 
+        // REQ-024 (E3.S4): Volunteer-shift reminder service (Hangfire-driven daily pass)
+        services.AddScoped<Events.Jobs.IVolunteerShiftReminderService, Events.Jobs.VolunteerShiftReminderService>();
+
+        // REQ-025 (E3.S5): RFC 5545 ICS feed builder (stateless, no third-party calendar dep)
+        services.AddSingleton<Events.Calendar.ICalendarFeedBuilder, Events.Calendar.CalendarFeedBuilder>();
+
         // Note: IAuditService is registered in Infrastructure layer (requires IHttpContextAccessor)
 
         return services;

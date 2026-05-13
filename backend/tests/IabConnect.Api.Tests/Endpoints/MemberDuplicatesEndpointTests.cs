@@ -18,9 +18,21 @@ namespace IabConnect.Api.Tests.Endpoints;
 /// <summary>
 /// REQ-018: API-layer tests for <c>GET /api/v1/members/duplicates</c>.
 /// Covers: authorization metadata, unauthenticated 401, and malformed-Guid 400.
+///
+/// Shares <see cref="TestWebApplicationFactory"/> with all other API integration tests via
+/// the <c>Api</c> collection (avoids the Serilog frozen-logger collision that occurs when a
+/// second factory is instantiated in the same test run).
 /// </summary>
+[Collection("Api")]
 public sealed class MemberDuplicatesEndpointTests
 {
+    private readonly TestWebApplicationFactory _factory;
+
+    public MemberDuplicatesEndpointTests(TestWebApplicationFactory factory)
+    {
+        _factory = factory;
+    }
+
     [Fact]
     public void DuplicatesEndpoint_ShouldRequireVorstandAuthorization()
     {
@@ -50,8 +62,7 @@ public sealed class MemberDuplicatesEndpointTests
     [Fact]
     public async Task DuplicatesEndpoint_Unauthenticated_Returns401()
     {
-        await using var factory = new TestWebApplicationFactory();
-        var client = factory.CreateClient();
+        var client = _factory.CreateClient();
 
         var response = await client.GetAsync(
             "/api/v1/members/duplicates?email=test@example.com",
@@ -69,6 +80,7 @@ public sealed class MemberDuplicatesEndpointTests
         public Task<Member?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult<Member?>(null);
         public Task<Member?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) => Task.FromResult<Member?>(null);
         public Task<Member?> GetByKeycloakUserIdAsync(Guid keycloakUserId, CancellationToken cancellationToken = default) => Task.FromResult<Member?>(null);
+        public Task<Member?> GetByCalendarTokenAsync(string token, CancellationToken cancellationToken = default) => Task.FromResult<Member?>(null);
         public Task<IReadOnlyList<Member>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Member>>(Array.Empty<Member>());
         public Task<(IReadOnlyList<Member> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, string? searchTerm = null, MembershipStatus? status = null, MembershipType? type = null, CancellationToken cancellationToken = default) => Task.FromResult<(IReadOnlyList<Member>, int)>((Array.Empty<Member>(), 0));
         public Task AddAsync(Member member, CancellationToken cancellationToken = default) => Task.CompletedTask;

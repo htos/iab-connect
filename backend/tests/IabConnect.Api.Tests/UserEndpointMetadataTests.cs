@@ -110,6 +110,7 @@ public sealed class UserEndpointMetadataTests
         public Task<Member?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<Member?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<Member?> GetByKeycloakUserIdAsync(Guid keycloakUserId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        public Task<Member?> GetByCalendarTokenAsync(string token, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<IReadOnlyList<Member>> GetAllAsync(CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<(IReadOnlyList<Member> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, string? searchTerm = null, MembershipStatus? status = null, MembershipType? type = null, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task AddAsync(Member member, CancellationToken cancellationToken = default) => throw new NotImplementedException();

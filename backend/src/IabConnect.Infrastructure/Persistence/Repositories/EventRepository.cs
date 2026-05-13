@@ -180,6 +180,11 @@ public sealed class EventRepository : IEventRepository
             query = query.Where(e => e.StartDate <= filter.ToDate.Value);
         }
 
+        if (filter.EndDateFrom.HasValue)
+        {
+            query = query.Where(e => e.EndDate >= filter.EndDateFrom.Value);
+        }
+
         // Free events filter
         if (filter.IsFree.HasValue)
         {

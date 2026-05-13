@@ -38,6 +38,15 @@ public sealed class EventFilterOptions
     public Guid? OrganizerId { get; init; }
     public DateTime? FromDate { get; init; }
     public DateTime? ToDate { get; init; }
+
+    /// <summary>
+    /// REQ-025 (E3.S5 post-review M-S5-5): filter on <c>EndDate &gt;= EndDateFrom</c> instead of
+    /// <c>StartDate &gt;= FromDate</c>. Lets the calendar feed include multi-day events that
+    /// started before the window but are still running. Set alongside <see cref="FromDate"/>
+    /// when both are needed (the filter applies an AND).
+    /// </summary>
+    public DateTime? EndDateFrom { get; init; }
+
     public bool? IsFree { get; init; }
     public bool IncludeDeleted { get; init; } = false;
     public bool PublicOnly { get; init; } = false;
