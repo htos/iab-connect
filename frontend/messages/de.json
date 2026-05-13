@@ -152,7 +152,8 @@
     "documentsFolders": "Ordnerverwaltung",
     "partner": "Partner",
     "sponsorsList": "Sponsoren",
-    "suppliersList": "Lieferanten"
+    "suppliersList": "Lieferanten",
+    "memberDuplicates": "Dubletten-Prüfung"
   },
   "roles": {
     "admin": "Administrator",
@@ -288,6 +289,110 @@
       "status": "Status",
       "memberSince": "Mitglied seit",
       "actions": "Aktionen"
+    },
+    "duplicateWarning": {
+      "title": "Mögliche Dublette erkannt",
+      "subtitle": {
+        "exactMatch": "Ein Mitglied mit dieser E-Mail-Adresse existiert bereits. Speichern ist nicht möglich.",
+        "likelyMatch": "Diese Mitglieder sehen ähnlich aus. Bitte vor dem Speichern prüfen."
+      },
+      "tier": {
+        "exact": "Exakte Übereinstimmung",
+        "likely": "Wahrscheinliche Übereinstimmung"
+      },
+      "reason": {
+        "none": "Kein Signal",
+        "email": "E-Mail stimmt überein",
+        "normalizedPhone": "Telefon stimmt überein",
+        "postalAndStreet": "PLZ und Strasse stimmen überein",
+        "emailLocalPart": "E-Mail-Lokalteil stimmt überein",
+        "nameOnly": "Name stimmt überein"
+      },
+      "linkToMember": "Mitglied anzeigen",
+      "confirmProceed": "Trotzdem speichern",
+      "blocked": "Doppelte E-Mail — Speichern nicht möglich."
+    },
+    "duplicates": {
+      "title": "Dubletten-Übersicht",
+      "subtitle": "Alle erkannten Dubletten-Kandidaten-Gruppen über die gesamte Mitgliedertabelle. Per Zusammenführung lösen oder als Fehltreffer ablehnen.",
+      "totalCount": "{count, plural, =0 {Keine Gruppen} one {# Gruppe} other {# Gruppen}}",
+      "loading": "Dubletten-Gruppen werden geladen …",
+      "groupSummary": "{count, plural, =1 {1 Mitglied} other {# Mitglieder}} in dieser Gruppe",
+      "collapse": "Mitglieder ausblenden",
+      "expand": "Mitglieder anzeigen",
+      "mergeAdminOnly": "Zusammenführung nur durch Administratoren.",
+      "filter": {
+        "tierLabel": "Stufe",
+        "all": "Alle Stufen",
+        "exact": "Nur exakte Treffer",
+        "likely": "Nur wahrscheinliche Treffer"
+      },
+      "tier": {
+        "exact": "Exakter Treffer",
+        "likely": "Wahrscheinlicher Treffer"
+      },
+      "actions": {
+        "merge": "Zusammenführen",
+        "dismiss": "Ablehnen"
+      },
+      "reason": {
+        "none": "Kein Signal",
+        "email": "E-Mail-Adresse stimmt überein",
+        "normalizedPhone": "Telefonnummer stimmt überein",
+        "postalAndStreet": "PLZ + Strasse stimmen überein",
+        "emailLocalPart": "E-Mail-Lokalteil stimmt überein",
+        "nameOnly": "Name stimmt überein"
+      },
+      "empty": {
+        "title": "Alles in Ordnung",
+        "message": "Keine Dubletten-Kandidaten gefunden. Bitte regelmässig erneut prüfen, wenn neue Mitglieder hinzukommen."
+      },
+      "error": {
+        "title": "Dubletten-Gruppen konnten nicht geladen werden",
+        "retry": "Erneut versuchen"
+      },
+      "pagination": {
+        "prev": "Zurück",
+        "next": "Weiter",
+        "pageOf": "Seite {page} von {totalPages}"
+      },
+      "dismiss": {
+        "errorSelectPair": "Bitte zwei verschiedene Mitglieder auswählen.",
+        "errorSamePair": "Bitte zwei verschiedene Mitglieder auswählen.",
+        "errorReasonRequired": "Begründung ist erforderlich.",
+        "errorReasonTooLong": "Begründung darf 500 Zeichen nicht überschreiten.",
+        "modal": {
+          "title": "Gruppe als NICHT-Duplikat markieren",
+          "description": "Alle Paare innerhalb dieser Gruppe werden als nicht-Duplikat gekennzeichnet, sodass die Gruppe nicht mehr auf der Dubletten-Seite erscheint. In dieser Oberfläche nicht rückgängig zu machen.",
+          "pairPicker": "Zu kennzeichnendes Paar wählen",
+          "scopeHeader": "{count} Mitglieder → {pairs} Paar(e) werden abgelehnt:",
+          "reasonLabel": "Begründung",
+          "reasonPlaceholder": "Warum sind diese Personen NICHT dieselbe?",
+          "cancel": "Abbrechen",
+          "submit": "Gruppe ablehnen",
+          "submitting": "Wird abgelehnt …"
+        }
+      },
+      "merge": {
+        "modal": {
+          "title": "Mitglieder zusammenführen",
+          "description": "Der Quell-Datensatz wird stillgelegt; alle Referenzen werden auf den Zieldatensatz übertragen. Dies kann nicht rückgängig gemacht werden.",
+          "targetPicker": "Ziel-Mitglied wählen (bleibt erhalten)",
+          "targetPickerHint": "Das andere Mitglied wird zur Quelle und wird stillgelegt.",
+          "sourcePicker": "Quell-Mitglied wählen (wird stillgelegt)",
+          "sourcePickerPlaceholder": "— Quell-Mitglied wählen —",
+          "reasonLabel": "Begründung",
+          "confirmFinance": "Ich bestätige, dass offene Rechnungsentwürfe der Quelle auf das Ziel übertragen werden.",
+          "confirmKeycloak": "Ich bestätige, dass der Keycloak-Link der Quelle entfernt wird, falls beide eine Verknüpfung haben.",
+          "cancel": "Abbrechen",
+          "submit": "Zusammenführen",
+          "submitting": "Zusammenführen …",
+          "errorPickPair": "Bitte Ziel- und Quell-Mitglied auswählen.",
+          "errorSamePair": "Quelle und Ziel müssen unterschiedlich sein.",
+          "errorReasonRequired": "Begründung ist erforderlich.",
+          "errorReasonTooLong": "Begründung darf 500 Zeichen nicht überschreiten."
+        }
+      }
     }
   },
   "form": {

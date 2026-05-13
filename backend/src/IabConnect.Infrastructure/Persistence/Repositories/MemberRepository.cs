@@ -1,3 +1,4 @@
+using IabConnect.Application.Members.Duplicates;
 using IabConnect.Domain.Members;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,10 +10,12 @@ namespace IabConnect.Infrastructure.Persistence.Repositories;
 public sealed class MemberRepository : IMemberRepository
 {
     private readonly ApplicationDbContext _context;
+    private readonly IDuplicateMatcher _matcher;
 
-    public MemberRepository(ApplicationDbContext context)
+    public MemberRepository(ApplicationDbContext context, IDuplicateMatcher matcher)
     {
         _context = context;
+        _matcher = matcher;
     }
 
     public async Task<Member?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
@@ -110,6 +113,70 @@ public sealed class MemberRepository : IMemberRepository
         return await _context.Members.AnyAsync(m => m.Email == email, cancellationToken);
     }
 
+    public async Task<Member?> GetByEmailNormalizedAsync(string email, CancellationToken cancellationToken = default)
+    {
+        var (exactPattern, tagPattern) = BuildNormalizedEmailPatterns(email);
+        if (exactPattern is null)
+            return null;
+
+        // REQ-018 (E2.S3): exclude merged-source rows so the email can be re-used on the target
+        // without triggering a false-positive duplicate warning.
+        return await _context.Members
+            .AsNoTracking()
+            .Where(m => m.MergedIntoMemberId == null)
+            .FirstOrDefaultAsync(
+                m => EF.Functions.ILike(m.Email, exactPattern, LikeEscapeChar)
+                  || EF.Functions.ILike(m.Email, tagPattern!, LikeEscapeChar),
+                cancellationToken);
+    }
+
+    public async Task<bool> EmailExistsNormalizedAsync(string email, CancellationToken cancellationToken = default)
+    {
+        var (exactPattern, tagPattern) = BuildNormalizedEmailPatterns(email);
+        if (exactPattern is null)
+            return false;
+
+        // REQ-018 (E2.S3): exclude merged-source rows (see GetByEmailNormalizedAsync).
+        return await _context.Members
+            .AsNoTracking()
+            .Where(m => m.MergedIntoMemberId == null)
+            .AnyAsync(
+                m => EF.Functions.ILike(m.Email, exactPattern, LikeEscapeChar)
+                  || EF.Functions.ILike(m.Email, tagPattern!, LikeEscapeChar),
+                cancellationToken);
+    }
+
+    // REQ-018 review patch: LIKE escape char so user-supplied email local-part chars
+    // `_` / `%` / `\` are matched literally (not as ILike wildcards). Pairs with
+    // EscapeLikePattern applied to the normalized input before formatting.
+    private const string LikeEscapeChar = "\\";
+
+    private static string EscapeLikePattern(string value)
+    {
+        // Order matters: escape the escape char first, then the wildcards.
+        return value
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_");
+    }
+
+    private (string? Exact, string? Tag) BuildNormalizedEmailPatterns(string email)
+    {
+        var normalized = _matcher.NormalizeEmail(email);
+        if (string.IsNullOrEmpty(normalized))
+            return (null, null);
+
+        var atIdx = normalized.IndexOf('@');
+        if (atIdx <= 0 || atIdx == normalized.Length - 1)
+            return (null, null);
+
+        var local = EscapeLikePattern(normalized[..atIdx]);
+        var domain = EscapeLikePattern(normalized[(atIdx + 1)..]);
+        var exactPattern = $"{local}@{domain}";
+        var tagPattern = $"{local}+%@{domain}";
+        return (exactPattern, tagPattern);
+    }
+
     /// <summary>
     /// REQ-018: Single-query OR-combined predicate for duplicate-candidate prefetch.
     /// <para>
@@ -143,8 +210,11 @@ public sealed class MemberRepository : IMemberRepository
         if (!hasAnySignal)
             return Array.Empty<Member>();
 
+        // REQ-018 (E2.S3): exclude merged-source rows so the duplicate-detection query never
+        // proposes a retired record as a candidate. GetByIdAsync remains unfiltered (forensics).
         var query = _context.Members
             .AsNoTracking()
+            .Where(m => m.MergedIntoMemberId == null)
             .AsQueryable();
 
         if (excludeMemberId.HasValue)
@@ -162,6 +232,21 @@ public sealed class MemberRepository : IMemberRepository
             .OrderBy(m => m.LastName)
             .ThenBy(m => m.FirstName)
             .Take(maxResults)
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// REQ-018 (E2.S4): single-query AsNoTracking projection of the non-merged member set,
+    /// used by the cross-table duplicate-groups scan. Symmetric-Guard checklist: applies
+    /// <c>MergedIntoMemberId == null</c> so merged source rows never reappear in the groups UI.
+    /// </summary>
+    public async Task<IReadOnlyList<Member>> GetAllNonMergedAsync(CancellationToken cancellationToken = default)
+    {
+        return await _context.Members
+            .AsNoTracking()
+            .Where(m => m.MergedIntoMemberId == null)
+            .OrderBy(m => m.LastName)
+            .ThenBy(m => m.FirstName)
             .ToListAsync(cancellationToken);
     }
 }

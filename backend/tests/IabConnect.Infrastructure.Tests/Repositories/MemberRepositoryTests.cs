@@ -1,4 +1,5 @@
 using FluentAssertions;
+using IabConnect.Application.Members.Duplicates;
 using IabConnect.Domain.Members;
 using IabConnect.Infrastructure.Persistence;
 using IabConnect.Infrastructure.Persistence.Repositories;
@@ -31,7 +32,7 @@ public class MemberRepositoryTests : IAsyncLifetime
         _context = new ApplicationDbContext(options);
         await _context.Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);
 
-        _repository = new MemberRepository(_context);
+        _repository = new MemberRepository(_context, new DuplicateMatcher());
     }
 
     public async ValueTask DisposeAsync()

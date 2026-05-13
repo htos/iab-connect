@@ -117,7 +117,10 @@ public sealed class UserEndpointMetadataTests
         public void Remove(Member member) => throw new NotImplementedException();
         public Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        public Task<Member?> GetByEmailNormalizedAsync(string email, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        public Task<bool> EmailExistsNormalizedAsync(string email, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<IReadOnlyList<Member>> FindCandidatesAsync(string? emailNormalized, string? phoneDigits, string? firstNameFolded, string? lastNameFolded, string? postalCode, Guid? excludeMemberId, int maxResults, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        public Task<IReadOnlyList<Member>> GetAllNonMergedAsync(CancellationToken cancellationToken = default) => throw new NotImplementedException();
     }
 
     private sealed class FakeSecurityAuditLogger : ISecurityAuditLogger

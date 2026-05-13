@@ -76,7 +76,10 @@ public sealed class MemberDuplicatesEndpointTests
         public void Remove(Member member) { }
         public Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(false);
         public Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken = default) => Task.FromResult(false);
+        public Task<Member?> GetByEmailNormalizedAsync(string email, CancellationToken cancellationToken = default) => Task.FromResult<Member?>(null);
+        public Task<bool> EmailExistsNormalizedAsync(string email, CancellationToken cancellationToken = default) => Task.FromResult(false);
         public Task<IReadOnlyList<Member>> FindCandidatesAsync(string? emailNormalized, string? phoneDigits, string? firstNameFolded, string? lastNameFolded, string? postalCode, Guid? excludeMemberId, int maxResults, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Member>>(Array.Empty<Member>());
+        public Task<IReadOnlyList<Member>> GetAllNonMergedAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Member>>(Array.Empty<Member>());
     }
 
     private sealed class FakeSender : ISender

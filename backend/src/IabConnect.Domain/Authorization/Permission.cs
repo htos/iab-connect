@@ -14,6 +14,7 @@ public static class Permission
     public const string MemberUpdateOwn = "member:update:own";
     public const string MemberDelete = "member:delete";
     public const string MemberStatusChange = "member:status:change";
+    public const string MemberMerge = "member:merge";
 
     // User management permissions
     public const string UserRead = "user:read";
@@ -75,6 +76,7 @@ public static class RolePermissions
             Permission.MemberUpdateOwn,
             Permission.MemberDelete,
             Permission.MemberStatusChange,
+            Permission.MemberMerge,
 
             Permission.UserRead,
             Permission.UserCreate,

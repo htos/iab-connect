@@ -18,6 +18,14 @@ public sealed class Member : AggregateRoot
     public DateOnly MemberSince { get; private set; }
     public Guid? KeycloakUserId { get; private set; }
 
+    /// <summary>
+    /// REQ-018 (E2.S3): when non-null, this member has been merged into the target member.
+    /// The row is preserved for forensics (audit trail integrity) and is soft-retired:
+    /// duplicate-detection / autocomplete queries must filter <c>MergedIntoMemberId == null</c>;
+    /// <c>GetByIdAsync</c> intentionally still returns the row.
+    /// </summary>
+    public Guid? MergedIntoMemberId { get; private set; }
+
     private Member() : base() { }
 
     public static Member Create(
@@ -98,6 +106,37 @@ public sealed class Member : AggregateRoot
     public void LinkToKeycloak(Guid keycloakUserId)
     {
         KeycloakUserId = keycloakUserId;
+    }
+
+    /// <summary>
+    /// REQ-018 (E2.S3): clears the Keycloak link on the source member during a merge.
+    /// Used by the merge handler when the source is the one being retired; the target's
+    /// own Keycloak link remains untouched and is set via a separate <see cref="LinkToKeycloak"/>
+    /// call if a transfer was requested.
+    /// </summary>
+    public void ClearKeycloakLink()
+    {
+        KeycloakUserId = null;
+    }
+
+    /// <summary>
+    /// REQ-018 (E2.S3): mark this member as merged into <paramref name="targetId"/>.
+    /// Deactivates the membership (the row stays for forensics) and raises
+    /// <see cref="MemberMergedIntoEvent"/>. Idempotent: calling twice keeps the first target.
+    /// </summary>
+    public void MarkMergedInto(Guid targetId, Guid adminUserId)
+    {
+        if (targetId == Guid.Empty)
+            throw new ArgumentException("Merge target must be a non-empty Guid.", nameof(targetId));
+        if (targetId == Id)
+            throw new ArgumentException("A member cannot be merged into itself.", nameof(targetId));
+
+        if (MergedIntoMemberId.HasValue)
+            return;
+
+        MergedIntoMemberId = targetId;
+        Deactivate();
+        AddDomainEvent(new MemberMergedIntoEvent(Id, targetId, adminUserId));
     }
 
     public string FullName => $"{FirstName} {LastName}";

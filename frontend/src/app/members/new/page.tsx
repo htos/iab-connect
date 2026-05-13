@@ -12,7 +12,10 @@ import Link from "next/link";
 import {
   MembershipType,
   CreateMemberRequest,
+  findMemberDuplicates,
+  type DuplicateCandidateDto,
 } from "@/lib/api/members";
+import { DuplicateWarning } from "@/components/members/DuplicateWarning";
 
 export default function NewMemberPage() {
   const { isAuthenticated, isLoading: authLoading, isVorstand, isAdmin, accessToken } = useAuth();
@@ -21,6 +24,9 @@ export default function NewMemberPage() {
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [duplicateCandidates, setDuplicateCandidates] = useState<DuplicateCandidateDto[]>([]);
+  const [confirmedProceed, setConfirmedProceed] = useState(false);
+  const [duplicateLoading, setDuplicateLoading] = useState(false);
   const [formData, setFormData] = useState<CreateMemberRequest>({
     firstName: "",
     lastName: "",
@@ -34,6 +40,10 @@ export default function NewMemberPage() {
   });
 
   const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+
+  const hasExactMatch = duplicateCandidates.some((c) => c.matchTier === "Exact");
+  const hasLikelyOnly =
+    duplicateCandidates.length > 0 && !hasExactMatch;
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -53,6 +63,36 @@ export default function NewMemberPage() {
     setError(null);
 
     try {
+      // REQ-018: pre-submit duplicate check. Single fetch; backend still authoritative on Exact.
+      setDuplicateLoading(true);
+      let candidates: DuplicateCandidateDto[] = [];
+      try {
+        candidates = await findMemberDuplicates(accessToken ?? "", {
+          email: formData.email,
+          phone: formData.phone || undefined,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          postalCode: formData.postalCode,
+        });
+      } catch (lookupErr) {
+        // Fail-open: backend remains source of truth per AC-8. Log to console only.
+        console.error("Duplicate check failed", lookupErr);
+      } finally {
+        setDuplicateLoading(false);
+      }
+      setDuplicateCandidates(candidates);
+
+      const isExact = candidates.some((c) => c.matchTier === "Exact");
+      if (isExact) {
+        setSaving(false);
+        return;
+      }
+      const isLikely = candidates.length > 0 && !isExact;
+      if (isLikely && !confirmedProceed) {
+        setSaving(false);
+        return;
+      }
+
       const response = await fetch(`${baseUrl}/api/v1/members`, {
         method: "POST",
         headers: {
@@ -64,6 +104,21 @@ export default function NewMemberPage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
+        if (response.status === 409 && errorData?.existingMemberId) {
+          setDuplicateCandidates([
+            {
+              id: errorData.existingMemberId,
+              firstName: "",
+              lastName: "",
+              email: formData.email,
+              membershipStatus: "",
+              memberSince: "",
+              matchTier: "Exact",
+              matchReason: "Email",
+            },
+          ]);
+          throw new Error(errorData.error || t("members.duplicateWarning.blocked"));
+        }
         throw new Error(errorData?.message || t("error.savingError"));
       }
 
@@ -78,6 +133,11 @@ export default function NewMemberPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    // Stale candidate list once any field changes -- force a fresh pre-flight on next submit.
+    if (duplicateCandidates.length > 0) {
+      setDuplicateCandidates([]);
+      setConfirmedProceed(false);
+    }
   };
 
   if (authLoading) {
@@ -118,6 +178,17 @@ export default function NewMemberPage() {
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
             <p className="text-red-700">{error}</p>
           </div>
+        )}
+
+        {/* REQ-018: duplicate-candidate warning panel */}
+        {(duplicateCandidates.length > 0 || duplicateLoading) && (
+          <DuplicateWarning
+            candidates={duplicateCandidates}
+            hasExactMatch={hasExactMatch}
+            confirmRequired={hasLikelyOnly}
+            loading={duplicateLoading}
+            onConfirmProceed={() => setConfirmedProceed(true)}
+          />
         )}
 
         {/* Form */}
@@ -288,7 +359,7 @@ export default function NewMemberPage() {
             </Link>
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || hasExactMatch || (hasLikelyOnly && !confirmedProceed)}
               className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? t("members.creating") : t("members.createMember")}

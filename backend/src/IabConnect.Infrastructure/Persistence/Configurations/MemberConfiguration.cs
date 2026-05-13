@@ -65,6 +65,23 @@ public sealed class MemberConfiguration : IEntityTypeConfiguration<Member>
             .HasDatabaseName("ix_members_keycloak_user_id")
             .HasFilter("keycloak_user_id IS NOT NULL");
 
+        // REQ-018 (E2.S3): soft-retire pointer set during member merge.
+        builder.Property(m => m.MergedIntoMemberId)
+            .HasColumnName("merged_into_member_id");
+
+        builder.HasIndex(m => m.MergedIntoMemberId)
+            .HasDatabaseName("ix_members_merged_into_member_id")
+            .HasFilter("merged_into_member_id IS NOT NULL");
+
+        // REQ-018 review patch: changed from DeleteBehavior.SetNull to Restrict so a hard-delete of
+        // the merge target does NOT silently null out the source's MergedIntoMemberId pointer (which
+        // would resurrect the merged source row in GetAllNonMergedAsync and the duplicates UI).
+        // Target hard-deletes must explicitly handle dependent merged-source rows first.
+        builder.HasOne<Member>()
+            .WithMany()
+            .HasForeignKey(m => m.MergedIntoMemberId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         // Address as owned entity
         builder.OwnsOne(m => m.Address, addressBuilder =>
         {

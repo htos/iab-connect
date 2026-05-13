@@ -78,8 +78,8 @@ public static class RegistrationEndpoints
                 });
             }
 
-            // Check if member already exists in database
-            if (await memberRepository.EmailExistsAsync(request.Email))
+            // REQ-018 (E2.S2): normalized-email check stays in sync with the symmetric guard.
+            if (await memberRepository.EmailExistsNormalizedAsync(request.Email))
             {
                 return TypedResults.Conflict(new RegistrationError
                 {

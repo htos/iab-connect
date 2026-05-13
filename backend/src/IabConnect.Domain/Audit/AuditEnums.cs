@@ -29,6 +29,7 @@ public enum AuditEventType
     MemberDeleted,
     MemberStatusChanged,
     MemberTypeChanged,
+    MemberMerged,
 
     // Finance events
     FinanceCreated,

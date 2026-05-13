@@ -97,7 +97,8 @@ public static class UnsubscribeEndpoints
         }
 
         // Also revoke member consent if a member has this email
-        var member = await memberRepository.GetByEmailAsync(email);
+        // REQ-018 (E2.S2): normalized lookup so case/+tag variants still resolve to the same member.
+        var member = await memberRepository.GetByEmailNormalizedAsync(email);
         if (member?.KeycloakUserId != null)
         {
             var consent = await consentRepository.GetByUserAndTypeAsync(

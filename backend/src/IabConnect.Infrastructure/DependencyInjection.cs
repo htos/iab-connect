@@ -3,6 +3,7 @@ using Hangfire;
 using Hangfire.PostgreSql;
 using IabConnect.Application.Audit;
 using IabConnect.Application.Authorization;
+using IabConnect.Application.Members;
 using IabConnect.Application.Common;
 using IabConnect.Application.Communication;
 using IabConnect.Application.Finance;
@@ -151,6 +152,12 @@ public static class DependencyInjection
         // REQ-011: Audit Service (requires IHttpContextAccessor)
         services.AddHttpContextAccessor();
         services.AddScoped<IAuditService, AuditService>();
+
+        // REQ-018 (E2.S3): safe member-merge orchestration service
+        services.AddScoped<IMemberMergeService, Infrastructure.Members.MemberMergeService>();
+
+        // REQ-018 (E2.S4): duplicate-candidate dismissals repository (cross-table groups page)
+        services.AddScoped<IDuplicateCandidateDismissalRepository, DuplicateCandidateDismissalRepository>();
 
         // Keycloak Admin Service (REQ-002: Benutzerverwaltung)
         services.AddHttpClient<IKeycloakAdminService, KeycloakAdminService>();

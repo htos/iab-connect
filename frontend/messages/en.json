@@ -152,7 +152,8 @@
     "documentsFolders": "Folder Management",
     "partner": "Partner",
     "sponsorsList": "Sponsors",
-    "suppliersList": "Suppliers"
+    "suppliersList": "Suppliers",
+    "memberDuplicates": "Duplicate Review"
   },
   "roles": {
     "admin": "Administrator",
@@ -288,6 +289,110 @@
       "status": "Status",
       "memberSince": "Member Since",
       "actions": "Actions"
+    },
+    "duplicateWarning": {
+      "title": "Possible duplicate detected",
+      "subtitle": {
+        "exactMatch": "A member with this email address already exists. Saving is blocked.",
+        "likelyMatch": "These members look similar. Review before saving."
+      },
+      "tier": {
+        "exact": "Exact match",
+        "likely": "Likely match"
+      },
+      "reason": {
+        "none": "No signal",
+        "email": "Email matches",
+        "normalizedPhone": "Phone matches",
+        "postalAndStreet": "Postal code + street matches",
+        "emailLocalPart": "Email local part matches",
+        "nameOnly": "Name matches"
+      },
+      "linkToMember": "View member",
+      "confirmProceed": "Save anyway",
+      "blocked": "Duplicate match — cannot save."
+    },
+    "duplicates": {
+      "title": "Duplicate Members Review",
+      "subtitle": "All duplicate-candidate groups detected across the member table. Resolve via merge or dismiss as a false positive.",
+      "totalCount": "{count, plural, =0 {No groups} one {# group} other {# groups}}",
+      "loading": "Loading duplicate groups…",
+      "groupSummary": "{count, plural, =1 {1 member} other {# members}} in this group",
+      "collapse": "Hide members",
+      "expand": "Show members",
+      "mergeAdminOnly": "Merging is admin-only.",
+      "filter": {
+        "tierLabel": "Tier",
+        "all": "All tiers",
+        "exact": "Exact only",
+        "likely": "Likely only"
+      },
+      "tier": {
+        "exact": "Exact match",
+        "likely": "Likely match"
+      },
+      "actions": {
+        "merge": "Merge",
+        "dismiss": "Dismiss"
+      },
+      "reason": {
+        "none": "No signal",
+        "email": "Email matches",
+        "normalizedPhone": "Phone matches",
+        "postalAndStreet": "Postal code + street matches",
+        "emailLocalPart": "Email local part matches",
+        "nameOnly": "Name matches"
+      },
+      "empty": {
+        "title": "All clean",
+        "message": "No duplicate-candidate groups detected. Re-check periodically as new members are added."
+      },
+      "error": {
+        "title": "Failed to load duplicate groups",
+        "retry": "Retry"
+      },
+      "pagination": {
+        "prev": "Previous",
+        "next": "Next",
+        "pageOf": "Page {page} of {totalPages}"
+      },
+      "dismiss": {
+        "errorSelectPair": "Select two different members to dismiss.",
+        "errorSamePair": "Pick two different members.",
+        "errorReasonRequired": "Reason is required.",
+        "errorReasonTooLong": "Reason cannot exceed 500 characters.",
+        "modal": {
+          "title": "Mark group as NOT a duplicate",
+          "description": "Records every pair within this group so the group never appears on the duplicates page again. Cannot be undone in this UI.",
+          "pairPicker": "Pick the pair to dismiss",
+          "scopeHeader": "{count} members → {pairs} pair(s) will be dismissed:",
+          "reasonLabel": "Reason",
+          "reasonPlaceholder": "Why are these people NOT the same?",
+          "cancel": "Cancel",
+          "submit": "Dismiss group",
+          "submitting": "Dismissing…"
+        }
+      },
+      "merge": {
+        "modal": {
+          "title": "Merge members",
+          "description": "The source member is soft-retired and all references move to the target. Action is one-way.",
+          "targetPicker": "Pick the target (kept) member",
+          "targetPickerHint": "The other selected member becomes the source and is soft-retired.",
+          "sourcePicker": "Pick the source (retired) member",
+          "sourcePickerPlaceholder": "— Pick a source member —",
+          "reasonLabel": "Reason",
+          "confirmFinance": "I confirm draft invoices on the source will be reassigned to the target.",
+          "confirmKeycloak": "I confirm the source Keycloak link will be cleared (if both have one).",
+          "cancel": "Cancel",
+          "submit": "Merge",
+          "submitting": "Merging…",
+          "errorPickPair": "Pick a target and a source member.",
+          "errorSamePair": "Source and target must differ.",
+          "errorReasonRequired": "Reason is required.",
+          "errorReasonTooLong": "Reason cannot exceed 500 characters."
+        }
+      }
     }
   },
   "form": {

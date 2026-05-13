@@ -8,8 +8,14 @@ import { useAuth } from "@/lib/auth";
 import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { MemberDto, UpdateMemberRequest } from "@/lib/api/members";
+import {
+  MemberDto,
+  UpdateMemberRequest,
+  findMemberDuplicates,
+  type DuplicateCandidateDto,
+} from "@/lib/api/members";
 import { useTranslations } from "next-intl";
+import { DuplicateWarning } from "@/components/members/DuplicateWarning";
 
 export default function EditMemberPage() {
   const t = useTranslations();
@@ -21,6 +27,9 @@ export default function EditMemberPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [duplicateCandidates, setDuplicateCandidates] = useState<DuplicateCandidateDto[]>([]);
+  const [duplicateLoading, setDuplicateLoading] = useState(false);
+  const [confirmedProceed, setConfirmedProceed] = useState(false);
   const [formData, setFormData] = useState<UpdateMemberRequest>({
     firstName: "",
     lastName: "",
@@ -33,6 +42,9 @@ export default function EditMemberPage() {
   });
 
   const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+
+  const hasExactMatch = duplicateCandidates.some((c) => c.matchTier === "Exact");
+  const hasLikelyOnly = duplicateCandidates.length > 0 && !hasExactMatch;
 
   const fetchMember = useCallback(async () => {
     if (!accessToken || !memberId) return;
@@ -93,10 +105,71 @@ export default function EditMemberPage() {
     }
   }, [isAuthenticated, isVorstand, isAdmin, fetchMember]);
 
+  // REQ-018: re-check duplicates on email / first / last name change, debounced 350 ms.
+  // REQ-018 review patch: AbortController cancels the in-flight fetch on cleanup so orphaned
+  // racing requests can't overwrite fresher state when the user types quickly.
+  useEffect(() => {
+    if (!accessToken || loading) return;
+    if (!formData.email && !formData.firstName && !formData.lastName) return;
+
+    const controller = new AbortController();
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setDuplicateLoading(true);
+      try {
+        const candidates = await findMemberDuplicates(
+          accessToken,
+          {
+            email: formData.email,
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            postalCode: formData.postalCode || undefined,
+            excludeMemberId: memberId,
+          },
+          controller.signal
+        );
+        if (!cancelled) {
+          setDuplicateCandidates(candidates);
+          setConfirmedProceed(false);
+        }
+      } catch (lookupErr) {
+        // AbortError on cleanup is expected; swallow it.
+        if (!cancelled && (lookupErr as { name?: string })?.name !== "AbortError") {
+          console.error("Duplicate re-check failed", lookupErr);
+        }
+      } finally {
+        if (!cancelled) setDuplicateLoading(false);
+      }
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [
+    accessToken,
+    loading,
+    memberId,
+    formData.email,
+    formData.firstName,
+    formData.lastName,
+    formData.postalCode,
+  ]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setError(null);
+
+    if (hasExactMatch) {
+      setSaving(false);
+      return;
+    }
+    if (hasLikelyOnly && !confirmedProceed) {
+      setSaving(false);
+      return;
+    }
 
     try {
       const response = await fetch(`${baseUrl}/api/v1/members/${memberId}`, {
@@ -110,6 +183,21 @@ export default function EditMemberPage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
+        if (response.status === 409 && errorData?.existingMemberId) {
+          setDuplicateCandidates([
+            {
+              id: errorData.existingMemberId,
+              firstName: "",
+              lastName: "",
+              email: formData.email,
+              membershipStatus: "",
+              memberSince: "",
+              matchTier: "Exact",
+              matchReason: "Email",
+            },
+          ]);
+          throw new Error(errorData.error || t("members.duplicateWarning.blocked"));
+        }
         throw new Error(errorData?.message || t("error.savingError"));
       }
 
@@ -188,6 +276,17 @@ export default function EditMemberPage() {
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
             <p className="text-red-700">{error}</p>
           </div>
+        )}
+
+        {/* REQ-018: duplicate-candidate warning panel (excludeMemberId protects self) */}
+        {(duplicateCandidates.length > 0 || duplicateLoading) && (
+          <DuplicateWarning
+            candidates={duplicateCandidates}
+            hasExactMatch={hasExactMatch}
+            confirmRequired={hasLikelyOnly}
+            loading={duplicateLoading}
+            onConfirmProceed={() => setConfirmedProceed(true)}
+          />
         )}
 
         {/* Form */}
@@ -335,7 +434,7 @@ export default function EditMemberPage() {
             </Link>
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || hasExactMatch || (hasLikelyOnly && !confirmedProceed)}
               className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? t("common.saving") : t("common.save")}

@@ -91,6 +91,11 @@ const navItems: NavItem[] = [
         href: "/members/segments",
         icon: <></>,
       },
+      {
+        labelKey: "nav.memberDuplicates",
+        href: "/members/duplicates",
+        icon: <></>,
+      },
     ],
   },
   {

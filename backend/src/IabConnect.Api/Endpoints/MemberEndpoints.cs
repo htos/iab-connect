@@ -1,4 +1,5 @@
 using IabConnect.Application.Authorization;
+using IabConnect.Application.Members;
 using IabConnect.Application.Members.Commands;
 using IabConnect.Application.Members.Duplicates;
 using IabConnect.Domain.Authorization;
@@ -10,6 +11,9 @@ using Microsoft.EntityFrameworkCore;
 using DomainMembershipType = IabConnect.Domain.Members.MembershipType;
 using CommandMembershipType = IabConnect.Application.Members.Commands.MembershipType;
 using FindMemberDuplicatesQuery = IabConnect.Application.Members.Queries.FindMemberDuplicatesQuery;
+using FindDuplicateGroupsQuery = IabConnect.Application.Members.Queries.FindDuplicateGroupsQuery;
+using DuplicateGroupDto = IabConnect.Application.Members.Queries.DuplicateGroupDto;
+using PagedResult = IabConnect.Application.Common.PagedResult<IabConnect.Application.Members.Queries.DuplicateGroupDto>;
 
 namespace IabConnect.Api.Endpoints;
 
@@ -102,6 +106,24 @@ public static class MemberEndpoints
             .RequireAuthorization("RequireVorstand")
             .WithName("GetMemberDuplicates")
             .WithDescription("REQ-018: Dubletten-Kandidaten suchen");
+
+        // POST /api/v1/members/{sourceId}/merge-into/{targetId} - Safe member merge (REQ-018, E2.S3)
+        members.MapPost("/{sourceId:guid}/merge-into/{targetId:guid}", MergeMember)
+            .RequireAuthorization("RequireAdmin")
+            .WithName("MergeMember")
+            .WithDescription("REQ-018: Sichere Mitglieder-Zusammenführung (nur Admin)");
+
+        // GET /api/v1/members/duplicate-groups - Cross-table duplicate-groups scan (REQ-018, E2.S4)
+        members.MapGet("/duplicate-groups", GetDuplicateGroups)
+            .RequireAuthorization("RequireVorstand")
+            .WithName("GetDuplicateGroups")
+            .WithDescription("REQ-018: Dubletten-Gruppen-Übersicht (Vorstand)");
+
+        // POST /api/v1/members/duplicate-dismissals - Dismiss a false-positive pair (REQ-018, E2.S4)
+        members.MapPost("/duplicate-dismissals", DismissDuplicateCandidate)
+            .RequireAuthorization("RequireVorstand")
+            .WithName("DismissDuplicateCandidate")
+            .WithDescription("REQ-018: Dubletten-Paar als 'kein Duplikat' markieren (Vorstand)");
 
         return group;
     }
@@ -237,7 +259,18 @@ public static class MemberEndpoints
             MembershipType = (CommandMembershipType)(int)request.MembershipType
         };
 
-        var memberId = await sender.Send(command, ct);
+        Guid memberId;
+        try
+        {
+            memberId = await sender.Send(command, ct);
+        }
+        catch (DuplicateMemberException ex)
+        {
+            // REQ-018: Normalized-email duplicate. Not an authorization failure -- no LogAccessDenied.
+            return Results.Conflict(new DuplicateMemberConflictResponse(
+                "E-Mail-Adresse bereits vergeben",
+                ex.ExistingMemberId));
+        }
 
         // REQ-011: Log member creation
         var member = await memberRepository.GetByIdAsync(memberId, ct);
@@ -285,9 +318,15 @@ public static class MemberEndpoints
             return Results.Forbid();
         }
 
-        // Check for duplicate email if changed
-        if (request.Email != member.Email && await memberRepository.EmailExistsAsync(request.Email, ct))
-            return Results.Conflict(new { Error = "E-Mail-Adresse bereits vergeben" });
+        // REQ-018 (E2.S2): normalized-email duplicate guard. Symmetric with CreateMember.
+        if (request.Email != member.Email)
+        {
+            var existingDuplicate = await memberRepository.GetByEmailNormalizedAsync(request.Email, ct);
+            if (existingDuplicate is not null && existingDuplicate.Id != member.Id)
+                return Results.Conflict(new DuplicateMemberConflictResponse(
+                    "E-Mail-Adresse bereits vergeben",
+                    existingDuplicate.Id));
+        }
 
         var address = Address.Create(
             request.Street,
@@ -471,6 +510,143 @@ public static class MemberEndpoints
         return Results.Ok(candidates);
     }
 
+    /// <summary>
+    /// REQ-018 (E2.S4): cross-table duplicate-groups scan endpoint. Vorstand-only read.
+    /// </summary>
+    private static async Task<IResult> GetDuplicateGroups(
+        [AsParameters] GetDuplicateGroupsRequest request,
+        ISender sender,
+        CancellationToken ct)
+    {
+        var query = new FindDuplicateGroupsQuery(
+            Page: request.Page,
+            PageSize: request.PageSize,
+            MinTier: request.MinTier);
+
+        var result = await sender.Send(query, ct);
+        return Results.Ok(result);
+    }
+
+    /// <summary>
+    /// REQ-018 (E2.S4): dismiss a duplicate-candidate pair as a false positive.
+    /// Vorstand-only write; emits LogAccessGranted audit row.
+    /// </summary>
+    private static async Task<IResult> DismissDuplicateCandidate(
+        [FromBody] DismissDuplicateCandidateRequest request,
+        HttpContext httpContext,
+        ISender sender,
+        ISecurityAuditLogger auditLogger,
+        CancellationToken ct)
+    {
+        // REQ-018 review patch: fail-fast on missing `sub` claim so the validator never sees Guid.Empty.
+        var dismissedByUserId = GetKeycloakUserId(httpContext);
+        if (dismissedByUserId is null)
+            return Results.Unauthorized();
+
+        var command = new DismissDuplicateCandidateCommand(
+            request.MemberA,
+            request.MemberB,
+            request.Reason,
+            dismissedByUserId.Value);
+
+        try
+        {
+            var result = await sender.Send(command, ct);
+
+            auditLogger.LogAccessGranted(
+                httpContext.User,
+                "Member",
+                "DuplicateDismiss",
+                $"{result.SourceMemberId}|{result.TargetMemberId}",
+                new Dictionary<string, object>
+                {
+                    ["DismissalId"] = result.DismissalId,
+                    ["Created"] = result.Created,
+                    ["Reason"] = request.Reason,
+                });
+
+            // Idempotent: 200 OK with the existing row when already-dismissed, 201 Created otherwise.
+            return result.Created
+                ? Results.Created($"/api/v1/members/duplicate-dismissals/{result.DismissalId}", result)
+                : Results.Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return Results.NotFound(new { Error = ex.Message });
+        }
+    }
+
+    private static async Task<IResult> MergeMember(
+        Guid sourceId,
+        Guid targetId,
+        [FromBody] MergeMemberRequest request,
+        HttpContext httpContext,
+        ISender sender,
+        IabConnect.Application.Authorization.IAuthorizationService authService,
+        ISecurityAuditLogger auditLogger,
+        CancellationToken ct)
+    {
+        // REQ-018 (E2.S3): admin-only destructive consolidation. Policy short-circuits to 403
+        // automatically when the user lacks RequireAdmin; the explicit permission check below is
+        // a defense-in-depth audit-log signal for "user with admin role but no member:merge".
+        if (!authService.HasPermission(httpContext.User, Permission.MemberMerge))
+        {
+            auditLogger.LogAccessDenied(
+                httpContext.User,
+                "Member",
+                "Merge",
+                "Missing member:merge permission",
+                sourceId.ToString(),
+                new Dictionary<string, object> { ["TargetId"] = targetId });
+            return Results.Forbid();
+        }
+
+        // REQ-018 review patch: fail-fast on missing `sub` claim or username so the audit row never
+        // attributes a merge to Guid.Empty / "unknown".
+        var adminUserId = GetKeycloakUserId(httpContext);
+        if (adminUserId is null)
+            return Results.Unauthorized();
+        var adminUserName = httpContext.User.FindFirst("preferred_username")?.Value
+            ?? httpContext.User.Identity?.Name;
+        if (string.IsNullOrWhiteSpace(adminUserName))
+            return Results.Unauthorized();
+
+        var command = new MergeMembersCommand(
+            sourceId,
+            targetId,
+            request.Reason,
+            request.ConfirmFinanceImpact,
+            request.ConfirmKeycloakImpact,
+            adminUserId.Value,
+            adminUserName);
+
+        try
+        {
+            var result = await sender.Send(command, ct);
+
+            auditLogger.LogAccessGranted(
+                httpContext.User,
+                "Member",
+                "Merge",
+                targetId.ToString(),
+                new Dictionary<string, object>
+                {
+                    ["SourceId"] = sourceId,
+                    ["MovedReferences"] = result.MovedReferences,
+                });
+
+            return Results.Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return Results.NotFound(new { Error = ex.Message });
+        }
+        catch (UnsafeMergeException ex)
+        {
+            return Results.Conflict(new { Reasons = ex.Reasons });
+        }
+    }
+
     private static async Task<IResult> GetMemberStatistics(
         ApplicationDbContext dbContext,
         CancellationToken ct)
@@ -638,6 +814,29 @@ public record GetMemberDuplicatesRequest(
     string? PostalCode = null,
     Guid? ExcludeMemberId = null);
 
+/// <summary>
+/// REQ-018 (E2.S4): query-string parameters for <c>GET /api/v1/members/duplicate-groups</c>.
+/// </summary>
+public record GetDuplicateGroupsRequest(
+    int Page = 1,
+    int PageSize = 20,
+    IabConnect.Application.Members.Duplicates.MatchTier? MinTier = null);
+
+/// <summary>
+/// REQ-018 (E2.S4): body for <c>POST /api/v1/members/duplicate-dismissals</c>.
+/// </summary>
+public record DismissDuplicateCandidateRequest(
+    Guid MemberA,
+    Guid MemberB,
+    string Reason);
+
+/// <summary>
+/// REQ-018 (E2.S2): 409 Conflict body returned by member create/update when the submitted
+/// email normalizes to an existing member. <see cref="ExistingMemberId"/> lets the UI deep-link
+/// to the existing record from the duplicate-warning panel.
+/// </summary>
+public record DuplicateMemberConflictResponse(string Error, Guid ExistingMemberId);
+
 public record CreateMemberRequest(
     string FirstName,
     string LastName,
@@ -667,6 +866,17 @@ public record UpdateOwnProfileRequest(
     string PostalCode,
     string? Country,
     string? Phone);
+
+/// <summary>
+/// REQ-018 (E2.S3): request body for <c>POST /api/v1/members/{sourceId}/merge-into/{targetId}</c>.
+/// <c>ConfirmFinanceImpact</c> acknowledges that the source's draft invoices will be reassigned.
+/// <c>ConfirmKeycloakImpact</c> acknowledges that the source's Keycloak link will be cleared
+/// (only required when both source and target have a Keycloak link).
+/// </summary>
+public record MergeMemberRequest(
+    string Reason,
+    bool ConfirmFinanceImpact,
+    bool ConfirmKeycloakImpact);
 
 public record UpdateStatusRequest(MembershipStatus Status);
 

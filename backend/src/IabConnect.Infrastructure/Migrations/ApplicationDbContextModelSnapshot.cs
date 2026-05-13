@@ -3532,6 +3532,46 @@ namespace IabConnect.Infrastructure.Migrations
                     b.ToTable("transactions", (string)null);
                 });
 
+            modelBuilder.Entity("IabConnect.Domain.Members.DuplicateCandidateDismissal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("DismissedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("dismissed_at");
+
+                    b.Property<Guid>("DismissedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("dismissed_by_user_id");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reason");
+
+                    b.Property<Guid>("SourceMemberId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_member_id");
+
+                    b.Property<Guid>("TargetMemberId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("target_member_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TargetMemberId");
+
+                    b.HasIndex("SourceMemberId", "TargetMemberId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_duplicate_candidate_dismissals_pair");
+
+                    b.ToTable("duplicate_candidate_dismissals", (string)null);
+                });
+
             modelBuilder.Entity("IabConnect.Domain.Members.Member", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3593,6 +3633,10 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("membership_type");
 
+                    b.Property<Guid?>("MergedIntoMemberId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("merged_into_member_id");
+
                     b.Property<string>("Phone")
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)")
@@ -3622,6 +3666,10 @@ namespace IabConnect.Infrastructure.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_members_keycloak_user_id")
                         .HasFilter("keycloak_user_id IS NOT NULL");
+
+                    b.HasIndex("MergedIntoMemberId")
+                        .HasDatabaseName("ix_members_merged_into_member_id")
+                        .HasFilter("merged_into_member_id IS NOT NULL");
 
                     b.ToTable("members", (string)null);
                 });
@@ -4583,8 +4631,28 @@ namespace IabConnect.Infrastructure.Migrations
                     b.Navigation("Receipt");
                 });
 
+            modelBuilder.Entity("IabConnect.Domain.Members.DuplicateCandidateDismissal", b =>
+                {
+                    b.HasOne("IabConnect.Domain.Members.Member", null)
+                        .WithMany()
+                        .HasForeignKey("SourceMemberId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("IabConnect.Domain.Members.Member", null)
+                        .WithMany()
+                        .HasForeignKey("TargetMemberId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("IabConnect.Domain.Members.Member", b =>
                 {
+                    b.HasOne("IabConnect.Domain.Members.Member", null)
+                        .WithMany()
+                        .HasForeignKey("MergedIntoMemberId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.OwnsOne("IabConnect.Domain.Members.Address", "Address", b1 =>
                         {
                             b1.Property<Guid>("MemberId")
