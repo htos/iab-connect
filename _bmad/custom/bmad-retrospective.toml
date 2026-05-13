@@ -1,0 +1,8 @@
+[workflow]
+
+persistent_facts = [
+  "PROJECT WORKFLOW POLICY: Retrospective runs at the EPIC boundary, immediately after bmad-code-review approves the epic. Scope = all stories of the current epic.",
+  "After retrospective completes: flip the epic status from 'in-progress' to 'done' in _bmad-output/implementation-artifacts/sprint-status.yaml, then recommend bmad-create-story for the FIRST story of the NEXT epic in sprint order (continuing the iterative loop until all epics are done).",
+]
+
+on_complete = "After the retrospective doc is saved and sprint-status updated: (1) flip current epic from 'in-progress' to 'done' in _bmad-output/implementation-artifacts/sprint-status.yaml; (2) identify the next epic with status='in-progress' that has 'ready-for-dev' stories; (3) recommend bmad-create-story for the first story of that next epic."

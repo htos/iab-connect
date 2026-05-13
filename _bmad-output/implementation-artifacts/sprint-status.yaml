@@ -34,7 +34,7 @@
 # - Each story must go through bmad-create-story and validation before development.
 
 generated: "2026-05-12"
-last_updated: "2026-05-13 (E2.S1 review)"
+last_updated: "2026-05-13 (Epic-2 closed: retrospective complete; epic-2-retro-2026-05-13.md saved; 6 action items A6-A11 captured; A4/A5 from Epic 1 retired in favour of multi-layer boundary review + developer-judgment mid-epic escalation; 26 deferred items inventoried; Epic 3 ready — first ready-for-dev story = e3-s1-add-event-check-in-roster-and-export)"
 # 2026-05-13: Epic-Close-Gate after clearing all 11 [Review][Patch] findings per
 # sprint-change-proposal-2026-05-13.md. E1.S1-S4 flipped review -> done.
 # E1.S5 deferred -- pending provider credentials/scopes/whitelist decisions.
@@ -62,12 +62,12 @@ development_status:
   e1-s5-add-social-and-enterprise-identity-providers: deferred
   epic-1-retrospective: done
 
-  epic-2: in-progress
-  e2-s1-add-duplicate-candidate-detection: review
-  e2-s2-show-duplicate-warnings-in-member-create-edit: ready-for-dev
-  e2-s3-implement-safe-member-merge: ready-for-dev
-  e2-s4-add-duplicate-review-ui: ready-for-dev
-  epic-2-retrospective: optional
+  epic-2: done
+  e2-s1-add-duplicate-candidate-detection: done
+  e2-s2-show-duplicate-warnings-in-member-create-edit: done
+  e2-s3-implement-safe-member-merge: done
+  e2-s4-add-duplicate-review-ui: done
+  epic-2-retrospective: done
 
   epic-3: in-progress
   e3-s1-add-event-check-in-roster-and-export: ready-for-dev

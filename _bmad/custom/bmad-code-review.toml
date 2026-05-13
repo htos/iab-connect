@@ -1,0 +1,8 @@
+[workflow]
+
+persistent_facts = [
+  "PROJECT WORKFLOW POLICY: On this project, code review runs at the EPIC boundary (over the full epic diff), not per story. Treat the input scope as the full set of stories implemented since the start of the current epic.",
+  "After review completion: if APPROVED → recommend bmad-retrospective. If FINDINGS need fixes → route specific findings back to bmad-dev-story for the affected stories, then return here for re-review.",
+]
+
+on_complete = "After review findings are presented and sprint-status is synced: if review approved → recommend bmad-retrospective. If findings require fixes → list them with story-scope and recommend bmad-dev-story for the affected stories, then return to bmad-code-review."

@@ -1,0 +1,9 @@
+[workflow]
+
+persistent_facts = [
+  "PROJECT WORKFLOW POLICY (overrides canonical BMad routing): This project uses a HYBRID workflow. After this story's implementation and tests pass, set the story status to 'review' in _bmad-output/implementation-artifacts/sprint-status.yaml and recommend the next bmad-create-story in the sprint plan order. DO NOT recommend bmad-code-review per story.",
+  "EPIC BOUNDARY: Only when ALL stories of the current epic are in status 'review' should you recommend bmad-code-review (over the full epic diff) followed by bmad-retrospective. After retrospective completes, flip all stories and the epic to 'done', then begin the next epic's story cycle starting with bmad-create-story.",
+  "If the user explicitly asks for per-story code review, honor that request — the hybrid policy is the default, not a hard gate.",
+]
+
+on_complete = "After story implementation completes and tests are green: (1) flip story status to 'review' in _bmad-output/implementation-artifacts/sprint-status.yaml; (2) check if all other stories in this epic are in status 'review' or 'done'; (3) if YES → recommend bmad-code-review (epic-scope diff) as the next step; (4) if NO → recommend bmad-create-story for the next ready-for-dev story in sprint order. NEVER recommend bmad-code-review per story unless explicitly requested."

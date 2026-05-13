@@ -1,6 +1,6 @@
 # Story E2.S1: Add Duplicate Candidate Detection
 
-Status: review
+Status: done
 
 ## Story
 
@@ -51,6 +51,20 @@ Requirement: **REQ-018** (Dubletten-Erkennung — Mitglieder/CRM, Priority Shoul
   - [x] `dotnet test` from `backend` is green locally (1485 / 1485 passed).
   - [x] No `dotnet build` warnings introduced (0 warnings, 0 errors).
   - [x] Flip story status `in-progress → review`.
+
+### Review Findings
+
+_From `bmad-code-review` over Epic-2 boundary diff (2026-05-13) — Blind Hunter + Edge Case Hunter + Acceptance Auditor layers._
+
+**Patch**
+
+- [x] [Review][Patch] Escape LIKE wildcards in normalized-email lookup — `BuildNormalizedEmailPatterns` passes the raw normalized email into `EF.Functions.ILike` without escaping `_` `%` `\`. Input like `john_doe@example.com` matches `johnXdoe@example.com`; legitimate registrations are blocked and the endpoint becomes a duplicate-enumeration oracle. Escape pattern chars or use `EF.Functions.Collate`/equality on a normalised column. [`backend/src/IabConnect.Infrastructure/Persistence/Repositories/MemberRepository.cs:11941-11955`]
+- [x] [Review][Patch] Likely-bucket builds an oversized `firstName|lastName|<empty>` bucket when postal is empty — members without address share one huge key, causing wasted O(n²) work and false-positive groups. Skip the bucket when postal is empty. [`backend/src/IabConnect.Application/Members/Queries/FindDuplicateGroupsQueryHandler.cs:1162-1163`]
+
+**Defer**
+
+- [x] [Review][Defer] Phone normalization for national-format / trunk-prefix variants [`backend/src/IabConnect.Application/Members/Duplicates/DuplicateMatcher.cs:853-864`] — Story Decision Log explicitly fixed Option B (digits-only) for MVP; known limitation that Swiss `079…` vs `+4179…` (and IN equivalents) don't match by phone alone. Revisit when localised matching becomes a requirement.
+- [x] [Review][Defer] Street prefix `StartsWith` over-matches short tokens (e.g. `BAHN` vs `BAHNHOFSTR`) [`backend/src/IabConnect.Application/Members/Duplicates/DuplicateMatcher.cs:940-948`] — deferred, matcher-tuning task; add min-length 4–5 or Levenshtein in a follow-up.
 
 ## Dev Notes
 
