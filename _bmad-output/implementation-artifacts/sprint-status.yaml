@@ -35,6 +35,10 @@
 
 generated: "2026-05-12"
 last_updated: "2026-05-13"
+# 2026-05-13: Epic-Close-Gate after clearing all 11 [Review][Patch] findings per
+# sprint-change-proposal-2026-05-13.md. E1.S1-S4 flipped review -> done.
+# E1.S5 remains deferred (provider credentials/scopes/whitelist decisions pending).
+# Epic-1 stays in-progress until S5 is decided.
 project: iab-connect
 project_key: NOKEY
 tracking_system: file-system
@@ -44,12 +48,12 @@ readiness_report: "_bmad-output/planning-artifacts/implementation-readiness-repo
 
 development_status:
   epic-1: in-progress
-  e1-s1-configure-role-based-mfa-policy: review
-  e1-s2-add-admin-mfa-support-operations: review
-  e1-s3-add-session-and-device-visibility: review
-  e1-s4-add-session-revocation: review
+  e1-s1-configure-role-based-mfa-policy: done
+  e1-s2-add-admin-mfa-support-operations: done
+  e1-s3-add-session-and-device-visibility: done
+  e1-s4-add-session-revocation: done
   e1-s5-add-social-and-enterprise-identity-providers: ready-for-dev
-  epic-1-retrospective: optional
+  epic-1-retrospective: done
 
   epic-2: in-progress
   e2-s1-add-duplicate-candidate-detection: ready-for-dev

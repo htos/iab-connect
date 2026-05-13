@@ -182,6 +182,9 @@ export default function ProfileSecurityPage() {
                           </span>
                         )}
                       </dd>
+                      <p className="mt-1 text-xs text-gray-500 italic">
+                        {t("profileSecurity.ipPrivacyNote")}
+                      </p>
                     </div>
                     <div>
                       <dt className="text-xs font-medium text-gray-500 uppercase">

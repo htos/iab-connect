@@ -11,6 +11,9 @@ namespace IabConnect.Infrastructure.Tests.Identity;
 
 public sealed class KeycloakAdminServiceRevokeSessionTests
 {
+    private const string Session1Id = "cccccccc-cccc-cccc-cccc-cccccccccccc";
+    private const string MissingSessionId = "dddddddd-dddd-dddd-dddd-dddddddddddd";
+
     [Fact]
     public async Task RevokeSessionAsync_SendsDeleteToKeycloakSessionsEndpoint()
     {
@@ -25,7 +28,7 @@ public sealed class KeycloakAdminServiceRevokeSessionTests
             }
 
             if (request.Method == HttpMethod.Delete
-                && path.EndsWith("/admin/realms/iabconnect/sessions/session-1", StringComparison.Ordinal))
+                && path.EndsWith($"/admin/realms/iabconnect/sessions/{Session1Id}", StringComparison.Ordinal))
             {
                 capturedDelete = request;
                 return new HttpResponseMessage(HttpStatusCode.NoContent);
@@ -36,7 +39,7 @@ public sealed class KeycloakAdminServiceRevokeSessionTests
 
         var sut = CreateService(handler);
 
-        await sut.RevokeSessionAsync("session-1", TestContext.Current.CancellationToken);
+        await sut.RevokeSessionAsync(Session1Id, TestContext.Current.CancellationToken);
 
         capturedDelete.Should().NotBeNull();
         capturedDelete!.Method.Should().Be(HttpMethod.Delete);
@@ -57,7 +60,7 @@ public sealed class KeycloakAdminServiceRevokeSessionTests
             }
 
             if (request.Method == HttpMethod.Delete
-                && path.EndsWith("/admin/realms/iabconnect/sessions/missing-session", StringComparison.Ordinal))
+                && path.EndsWith($"/admin/realms/iabconnect/sessions/{MissingSessionId}", StringComparison.Ordinal))
             {
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             }
@@ -67,9 +70,27 @@ public sealed class KeycloakAdminServiceRevokeSessionTests
 
         var sut = CreateService(handler);
 
-        var act = () => sut.RevokeSessionAsync("missing-session", TestContext.Current.CancellationToken);
+        var act = () => sut.RevokeSessionAsync(MissingSessionId, TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<KeycloakNotFoundException>();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("not-a-guid")]
+    [InlineData("session-1")]
+    [InlineData("../../etc/passwd")]
+    public async Task RevokeSessionAsync_WithNonGuidSessionId_ThrowsArgumentException(string invalidSessionId)
+    {
+        // P1: sessionId must be a valid GUID; reject before issuing any Keycloak request.
+        var handler = new RecordingHandler(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
+        var sut = CreateService(handler);
+
+        var act = () => sut.RevokeSessionAsync(invalidSessionId, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*GUID*");
     }
 
     private static KeycloakAdminService CreateService(HttpMessageHandler handler)

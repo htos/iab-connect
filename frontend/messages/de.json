@@ -2319,6 +2319,8 @@
     "revokeConfirm": "Diese Sitzung wirklich beenden? Du musst dich an diesem Gerät neu anmelden.",
     "revokeConfirmAdmin": "Diese Sitzung des Nutzers wirklich beenden? Der Nutzer muss sich an diesem Gerät neu anmelden.",
     "revokeSuccess": "Sitzung wurde beendet.",
-    "revokeError": "Sitzung konnte nicht beendet werden. Bitte später erneut versuchen."
+    "revokeError": "Sitzung konnte nicht beendet werden. Bitte später erneut versuchen.",
+    "ipPrivacyNote": "Diese Information ist nur für dich sichtbar.",
+    "ipPrivacyNoteAdmin": "Diese IP-Adresse wird nur für Administrations- und Sicherheitszwecke angezeigt."
   }
 }

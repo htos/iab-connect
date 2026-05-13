@@ -1,6 +1,6 @@
 # Story E1.S4: Add Session Revocation
 
-Status: review
+Status: done
 
 ## Story
 
@@ -34,6 +34,24 @@ so that compromised or stale access can be terminated.
   - [x] Add frontend tests for forms/rendering/permission states where UI is touched.
   - [x] Document manual validation for browser, Keycloak, provider, event-day, MailHog, finance, accessibility, or webhook behavior as applicable.
 - [x] Update operational docs or requirement evidence when behavior changes (AC: all)
+
+### Review Findings
+
+- [x] [Review][Patch] Path traversal risk: sessionId/userId interpolated into Keycloak Admin API URLs without UUID validation [`backend/src/IabConnect.Infrastructure/Identity/KeycloakAdminService.cs`] — Addressed in uncommitted P1 fix: `Guid.TryParse` validation added to `GetUserSessionsAsync` and `RevokeSessionAsync`.
+- [x] [Review][Patch] Empty/whitespace sessionId not rejected before Keycloak API call [`backend/src/IabConnect.Api/Endpoints/IdentityEndpoints.cs`] — Addressed in uncommitted P2 fix: returns 400 Problem for empty/non-GUID sessionId.
+- [x] [Review][Patch] Duplicate LogAccessGranted audit entries on concurrent session revocation [`backend/src/IabConnect.Api/Endpoints/IdentityEndpoints.cs`] — Addressed in uncommitted P3 fix: `LogAccessGranted` now emitted inside the `KeycloakNotFoundException` catch on the user self-revoke path (idempotent audit). Note: admin path still missing — see Epic Boundary Review below.
+- [x] [Review][Patch] Wrong logger category injected in IdentityEndpoints handlers [`backend/src/IabConnect.Api/Endpoints/IdentityEndpoints.cs`] — Resolved 2026-05-13. Replaced `ILogger<Program>` with `ILogger<IdentityEndpointsLog>` via a new marker class `IdentityEndpointsLog` (necessary because static classes cannot be used as `TCategoryName` generic argument). Logger category now resolves to `IabConnect.Api.Endpoints.IdentityEndpointsLog`.
+- [x] [Review][Patch] Missing Produces(500) on all new session/MFA endpoints [`backend/src/IabConnect.Api/Endpoints/IdentityEndpoints.cs`, `backend/src/IabConnect.Api/Endpoints/UserEndpoints.cs`] — Resolved 2026-05-13. Identity endpoints already had `Produces(500)` (uncommitted); added `.Produces(StatusCodes.Status500InternalServerError)` to admin `GetUserSessions`, `RevokeUserSession`, and `ResetUserMfa` in UserEndpoints.
+
+#### Epic Boundary Review (2026-05-13)
+
+- [x] [Review][Patch] P1 GUID validation breaks all 5 existing session/revoke tests [`backend/tests/IabConnect.Infrastructure.Tests/Identity/KeycloakAdminServiceSessionsTests.cs`, `backend/tests/IabConnect.Infrastructure.Tests/Identity/KeycloakAdminServiceRevokeSessionTests.cs`] — Resolved 2026-05-13. Replaced non-GUID literals with lowercase UUID constants (`User1Id`, `User2Id`, `MissingUserId`, `Session1Id`, `MissingSessionId`). Added two new `[Theory]` cases (`GetUserSessionsAsync_WithNonGuidUserId_ThrowsArgumentException`, `RevokeSessionAsync_WithNonGuidSessionId_ThrowsArgumentException`) with 5 inline rows each to lock in the validation contract. All 15 tests pass.
+- [x] [Review][Patch] Admin `RevokeUserSession` missing idempotent audit on `KeycloakNotFoundException` catch [`backend/src/IabConnect.Api/Endpoints/UserEndpoints.cs`] — Resolved 2026-05-13. Added `auditLogger.LogAccessGranted("Session", "RevokeForUser", sessionId, {TargetUserId, Reason="session-already-gone"})` inside the `catch (KeycloakNotFoundException)` branch. AC4 (admin revocation always emits an audit event) now holds on every code path.
+- [x] [Review][Defer] TOCTOU race on session ownership check — deferred, Keycloak session UUIDs are not guessable; ownership gate and delete are not atomic but race window is negligible in practice
+- [x] [Review][Defer] Race: user deleted between `GetUserByIdAsync` and `GetUserSessionsAsync` checks — deferred, acceptable race; audit records the correct reason for each branch
+- [x] [Review][Defer] Double Keycloak API calls per revoke (user-existence + session-ownership) — deferred, pre-existing design decision; user-existence pre-check is redundant but harmless
+- [x] [Review][Defer] Non-UUID `sub` claim in token causes `ArgumentException` → 500 — deferred, JWT sub is always a UUID from Keycloak; exploiting this requires a token that passes signature verification
+- [x] [Review][Defer] Admin `RevokeUserSession` returns 404 for both user-not-found and session-not-found cases — deferred, common REST pattern; audit log distinguishes the cases
 
 ## Dev Notes
 
@@ -169,7 +187,23 @@ Claude Opus 4.7 (1M context)
 - `npm run typecheck` — passed, 0 errors.
 - `dotnet test` (full backend suite, regression check) — Application 1123/1123, Api 12/12, Infrastructure 281/281. Total: 1416 passed, 0 failed, 0 skipped.
 
+#### 2026-05-13 Patch pass (S4.1–S4.4)
+
+- `dotnet build` — succeeded, 0 warnings, 0 errors.
+- `dotnet test tests/IabConnect.Infrastructure.Tests/IabConnect.Infrastructure.Tests.csproj --filter "FullyQualifiedName~KeycloakAdminServiceSessionsTests|FullyQualifiedName~KeycloakAdminServiceRevokeSessionTests"` — passed, 15 tests (5 original GUID-fixed + 10 new ArgumentException theory cases).
+- `dotnet test tests/IabConnect.Api.Tests/IabConnect.Api.Tests.csproj --filter "FullyQualifiedName~UserEndpointMetadataTests"` — passed, 3 tests.
+- `dotnet test` (full backend regression) — Application 1123/1123, Api 12/12, Infrastructure 291/291. Total: **1426 passed, 0 failed, 0 skipped**.
+
 ### Completion Notes List
+
+#### 2026-05-13 — Epic Boundary patch pass (S4.1–S4.4)
+
+- **S4.1 Logger category:** `IdentityEndpoints` is a static class and cannot serve as a `TCategoryName` for `ILogger<T>`. Introduced a `public sealed class IdentityEndpointsLog` marker in the same file so that both `GetCurrentUserSessions` and `RevokeCurrentUserSession` resolve to category `IabConnect.Api.Endpoints.IdentityEndpointsLog` instead of the previous `ILogger<Program>`. UserEndpoints (sibling static class) was deliberately left on the project-wide `ILogger<Program>` pattern; this finding was specific to IdentityEndpoints per the review wording.
+- **S4.2 OpenAPI 500 metadata:** Added `.Produces(StatusCodes.Status500InternalServerError)` to admin `GetUserSessions`, `RevokeUserSession`, and `ResetUserMfa` route registrations. Identity endpoints (`GetCurrentUserSessions`, `RevokeCurrentUserSession`) already had `Produces(500)` from the prior P-series patches.
+- **S4.3 GUID validation tests:** Switched `KeycloakAdminServiceSessionsTests` and `KeycloakAdminServiceRevokeSessionTests` to use canonical lowercase UUID constants. Added two `[Theory]` tests (`GetUserSessionsAsync_WithNonGuidUserId_ThrowsArgumentException` and `RevokeSessionAsync_WithNonGuidSessionId_ThrowsArgumentException`) with 5 inline rows each — empty, whitespace, plain string, prior literal (`"user-1"`, `"session-1"`), and a path-traversal attempt — to lock in the P1 contract. Net delta: 5 original tests restored (now passing) + 10 new theory cases = 15 total in those two files.
+- **S4.4 Admin idempotent audit:** Mirrored the P3 user-self-revoke pattern in admin `RevokeUserSession`. The `catch (KeycloakNotFoundException)` branch now emits `auditLogger.LogAccessGranted("Session", "RevokeForUser", sessionId, {TargetUserId, Reason="session-already-gone"})` before returning `TypedResults.NotFound()`. AC4 ("admin revocation writes an audit/security event") now holds on every branch — success, target-user-missing, session-not-found, and the disappeared-between-check-and-delete race.
+
+#### Original implementation (2026-05-12)
 
 - Extended `IKeycloakAdminService` with `RevokeSessionAsync(sessionId, ct)` calling `DELETE /admin/realms/{realm}/sessions/{sessionId}`. 404 from Keycloak surfaces as `KeycloakNotFoundException`.
 - Added own-session-revoke endpoint `DELETE /api/v1/identity/sessions/{sessionId}` (REQ-010, AC1, AC3) in `IdentityEndpoints`. **Security-critical:** the handler first fetches the caller's own sessions and verifies the requested `sessionId` is in that list before forwarding to Keycloak. Without this ownership gate, any authenticated user could revoke arbitrary sessions by guessing IDs — Keycloak's Admin API does not check who is calling. Failed ownership check → `LogAccessDenied` + 404.
@@ -191,9 +225,10 @@ Claude Opus 4.7 (1M context)
 
 Backend:
 - `backend/src/IabConnect.Infrastructure/Identity/KeycloakAdminService.cs`
-- `backend/src/IabConnect.Api/Endpoints/IdentityEndpoints.cs`
-- `backend/src/IabConnect.Api/Endpoints/UserEndpoints.cs`
-- `backend/tests/IabConnect.Infrastructure.Tests/Identity/KeycloakAdminServiceRevokeSessionTests.cs`
+- `backend/src/IabConnect.Api/Endpoints/IdentityEndpoints.cs` (S4.1 marker class + logger category)
+- `backend/src/IabConnect.Api/Endpoints/UserEndpoints.cs` (S4.2 Produces(500), S4.4 idempotent audit)
+- `backend/tests/IabConnect.Infrastructure.Tests/Identity/KeycloakAdminServiceSessionsTests.cs` (S4.3 GUID fix + new theory)
+- `backend/tests/IabConnect.Infrastructure.Tests/Identity/KeycloakAdminServiceRevokeSessionTests.cs` (S4.3 GUID fix + new theory)
 - `backend/tests/IabConnect.Api.Tests/UserEndpointMetadataTests.cs`
 
 Frontend:
@@ -213,3 +248,4 @@ Docs / Status:
 
 - 2026-05-12: Story created from multi-epic sprint plan and marked ready for development.
 - 2026-05-12: Implemented REQ-010 session revocation. Added `KeycloakAdminService.RevokeSessionAsync`, own-revoke endpoint `DELETE /api/v1/identity/sessions/{sessionId}` with server-side ownership gate, admin-revoke endpoint `DELETE /api/v1/users/{userId}/sessions/{sessionId}` (RequireAdmin + audit), frontend revoke buttons with confirmation on both `/profile/security` and `/admin/users/[id]/sessions`, i18n keys for confirm/success/error/timeouts, tests (2 infra + 1 endpoint metadata + 4 vitest), and `docs/05_security_privacy.md` revocation section with documented idle/max timeouts. Status moved to `review` per hybrid workflow (CR + ER at Epic 1 boundary).
+- 2026-05-13: Cleared 4 open `[Review][Patch]` items from Epic Boundary Review per `sprint-change-proposal-2026-05-13.md`. S4.1 logger category fix via `IdentityEndpointsLog` marker; S4.2 `Produces(500)` on admin `GetUserSessions`, `RevokeUserSession`, `ResetUserMfa`; S4.3 5 broken tests fixed with valid GUIDs + 10 new ArgumentException theory cases; S4.4 idempotent audit added to admin `RevokeUserSession` `KeycloakNotFoundException` catch. Full backend suite: 1426/1426 passed (was 1416 + 10 new theory cases).

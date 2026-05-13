@@ -1,10 +1,15 @@
 using System.Security.Claims;
 using IabConnect.Application.Authorization;
 using IabConnect.Infrastructure.Identity;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace IabConnect.Api.Endpoints;
+
+/// <summary>
+/// Logger category marker for <see cref="IdentityEndpoints"/>. Required because
+/// static classes cannot be used as the <c>TCategoryName</c> for <c>ILogger&lt;T&gt;</c>.
+/// </summary>
+public sealed class IdentityEndpointsLog { }
 
 /// <summary>
 /// REQ-001: Identity and authentication endpoints
@@ -73,7 +78,8 @@ public static class IdentityEndpoints
             .WithName("GetCurrentUserSessions")
             .WithDescription("REQ-010: Gibt die aktiven Keycloak-Sessions des aktuell angemeldeten Benutzers zurück")
             .Produces<SessionListResponse>(200)
-            .Produces(401);
+            .Produces(401)
+            .Produces(StatusCodes.Status500InternalServerError);
 
         // REQ-010: Revoke one of the current user's own Keycloak sessions
         identity.MapDelete("/sessions/{sessionId}", RevokeCurrentUserSession)
@@ -81,8 +87,10 @@ public static class IdentityEndpoints
             .WithName("RevokeCurrentUserSession")
             .WithDescription("REQ-010: Beendet eine eigene Keycloak-Session des aktuell angemeldeten Benutzers")
             .Produces(204)
+            .Produces(StatusCodes.Status400BadRequest)
             .Produces(401)
-            .Produces(404);
+            .Produces(404)
+            .Produces(StatusCodes.Status500InternalServerError);
 
         return group;
     }
@@ -172,7 +180,7 @@ public static class IdentityEndpoints
     private static async Task<Results<Ok<SessionListResponse>, UnauthorizedHttpResult, ProblemHttpResult>> GetCurrentUserSessions(
         ClaimsPrincipal user,
         IKeycloakAdminService keycloakAdmin,
-        ILogger<KeycloakAdminService> logger,
+        ILogger<IdentityEndpointsLog> logger,
         CancellationToken ct)
     {
         var userId = user.FindFirst("sub")?.Value
@@ -186,16 +194,20 @@ public static class IdentityEndpoints
         try
         {
             var sessions = await keycloakAdmin.GetUserSessionsAsync(userId, ct);
+            // P6: skip sessions with null/empty Id to avoid returning unrevocable entries
             var response = new SessionListResponse
             {
-                Sessions = sessions.Select(SessionMapper.ToDto).ToList()
+                Sessions = sessions
+                    .Where(s => !string.IsNullOrEmpty(s.Id))
+                    .Select(SessionMapper.ToDto)
+                    .ToList()
             };
             return TypedResults.Ok(response);
         }
         catch (KeycloakNotFoundException)
         {
             // User exists in token but not in Keycloak Admin view — return empty list rather than 500.
-            return TypedResults.Ok(new SessionListResponse { Sessions = new List<SessionDto>() });
+            return TypedResults.Ok(new SessionListResponse { Sessions = [] });
         }
         catch (Exception ex)
         {
@@ -213,9 +225,18 @@ public static class IdentityEndpoints
         HttpContext httpContext,
         IKeycloakAdminService keycloakAdmin,
         ISecurityAuditLogger auditLogger,
-        ILogger<KeycloakAdminService> logger,
+        ILogger<IdentityEndpointsLog> logger,
         CancellationToken ct)
     {
+        // P2: reject empty or non-GUID sessionId before making any Keycloak call
+        if (string.IsNullOrWhiteSpace(sessionId) || !Guid.TryParse(sessionId, out _))
+        {
+            return TypedResults.Problem(
+                detail: "Session ID must be a valid identifier.",
+                statusCode: 400,
+                title: "Invalid request");
+        }
+
         var userId = user.FindFirst("sub")?.Value
             ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
@@ -244,17 +265,13 @@ public static class IdentityEndpoints
 
             await keycloakAdmin.RevokeSessionAsync(sessionId, ct);
 
-            auditLogger.LogAccessGranted(
-                user,
-                "Session",
-                "RevokeOwn",
-                sessionId);
-
+            auditLogger.LogAccessGranted(user, "Session", "RevokeOwn", sessionId);
             return TypedResults.NoContent();
         }
         catch (KeycloakNotFoundException)
         {
-            // Session disappeared between the ownership check and the delete — treat as success.
+            // P3: session disappeared between ownership check and delete — idempotent success, still audit it
+            auditLogger.LogAccessGranted(user, "Session", "RevokeOwn", sessionId);
             return TypedResults.NoContent();
         }
         catch (Exception ex)
@@ -378,9 +395,38 @@ public record SessionListResponse
     public required List<SessionDto> Sessions { get; init; }
 }
 
-internal static class SessionMapper
+/// <summary>
+/// Maps Keycloak's <see cref="KeycloakSessionRepresentation"/> to the public <see cref="SessionDto"/>.
+/// Filters out internal/system Keycloak client names so they are never surfaced to users or admins.
+/// </summary>
+public static class SessionMapper
 {
-    public static SessionDto ToDto(KeycloakSessionRepresentation session) => new()
+    /// <summary>
+    /// Default set of internal/system Keycloak client names that must never be surfaced.
+    /// These are the standard built-in Keycloak realm clients plus the IAB Connect admin-API client.
+    /// Comparisons are case-insensitive.
+    /// </summary>
+    public static readonly IReadOnlySet<string> DefaultInternalClientNames =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "admin-cli",
+            "security-admin-console",
+            "realm-management",
+            "account",
+            "account-console",
+            "broker",
+            "iabconnect-admin",
+        };
+
+    public static SessionDto ToDto(KeycloakSessionRepresentation session) =>
+        ToDto(session, DefaultInternalClientNames);
+
+    /// <summary>
+    /// Test-overridable variant accepting an explicit internal-clients filter set.
+    /// </summary>
+    public static SessionDto ToDto(
+        KeycloakSessionRepresentation session,
+        IReadOnlySet<string> internalClientNames) => new()
     {
         Id = session.Id ?? "",
         IpAddress = session.IpAddress,
@@ -390,6 +436,8 @@ internal static class SessionMapper
         LastAccess = session.LastAccess.HasValue
             ? DateTimeOffset.FromUnixTimeMilliseconds(session.LastAccess.Value).UtcDateTime
             : null,
-        Clients = session.Clients?.Values.Where(v => !string.IsNullOrWhiteSpace(v)).ToList() ?? new List<string>()
+        Clients = session.Clients?.Values
+            .Where(v => !string.IsNullOrWhiteSpace(v) && !internalClientNames.Contains(v))
+            .ToList() ?? new List<string>()
     };
 }

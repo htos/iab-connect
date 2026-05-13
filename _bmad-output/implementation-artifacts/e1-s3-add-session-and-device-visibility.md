@@ -1,6 +1,6 @@
 # Story E1.S3: Add Session and Device Visibility
 
-Status: review
+Status: done
 
 ## Story
 
@@ -34,6 +34,21 @@ so that I understand where my account is active.
   - [x] Add frontend tests for forms/rendering/permission states where UI is touched.
   - [x] Document manual validation for browser, Keycloak, provider, event-day, MailHog, finance, accessibility, or webhook behavior as applicable.
 - [x] Update operational docs or requirement evidence when behavior changes (AC: all)
+
+### Review Findings
+
+- [x] [Review][Patch] Filter internal Keycloak client names before exposing in SessionDto.Clients [`backend/src/IabConnect.Api/Endpoints/IdentityEndpoints.cs`] — Resolved 2026-05-13. Promoted `SessionMapper` to `public static` and added a default internal-client filter (`admin-cli`, `security-admin-console`, `realm-management`, `account`, `account-console`, `broker`, `iabconnect-admin`). Comparison is case-insensitive. Added overload accepting a custom `IReadOnlySet<string>` for testability/future configuration. Covered by 6 new tests in `backend/tests/IabConnect.Api.Tests/SessionMapperTests.cs`.
+- [x] [Review][Patch] Missing LogAccessDenied in GetUserSessions KeycloakNotFoundException catch path [`backend/src/IabConnect.Api/Endpoints/UserEndpoints.cs`] — Resolved 2026-05-13. Added `auditLogger.LogAccessDenied("User", "ViewSessions", "User not found in Keycloak", userId)` inside the `catch (KeycloakNotFoundException)` branch — consistent with the user-missing branch immediately above.
+- [x] [Review][Patch] SessionMapper.ToDto returns empty string Id for null session.Id [`backend/src/IabConnect.Api/Endpoints/IdentityEndpoints.cs`] — Addressed in uncommitted P6 fix: sessions with null/empty Id are filtered before mapping in `GetCurrentUserSessions`.
+
+#### Epic Boundary Review (2026-05-13)
+
+- [x] [Review][Patch] IP address displayed without data-protection notice — decision: show IP with visible privacy label [`frontend/src/app/profile/security/page.tsx`, `frontend/src/app/admin/users/[id]/sessions/page.tsx`] — Resolved 2026-05-13. Added two next-intl keys (`profileSecurity.ipPrivacyNote` for self-service, `profileSecurity.ipPrivacyNoteAdmin` for the admin view) in both `de.json` and `en.json`. Each IP-Adresse-Block renders an italic muted-gray notice underneath the value. No masking; full IP retained in `SessionDto`.
+- [x] [Review][Patch] Admin `GetUserSessions` missing null-Id session filter [`backend/src/IabConnect.Api/Endpoints/UserEndpoints.cs`] — Resolved 2026-05-13. Mirrors the P6 fix from `GetCurrentUserSessions`: sessions with null/empty `Id` are filtered (`Where(s => !string.IsNullOrEmpty(s.Id))`) before mapping. Admin UI no longer renders unrevocable session rows.
+- [x] [Review][Defer] Session ID case sensitivity — Keycloak uses lowercase UUIDs consistently; `Guid.TryParse` accepts both cases; low practical risk
+- [x] [Review][Defer] `window.confirm()` for session revoke confirmation is not WCAG-compliant or stylable — deferred, UX improvement for a later sprint
+- [x] [Review][Defer] `initialFetchDone` ref prevents session list refetch after silent token renewal — deferred, Refresh button provides manual workaround
+- [x] [Review][Defer] `SessionMapper.ToDto` maps null Id to `""` — code smell but harmless given P6 pre-filters nulls; `SessionDto.Id` can be empty string after mapping
 
 ## Dev Notes
 
@@ -171,7 +186,23 @@ Claude Opus 4.7 (1M context)
 - `npm run typecheck` — passed, 0 errors.
 - `dotnet test` (full backend suite, no Docker dependency triggered failures locally) — Application 1123/1123, Api 11/11, Infrastructure 279/279. Total: 1413 passed, 0 failed, 0 skipped.
 
+#### 2026-05-13 Patch pass (S3.1–S3.4)
+
+- `dotnet test` (full backend regression) — Application 1123/1123, Api 18/18, Infrastructure 291/291. Total: **1432 passed, 0 failed, 0 skipped** (+6 from new `SessionMapperTests`).
+- `npm run typecheck` — passed, 0 errors.
+- `npm test -- --run` — passed, 9/9 (Vitest).
+- `npm run lint --quiet` — only **pre-existing** errors in `frontend/src/app/members/segments/page.tsx` (unrelated to this story).
+
 ### Completion Notes List
+
+#### 2026-05-13 — Epic Boundary patch pass (S3.1–S3.4)
+
+- **S3.1 Internal client filter:** Promoted `SessionMapper` from `internal static` to `public static`, added a default internal-client filter set (`admin-cli`, `security-admin-console`, `realm-management`, `account`, `account-console`, `broker`, `iabconnect-admin`) with case-insensitive comparison, and provided an overload accepting a custom `IReadOnlySet<string>` for future configuration/testability. Empty-string / whitespace clients remain filtered (pre-existing). New test file `SessionMapperTests.cs` covers default filtering, case-insensitivity, override behaviour, empty/null client dictionaries — 6 tests.
+- **S3.2 Audit consistency:** Added `auditLogger.LogAccessDenied(httpContext.User, "User", "ViewSessions", "User not found in Keycloak", userId)` inside the `catch (KeycloakNotFoundException)` branch of admin `GetUserSessions`, matching the missing-user branch directly above.
+- **S3.3 IP privacy notice:** Added next-intl keys `profileSecurity.ipPrivacyNote` (self-service: "Diese Information ist nur für dich sichtbar." / "This information is only visible to you.") and `profileSecurity.ipPrivacyNoteAdmin` (admin-context wording for IP visibility) in both `de.json` and `en.json`. Rendered as italic muted-gray text directly under the IP value on `/profile/security/page.tsx` and `/admin/users/[id]/sessions/page.tsx`. No masking; full IP retained in `SessionDto`.
+- **S3.4 Admin null-Id filter:** Added `Where(s => !string.IsNullOrEmpty(s.Id))` before mapping in admin `GetUserSessions`, mirroring the P6 fix already in self-service `GetCurrentUserSessions`. Eliminates unrevocable session rows in the admin UI.
+
+#### Original implementation (2026-05-12)
 
 - Added `IKeycloakAdminService.GetUserSessionsAsync(userId, ct)` calling Keycloak Admin `GET /admin/realms/{realm}/users/{userId}/sessions` with bearer-token reuse. Returns `IReadOnlyList<KeycloakSessionRepresentation>`. 404 from Keycloak is mapped to `KeycloakNotFoundException`.
 - Added `KeycloakSessionRepresentation` DTO with nullable Id/Username/UserId/IpAddress/Start/LastAccess/Clients — AC3 explicitly assumes Keycloak can omit fields; the DTO and `SessionMapper.ToDto` both tolerate this. The Vitest + xUnit "missing metadata" cases prove graceful degradation.
@@ -192,18 +223,19 @@ Claude Opus 4.7 (1M context)
 
 Backend:
 - `backend/src/IabConnect.Infrastructure/Identity/KeycloakAdminService.cs`
-- `backend/src/IabConnect.Api/Endpoints/IdentityEndpoints.cs`
-- `backend/src/IabConnect.Api/Endpoints/UserEndpoints.cs`
+- `backend/src/IabConnect.Api/Endpoints/IdentityEndpoints.cs` (S3.1: public SessionMapper + internal-client filter)
+- `backend/src/IabConnect.Api/Endpoints/UserEndpoints.cs` (S3.2: audit on 404, S3.4: null-Id filter)
 - `backend/tests/IabConnect.Infrastructure.Tests/Identity/KeycloakAdminServiceSessionsTests.cs`
 - `backend/tests/IabConnect.Api.Tests/UserEndpointMetadataTests.cs`
+- `backend/tests/IabConnect.Api.Tests/SessionMapperTests.cs` (S3.1: 6 new tests)
 
 Frontend:
 - `frontend/src/lib/api/users.ts`
 - `frontend/src/lib/api/users.test.ts`
-- `frontend/src/app/profile/security/page.tsx`
-- `frontend/src/app/admin/users/[id]/sessions/page.tsx`
-- `frontend/messages/de.json`
-- `frontend/messages/en.json`
+- `frontend/src/app/profile/security/page.tsx` (S3.3: IP privacy notice)
+- `frontend/src/app/admin/users/[id]/sessions/page.tsx` (S3.3: IP privacy notice — admin variant)
+- `frontend/messages/de.json` (S3.3: ipPrivacyNote, ipPrivacyNoteAdmin)
+- `frontend/messages/en.json` (S3.3: ipPrivacyNote, ipPrivacyNoteAdmin)
 
 Docs / Status:
 - `docs/05_security_privacy.md`
@@ -214,3 +246,4 @@ Docs / Status:
 
 - 2026-05-12: Story created from multi-epic sprint plan and marked ready for development.
 - 2026-05-12: Implemented REQ-010 session/device visibility. Added `GetUserSessionsAsync` on `KeycloakAdminService`, `GET /api/v1/identity/sessions` (authenticated user), `GET /api/v1/users/{userId}/sessions` (admin, audit-logged), frontend `/profile/security` page, admin sub-page `/admin/users/[id]/sessions`, i18n keys (DE+EN), tests (3 infra + 2 endpoint metadata + 3 vitest), and `docs/05_security_privacy.md` section. Status moved to `review` per hybrid workflow (CR + ER at Epic 1 boundary).
+- 2026-05-13: Cleared 4 open `[Review][Patch]` items per `sprint-change-proposal-2026-05-13.md`. S3.1 internal-client filter on `SessionMapper.ToDto` + 6 new tests; S3.2 added `LogAccessDenied` in admin `GetUserSessions` `KeycloakNotFoundException` catch; S3.3 added `ipPrivacyNote` / `ipPrivacyNoteAdmin` i18n keys (DE/EN) and rendered the notice under the IP value on both pages; S3.4 added null-Id filter to admin `GetUserSessions`. Full backend suite: 1432/1432 passed (was 1426 + 6 new SessionMapper tests). Frontend `npm run typecheck` and Vitest (9/9) green.

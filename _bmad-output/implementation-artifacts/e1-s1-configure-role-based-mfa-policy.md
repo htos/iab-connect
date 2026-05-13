@@ -1,6 +1,6 @@
 # Story E1.S1: Configure Role-Based MFA Policy
 
-Status: review
+Status: done
 
 ## Story
 

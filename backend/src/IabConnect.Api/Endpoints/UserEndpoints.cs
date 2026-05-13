@@ -52,7 +52,8 @@ public static class UserEndpoints
 
         group.MapPost("/{userId}/reset-mfa", ResetUserMfa)
             .WithName("ResetUserMfa")
-            .WithSummary("Reset MFA credentials and send reconfiguration email");
+            .WithSummary("Reset MFA credentials and send reconfiguration email")
+            .Produces(StatusCodes.Status500InternalServerError);
 
         group.MapGet("/{userId}/roles", GetUserRoles)
             .WithName("GetUserRoles")
@@ -60,11 +61,13 @@ public static class UserEndpoints
 
         group.MapGet("/{userId}/sessions", GetUserSessions)
             .WithName("GetUserSessions")
-            .WithSummary("Get active Keycloak sessions for a user (Admin)");
+            .WithSummary("Get active Keycloak sessions for a user (Admin)")
+            .Produces(StatusCodes.Status500InternalServerError);
 
         group.MapDelete("/{userId}/sessions/{sessionId}", RevokeUserSession)
             .WithName("RevokeUserSession")
-            .WithSummary("Revoke a specific Keycloak session for a user (Admin)");
+            .WithSummary("Revoke a specific Keycloak session for a user (Admin)")
+            .Produces(StatusCodes.Status500InternalServerError);
 
         group.MapPut("/{userId}/roles", UpdateUserRoles)
             .WithName("UpdateUserRoles")
@@ -478,17 +481,41 @@ public static class UserEndpoints
 
             return TypedResults.NotFound();
         }
-        catch (Exception ex)
+        catch (KeycloakActionEmailUnavailableException ex)
         {
-            logger.LogError(ex, "Failed to reset MFA for user {UserId}", userId);
+            // S2.3: MFA credentials were already removed, but Keycloak refused to send the
+            // re-enrolment email (typically because the user has no verified email address).
+            // Audit it as a successful (partial) admin action — the user state changed and
+            // operator needs to follow up out-of-band; this is NOT an access-denied event.
+            logger.LogWarning(ex,
+                "MFA reset for user {UserId} completed credential deletion ({Deleted}/{Total}) but reconfiguration email was rejected",
+                userId, ex.DeletedCredentialCount, ex.TotalCredentialCount);
 
-            auditLogger.LogAccessDenied(
+            auditLogger.LogAccessGranted(
                 httpContext.User,
                 "User",
                 "ResetMfa",
-                "Keycloak MFA reset failed",
                 userId,
-                new Dictionary<string, object> { ["ErrorType"] = ex.GetType().Name });
+                new Dictionary<string, object>
+                {
+                    ["Outcome"] = "credentials-removed-email-not-sent",
+                    ["DeletedCredentialCount"] = ex.DeletedCredentialCount,
+                    ["TotalCredentialCount"] = ex.TotalCredentialCount,
+                });
+
+            return TypedResults.Problem(
+                detail: "MFA credentials were removed, but the re-enrolment email could not be delivered (likely no verified email address on file). The user needs to be re-enrolled out-of-band.",
+                statusCode: StatusCodes.Status422UnprocessableEntity,
+                title: "MFA reset partially completed");
+        }
+        catch (Exception ex)
+        {
+            // S2.1: This is an infrastructure failure path (Keycloak unreachable, unexpected
+            // 5xx, JSON deserialization error, etc.) — NOT an access-denied event. Using
+            // LogAccessDenied here would pollute the security audit trail. Use a plain
+            // logger error; the admin caller is already authorised — the operation just
+            // failed mechanically.
+            logger.LogError(ex, "Failed to reset MFA for user {UserId} due to infrastructure error ({ErrorType})", userId, ex.GetType().Name);
 
             return TypedResults.Problem(
                 detail: "An internal error occurred. Please try again later.",
@@ -520,9 +547,15 @@ public static class UserEndpoints
             }
 
             var sessions = await keycloakAdmin.GetUserSessionsAsync(userId, ct);
+            // S3.4: filter sessions with null/empty Id so the admin UI does not render
+            // unrevocable entries (a subsequent admin-revoke would 404 on those rows).
+            // Mirrors P6 fix applied to the user self-service path in IdentityEndpoints.
             var response = new SessionListResponse
             {
-                Sessions = sessions.Select(SessionMapper.ToDto).ToList()
+                Sessions = sessions
+                    .Where(s => !string.IsNullOrEmpty(s.Id))
+                    .Select(SessionMapper.ToDto)
+                    .ToList()
             };
 
             auditLogger.LogAccessGranted(
@@ -539,6 +572,14 @@ public static class UserEndpoints
         }
         catch (KeycloakNotFoundException)
         {
+            // S3.2: consistency with the missing-user branch above — the Keycloak-side
+            // "user not found" race deserves the same access-denied audit footprint.
+            auditLogger.LogAccessDenied(
+                httpContext.User,
+                "User",
+                "ViewSessions",
+                "User not found in Keycloak",
+                userId);
             return TypedResults.NotFound();
         }
         catch (Exception ex)
@@ -606,6 +647,19 @@ public static class UserEndpoints
         }
         catch (KeycloakNotFoundException)
         {
+            // Session disappeared between ownership/existence check and delete.
+            // AC4: admin revocation must always emit an audit event. Mirror the P3
+            // idempotent-audit pattern from the user self-revoke path.
+            auditLogger.LogAccessGranted(
+                httpContext.User,
+                "Session",
+                "RevokeForUser",
+                sessionId,
+                new Dictionary<string, object>
+                {
+                    ["TargetUserId"] = userId,
+                    ["Reason"] = "session-already-gone"
+                });
             return TypedResults.NotFound();
         }
         catch (Exception ex)

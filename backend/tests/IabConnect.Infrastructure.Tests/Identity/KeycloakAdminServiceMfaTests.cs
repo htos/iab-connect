@@ -11,6 +11,9 @@ namespace IabConnect.Infrastructure.Tests.Identity;
 
 public sealed class KeycloakAdminServiceMfaTests
 {
+    private const string User1Id = "11111111-aaaa-bbbb-cccc-111111111111";
+    private const string MissingUserId = "99999999-9999-9999-9999-999999999999";
+
     [Fact]
     public async Task ResetUserMfaAsync_RemovesOnlyMfaCredentialsAndSendsConfigureActions()
     {
@@ -23,7 +26,7 @@ public sealed class KeycloakAdminServiceMfaTests
                 return JsonResponse(new { access_token = "admin-token", expires_in = 300 });
             }
 
-            if (request.Method == HttpMethod.Get && path.EndsWith("/admin/realms/iabconnect/users/user-1/credentials", StringComparison.Ordinal))
+            if (request.Method == HttpMethod.Get && path.EndsWith($"/admin/realms/iabconnect/users/{User1Id}/credentials", StringComparison.Ordinal))
             {
                 return JsonResponse(new[]
                 {
@@ -38,7 +41,7 @@ public sealed class KeycloakAdminServiceMfaTests
                 return new HttpResponseMessage(HttpStatusCode.NoContent);
             }
 
-            if (request.Method == HttpMethod.Put && path.EndsWith("/admin/realms/iabconnect/users/user-1/execute-actions-email", StringComparison.Ordinal))
+            if (request.Method == HttpMethod.Put && path.EndsWith($"/admin/realms/iabconnect/users/{User1Id}/execute-actions-email", StringComparison.Ordinal))
             {
                 return new HttpResponseMessage(HttpStatusCode.NoContent);
             }
@@ -48,7 +51,7 @@ public sealed class KeycloakAdminServiceMfaTests
 
         var sut = CreateService(handler);
 
-        await sut.ResetUserMfaAsync("user-1", TestContext.Current.CancellationToken);
+        await sut.ResetUserMfaAsync(User1Id, TestContext.Current.CancellationToken);
 
         handler.Requests.Should().Contain(request =>
             request.Method == HttpMethod.Delete
@@ -80,7 +83,7 @@ public sealed class KeycloakAdminServiceMfaTests
                 return JsonResponse(new { access_token = "admin-token", expires_in = 300 });
             }
 
-            if (request.Method == HttpMethod.Get && path.EndsWith("/admin/realms/iabconnect/users/missing-user/credentials", StringComparison.Ordinal))
+            if (request.Method == HttpMethod.Get && path.EndsWith($"/admin/realms/iabconnect/users/{MissingUserId}/credentials", StringComparison.Ordinal))
             {
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             }
@@ -90,9 +93,93 @@ public sealed class KeycloakAdminServiceMfaTests
 
         var sut = CreateService(handler);
 
-        var act = () => sut.ResetUserMfaAsync("missing-user", TestContext.Current.CancellationToken);
+        var act = () => sut.ResetUserMfaAsync(MissingUserId, TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<KeycloakNotFoundException>();
+    }
+
+    [Fact]
+    public async Task ResetUserMfaAsync_WhenExecuteActionsEmailReturns400_ThrowsKeycloakActionEmailUnavailableException()
+    {
+        // S2.3: Keycloak rejects execute-actions-email when the user has no verified email.
+        // At that point MFA credentials are already gone, so the service must surface a
+        // distinct exception type that the API layer can convert into a 422.
+        var handler = new RecordingHandler(request =>
+        {
+            var path = request.RequestUri?.AbsolutePath ?? "";
+
+            if (path.EndsWith("/protocol/openid-connect/token", StringComparison.Ordinal))
+            {
+                return JsonResponse(new { access_token = "admin-token", expires_in = 300 });
+            }
+
+            if (request.Method == HttpMethod.Get && path.EndsWith($"/admin/realms/iabconnect/users/{User1Id}/credentials", StringComparison.Ordinal))
+            {
+                return JsonResponse(new[]
+                {
+                    new { id = "otp-credential", type = "otp", userLabel = "Authenticator app" },
+                });
+            }
+
+            if (request.Method == HttpMethod.Delete && path.Contains("/credentials/", StringComparison.Ordinal))
+            {
+                return new HttpResponseMessage(HttpStatusCode.NoContent);
+            }
+
+            if (request.Method == HttpMethod.Put && path.EndsWith($"/admin/realms/iabconnect/users/{User1Id}/execute-actions-email", StringComparison.Ordinal))
+            {
+                return new HttpResponseMessage(HttpStatusCode.BadRequest)
+                {
+                    Content = new StringContent("{\"errorMessage\":\"User email missing\"}", Encoding.UTF8, "application/json")
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+
+        var sut = CreateService(handler);
+
+        var act = () => sut.ResetUserMfaAsync(User1Id, TestContext.Current.CancellationToken);
+
+        var exception = await act.Should().ThrowAsync<KeycloakActionEmailUnavailableException>();
+        exception.Which.DeletedCredentialCount.Should().Be(1);
+        exception.Which.TotalCredentialCount.Should().Be(1);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("not-a-guid")]
+    [InlineData("user-1")]
+    [InlineData("../../etc/passwd")]
+    public async Task ResetUserMfaAsync_WithNonGuidUserId_ThrowsArgumentException(string invalidUserId)
+    {
+        // S2.2: userId must be a valid GUID; reject before issuing any Keycloak request.
+        var handler = new RecordingHandler(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
+        var sut = CreateService(handler);
+
+        var act = () => sut.ResetUserMfaAsync(invalidUserId, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*GUID*");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("not-a-guid")]
+    [InlineData("user-1")]
+    [InlineData("../../etc/passwd")]
+    public async Task SendPasswordResetEmailAsync_WithNonGuidUserId_ThrowsArgumentException(string invalidUserId)
+    {
+        // S2.2: SendPasswordResetEmailAsync also interpolates userId; same GUID guard.
+        var handler = new RecordingHandler(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
+        var sut = CreateService(handler);
+
+        var act = () => sut.SendPasswordResetEmailAsync(invalidUserId, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*GUID*");
     }
 
     private static KeycloakAdminService CreateService(HttpMessageHandler handler)

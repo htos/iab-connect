@@ -206,6 +206,11 @@ public class KeycloakAdminService : IKeycloakAdminService
 
     public async Task SendPasswordResetEmailAsync(string userId, CancellationToken ct = default)
     {
+        // S2.2: validate userId is a GUID before embedding into the Admin API URL (path-traversal defence,
+        // symmetric with the existing GuidTryParse on GetUserSessionsAsync / RevokeSessionAsync).
+        if (!Guid.TryParse(userId, out _))
+            throw new ArgumentException($"userId must be a valid GUID, got: {userId}", nameof(userId));
+
         var request = await CreateRequestAsync(HttpMethod.Put, $"{AdminApiBase}/users/{userId}/execute-actions-email", ct);
         request.Content = JsonContent.Create(new[] { "UPDATE_PASSWORD" }, options: JsonOptions);
 
@@ -217,6 +222,10 @@ public class KeycloakAdminService : IKeycloakAdminService
 
     public async Task ResetUserMfaAsync(string userId, CancellationToken ct = default)
     {
+        // S2.2: validate userId is a GUID before embedding into the Admin API URL.
+        if (!Guid.TryParse(userId, out _))
+            throw new ArgumentException($"userId must be a valid GUID, got: {userId}", nameof(userId));
+
         var credentialsRequest = await CreateRequestAsync(HttpMethod.Get, $"{AdminApiBase}/users/{userId}/credentials", ct);
         var credentialsResponse = await _httpClient.SendAsync(credentialsRequest, ct);
 
@@ -232,6 +241,9 @@ public class KeycloakAdminService : IKeycloakAdminService
             .Where(credential => IsMfaCredentialType(credential.Type))
             .ToList();
 
+        // P4: Best-effort deletion — log warnings on individual failures but always attempt the
+        // reconfiguration email so the user receives re-enrollment instructions even on partial cleanup.
+        var deletedCount = 0;
         foreach (var credential in mfaCredentials)
         {
             if (string.IsNullOrWhiteSpace(credential.Id))
@@ -239,21 +251,44 @@ public class KeycloakAdminService : IKeycloakAdminService
 
             var deleteRequest = await CreateRequestAsync(HttpMethod.Delete, $"{AdminApiBase}/users/{userId}/credentials/{credential.Id}", ct);
             var deleteResponse = await _httpClient.SendAsync(deleteRequest, ct);
-            deleteResponse.EnsureSuccessStatusCode();
+            if (deleteResponse.IsSuccessStatusCode)
+            {
+                deletedCount++;
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "Failed to delete MFA credential {CredentialId} for user {UserId}: {StatusCode}",
+                    credential.Id, userId, deleteResponse.StatusCode);
+            }
         }
 
         var actionsRequest = await CreateRequestAsync(HttpMethod.Put, $"{AdminApiBase}/users/{userId}/execute-actions-email", ct);
-        actionsRequest.Content = JsonContent.Create(
-            new[] { "CONFIGURE_TOTP", "CONFIGURE_RECOVERY_AUTHN_CODES" },
-            options: JsonOptions);
+        actionsRequest.Content = JsonContent.Create(MfaReconfigurationActions, options: JsonOptions);
 
         var actionsResponse = await _httpClient.SendAsync(actionsRequest, ct);
+
+        // S2.3: Keycloak returns 400 when the target user has no verified email — at this point
+        // the MFA credentials have already been deleted, so this is not a plain infrastructure
+        // failure. Surface it as a distinct domain-level exception so the API layer can return
+        // a meaningful 422 response and the operator knows the user is now in a credential-less
+        // state without a re-enrolment link.
+        if (actionsResponse.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            _logger.LogWarning(
+                "Keycloak rejected execute-actions-email for user {UserId} after MFA deletion ({DeletedCount}/{TotalCount} credentials deleted) — likely no verified email address",
+                userId, deletedCount, mfaCredentials.Count);
+            throw new KeycloakActionEmailUnavailableException(
+                $"Could not send MFA reconfiguration email for user {userId}: Keycloak rejected the request (likely no verified email).",
+                deletedCount,
+                mfaCredentials.Count);
+        }
+
         actionsResponse.EnsureSuccessStatusCode();
 
         _logger.LogInformation(
-            "Reset MFA credentials for Keycloak user {UserId}; removed {CredentialCount} MFA credentials and sent reconfiguration actions",
-            userId,
-            mfaCredentials.Count);
+            "Reset MFA credentials for Keycloak user {UserId}; deleted {DeletedCount}/{TotalCount} MFA credentials and sent reconfiguration actions",
+            userId, deletedCount, mfaCredentials.Count);
     }
 
     public async Task<IReadOnlyList<KeycloakRole>> GetUserRolesAsync(string userId, CancellationToken ct = default)
@@ -316,6 +351,10 @@ public class KeycloakAdminService : IKeycloakAdminService
 
     public async Task<IReadOnlyList<KeycloakSessionRepresentation>> GetUserSessionsAsync(string userId, CancellationToken ct = default)
     {
+        // P1: Validate userId is a GUID before interpolating into the Admin API URL.
+        if (!Guid.TryParse(userId, out _))
+            throw new ArgumentException($"userId must be a valid GUID, got: {userId}", nameof(userId));
+
         var request = await CreateRequestAsync(HttpMethod.Get, $"{AdminApiBase}/users/{userId}/sessions", ct);
         var response = await _httpClient.SendAsync(request, ct);
 
@@ -332,6 +371,10 @@ public class KeycloakAdminService : IKeycloakAdminService
 
     public async Task RevokeSessionAsync(string sessionId, CancellationToken ct = default)
     {
+        // P1: Validate sessionId is a GUID before interpolating into the Admin API URL.
+        if (!Guid.TryParse(sessionId, out _))
+            throw new ArgumentException($"sessionId must be a valid GUID, got: {sessionId}", nameof(sessionId));
+
         var request = await CreateRequestAsync(HttpMethod.Delete, $"{AdminApiBase}/sessions/{sessionId}", ct);
         var response = await _httpClient.SendAsync(request, ct);
 
@@ -344,6 +387,8 @@ public class KeycloakAdminService : IKeycloakAdminService
 
         _logger.LogInformation("Revoked Keycloak session {SessionId}", sessionId);
     }
+
+    private static readonly string[] MfaReconfigurationActions = ["CONFIGURE_TOTP", "CONFIGURE_RECOVERY_AUTHN_CODES"];
 
     private static bool IsMfaCredentialType(string? credentialType) =>
         credentialType is not null
@@ -450,4 +495,25 @@ public class KeycloakConflictException : Exception
 public class KeycloakNotFoundException : Exception
 {
     public KeycloakNotFoundException(string message) : base(message) { }
+}
+
+/// <summary>
+/// Raised when Keycloak's <c>execute-actions-email</c> request fails with a 400 response,
+/// typically because the target user has no verified email address. This is a distinct
+/// domain condition from a generic infrastructure failure: the MFA credentials have
+/// already been deleted at this point, but the re-enrolment email could not be sent.
+/// The API layer should surface this to admin callers (e.g. as 422) so they know the
+/// user is in a no-MFA, no-email-link state and needs out-of-band recovery.
+/// </summary>
+public class KeycloakActionEmailUnavailableException : Exception
+{
+    public int DeletedCredentialCount { get; }
+    public int TotalCredentialCount { get; }
+
+    public KeycloakActionEmailUnavailableException(string message, int deletedCredentialCount, int totalCredentialCount)
+        : base(message)
+    {
+        DeletedCredentialCount = deletedCredentialCount;
+        TotalCredentialCount = totalCredentialCount;
+    }
 }

@@ -2318,6 +2318,8 @@
     "revokeConfirm": "Really end this session? You will need to sign in again on that device.",
     "revokeConfirmAdmin": "Really end this user's session? The user will need to sign in again on that device.",
     "revokeSuccess": "Session has been ended.",
-    "revokeError": "Could not end session. Please try again later."
+    "revokeError": "Could not end session. Please try again later.",
+    "ipPrivacyNote": "This information is only visible to you.",
+    "ipPrivacyNoteAdmin": "This IP address is shown only for administrative and security purposes."
   }
 }
