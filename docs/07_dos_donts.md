@@ -114,3 +114,15 @@ Dont
 12) **KEINE container mx-auto px-4 py-8** - immer `<main>` mit Standard-Klassen
 13) **KEINE inline `api.get/post` Aufrufe in Event-Handlern** für Daten-Refresh nach Mutationen. Stattdessen: `refreshKey` State-Variable + `useEffect` mit `cancelled`-Flag für den Datenabruf. Handler machen nur die Mutation und setzen `setRefreshKey(k => k + 1)`. Inline-Fetches in onClick/onSubmit-Handlern führen zu permanentem Loading wegen Closure- und Race-Condition-Problemen.
 14) **KEINE private Backing-Field Manipulationen für EF-tracked Collections** zum Speichern neuer Child-Entities. Statt `aggregate.AddChild()` + `dbContext.SaveChangesAsync()` → immer `dbContext.Set<ChildEntity>().Add(child)` direkt nutzen, da EF Core Change-Tracking über private Backing-Fields bei Aggregate-Patterns zu `DbUpdateConcurrencyException` führen kann.
+
+## Symmetric-Guard Checklist (Epic-1-Retro Action A2)
+
+When introducing a normalization or a guard (case-folding, trimming, diacritic-folding, null/empty check, role check, etc.) in **any** matching or validation method of a service or repository, **audit every sibling method in the same class for the same guard** before merging. Guards must be symmetric across reads, writes, existence checks, and lookups — a guard applied only to one method leaves the others vulnerable to the case it was meant to defend against.
+
+Concrete examples in this repo:
+
+- `MemberRepository.EmailExistsAsync` and `GetByEmailAsync` currently use exact-equality on `Email`. If E2.S2 introduces case-insensitive email normalization in `CreateMemberCommandHandler`, both repository methods must be updated in the same change so the existence check and the lookup stay aligned with the create path.
+- `IDuplicateMatcher.NormalizeEmail` folds case + trims; any future inline email comparison (validators, command handlers, search predicates) must use the same helper rather than re-implementing `.ToLowerInvariant()` locally.
+- `IDuplicateMatcher.FoldName` strips diacritics ("Müller" → "Muller"); if a future feature compares names server-side, it must use the same folding so "Müller" and "Mueller" stay matchable.
+
+When in doubt, grep the class for the field name (e.g. `Email`, `FirstName`, `Phone`) and confirm every comparison uses the same normalization helper. Record the audit in the story's Completion Notes.

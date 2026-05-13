@@ -109,4 +109,59 @@ public sealed class MemberRepository : IMemberRepository
     {
         return await _context.Members.AnyAsync(m => m.Email == email, cancellationToken);
     }
+
+    /// <summary>
+    /// REQ-018: Single-query OR-combined predicate for duplicate-candidate prefetch.
+    /// <para>
+    /// Phone-digit comparison is intentionally NOT applied here — Postgres cannot
+    /// easily strip non-digits from a stored phone column via EF translation
+    /// (see story E2.S1 Dev Notes, Option B). The handler applies the in-memory
+    /// digit equality test after this method returns; the OR-combined SQL widens
+    /// the candidate set by name/postal-code so diacritic-only or +tag-only
+    /// duplicates still reach the in-memory matcher.
+    /// </para>
+    /// </summary>
+    public async Task<IReadOnlyList<Member>> FindCandidatesAsync(
+        string? emailNormalized,
+        string? phoneDigits,
+        string? firstNameFolded,
+        string? lastNameFolded,
+        string? postalCode,
+        Guid? excludeMemberId,
+        int maxResults,
+        CancellationToken cancellationToken = default)
+    {
+        _ = phoneDigits; // documented over-fetch trade-off — see XML doc above
+
+        if (maxResults <= 0)
+            return Array.Empty<Member>();
+
+        var hasAnySignal = !string.IsNullOrEmpty(emailNormalized)
+            || (!string.IsNullOrEmpty(firstNameFolded) && !string.IsNullOrEmpty(lastNameFolded))
+            || !string.IsNullOrEmpty(postalCode);
+
+        if (!hasAnySignal)
+            return Array.Empty<Member>();
+
+        var query = _context.Members
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (excludeMemberId.HasValue)
+            query = query.Where(m => m.Id != excludeMemberId.Value);
+
+        query = query.Where(m =>
+            (emailNormalized != null && EF.Functions.ILike(m.Email, emailNormalized))
+            || (firstNameFolded != null
+                && lastNameFolded != null
+                && EF.Functions.ILike(m.FirstName, firstNameFolded)
+                && EF.Functions.ILike(m.LastName, lastNameFolded))
+            || (postalCode != null && m.Address.PostalCode == postalCode));
+
+        return await query
+            .OrderBy(m => m.LastName)
+            .ThenBy(m => m.FirstName)
+            .Take(maxResults)
+            .ToListAsync(cancellationToken);
+    }
 }

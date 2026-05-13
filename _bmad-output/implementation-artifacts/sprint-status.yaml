@@ -34,11 +34,18 @@
 # - Each story must go through bmad-create-story and validation before development.
 
 generated: "2026-05-12"
-last_updated: "2026-05-13"
+last_updated: "2026-05-13 (E2.S1 review)"
 # 2026-05-13: Epic-Close-Gate after clearing all 11 [Review][Patch] findings per
 # sprint-change-proposal-2026-05-13.md. E1.S1-S4 flipped review -> done.
-# E1.S5 remains deferred (provider credentials/scopes/whitelist decisions pending).
-# Epic-1 stays in-progress until S5 is decided.
+# E1.S5 deferred -- pending provider credentials/scopes/whitelist decisions.
+# 2026-05-13: E2.S1 re-contextualized (initial 2026-05-12 file was a generic
+# template). New version has concrete 8 ACs, file paths with line numbers,
+# Epic-1 retro action items A1/A2/A4 wired in, phone-normalization Option B
+# decided, tests at Application+Infrastructure+API layers. Ready for dev-story.
+# 2026-05-13 (later): Epic-1 closed as done with S5 carried as 'deferred'.
+# S5 will be re-planned via bmad-correct-course when provider decisions land.
+# 2026-05-13 (E2.S1 close): E2.S1 implementation complete, status flipped to 'review'.
+# 1485/1485 backend tests green, 0 warnings. Awaiting commit + epic-boundary code review.
 project: iab-connect
 project_key: NOKEY
 tracking_system: file-system
@@ -47,16 +54,16 @@ epics_source: "_bmad-output/planning-artifacts/epics-and-stories.md"
 readiness_report: "_bmad-output/planning-artifacts/implementation-readiness-report-2026-05-12.md"
 
 development_status:
-  epic-1: in-progress
+  epic-1: done
   e1-s1-configure-role-based-mfa-policy: done
   e1-s2-add-admin-mfa-support-operations: done
   e1-s3-add-session-and-device-visibility: done
   e1-s4-add-session-revocation: done
-  e1-s5-add-social-and-enterprise-identity-providers: ready-for-dev
+  e1-s5-add-social-and-enterprise-identity-providers: deferred
   epic-1-retrospective: done
 
   epic-2: in-progress
-  e2-s1-add-duplicate-candidate-detection: ready-for-dev
+  e2-s1-add-duplicate-candidate-detection: review
   e2-s2-show-duplicate-warnings-in-member-create-edit: ready-for-dev
   e2-s3-implement-safe-member-merge: ready-for-dev
   e2-s4-add-duplicate-review-ui: ready-for-dev
@@ -93,7 +100,7 @@ development_status:
   epic-7: in-progress
   e7-s1-define-accessibility-baseline-and-audit-critical-pages: ready-for-dev
   e7-s2-improve-shared-component-accessibility: ready-for-dev
-  e7-s3-add-hindi-translation-expansion-path: ready-for-dev
+  e7-s3-add-hindi-translation-expansion-path: optional
   e7-s4-add-content-language-metadata-where-needed: ready-for-dev
   epic-7-retrospective: optional
 

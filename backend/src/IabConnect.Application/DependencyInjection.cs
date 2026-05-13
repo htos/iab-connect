@@ -2,6 +2,7 @@ using FluentValidation;
 using IabConnect.Application.Authorization;
 using IabConnect.Application.Finance;
 using IabConnect.Application.Finance.FiscalPeriods;
+using IabConnect.Application.Members.Duplicates;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
@@ -37,6 +38,9 @@ public static class DependencyInjection
 
         // Auto-booking: create ledger transactions on financial events
         services.AddScoped<IAutoBookingService, AutoBookingService>();
+
+        // REQ-018: Duplicate-candidate matcher (pure, stateless -> singleton)
+        services.AddSingleton<IDuplicateMatcher, DuplicateMatcher>();
 
         // Note: IAuditService is registered in Infrastructure layer (requires IHttpContextAccessor)
 

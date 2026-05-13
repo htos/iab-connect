@@ -1,5 +1,6 @@
 using IabConnect.Application.Authorization;
 using IabConnect.Application.Members.Commands;
+using IabConnect.Application.Members.Duplicates;
 using IabConnect.Domain.Authorization;
 using IabConnect.Domain.Members;
 using IabConnect.Infrastructure.Persistence;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using DomainMembershipType = IabConnect.Domain.Members.MembershipType;
 using CommandMembershipType = IabConnect.Application.Members.Commands.MembershipType;
+using FindMemberDuplicatesQuery = IabConnect.Application.Members.Queries.FindMemberDuplicatesQuery;
 
 namespace IabConnect.Api.Endpoints;
 
@@ -94,6 +96,12 @@ public static class MemberEndpoints
             .RequireAuthorization("RequireVorstand")
             .WithName("GetMemberStatistics")
             .WithDescription("REQ-017: Mitgliederstatistik");
+
+        // GET /api/v1/members/duplicates - Find duplicate-candidate members (REQ-018)
+        members.MapGet("/duplicates", GetMemberDuplicates)
+            .RequireAuthorization("RequireVorstand")
+            .WithName("GetMemberDuplicates")
+            .WithDescription("REQ-018: Dubletten-Kandidaten suchen");
 
         return group;
     }
@@ -446,6 +454,23 @@ public static class MemberEndpoints
         return Results.Ok(MapToDto(member));
     }
 
+    private static async Task<IResult> GetMemberDuplicates(
+        [AsParameters] GetMemberDuplicatesRequest request,
+        ISender sender,
+        CancellationToken ct)
+    {
+        var query = new FindMemberDuplicatesQuery(
+            request.Email,
+            request.Phone,
+            request.FirstName,
+            request.LastName,
+            request.PostalCode,
+            request.ExcludeMemberId);
+
+        var candidates = await sender.Send(query, ct);
+        return Results.Ok(candidates);
+    }
+
     private static async Task<IResult> GetMemberStatistics(
         ApplicationDbContext dbContext,
         CancellationToken ct)
@@ -601,6 +626,17 @@ public record GetMembersQuery(
     string? Search = null,
     MembershipStatus? Status = null,
     DomainMembershipType? Type = null);
+
+/// <summary>
+/// REQ-018: Query-string parameters for the duplicate-candidate endpoint.
+/// </summary>
+public record GetMemberDuplicatesRequest(
+    string? Email = null,
+    string? Phone = null,
+    string? FirstName = null,
+    string? LastName = null,
+    string? PostalCode = null,
+    Guid? ExcludeMemberId = null);
 
 public record CreateMemberRequest(
     string FirstName,
