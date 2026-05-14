@@ -1,3 +1,4 @@
+using IabConnect.Application.Common;
 using IabConnect.Application.Events;
 using IabConnect.Domain.Events;
 using QuestPDF.Fluent;
@@ -6,6 +7,11 @@ using QuestPDF.Infrastructure;
 
 namespace IabConnect.Infrastructure.Events;
 
+/// <summary>
+/// REQ-086 (E9-S3): the PDF header organization name is resolved from
+/// <c>SystemSettings.ApplicationName</c> at render time, so the exporter is registered
+/// Scoped (it depends on the Scoped <see cref="ISystemSettingsRepository"/>).
+/// </summary>
 public class EventRegistrationPdfExporter : IRegistrationPdfExporter
 {
     private static readonly string PrimaryColor = "#EA580C"; // Orange-600
@@ -14,11 +20,20 @@ public class EventRegistrationPdfExporter : IRegistrationPdfExporter
     private static readonly string TextDark = "#111827";
     private static readonly string TextMuted = "#6B7280";
 
-    public Task<byte[]> GenerateRegistrationListPdfAsync(
+    private readonly ISystemSettingsRepository _settingsRepository;
+
+    public EventRegistrationPdfExporter(ISystemSettingsRepository settingsRepository)
+    {
+        _settingsRepository = settingsRepository;
+    }
+
+    public async Task<byte[]> GenerateRegistrationListPdfAsync(
         Event evt,
         IReadOnlyList<EventRegistration> registrations,
         EventRegistrationStatistics statistics)
     {
+        var appName = (await _settingsRepository.GetSettingsAsync()).ApplicationName;
+
         var document = Document.Create(container =>
         {
             container.Page(page =>
@@ -29,17 +44,17 @@ public class EventRegistrationPdfExporter : IRegistrationPdfExporter
                 page.MarginHorizontal(30);
                 page.DefaultTextStyle(x => x.FontSize(9).FontColor(TextDark));
 
-                page.Header().Element(h => ComposeHeader(h, evt, statistics));
+                page.Header().Element(h => ComposeHeader(h, evt, statistics, appName));
                 page.Content().Element(c => ComposeContent(c, registrations));
                 page.Footer().Element(ComposeFooter);
             });
         });
 
-        var pdfBytes = document.GeneratePdf();
-        return Task.FromResult(pdfBytes);
+        return document.GeneratePdf();
     }
 
-    private static void ComposeHeader(IContainer container, Event evt, EventRegistrationStatistics stats)
+    private static void ComposeHeader(
+        IContainer container, Event evt, EventRegistrationStatistics stats, string appName)
     {
         container.Column(column =>
         {
@@ -48,7 +63,7 @@ public class EventRegistrationPdfExporter : IRegistrationPdfExporter
             {
                 row.RelativeItem().Column(col =>
                 {
-                    col.Item().Text("IAB Connect – Anmeldeliste")
+                    col.Item().Text($"{appName} – Anmeldeliste")
                         .FontSize(16).Bold().FontColor(Colors.White);
                     col.Item().Text(evt.Title)
                         .FontSize(12).FontColor(Colors.White);

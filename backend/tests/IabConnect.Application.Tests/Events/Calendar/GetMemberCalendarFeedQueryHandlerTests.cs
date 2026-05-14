@@ -14,7 +14,7 @@ public sealed class GetMemberCalendarFeedQueryHandlerTests
 {
     private readonly Mock<IMemberRepository> _members = new(MockBehavior.Strict);
     private readonly Mock<IEventRepository> _events = new(MockBehavior.Strict);
-    private readonly ICalendarFeedBuilder _builder = new CalendarFeedBuilder();
+    private readonly ICalendarFeedBuilder _builder = new CalendarFeedBuilder(new CalendarFeedSettings());
 
     private GetMemberCalendarFeedQueryHandler Sut() =>
         new(_members.Object, _events.Object, _builder);

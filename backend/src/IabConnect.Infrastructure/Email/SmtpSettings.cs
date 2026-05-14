@@ -12,6 +12,8 @@ public sealed class SmtpSettings
     public string? Username { get; set; }
     public string? Password { get; set; }
     public bool EnableSsl { get; set; } = false;
-    public string FromName { get; set; } = "IAB Connect";
-    public string FromEmail { get; set; } = "noreply@iabconnect.local";
+    // REQ-086 (E9-S3): neutral code-level defaults — the deployment supplies the real
+    // sender identity via appsettings (Smtp:FromName / Smtp:FromEmail).
+    public string FromName { get; set; } = "Organization";
+    public string FromEmail { get; set; } = "noreply@example.org";
 }

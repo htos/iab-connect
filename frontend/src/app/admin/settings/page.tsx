@@ -20,6 +20,14 @@ interface SystemSettings {
   logoText: string;
   logoBackgroundColor: string;
   logoTextColor: string;
+  // REQ-086 (E9-S1): organization profile & branding — all nullable.
+  description: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  contactAddress: string | null;
+  primaryColor: string | null;
+  publicSiteEnabled: boolean | null;
+  logoUrl: string | null;
   updatedAt: string;
   updatedBy: string;
 }
@@ -47,7 +55,50 @@ interface CustomRoleForm {
   isActive: boolean;
 }
 
-type Tab = "general" | "customRoles";
+type Tab = "branding" | "customRoles";
+
+// REQ-086 (E9-S1): logo upload sub-state surfaced inline in the Branding tab.
+type LogoUploadState = "idle" | "uploading" | "failed" | "invalid";
+
+interface SettingsForm {
+  applicationName: string;
+  logoText: string;
+  logoBackgroundColor: string;
+  logoTextColor: string;
+  description: string;
+  contactEmail: string;
+  contactPhone: string;
+  contactAddress: string;
+  primaryColor: string;
+  publicSiteEnabled: boolean;
+}
+
+// REQ-086 (E9-S1): map the API response into the editable form shape. Nullable profile
+// fields map to "" (review patch): an untouched blank field is sent back as null on save
+// so it stays "not configured" instead of persisting a concrete default.
+function mapSettingsToForm(data: SystemSettings): SettingsForm {
+  return {
+    applicationName: data.applicationName,
+    logoText: data.logoText,
+    logoBackgroundColor: data.logoBackgroundColor,
+    logoTextColor: data.logoTextColor,
+    description: data.description ?? "",
+    contactEmail: data.contactEmail ?? "",
+    contactPhone: data.contactPhone ?? "",
+    contactAddress: data.contactAddress ?? "",
+    primaryColor: data.primaryColor ?? "",
+    publicSiteEnabled: data.publicSiteEnabled ?? true,
+  };
+}
+
+// REQ-086 (E9-S1): logo content-type allowlist + size cap, mirrored from the API.
+const ALLOWED_LOGO_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/svg+xml",
+  "image/webp",
+];
+const MAX_LOGO_SIZE_BYTES = 1 * 1024 * 1024;
 
 // --- Component ---
 
@@ -68,15 +119,22 @@ export default function SettingsPage() {
     tRef.current = t;
   });
 
-  const [activeTab, setActiveTab] = useState<Tab>("general");
+  const [activeTab, setActiveTab] = useState<Tab>("branding");
 
-  // --- General settings state ---
+  // --- Branding settings state ---
   const [settings, setSettings] = useState<SystemSettings | null>(null);
   const [settingsForm, setSettingsForm] = useState({
     applicationName: "",
     logoText: "",
     logoBackgroundColor: "#ea580c",
     logoTextColor: "#ffffff",
+    // REQ-086 (E9-S1): organization profile & branding fields.
+    description: "",
+    contactEmail: "",
+    contactPhone: "",
+    contactAddress: "",
+    primaryColor: "#ea580c",
+    publicSiteEnabled: true,
   });
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [settingsSaving, setSettingsSaving] = useState(false);
@@ -84,6 +142,21 @@ export default function SettingsPage() {
     type: "success" | "error";
     text: string;
   } | null>(null);
+
+  // REQ-086 (E9-S1): staged logo file + upload sub-state.
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
+  const [logoUploadState, setLogoUploadState] =
+    useState<LogoUploadState>("idle");
+  // REQ-086 (E9-S1 review patch): the logo preview falls back to the text logo when the
+  // stored asset fails to load (e.g. the asset is missing from storage).
+  const [logoImgError, setLogoImgError] = useState(false);
+  // REQ-086 (E9-S1 review patch): client-side field validation so a malformed value is
+  // attributed to its field inline instead of discarding the whole save generically.
+  const [fieldErrors, setFieldErrors] = useState<{
+    primaryColor?: string;
+    contactEmail?: string;
+  }>({});
 
   // --- Custom roles state ---
   const [roles, setRoles] = useState<CustomRole[]>([]);
@@ -121,12 +194,8 @@ export default function SettingsPage() {
       setSettingsMessage({ type: "error", text: tRef.current("loadError") });
     } else if (data) {
       setSettings(data);
-      setSettingsForm({
-        applicationName: data.applicationName,
-        logoText: data.logoText,
-        logoBackgroundColor: data.logoBackgroundColor,
-        logoTextColor: data.logoTextColor,
-      });
+      setSettingsForm(mapSettingsToForm(data));
+      setLogoImgError(false);
     }
     setSettingsLoading(false);
   }, []);
@@ -147,46 +216,137 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (isAuthenticated && isAdmin) {
-      apiRef.current.get<SystemSettings>("/api/v1/settings").then(({ data, error }) => {
-        if (error) {
-          setSettingsMessage({ type: "error", text: tRef.current("loadError") });
-        } else if (data) {
-          setSettings(data);
-          setSettingsForm({
-            applicationName: data.applicationName,
-            logoText: data.logoText,
-            logoBackgroundColor: data.logoBackgroundColor,
-            logoTextColor: data.logoTextColor,
-          });
-        }
-        setSettingsLoading(false);
-      });
-      apiRef.current.get<CustomRole[]>("/api/v1/custom-roles").then(({ data, error }) => {
-        if (error) {
-          setRolesMessage({ type: "error", text: tRef.current("rolesLoadError") });
-        } else if (data) {
-          setRoles(data);
-        }
-        setRolesLoading(false);
-      });
+      apiRef.current
+        .get<SystemSettings>("/api/v1/settings")
+        .then(({ data, error }) => {
+          if (error) {
+            setSettingsMessage({
+              type: "error",
+              text: tRef.current("loadError"),
+            });
+          } else if (data) {
+            setSettings(data);
+            setSettingsForm(mapSettingsToForm(data));
+            setLogoImgError(false);
+          }
+          setSettingsLoading(false);
+        });
+      apiRef.current
+        .get<CustomRole[]>("/api/v1/custom-roles")
+        .then(({ data, error }) => {
+          if (error) {
+            setRolesMessage({
+              type: "error",
+              text: tRef.current("rolesLoadError"),
+            });
+          } else if (data) {
+            setRoles(data);
+          }
+          setRolesLoading(false);
+        });
     }
   }, [isAuthenticated, isAdmin]);
 
-  // --- Save settings ---
+  // --- Stage a logo file (REQ-086 E9-S1) ---
+  const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    if (!file) {
+      return;
+    }
+    if (
+      !ALLOWED_LOGO_TYPES.includes(file.type) ||
+      file.size > MAX_LOGO_SIZE_BYTES
+    ) {
+      setLogoUploadState("invalid");
+      setLogoFile(null);
+      setLogoPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+      return;
+    }
+    setLogoUploadState("idle");
+    setLogoImgError(false);
+    setLogoFile(file);
+    setLogoPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
+  };
+
+  // --- Save settings (REQ-086 E9-S1: profile PUT + optional logo upload) ---
   const handleSaveSettings = async () => {
+    // REQ-086 (E9-S1 review patch): validate locally first so a malformed value is
+    // attributed to its field instead of failing the whole save with a generic error.
+    const hexPattern = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+    const emailPattern = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+    const primaryColor = settingsForm.primaryColor.trim();
+    const contactEmail = settingsForm.contactEmail.trim();
+    const nextFieldErrors: { primaryColor?: string; contactEmail?: string } =
+      {};
+    if (primaryColor && !hexPattern.test(primaryColor)) {
+      nextFieldErrors.primaryColor = t("primaryColorInvalid");
+    }
+    if (contactEmail && !emailPattern.test(contactEmail)) {
+      nextFieldErrors.contactEmail = t("contactEmailInvalid");
+    }
+    setFieldErrors(nextFieldErrors);
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setSettingsMessage({ type: "error", text: t("validationError") });
+      return;
+    }
+
     setSettingsSaving(true);
     setSettingsMessage(null);
+    // REQ-086 (E9-S1 review patch): send blank optional fields as null so an untouched /
+    // cleared field stays NULL ("not configured") instead of persisting a concrete default.
+    const profilePayload = {
+      applicationName: settingsForm.applicationName,
+      logoText: settingsForm.logoText,
+      logoBackgroundColor: settingsForm.logoBackgroundColor,
+      logoTextColor: settingsForm.logoTextColor,
+      description: settingsForm.description.trim() || null,
+      contactEmail: contactEmail || null,
+      contactPhone: settingsForm.contactPhone.trim() || null,
+      contactAddress: settingsForm.contactAddress.trim() || null,
+      primaryColor: primaryColor || null,
+      publicSiteEnabled: settingsForm.publicSiteEnabled,
+    };
     const { error } = await api.put<SystemSettings>(
       "/api/v1/settings",
-      settingsForm
+      profilePayload
     );
     if (error) {
       setSettingsMessage({ type: "error", text: t("saveError") });
-    } else {
-      setSettingsMessage({ type: "success", text: t("saveSuccess") });
-      await loadSettings();
-      refreshAppSettings();
+      setSettingsSaving(false);
+      return;
     }
+
+    if (logoFile) {
+      setLogoUploadState("uploading");
+      const formData = new FormData();
+      formData.append("file", logoFile);
+      const { error: logoError } = await api.upload<{ logoUrl: string }>(
+        "/api/v1/settings/logo",
+        formData
+      );
+      if (logoError) {
+        setLogoUploadState("failed");
+        setSettingsMessage({ type: "error", text: t("logoUploadFailed") });
+        setSettingsSaving(false);
+        return;
+      }
+      setLogoUploadState("idle");
+      setLogoFile(null);
+      setLogoPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+    }
+
+    setSettingsMessage({ type: "success", text: t("saveSuccess") });
+    await loadSettings();
+    refreshAppSettings();
     setSettingsSaving(false);
   };
 
@@ -330,14 +490,14 @@ export default function SettingsPage() {
         {/* Tabs */}
         <div className="mb-6 flex border-b border-gray-200">
           <button
-            onClick={() => setActiveTab("general")}
+            onClick={() => setActiveTab("branding")}
             className={`border-b-2 px-6 py-3 text-sm font-medium transition-colors ${
-              activeTab === "general"
+              activeTab === "branding"
                 ? "border-orange-600 text-orange-600"
                 : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
             }`}
           >
-            {t("tabGeneral")}
+            {t("tabBranding")}
           </button>
           <button
             onClick={() => setActiveTab("customRoles")}
@@ -351,8 +511,8 @@ export default function SettingsPage() {
           </button>
         </div>
 
-        {/* ===================== General Tab ===================== */}
-        {activeTab === "general" && (
+        {/* ===================== Branding Tab ===================== */}
+        {activeTab === "branding" && (
           <div className="rounded-xl bg-white p-6 shadow-sm">
             {settingsMessage && (
               <div
@@ -477,23 +637,227 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
+                {/* REQ-086: Primary brand color */}
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    {t("primaryColor")}
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color"
+                      // Display fallback only — the form state stays "" when unset so the
+                      // field is saved as null ("not configured").
+                      value={settingsForm.primaryColor || "#ea580c"}
+                      onChange={(e) =>
+                        setSettingsForm((prev) => ({
+                          ...prev,
+                          primaryColor: e.target.value,
+                        }))
+                      }
+                      className="h-10 w-14 cursor-pointer rounded border border-gray-300"
+                    />
+                    <input
+                      type="text"
+                      value={settingsForm.primaryColor}
+                      onChange={(e) =>
+                        setSettingsForm((prev) => ({
+                          ...prev,
+                          primaryColor: e.target.value,
+                        }))
+                      }
+                      className="flex-1 rounded-lg border border-gray-300 px-4 py-2 font-mono text-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
+                    />
+                  </div>
+                  {fieldErrors.primaryColor && (
+                    <p className="mt-1 text-xs text-red-600">
+                      {fieldErrors.primaryColor}
+                    </p>
+                  )}
+                </div>
+
+                {/* REQ-086: Organization description */}
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    {t("description")}
+                  </label>
+                  <textarea
+                    value={settingsForm.description}
+                    onChange={(e) =>
+                      setSettingsForm((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
+                    }
+                    rows={3}
+                    className="w-full resize-none rounded-lg border border-gray-300 px-4 py-2 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    {t("descriptionHint")}
+                  </p>
+                </div>
+
+                {/* REQ-086: Public website toggle */}
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    {t("publicSiteEnabled")}
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      id="publicSiteEnabled"
+                      checked={settingsForm.publicSiteEnabled}
+                      onChange={(e) =>
+                        setSettingsForm((prev) => ({
+                          ...prev,
+                          publicSiteEnabled: e.target.checked,
+                        }))
+                      }
+                      className="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                    />
+                    <label
+                      htmlFor="publicSiteEnabled"
+                      className="text-sm font-medium text-gray-700"
+                    >
+                      {settingsForm.publicSiteEnabled
+                        ? t("publicSiteEnabledOn")
+                        : t("publicSiteEnabledOff")}
+                    </label>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {t("publicSiteEnabledHint")}
+                  </p>
+                </div>
+
+                {/* REQ-086: Logo upload */}
+                <div>
+                  <label
+                    htmlFor="logoUpload"
+                    className="mb-1 block text-sm font-medium text-gray-700"
+                  >
+                    {t("logo")}
+                  </label>
+                  <input
+                    id="logoUpload"
+                    type="file"
+                    accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                    onChange={handleLogoFileChange}
+                    className="block w-full text-sm text-gray-600 file:mr-4 file:rounded-lg file:border-0 file:bg-orange-600 file:px-4 file:py-2 file:font-medium file:text-white hover:file:bg-orange-700"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">{t("logoHint")}</p>
+                  {logoFile && (
+                    <p className="mt-1 text-xs text-gray-700">
+                      {logoFile.name}
+                    </p>
+                  )}
+                  {logoUploadState === "uploading" && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      {t("logoUploading")}
+                    </p>
+                  )}
+                  {logoUploadState === "invalid" && (
+                    <p className="mt-1 text-xs text-red-600">
+                      {t("logoInvalid")}
+                    </p>
+                  )}
+                  {logoUploadState === "failed" && (
+                    <p className="mt-1 text-xs text-red-600">
+                      {t("logoUploadFailed")}
+                    </p>
+                  )}
+                </div>
+
+                {/* ---- Contact information (REQ-086) ---- */}
+                <div className="border-t border-gray-200 pt-6">
+                  <h2 className="mb-4 text-base font-semibold text-gray-900">
+                    {t("sectionContactTitle")}
+                  </h2>
+                  <div className="space-y-6">
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-gray-700">
+                        {t("contactEmail")}
+                      </label>
+                      <input
+                        type="email"
+                        value={settingsForm.contactEmail}
+                        onChange={(e) =>
+                          setSettingsForm((prev) => ({
+                            ...prev,
+                            contactEmail: e.target.value,
+                          }))
+                        }
+                        className="w-full rounded-lg border border-gray-300 px-4 py-2 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
+                      />
+                      {fieldErrors.contactEmail && (
+                        <p className="mt-1 text-xs text-red-600">
+                          {fieldErrors.contactEmail}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-gray-700">
+                        {t("contactPhone")}
+                      </label>
+                      <input
+                        type="tel"
+                        value={settingsForm.contactPhone}
+                        onChange={(e) =>
+                          setSettingsForm((prev) => ({
+                            ...prev,
+                            contactPhone: e.target.value,
+                          }))
+                        }
+                        className="w-full rounded-lg border border-gray-300 px-4 py-2 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-gray-700">
+                        {t("contactAddress")}
+                      </label>
+                      <textarea
+                        value={settingsForm.contactAddress}
+                        onChange={(e) =>
+                          setSettingsForm((prev) => ({
+                            ...prev,
+                            contactAddress: e.target.value,
+                          }))
+                        }
+                        rows={2}
+                        className="w-full resize-none rounded-lg border border-gray-300 px-4 py-2 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 {/* Logo Preview */}
                 <div>
                   <label className="mb-3 block text-sm font-medium text-gray-700">
                     {t("logoPreview")}
                   </label>
                   <div className="flex items-center gap-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
-                    <div
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold"
-                      style={{
-                        backgroundColor: settingsForm.logoBackgroundColor,
-                        color: settingsForm.logoTextColor,
-                      }}
+                    {(logoPreviewUrl || settings?.logoUrl) && !logoImgError ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={logoPreviewUrl ?? settings?.logoUrl ?? ""}
+                        alt={settingsForm.applicationName}
+                        onError={() => setLogoImgError(true)}
+                        className="h-10 w-10 shrink-0 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold"
+                        style={{
+                          backgroundColor: settingsForm.logoBackgroundColor,
+                          color: settingsForm.logoTextColor,
+                        }}
+                      >
+                        {settingsForm.logoText}
+                      </div>
+                    )}
+                    <span
+                      className="font-medium"
+                      style={{ color: settingsForm.primaryColor }}
                     >
-                      {settingsForm.logoText || "IAB"}
-                    </div>
-                    <span className="font-medium text-gray-700">
-                      {settingsForm.applicationName || "IAB Connect"}
+                      {settingsForm.applicationName}
                     </span>
                   </div>
                 </div>

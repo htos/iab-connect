@@ -13,7 +13,13 @@ namespace IabConnect.Infrastructure.Persistence;
 public static class DevelopmentDataSeeder
 {
     /// <summary>
-    /// Seed users configuration - maps email to member data
+    /// Seed users configuration - maps email to member data.
+    /// REQ-086 (E9-S3): the brand-specific surname was de-branded to a neutral demo value.
+    /// The seed EMAILS are intentionally NOT changed here — they are coupled to the
+    /// Keycloak realm seed (infra/keycloak/realms/iabconnect-realm.json, out of scope per
+    /// story Dev Notes §B) and the login dev-credentials block; changing them in isolation
+    /// would break dev seeding. See story Q2 — de-branding the emails is a coordinated
+    /// infra follow-up (realm JSON + seeder + login page together).
     /// </summary>
     private static readonly List<SeedMemberData> SeedMembers =
     [
@@ -21,7 +27,7 @@ public static class DevelopmentDataSeeder
         {
             Email = "admin@iabconnect.ch",
             FirstName = "Admin",
-            LastName = "IAB",
+            LastName = "Demo",
             MembershipType = MembershipType.Honorary,
             ActivateAfterCreation = true
         },

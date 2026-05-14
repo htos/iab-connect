@@ -193,6 +193,16 @@ public static class DependencyInjection
         services.Configure<SmtpSettings>(configuration.GetSection(SmtpSettings.SectionName));
         services.AddScoped<IEmailSender, SmtpEmailSender>();
 
+        // REQ-086 (E9-S3): ICS feed PRODID — startup-bound, singleton-safe (the
+        // CalendarFeedBuilder is a singleton). Default preserves the previous literal.
+        // The builder lives in the Application project (no Options dependency there), so the
+        // bound POCO is also exposed directly for plain constructor injection.
+        services.Configure<Application.Events.Calendar.CalendarFeedSettings>(
+            configuration.GetSection(Application.Events.Calendar.CalendarFeedSettings.SectionName));
+        services.AddSingleton(sp =>
+            sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<
+                Application.Events.Calendar.CalendarFeedSettings>>().Value);
+
         // REQ-026: E-Mail-Kampagnen Job Service (Hangfire)
         services.AddScoped<IEmailCampaignJobService, EmailCampaignJobService>();
         services.AddScoped<EmailCampaignSendJob>();
@@ -215,7 +225,9 @@ public static class DependencyInjection
         services.AddScoped<IabConnect.Application.Events.IEventNotificationService, Events.EventNotificationService>();
 
         // Event registration PDF export
-        services.AddSingleton<IabConnect.Application.Events.IRegistrationPdfExporter, Events.EventRegistrationPdfExporter>();
+        // REQ-086 (E9-S3): Scoped (was Singleton) so it can inject the Scoped
+        // ISystemSettingsRepository for the configured organization name in the PDF header.
+        services.AddScoped<IabConnect.Application.Events.IRegistrationPdfExporter, Events.EventRegistrationPdfExporter>();
 
         // REQ-023: Event check-in roster CSV export
         services.AddSingleton<IabConnect.Application.Events.CheckIn.IEventCheckInRosterCsvExporter, Events.EventCheckInRosterCsvExporter>();

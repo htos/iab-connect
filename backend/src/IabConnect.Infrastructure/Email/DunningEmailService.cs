@@ -1,3 +1,5 @@
+using System.Net;
+using IabConnect.Application.Common;
 using IabConnect.Application.Finance;
 using IabConnect.Domain.Finance;
 using IabConnect.Domain.Members;
@@ -18,6 +20,7 @@ public sealed class DunningEmailService : IDunningEmailService
     private readonly IMemberRepository _memberRepository;
     private readonly ISponsorRepository _sponsorRepository;
     private readonly ISupplierRepository _supplierRepository;
+    private readonly ISystemSettingsRepository _settingsRepository;
     private readonly ILogger<DunningEmailService> _logger;
 
     public DunningEmailService(
@@ -26,6 +29,7 @@ public sealed class DunningEmailService : IDunningEmailService
         IMemberRepository memberRepository,
         ISponsorRepository sponsorRepository,
         ISupplierRepository supplierRepository,
+        ISystemSettingsRepository settingsRepository,
         ILogger<DunningEmailService> logger)
     {
         _emailSender = emailSender;
@@ -33,6 +37,7 @@ public sealed class DunningEmailService : IDunningEmailService
         _memberRepository = memberRepository;
         _sponsorRepository = sponsorRepository;
         _supplierRepository = supplierRepository;
+        _settingsRepository = settingsRepository;
         _logger = logger;
     }
 
@@ -47,8 +52,9 @@ public sealed class DunningEmailService : IDunningEmailService
             return false;
         }
 
+        var appName = (await _settingsRepository.GetSettingsAsync(ct)).ApplicationName;
         var subject = BuildSubject(notice.Level, invoice.InvoiceNumber);
-        var htmlContent = BuildHtmlContent(notice, invoice);
+        var htmlContent = BuildHtmlContent(notice, invoice, appName);
         var plainText = BuildPlainTextContent(notice, invoice);
 
         await _emailSender.SendAsync(
@@ -89,7 +95,7 @@ public sealed class DunningEmailService : IDunningEmailService
         _ => $"Payment Reminder – Invoice {invoiceNumber}"
     };
 
-    private static string BuildHtmlContent(DunningNotice notice, Invoice invoice)
+    private static string BuildHtmlContent(DunningNotice notice, Invoice invoice, string appName)
     {
         var (heading, message) = GetLevelContent(notice.Level);
         var dueDate = invoice.DueDate.ToString("dd/MM/yyyy");
@@ -101,7 +107,7 @@ public sealed class DunningEmailService : IDunningEmailService
             <head><meta charset="utf-8"></head>
             <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                 <div style="background-color: #EA580C; padding: 20px; border-radius: 8px 8px 0 0;">
-                    <h1 style="color: white; margin: 0; font-size: 24px;">IAB Connect</h1>
+                    <h1 style="color: white; margin: 0; font-size: 24px;">{WebUtility.HtmlEncode(appName)}</h1>
                 </div>
                 <div style="border: 1px solid #E5E7EB; border-top: none; padding: 30px; border-radius: 0 0 8px 8px;">
                     <h2 style="color: #111827; margin-top: 0;">{heading}</h2>

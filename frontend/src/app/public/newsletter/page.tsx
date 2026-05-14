@@ -9,12 +9,14 @@
 import { useState, FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { subscribeNewsletter, unsubscribeByEmail } from "@/lib/api/privacy";
+import { useAppSettings } from "@/components/providers/AppSettingsProvider";
 
 type Tab = "subscribe" | "unsubscribe";
 type FormStatus = "idle" | "loading" | "success" | "error";
 
 export default function PublicNewsletterPage() {
   const t = useTranslations("newsletter");
+  const { settings } = useAppSettings();
 
   const [tab, setTab] = useState<Tab>("subscribe");
   const [email, setEmail] = useState("");
@@ -28,7 +30,11 @@ export default function PublicNewsletterPage() {
     setStatus("loading");
     setErrorMsg("");
     try {
-      await subscribeNewsletter(email, firstName || undefined, lastName || undefined);
+      await subscribeNewsletter(
+        email,
+        firstName || undefined,
+        lastName || undefined
+      );
       setStatus("success");
     } catch {
       setStatus("error");
@@ -70,21 +76,33 @@ export default function PublicNewsletterPage() {
     const isSubscribe = tab === "subscribe";
     return (
       <div className="mx-auto max-w-lg px-4 py-16 sm:px-6">
-        <div className="flex flex-col items-center justify-center rounded-xl bg-green-50 border border-green-200 p-8 text-center">
-          <div className="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        <div className="flex flex-col items-center justify-center rounded-xl border border-green-200 bg-green-50 p-8 text-center">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+            <svg
+              className="h-8 w-8 text-green-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
             </svg>
           </div>
           <h2 className="mb-2 text-xl font-bold text-green-700">
             {isSubscribe ? t("subscribeSuccess") : t("unsubscribeSuccess")}
           </h2>
-          <p className="text-green-600 mb-6">
-            {isSubscribe ? t("subscribeSuccessText") : t("unsubscribeSuccessText")}
+          <p className="mb-6 text-green-600">
+            {isSubscribe
+              ? t("subscribeSuccessText")
+              : t("unsubscribeSuccessText")}
           </p>
           <button
             onClick={resetForm}
-            className="text-orange-600 hover:text-orange-700 font-medium underline"
+            className="font-medium text-orange-600 underline hover:text-orange-700"
           >
             {isSubscribe ? t("subscribeAnother") : t("unsubscribeAnother")}
           </button>
@@ -96,10 +114,10 @@ export default function PublicNewsletterPage() {
   return (
     <div className="mx-auto max-w-lg px-4 py-16 sm:px-6">
       {/* Tab Toggle */}
-      <div className="flex rounded-lg border border-gray-200 overflow-hidden mb-8">
+      <div className="mb-8 flex overflow-hidden rounded-lg border border-gray-200">
         <button
           onClick={() => switchTab("subscribe")}
-          className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
+          className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
             tab === "subscribe"
               ? "bg-orange-600 text-white"
               : "bg-white text-gray-600 hover:bg-gray-50"
@@ -109,7 +127,7 @@ export default function PublicNewsletterPage() {
         </button>
         <button
           onClick={() => switchTab("unsubscribe")}
-          className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
+          className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
             tab === "unsubscribe"
               ? "bg-orange-600 text-white"
               : "bg-white text-gray-600 hover:bg-gray-50"
@@ -121,20 +139,39 @@ export default function PublicNewsletterPage() {
 
       {/* Subscribe Form */}
       {tab === "subscribe" && (
-        <div className="bg-white rounded-xl shadow-sm p-8">
-          <div className="text-center mb-6">
-            <div className="h-16 w-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        <div className="rounded-xl bg-white p-8 shadow-sm">
+          <div className="mb-6 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-orange-100">
+              <svg
+                className="h-8 w-8 text-orange-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">{t("subscribeTitle")}</h1>
-            <p className="text-gray-600 mt-2">{t("subscribeDescription")}</p>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {t("subscribeTitle")}
+            </h1>
+            <p className="mt-2 text-gray-600">
+              {t("subscribeDescription", {
+                organizationName: settings.applicationName,
+              })}
+            </p>
           </div>
 
           <form onSubmit={handleSubscribe} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="email"
+                className="mb-1 block text-sm font-medium text-gray-700"
+              >
                 {t("emailLabel")} *
               </label>
               <input
@@ -149,7 +186,10 @@ export default function PublicNewsletterPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  htmlFor="firstName"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
                   {t("firstNameLabel")}
                 </label>
                 <input
@@ -162,7 +202,10 @@ export default function PublicNewsletterPage() {
                 />
               </div>
               <div>
-                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  htmlFor="lastName"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
                   {t("lastNameLabel")}
                 </label>
                 <input
@@ -177,7 +220,7 @@ export default function PublicNewsletterPage() {
             </div>
 
             {status === "error" && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600">
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
                 {errorMsg}
               </div>
             )}
@@ -185,14 +228,17 @@ export default function PublicNewsletterPage() {
             <button
               type="submit"
               disabled={status === "loading"}
-              className="w-full py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+              className="w-full rounded-lg bg-orange-600 py-3 font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {status === "loading" ? t("subscribing") : t("subscribeButton")}
             </button>
           </form>
 
-          <p className="text-center text-sm text-gray-500 mt-4">
-            <button onClick={() => switchTab("unsubscribe")} className="text-orange-600 hover:underline">
+          <p className="mt-4 text-center text-sm text-gray-500">
+            <button
+              onClick={() => switchTab("unsubscribe")}
+              className="text-orange-600 hover:underline"
+            >
               {t("switchToUnsubscribe")}
             </button>
           </p>
@@ -201,20 +247,35 @@ export default function PublicNewsletterPage() {
 
       {/* Unsubscribe Form */}
       {tab === "unsubscribe" && (
-        <div className="bg-white rounded-xl shadow-sm p-8">
-          <div className="text-center mb-6">
-            <div className="h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+        <div className="rounded-xl bg-white p-8 shadow-sm">
+          <div className="mb-6 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
+              <svg
+                className="h-8 w-8 text-gray-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">{t("unsubscribeTitle")}</h1>
-            <p className="text-gray-600 mt-2">{t("unsubscribeDescription")}</p>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {t("unsubscribeTitle")}
+            </h1>
+            <p className="mt-2 text-gray-600">{t("unsubscribeDescription")}</p>
           </div>
 
           <form onSubmit={handleUnsubscribe} className="space-y-4">
             <div>
-              <label htmlFor="unsub-email" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="unsub-email"
+                className="mb-1 block text-sm font-medium text-gray-700"
+              >
                 {t("emailLabel")} *
               </label>
               <input
@@ -229,7 +290,7 @@ export default function PublicNewsletterPage() {
             </div>
 
             {status === "error" && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600">
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
                 {errorMsg}
               </div>
             )}
@@ -237,14 +298,19 @@ export default function PublicNewsletterPage() {
             <button
               type="submit"
               disabled={status === "loading"}
-              className="w-full py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+              className="w-full rounded-lg bg-gray-600 py-3 font-medium text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {status === "loading" ? t("unsubscribing") : t("unsubscribeButton")}
+              {status === "loading"
+                ? t("unsubscribing")
+                : t("unsubscribeButton")}
             </button>
           </form>
 
-          <p className="text-center text-sm text-gray-500 mt-4">
-            <button onClick={() => switchTab("subscribe")} className="text-orange-600 hover:underline">
+          <p className="mt-4 text-center text-sm text-gray-500">
+            <button
+              onClick={() => switchTab("subscribe")}
+              className="text-orange-600 hover:underline"
+            >
               {t("switchToSubscribe")}
             </button>
           </p>

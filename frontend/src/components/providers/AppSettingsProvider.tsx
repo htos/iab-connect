@@ -3,6 +3,8 @@
 /**
  * App Settings Context
  * REQ-059: Provides dynamic application name and logo settings to all components
+ * REQ-086 (E9-S1): extended with organization description, primary color,
+ * public-site toggle, and an uploaded logo URL.
  * Fetches from /api/v1/settings/public (no auth required)
  */
 import {
@@ -19,6 +21,10 @@ interface AppSettings {
   logoText: string;
   logoBackgroundColor: string;
   logoTextColor: string;
+  description: string;
+  primaryColor: string;
+  publicSiteEnabled: boolean;
+  logoUrl: string | null;
 }
 
 interface AppSettingsContextType {
@@ -32,6 +38,10 @@ const defaultSettings: AppSettings = {
   logoText: "AC",
   logoBackgroundColor: "#EA580C",
   logoTextColor: "#FFFFFF",
+  description: "",
+  primaryColor: "#EA580C",
+  publicSiteEnabled: true,
+  logoUrl: null,
 };
 
 const AppSettingsContext = createContext<AppSettingsContextType>({
@@ -58,6 +68,13 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
           logoBackgroundColor:
             data.logoBackgroundColor || defaultSettings.logoBackgroundColor,
           logoTextColor: data.logoTextColor || defaultSettings.logoTextColor,
+          description: data.description || defaultSettings.description,
+          primaryColor: data.primaryColor || defaultSettings.primaryColor,
+          publicSiteEnabled:
+            data.publicSiteEnabled ?? defaultSettings.publicSiteEnabled,
+          // The public endpoint returns a relative path; resolve it against the
+          // API base so <img> tags get an absolute, stable URL.
+          logoUrl: data.logoUrl ? `${baseUrl}${data.logoUrl}` : null,
         });
       }
     } catch {

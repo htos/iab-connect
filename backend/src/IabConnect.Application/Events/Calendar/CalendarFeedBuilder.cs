@@ -7,13 +7,23 @@ namespace IabConnect.Application.Events.Calendar;
 /// <summary>
 /// REQ-025 (E3.S5): Hand-rolled RFC 5545 ICS emitter. Stateless and thread-safe;
 /// registered as a singleton.
+/// REQ-086 (E9-S3): the <c>PRODID</c> value is config-driven via
+/// <see cref="CalendarFeedSettings"/> (startup-bound, singleton-safe) — the default
+/// preserves the previous hardcoded literal. The per-event <c>UID</c> domain suffix is
+/// deliberately NOT touched (changing it breaks already-issued calendar subscriptions).
 /// </summary>
 public sealed class CalendarFeedBuilder : ICalendarFeedBuilder
 {
     private const string LineBreak = "\r\n";
     private const int MaxOctetsPerLine = 75;
     private const int MaxDescriptionLength = 8000;
-    private const string ProdId = "-//IAB Connect//Events//EN";
+
+    private readonly string _prodId;
+
+    public CalendarFeedBuilder(CalendarFeedSettings settings)
+    {
+        _prodId = settings.ProdId;
+    }
 
     public string Build(IEnumerable<Event> events, string baseUrl)
     {
@@ -36,11 +46,15 @@ public sealed class CalendarFeedBuilder : ICalendarFeedBuilder
         return sb.ToString();
     }
 
-    private static void WriteEnvelopeStart(StringBuilder sb)
+    private void WriteEnvelopeStart(StringBuilder sb)
     {
         sb.Append("BEGIN:VCALENDAR").Append(LineBreak);
         sb.Append("VERSION:2.0").Append(LineBreak);
-        sb.Append("PRODID:").Append(ProdId).Append(LineBreak);
+        // PRODID is an RFC 5545 TEXT value — escape + line-fold it like every other text line
+        // so an operator-misconfigured value (CR/LF, control chars, > 75 octets) cannot produce
+        // a malformed feed. The default literal contains no special chars, so output for an
+        // unconfigured deployment is byte-identical.
+        AppendLineFolded(sb, $"PRODID:{EscapeIcsText(_prodId)}");
         sb.Append("METHOD:PUBLISH").Append(LineBreak);
         sb.Append("CALSCALE:GREGORIAN").Append(LineBreak);
     }

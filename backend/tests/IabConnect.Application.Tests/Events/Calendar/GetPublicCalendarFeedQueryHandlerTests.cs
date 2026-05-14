@@ -21,7 +21,7 @@ namespace IabConnect.Application.Tests.Events.Calendar;
 public sealed class GetPublicCalendarFeedQueryHandlerTests
 {
     private readonly Mock<IEventRepository> _events = new(MockBehavior.Strict);
-    private readonly ICalendarFeedBuilder _builder = new CalendarFeedBuilder();
+    private readonly ICalendarFeedBuilder _builder = new CalendarFeedBuilder(new CalendarFeedSettings());
 
     private GetPublicCalendarFeedQueryHandler Sut() => new(_events.Object, _builder);
 

@@ -16,6 +16,7 @@ import {
 } from "@/lib/api/email-campaigns";
 import { emailTemplatesApi } from "@/lib/email-templates";
 import { EmailTemplate } from "@/types/email-templates";
+import { useAppSettings } from "@/components/providers/AppSettingsProvider";
 import {
   RichTextEditor,
   HtmlSourceEditor,
@@ -41,13 +42,16 @@ export default function NewEmailCampaignPage() {
   const router = useRouter();
   const t = useTranslations("emailCampaigns");
   const tCommon = useTranslations("common");
+  const { settings, isLoading: settingsLoading } = useAppSettings();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editorMode, setEditorMode] = useState<EditorMode>("visual");
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
-  const [availableSegments, setAvailableSegments] = useState<ActiveSegment[]>([]);
+  const [availableSegments, setAvailableSegments] = useState<ActiveSegment[]>(
+    []
+  );
   const [segmentSearch, setSegmentSearch] = useState("");
   const [segmentDropdownOpen, setSegmentDropdownOpen] = useState(false);
   const [selectedSegmentName, setSelectedSegmentName] = useState("");
@@ -57,8 +61,9 @@ export default function NewEmailCampaignPage() {
     subject: "",
     htmlContent: "",
     plainTextContent: "",
-    fromName: "IAB Connect",
-    fromEmail: "noreply@iabconnect.ch",
+    fromName: "",
+    // REQ-086 (E9 review patch): neutral placeholder — no hardcoded organization domain.
+    fromEmail: "noreply@example.org",
     replyToEmail: "",
     segmentType: "AllActiveMembers",
     segmentFilter: "",
@@ -74,6 +79,16 @@ export default function NewEmailCampaignPage() {
       router.push("/");
     }
   }, [authLoading, isAuthenticated, isVorstand, isAdmin, router]);
+
+  // REQ-086 (E9-S2): default the sender name from the configured organization once
+  // settings have loaded — not as a useState initializer (avoids the stale-default flash).
+  useEffect(() => {
+    if (!settingsLoading) {
+      setFormData((prev) =>
+        prev.fromName ? prev : { ...prev, fromName: settings.applicationName }
+      );
+    }
+  }, [settingsLoading, settings.applicationName]);
 
   // Load available templates
   useEffect(() => {
@@ -102,7 +117,10 @@ export default function NewEmailCampaignPage() {
   // Close segment dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (segmentSearchRef.current && !segmentSearchRef.current.contains(e.target as Node)) {
+      if (
+        segmentSearchRef.current &&
+        !segmentSearchRef.current.contains(e.target as Node)
+      ) {
         setSegmentDropdownOpen(false);
       }
     };
@@ -474,35 +492,50 @@ export default function NewEmailCampaignPage() {
                     className="w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
                   />
                   {segmentDropdownOpen && (
-                    <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+                    <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg">
                       {availableSegments
                         .filter((s) =>
-                          s.name.toLowerCase().includes((segmentSearch || "").toLowerCase())
+                          s.name
+                            .toLowerCase()
+                            .includes((segmentSearch || "").toLowerCase())
                         )
                         .map((seg) => (
                           <button
                             key={seg.id}
                             type="button"
                             onClick={() => {
-                              setFormData((prev) => ({ ...prev, segmentFilter: seg.id }));
+                              setFormData((prev) => ({
+                                ...prev,
+                                segmentFilter: seg.id,
+                              }));
                               setSelectedSegmentName(seg.name);
                               setSegmentSearch("");
                               setSegmentDropdownOpen(false);
                             }}
-                            className="w-full text-left px-4 py-3 hover:bg-orange-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                            className="w-full border-b border-gray-100 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-orange-50"
                           >
-                            <span className="text-sm font-medium text-gray-900">{seg.name}</span>
-                            <span className={`ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                              seg.segmentType === "Dynamic" ? "bg-purple-100 text-purple-800" : "bg-blue-100 text-blue-800"
-                            }`}>
-                              {seg.segmentType === "Dynamic" ? "Dynamisch" : "Statisch"}
+                            <span className="text-sm font-medium text-gray-900">
+                              {seg.name}
+                            </span>
+                            <span
+                              className={`ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                                seg.segmentType === "Dynamic"
+                                  ? "bg-purple-100 text-purple-800"
+                                  : "bg-blue-100 text-blue-800"
+                              }`}
+                            >
+                              {seg.segmentType === "Dynamic"
+                                ? "Dynamisch"
+                                : "Statisch"}
                             </span>
                           </button>
                         ))}
                       {availableSegments.filter((s) =>
-                        s.name.toLowerCase().includes((segmentSearch || "").toLowerCase())
+                        s.name
+                          .toLowerCase()
+                          .includes((segmentSearch || "").toLowerCase())
                       ).length === 0 && (
-                        <p className="px-4 py-3 text-sm text-gray-500 text-center">
+                        <p className="px-4 py-3 text-center text-sm text-gray-500">
                           {t("form.noSegmentsFound")}
                         </p>
                       )}
@@ -694,7 +727,11 @@ export default function NewEmailCampaignPage() {
             </Link>
             <button
               type="submit"
-              disabled={loading}
+              // REQ-086 (E9 review patch): block submit while settings are still loading and
+              // the sender name has not been filled — avoids posting an empty fromName.
+              disabled={
+                loading || (settingsLoading && !formData.fromName.trim())
+              }
               className="rounded-lg bg-orange-600 px-6 py-2 text-white transition-colors hover:bg-orange-700 disabled:opacity-50"
             >
               {loading ? t("form.creating") : t("form.createCampaign")}

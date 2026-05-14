@@ -36,6 +36,34 @@ public class SystemSettingsConfiguration : IEntityTypeConfiguration<SystemSettin
             .HasMaxLength(9)
             .IsRequired();
 
+        // REQ-086 (E9-S1): organization profile & branding — all nullable, no IsRequired.
+        builder.Property(s => s.Description)
+            .HasColumnName("description")
+            .HasMaxLength(2000);
+
+        builder.Property(s => s.ContactEmail)
+            .HasColumnName("contact_email")
+            .HasMaxLength(320);
+
+        builder.Property(s => s.ContactPhone)
+            .HasColumnName("contact_phone")
+            .HasMaxLength(50);
+
+        builder.Property(s => s.ContactAddress)
+            .HasColumnName("contact_address")
+            .HasMaxLength(500);
+
+        builder.Property(s => s.PrimaryColor)
+            .HasColumnName("primary_color")
+            .HasMaxLength(9);
+
+        builder.Property(s => s.PublicSiteEnabled)
+            .HasColumnName("public_site_enabled");
+
+        builder.Property(s => s.LogoAssetKey)
+            .HasColumnName("logo_asset_key")
+            .HasMaxLength(500);
+
         builder.Property(s => s.UpdatedAt)
             .HasColumnName("updated_at");
 

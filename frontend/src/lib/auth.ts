@@ -1,5 +1,5 @@
 /**
- * Auth utilities and hooks for IAB Connect
+ * Auth utilities and hooks
  * REQ-001: Login & Zugriff (Admin und Mitglieder)
  */
 import { useSession, signIn, signOut } from "next-auth/react";
@@ -278,15 +278,18 @@ export function useApiClient() {
     [accessToken, isAuthenticated, baseUrl]
   );
 
-  return useMemo(() => ({
-    get: <T>(endpoint: string) => fetchApi<T>(endpoint, { method: "GET" }),
-    post: <T>(endpoint: string, body: unknown) =>
-      fetchApi<T>(endpoint, { method: "POST", body: JSON.stringify(body) }),
-    put: <T>(endpoint: string, body: unknown) =>
-      fetchApi<T>(endpoint, { method: "PUT", body: JSON.stringify(body) }),
-    delete: <T>(endpoint: string) =>
-      fetchApi<T>(endpoint, { method: "DELETE" }),
-    upload: <T>(endpoint: string, formData: FormData) =>
-      uploadFile<T>(endpoint, formData),
-  }), [fetchApi, uploadFile]);
+  return useMemo(
+    () => ({
+      get: <T>(endpoint: string) => fetchApi<T>(endpoint, { method: "GET" }),
+      post: <T>(endpoint: string, body: unknown) =>
+        fetchApi<T>(endpoint, { method: "POST", body: JSON.stringify(body) }),
+      put: <T>(endpoint: string, body: unknown) =>
+        fetchApi<T>(endpoint, { method: "PUT", body: JSON.stringify(body) }),
+      delete: <T>(endpoint: string) =>
+        fetchApi<T>(endpoint, { method: "DELETE" }),
+      upload: <T>(endpoint: string, formData: FormData) =>
+        uploadFile<T>(endpoint, formData),
+    }),
+    [fetchApi, uploadFile]
+  );
 }

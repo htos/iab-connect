@@ -1,4 +1,6 @@
 using FluentAssertions;
+using IabConnect.Application.Common;
+using IabConnect.Domain.Common;
 using IabConnect.Domain.Events;
 using IabConnect.Domain.Events.Volunteers;
 using IabConnect.Domain.Members;
@@ -29,9 +31,16 @@ public sealed class EventNotificationServiceVolunteerReminderTests
 
     private EventNotificationService BuildService()
     {
+        // REQ-086 (E9-S3): the volunteer-reminder path does not read SystemSettings, but the
+        // ctor now requires the repository — supply a stub returning the default settings.
+        var settingsRepository = new Mock<ISystemSettingsRepository>();
+        settingsRepository
+            .Setup(r => r.GetSettingsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(SystemSettings.CreateDefault());
         return new EventNotificationService(
             _emailSender.Object,
             Options.Create(_smtp),
+            settingsRepository.Object,
             NullLogger<EventNotificationService>.Instance);
     }
 

@@ -22,6 +22,7 @@ import {
   RichTextEditor,
   HtmlSourceEditor,
 } from "@/components/ui/rich-text-editor";
+import { useAppSettings } from "@/components/providers/AppSettingsProvider";
 
 interface ActiveSegment {
   id: string;
@@ -45,6 +46,15 @@ export default function EditEmailCampaignPage() {
   const campaignId = params.id as string;
   const t = useTranslations("emailCampaigns");
   const tCommon = useTranslations("common");
+  const { settings } = useAppSettings();
+
+  // REQ-086 (E9 review patch): read the configured org name via a ref so it is NOT a
+  // `fetchCampaign` dependency — otherwise a late-resolving AppSettingsProvider re-runs the
+  // load effect and clobbers the user's unsaved edits.
+  const applicationNameRef = useRef(settings.applicationName);
+  useEffect(() => {
+    applicationNameRef.current = settings.applicationName;
+  }, [settings.applicationName]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -53,7 +63,9 @@ export default function EditEmailCampaignPage() {
   const [editorMode, setEditorMode] = useState<EditorMode>("visual");
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
-  const [availableSegments, setAvailableSegments] = useState<ActiveSegment[]>([]);
+  const [availableSegments, setAvailableSegments] = useState<ActiveSegment[]>(
+    []
+  );
   const [segmentSearch, setSegmentSearch] = useState("");
   const [segmentDropdownOpen, setSegmentDropdownOpen] = useState(false);
   const [selectedSegmentName, setSelectedSegmentName] = useState("");
@@ -98,8 +110,9 @@ export default function EditEmailCampaignPage() {
         subject: data.subject,
         htmlContent: data.htmlContent || "",
         plainTextContent: data.plainTextContent || "",
-        fromName: data.fromName || "IAB Connect",
-        fromEmail: data.fromEmail || "noreply@iabconnect.ch",
+        fromName: data.fromName || applicationNameRef.current,
+        // REQ-086 (E9 review patch): neutral placeholder — no hardcoded organization domain.
+        fromEmail: data.fromEmail || "noreply@example.org",
         replyToEmail: data.replyToEmail || "",
         segmentType: data.segmentType as RecipientSegmentType,
         segmentFilter: data.segmentFilter || "",
@@ -148,7 +161,10 @@ export default function EditEmailCampaignPage() {
         .then((data: ActiveSegment[]) => {
           setAvailableSegments(data);
           // Set selected segment name if campaign uses MemberSegment
-          if (formData.segmentType === "MemberSegment" && formData.segmentFilter) {
+          if (
+            formData.segmentType === "MemberSegment" &&
+            formData.segmentFilter
+          ) {
             const found = data.find((s) => s.id === formData.segmentFilter);
             if (found) setSelectedSegmentName(found.name);
           }
@@ -160,7 +176,10 @@ export default function EditEmailCampaignPage() {
   // Close segment dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (segmentSearchRef.current && !segmentSearchRef.current.contains(e.target as Node)) {
+      if (
+        segmentSearchRef.current &&
+        !segmentSearchRef.current.contains(e.target as Node)
+      ) {
         setSegmentDropdownOpen(false);
       }
     };
@@ -572,35 +591,50 @@ export default function EditEmailCampaignPage() {
                     className="w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
                   />
                   {segmentDropdownOpen && (
-                    <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+                    <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg">
                       {availableSegments
                         .filter((s) =>
-                          s.name.toLowerCase().includes((segmentSearch || "").toLowerCase())
+                          s.name
+                            .toLowerCase()
+                            .includes((segmentSearch || "").toLowerCase())
                         )
                         .map((seg) => (
                           <button
                             key={seg.id}
                             type="button"
                             onClick={() => {
-                              setFormData((prev) => ({ ...prev, segmentFilter: seg.id }));
+                              setFormData((prev) => ({
+                                ...prev,
+                                segmentFilter: seg.id,
+                              }));
                               setSelectedSegmentName(seg.name);
                               setSegmentSearch("");
                               setSegmentDropdownOpen(false);
                             }}
-                            className="w-full text-left px-4 py-3 hover:bg-orange-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                            className="w-full border-b border-gray-100 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-orange-50"
                           >
-                            <span className="text-sm font-medium text-gray-900">{seg.name}</span>
-                            <span className={`ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                              seg.segmentType === "Dynamic" ? "bg-purple-100 text-purple-800" : "bg-blue-100 text-blue-800"
-                            }`}>
-                              {seg.segmentType === "Dynamic" ? "Dynamisch" : "Statisch"}
+                            <span className="text-sm font-medium text-gray-900">
+                              {seg.name}
+                            </span>
+                            <span
+                              className={`ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                                seg.segmentType === "Dynamic"
+                                  ? "bg-purple-100 text-purple-800"
+                                  : "bg-blue-100 text-blue-800"
+                              }`}
+                            >
+                              {seg.segmentType === "Dynamic"
+                                ? "Dynamisch"
+                                : "Statisch"}
                             </span>
                           </button>
                         ))}
                       {availableSegments.filter((s) =>
-                        s.name.toLowerCase().includes((segmentSearch || "").toLowerCase())
+                        s.name
+                          .toLowerCase()
+                          .includes((segmentSearch || "").toLowerCase())
                       ).length === 0 && (
-                        <p className="px-4 py-3 text-sm text-gray-500 text-center">
+                        <p className="px-4 py-3 text-center text-sm text-gray-500">
                           {t("form.noSegmentsFound")}
                         </p>
                       )}

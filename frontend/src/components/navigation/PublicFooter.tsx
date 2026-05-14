@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { useAppSettings } from "@/components/providers/AppSettingsProvider";
 
 export default function PublicFooter() {
   const t = useTranslations("publicFooter");
+  const { settings } = useAppSettings();
 
   return (
     <footer className="bg-gray-900 text-white">
@@ -13,19 +15,31 @@ export default function PublicFooter() {
           {/* Brand */}
           <div>
             <div className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#EA580C]">
-                <span className="text-sm font-bold text-white">IAB</span>
+              <div
+                className="flex h-9 w-9 items-center justify-center rounded-full"
+                style={{ backgroundColor: settings.logoBackgroundColor }}
+              >
+                <span
+                  className="text-sm font-bold"
+                  style={{ color: settings.logoTextColor }}
+                >
+                  {settings.logoText}
+                </span>
               </div>
-              <span className="text-lg font-semibold">IAB Connect</span>
+              <span className="text-lg font-semibold">
+                {settings.applicationName}
+              </span>
             </div>
             <p className="mt-3 text-sm text-gray-400">
-              {t("description")}
+              {t("description", {
+                organizationName: settings.applicationName,
+              })}
             </p>
           </div>
 
           {/* Quick Links */}
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-400">
+            <h3 className="text-sm font-semibold tracking-wider text-gray-400 uppercase">
               {t("quickLinks")}
             </h3>
             <ul className="mt-4 space-y-2">
@@ -74,7 +88,7 @@ export default function PublicFooter() {
 
           {/* Legal */}
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-400">
+            <h3 className="text-sm font-semibold tracking-wider text-gray-400 uppercase">
               {t("legal")}
             </h3>
             <ul className="mt-4 space-y-2">
@@ -108,7 +122,10 @@ export default function PublicFooter() {
 
         {/* Bottom bar */}
         <div className="mt-10 border-t border-gray-800 pt-6 text-center text-sm text-gray-400">
-          {t("copyright")}
+          {t("copyright", {
+            organizationName: settings.applicationName,
+            year: new Date().getFullYear(),
+          })}
         </div>
       </div>
     </footer>

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Auth Error Page for IAB Connect
+ * Auth Error Page
  * REQ-001: Handles authentication errors
  */
 import { useSearchParams } from "next/navigation";
@@ -21,52 +21,53 @@ type ErrorType =
   | "SessionRequired"
   | "Default";
 
-const errorMappings: Record<ErrorType, { titleKey: string; descKey: string }> = {
-  Configuration: {
-    titleKey: "authError.configurationError",
-    descKey: "authError.configurationErrorDesc",
-  },
-  AccessDenied: {
-    titleKey: "authError.accessDenied",
-    descKey: "authError.accessDeniedDesc",
-  },
-  Verification: {
-    titleKey: "authError.verificationFailed",
-    descKey: "authError.verificationFailedDesc",
-  },
-  OAuthSignin: {
-    titleKey: "authError.signInFailed",
-    descKey: "authError.signInFailedDesc",
-  },
-  OAuthCallback: {
-    titleKey: "authError.callbackError",
-    descKey: "authError.callbackErrorDesc",
-  },
-  OAuthCreateAccount: {
-    titleKey: "authError.accountCreationFailed",
-    descKey: "authError.accountCreationFailedDesc",
-  },
-  EmailCreateAccount: {
-    titleKey: "authError.accountCreationFailed",
-    descKey: "authError.accountCreationFailedDesc",
-  },
-  Callback: {
-    titleKey: "authError.callbackError",
-    descKey: "authError.callbackErrorDesc",
-  },
-  OAuthAccountNotLinked: {
-    titleKey: "authError.accountNotLinked",
-    descKey: "authError.accountNotLinkedDesc",
-  },
-  SessionRequired: {
-    titleKey: "auth.sessionRequired",
-    descKey: "auth.sessionRequired",
-  },
-  Default: {
-    titleKey: "authError.authenticationError",
-    descKey: "authError.authenticationErrorDesc",
-  },
-};
+const errorMappings: Record<ErrorType, { titleKey: string; descKey: string }> =
+  {
+    Configuration: {
+      titleKey: "authError.configurationError",
+      descKey: "authError.configurationErrorDesc",
+    },
+    AccessDenied: {
+      titleKey: "authError.accessDenied",
+      descKey: "authError.accessDeniedDesc",
+    },
+    Verification: {
+      titleKey: "authError.verificationFailed",
+      descKey: "authError.verificationFailedDesc",
+    },
+    OAuthSignin: {
+      titleKey: "authError.signInFailed",
+      descKey: "authError.signInFailedDesc",
+    },
+    OAuthCallback: {
+      titleKey: "authError.callbackError",
+      descKey: "authError.callbackErrorDesc",
+    },
+    OAuthCreateAccount: {
+      titleKey: "authError.accountCreationFailed",
+      descKey: "authError.accountCreationFailedDesc",
+    },
+    EmailCreateAccount: {
+      titleKey: "authError.accountCreationFailed",
+      descKey: "authError.accountCreationFailedDesc",
+    },
+    Callback: {
+      titleKey: "authError.callbackError",
+      descKey: "authError.callbackErrorDesc",
+    },
+    OAuthAccountNotLinked: {
+      titleKey: "authError.accountNotLinked",
+      descKey: "authError.accountNotLinkedDesc",
+    },
+    SessionRequired: {
+      titleKey: "auth.sessionRequired",
+      descKey: "auth.sessionRequired",
+    },
+    Default: {
+      titleKey: "authError.authenticationError",
+      descKey: "authError.authenticationErrorDesc",
+    },
+  };
 
 export default function AuthErrorPage() {
   const t = useTranslations();
@@ -78,11 +79,11 @@ export default function AuthErrorPage() {
   const description = t(mapping.descKey);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-red-50 to-orange-100 px-4">
-      <div className="max-w-md w-full">
+    <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-red-50 to-orange-100 px-4">
+      <div className="w-full max-w-md">
         {/* Error Icon */}
-        <div className="text-center mb-8">
-          <div className="mx-auto h-20 w-20 bg-red-100 rounded-full flex items-center justify-center mb-4">
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-red-100">
             <svg
               className="h-10 w-10 text-red-600"
               fill="none"
@@ -98,20 +99,18 @@ export default function AuthErrorPage() {
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-          <p className="text-gray-600 mt-2">{description}</p>
+          <p className="mt-2 text-gray-600">{description}</p>
         </div>
 
         {/* Error Card */}
-        <div className="bg-white shadow-xl rounded-2xl p-8">
+        <div className="rounded-2xl bg-white p-8 shadow-xl">
           <div className="space-y-4">
             <Link
               href="/login"
-              className="w-full py-3 px-4 bg-orange-600 hover:bg-orange-700
-                       text-white font-medium rounded-lg transition-colors duration-200
-                       flex items-center justify-center gap-2"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-3 font-medium text-white transition-colors duration-200 hover:bg-orange-700"
             >
               <svg
-                className="w-5 h-5"
+                className="h-5 w-5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -128,12 +127,10 @@ export default function AuthErrorPage() {
 
             <Link
               href="/"
-              className="w-full py-3 px-4 bg-gray-100 hover:bg-gray-200
-                       text-gray-700 font-medium rounded-lg transition-colors duration-200
-                       flex items-center justify-center gap-2"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-gray-100 px-4 py-3 font-medium text-gray-700 transition-colors duration-200 hover:bg-gray-200"
             >
               <svg
-                className="w-5 h-5"
+                className="h-5 w-5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -151,9 +148,13 @@ export default function AuthErrorPage() {
 
           {/* Debug info in development */}
           {process.env.NODE_ENV === "development" && (
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <p className="text-xs font-medium text-gray-700 mb-1">Debug Info:</p>
-              <p className="text-xs text-gray-500 font-mono">Error Type: {errorType}</p>
+            <div className="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <p className="mb-1 text-xs font-medium text-gray-700">
+                Debug Info:
+              </p>
+              <p className="font-mono text-xs text-gray-500">
+                Error Type: {errorType}
+              </p>
             </div>
           )}
         </div>

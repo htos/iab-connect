@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Net;
+using IabConnect.Application.Common;
 using IabConnect.Application.Events;
 using IabConnect.Domain.Events;
 using IabConnect.Domain.Events.Volunteers;
@@ -18,22 +19,26 @@ public sealed class EventNotificationService : IEventNotificationService
 {
     private readonly IEmailSender _emailSender;
     private readonly SmtpSettings _smtpSettings;
+    private readonly ISystemSettingsRepository _settingsRepository;
     private readonly ILogger<EventNotificationService> _logger;
 
     public EventNotificationService(
         IEmailSender emailSender,
         IOptions<SmtpSettings> smtpSettings,
+        ISystemSettingsRepository settingsRepository,
         ILogger<EventNotificationService> logger)
     {
         _emailSender = emailSender;
         _smtpSettings = smtpSettings.Value;
+        _settingsRepository = settingsRepository;
         _logger = logger;
     }
 
     public async Task SendWaitlistConfirmationAsync(EventRegistration registration, Event evt, CancellationToken ct = default)
     {
+        var appName = (await _settingsRepository.GetSettingsAsync(ct)).ApplicationName;
         var subject = $"Waitlist Confirmation – {evt.Title}";
-        var html = BuildWaitlistConfirmationHtml(registration, evt);
+        var html = BuildWaitlistConfirmationHtml(registration, evt, appName);
         var plain = BuildWaitlistConfirmationPlain(registration, evt);
 
         await SendEmailAsync(registration.ParticipantEmail, subject, html, plain, ct);
@@ -45,8 +50,9 @@ public sealed class EventNotificationService : IEventNotificationService
 
     public async Task SendWaitlistPromotionAsync(EventRegistration registration, Event evt, CancellationToken ct = default)
     {
+        var appName = (await _settingsRepository.GetSettingsAsync(ct)).ApplicationName;
         var subject = $"You're In! – {evt.Title}";
-        var html = BuildWaitlistPromotionHtml(registration, evt);
+        var html = BuildWaitlistPromotionHtml(registration, evt, appName);
         var plain = BuildWaitlistPromotionPlain(registration, evt);
 
         await SendEmailAsync(registration.ParticipantEmail, subject, html, plain, ct);
@@ -58,8 +64,9 @@ public sealed class EventNotificationService : IEventNotificationService
 
     public async Task SendRegistrationConfirmationAsync(EventRegistration registration, Event evt, CancellationToken ct = default)
     {
+        var appName = (await _settingsRepository.GetSettingsAsync(ct)).ApplicationName;
         var subject = $"Registration Confirmed – {evt.Title}";
-        var html = BuildRegistrationConfirmationHtml(registration, evt);
+        var html = BuildRegistrationConfirmationHtml(registration, evt, appName);
         var plain = BuildRegistrationConfirmationPlain(registration, evt);
 
         await SendEmailAsync(registration.ParticipantEmail, subject, html, plain, ct);
@@ -71,8 +78,9 @@ public sealed class EventNotificationService : IEventNotificationService
 
     public async Task SendCancellationNotificationAsync(EventRegistration registration, Event evt, CancellationToken ct = default)
     {
+        var appName = (await _settingsRepository.GetSettingsAsync(ct)).ApplicationName;
         var subject = $"Registration Cancelled – {evt.Title}";
-        var html = BuildCancellationHtml(registration, evt);
+        var html = BuildCancellationHtml(registration, evt, appName);
         var plain = BuildCancellationPlain(registration, evt);
 
         await SendEmailAsync(registration.ParticipantEmail, subject, html, plain, ct);
@@ -277,7 +285,7 @@ Please arrive on time. Thanks for volunteering!
 
     // --- Waitlist Confirmation ---
 
-    private static string BuildWaitlistConfirmationHtml(EventRegistration registration, Event evt)
+    private static string BuildWaitlistConfirmationHtml(EventRegistration registration, Event evt, string appName)
     {
         return $"""
             <!DOCTYPE html>
@@ -285,7 +293,7 @@ Please arrive on time. Thanks for volunteering!
             <head><meta charset="utf-8"></head>
             <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                 <div style="background-color: #EA580C; padding: 20px; border-radius: 8px 8px 0 0;">
-                    <h1 style="color: white; margin: 0; font-size: 24px;">IAB Connect</h1>
+                    <h1 style="color: white; margin: 0; font-size: 24px;">{WebUtility.HtmlEncode(appName)}</h1>
                 </div>
                 <div style="border: 1px solid #E5E7EB; border-top: none; padding: 30px; border-radius: 0 0 8px 8px;">
                     <h2 style="color: #111827; margin-top: 0;">You're on the Waitlist</h2>
@@ -353,7 +361,7 @@ Please arrive on time. Thanks for volunteering!
 
     // --- Waitlist Promotion ---
 
-    private static string BuildWaitlistPromotionHtml(EventRegistration registration, Event evt)
+    private static string BuildWaitlistPromotionHtml(EventRegistration registration, Event evt, string appName)
     {
         return $"""
             <!DOCTYPE html>
@@ -361,7 +369,7 @@ Please arrive on time. Thanks for volunteering!
             <head><meta charset="utf-8"></head>
             <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                 <div style="background-color: #EA580C; padding: 20px; border-radius: 8px 8px 0 0;">
-                    <h1 style="color: white; margin: 0; font-size: 24px;">IAB Connect</h1>
+                    <h1 style="color: white; margin: 0; font-size: 24px;">{WebUtility.HtmlEncode(appName)}</h1>
                 </div>
                 <div style="border: 1px solid #E5E7EB; border-top: none; padding: 30px; border-radius: 0 0 8px 8px;">
                     <h2 style="color: #16A34A; margin-top: 0;">🎉 Great News – You're In!</h2>
@@ -434,7 +442,7 @@ Please arrive on time. Thanks for volunteering!
 
     // --- Registration Confirmation ---
 
-    private static string BuildRegistrationConfirmationHtml(EventRegistration registration, Event evt)
+    private static string BuildRegistrationConfirmationHtml(EventRegistration registration, Event evt, string appName)
     {
         return $"""
             <!DOCTYPE html>
@@ -442,7 +450,7 @@ Please arrive on time. Thanks for volunteering!
             <head><meta charset="utf-8"></head>
             <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                 <div style="background-color: #EA580C; padding: 20px; border-radius: 8px 8px 0 0;">
-                    <h1 style="color: white; margin: 0; font-size: 24px;">IAB Connect</h1>
+                    <h1 style="color: white; margin: 0; font-size: 24px;">{WebUtility.HtmlEncode(appName)}</h1>
                 </div>
                 <div style="border: 1px solid #E5E7EB; border-top: none; padding: 30px; border-radius: 0 0 8px 8px;">
                     <h2 style="color: #111827; margin-top: 0;">Registration Confirmed</h2>
@@ -502,7 +510,7 @@ Please arrive on time. Thanks for volunteering!
 
     // --- Cancellation Notification ---
 
-    private static string BuildCancellationHtml(EventRegistration registration, Event evt)
+    private static string BuildCancellationHtml(EventRegistration registration, Event evt, string appName)
     {
         return $"""
             <!DOCTYPE html>
@@ -510,7 +518,7 @@ Please arrive on time. Thanks for volunteering!
             <head><meta charset="utf-8"></head>
             <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                 <div style="background-color: #EA580C; padding: 20px; border-radius: 8px 8px 0 0;">
-                    <h1 style="color: white; margin: 0; font-size: 24px;">IAB Connect</h1>
+                    <h1 style="color: white; margin: 0; font-size: 24px;">{WebUtility.HtmlEncode(appName)}</h1>
                 </div>
                 <div style="border: 1px solid #E5E7EB; border-top: none; padding: 30px; border-radius: 0 0 8px 8px;">
                     <h2 style="color: #111827; margin-top: 0;">Registration Cancelled</h2>

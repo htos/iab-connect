@@ -1,5 +1,7 @@
 using FluentAssertions;
+using IabConnect.Application.Common;
 using IabConnect.Application.Events;
+using IabConnect.Domain.Common;
 using IabConnect.Domain.Events;
 using IabConnect.Infrastructure.Email;
 using IabConnect.Infrastructure.Events;
@@ -18,6 +20,7 @@ public class EventNotificationServiceTests
 {
     private readonly Mock<IEmailSender> _emailSender = new();
     private readonly Mock<ILogger<EventNotificationService>> _logger = new();
+    private readonly Mock<ISystemSettingsRepository> _settingsRepository = new();
     private readonly EventNotificationService _service;
 
     private static readonly SmtpSettings TestSmtpSettings = new()
@@ -29,7 +32,12 @@ public class EventNotificationServiceTests
     public EventNotificationServiceTests()
     {
         var options = Options.Create(TestSmtpSettings);
-        _service = new EventNotificationService(_emailSender.Object, options, _logger.Object);
+        // REQ-086 (E9-S3): the service now resolves the org name from SystemSettings.
+        _settingsRepository
+            .Setup(r => r.GetSettingsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(SystemSettings.CreateDefault());
+        _service = new EventNotificationService(
+            _emailSender.Object, options, _settingsRepository.Object, _logger.Object);
     }
 
     // --- SendWaitlistConfirmationAsync ---
@@ -105,6 +113,34 @@ public class EventNotificationServiceTests
             It.IsAny<string?>(),
             TestSmtpSettings.FromName,
             TestSmtpSettings.FromEmail,
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    // --- REQ-086 (E9-S3): configured organization name in email HTML ---
+
+    [Fact]
+    public async Task SendRegistrationConfirmation_RendersConfiguredOrganizationName()
+    {
+        // A deployment that has set a custom ApplicationName must see it in the email header,
+        // not the hardcoded "IAB Connect".
+        var configured = SystemSettings.CreateDefault();
+        configured.UpdateBranding("Acme Verein", "AV", "#000000", "#FFFFFF");
+        _settingsRepository
+            .Setup(r => r.GetSettingsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(configured);
+
+        var (registration, evt) = CreateTestData();
+
+        await _service.SendRegistrationConfirmationAsync(
+            registration, evt, TestContext.Current.CancellationToken);
+
+        _emailSender.Verify(s => s.SendAsync(
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.Is<string>(html => html.Contains("Acme Verein") && !html.Contains(">IAB Connect<")),
+            It.IsAny<string?>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 

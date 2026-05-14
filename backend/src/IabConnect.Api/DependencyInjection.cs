@@ -45,14 +45,18 @@ public static class DependencyInjection
         });
 
         // OpenAPI / Swagger
+        // REQ-086 (E9-S3): title/description are config-driven (Branding:*) with literal
+        // defaults that exactly preserve the previous values. Configured at startup before
+        // the DB is reliable, so this reads IConfiguration — not SystemSettings.
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen(options =>
         {
             options.SwaggerDoc("v1", new OpenApiInfo
             {
-                Title = "IAB Connect API",
+                Title = configuration["Branding:ApiTitle"] ?? "IAB Connect API",
                 Version = "v1",
-                Description = "API für die Webanwendung des Indischen Kulturvereins Bern"
+                Description = configuration["Branding:ApiDescription"]
+                    ?? "API für die Webanwendung des Indischen Kulturvereins Bern"
             });
 
             // Bearer token authentication for Swagger UI
@@ -241,9 +245,10 @@ public static class DependencyInjection
         if (app.Environment.IsDevelopment())
         {
             app.UseSwagger();
+            var swaggerApiTitle = app.Configuration["Branding:ApiTitle"] ?? "IAB Connect API";
             app.UseSwaggerUI(options =>
             {
-                options.SwaggerEndpoint("/swagger/v1/swagger.json", "IAB Connect API v1");
+                options.SwaggerEndpoint("/swagger/v1/swagger.json", $"{swaggerApiTitle} v1");
                 options.RoutePrefix = "swagger";
             });
         }

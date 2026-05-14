@@ -10,7 +10,7 @@ namespace IabConnect.Application.Tests.Events.Calendar;
 /// </summary>
 public sealed class CalendarFeedBuilderTests
 {
-    private readonly CalendarFeedBuilder _sut = new();
+    private readonly CalendarFeedBuilder _sut = new(new CalendarFeedSettings());
     private const string BaseUrl = "https://iab-connect.example";
 
     [Theory]
