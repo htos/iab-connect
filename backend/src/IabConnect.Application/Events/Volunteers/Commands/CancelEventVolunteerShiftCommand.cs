@@ -14,7 +14,7 @@ public sealed record CancelEventVolunteerShiftCommand(
     Guid ShiftId,
     string? Reason) : IRequest<CancelEventVolunteerShiftResult>;
 
-public sealed record CancelEventVolunteerShiftResult(bool ShiftFound, int CancelledAssignmentCount);
+public sealed record CancelEventVolunteerShiftResult(bool ShiftFound, int CancelledAssignmentCount, bool WrongEvent = false);
 
 public sealed class CancelEventVolunteerShiftCommandValidator : AbstractValidator<CancelEventVolunteerShiftCommand>
 {
@@ -42,6 +42,6 @@ public sealed class CancelEventVolunteerShiftCommandHandler
     {
         var result = await _service.CancelAllAssignmentsForShiftAsync(
             request.EventId, request.ShiftId, request.Reason, cancellationToken);
-        return new CancelEventVolunteerShiftResult(result.ShiftFound, result.CancelledAssignmentCount);
+        return new CancelEventVolunteerShiftResult(result.ShiftFound, result.CancelledAssignmentCount, result.WrongEvent);
     }
 }

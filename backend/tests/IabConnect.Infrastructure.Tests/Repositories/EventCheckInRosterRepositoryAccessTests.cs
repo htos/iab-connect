@@ -79,7 +79,7 @@ public sealed class EventCheckInRosterRepositoryAccessTests : IAsyncLifetime
         var eventRepo = new Mock<IEventRepository>();
         eventRepo.Setup(r => r.GetByIdAsync(evt.Id, It.IsAny<CancellationToken>())).ReturnsAsync(evt);
 
-        var handler = new GetEventCheckInRosterQueryHandler(eventRepo.Object, _registrationRepository);
+        var handler = new GetEventCheckInRosterQueryHandler(eventRepo.Object, _registrationRepository, TimeProvider.System);
         var result = await handler.Handle(
             new GetEventCheckInRosterQuery(evt.Id, IncludeWaitlisted: true),
             ct);

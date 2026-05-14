@@ -17,8 +17,16 @@ public interface IEventVolunteerAssignmentRepository
     /// active row with <c>Created = false</c>. Application-layer code stays free of
     /// <c>DbUpdateException</c>. Mirrors
     /// <see cref="IabConnect.Domain.Members.IDuplicateCandidateDismissalRepository"/>.
+    ///
+    /// <para>REQ-024 (E3.S3 Round-3 R3-H-S3-3): <see cref="EventVolunteerAssignment"/> is now
+    /// nullable on the result tuple. When the unique-violation fires AND the re-fetch of the
+    /// active row also returns null (a concurrent caller cancelled the racing row in the same
+    /// millisecond), the method returns <c>(Persisted: null, Created: false)</c> — the service
+    /// maps that to <c>VolunteerAssignmentOutcome.Transient</c> → 409 retry-style response.
+    /// Previously the method re-threw the raw <see cref="DbUpdateException"/> which the
+    /// caller's only catch covered <c>ForeignKeyViolation</c> — bubbling up as a 500.</para>
     /// </summary>
-    Task<(EventVolunteerAssignment Persisted, bool Created)> AddAtomicAsync(
+    Task<(EventVolunteerAssignment? Persisted, bool Created)> AddAtomicAsync(
         EventVolunteerAssignment assignment,
         CancellationToken cancellationToken = default);
 
@@ -30,6 +38,17 @@ public interface IEventVolunteerAssignmentRepository
     Task<int> CountConfirmedAsync(Guid shiftId, CancellationToken cancellationToken = default);
 
     Task<int> CountWaitlistedAsync(Guid shiftId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// REQ-024 (E3.S3 Round-3 R3-H-S3-5): batch confirmed+waitlisted counts for many shifts in
+    /// a single SQL round-trip. Replaces the N+1 pattern that ran
+    /// <c>CountConfirmedAsync</c> + <c>CountWaitlistedAsync</c> per shift in a foreach loop
+    /// (50 shifts = 102 round-trips). The result dictionary keys on <c>shiftId</c>; shifts with
+    /// zero assignments are absent from the dictionary (caller defaults to <c>(0, 0)</c>).
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, (int Confirmed, int Waitlisted)>> GetShiftCountsAsync(
+        IReadOnlyCollection<Guid> shiftIds,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Returns waitlisted assignments for the shift ordered by <c>Position ASC</c>.

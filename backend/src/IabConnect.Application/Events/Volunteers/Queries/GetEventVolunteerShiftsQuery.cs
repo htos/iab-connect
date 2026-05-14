@@ -26,18 +26,22 @@ public sealed class GetEventVolunteerShiftsQueryHandler
         GetEventVolunteerShiftsQuery request,
         CancellationToken cancellationToken)
     {
+        // REQ-024 (E3.S3 Round-3 R3-H-S3-5): three queries total instead of 2N+2.
+        // 1) shifts for the event, 2) roles for the event, 3) batched counts via GROUP BY.
         var shifts = await _shifts.GetByEventIdAsync(request.EventId, cancellationToken);
+        if (shifts.Count == 0) return Array.Empty<EventVolunteerShiftDto>();
+
         var rolesById = (await _roles.GetByEventIdAsync(request.EventId, cancellationToken))
             .ToDictionary(r => r.Id, r => r.Name);
 
-        var dtos = new List<EventVolunteerShiftDto>(shifts.Count);
-        foreach (var shift in shifts)
+        var shiftIds = shifts.Select(s => s.Id).ToList();
+        var counts = await _assignments.GetShiftCountsAsync(shiftIds, cancellationToken);
+
+        return shifts.Select(shift =>
         {
-            var confirmed = await _assignments.CountConfirmedAsync(shift.Id, cancellationToken);
-            var waitlisted = await _assignments.CountWaitlistedAsync(shift.Id, cancellationToken);
+            counts.TryGetValue(shift.Id, out var c);
             var roleName = rolesById.TryGetValue(shift.RoleId, out var name) ? name : string.Empty;
-            dtos.Add(EventVolunteerShiftDto.FromEntity(shift, roleName, confirmed, waitlisted));
-        }
-        return dtos;
+            return EventVolunteerShiftDto.FromEntity(shift, roleName, c.Confirmed, c.Waitlisted);
+        }).ToList();
     }
 }

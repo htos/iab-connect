@@ -37,10 +37,27 @@ namespace IabConnect.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            // Intentionally empty — hashes are one-way. Reversing this migration would leave
-            // the column in a half-state (some cleartext, some hashed) that the application
-            // could not consistently authenticate against. Operators who need to roll back
-            // should null the column and ask members to re-rotate.
+            // REQ-025 (E3.S5 Round-3 R3-DN-1 / R3-C4): Decision-DN-1 picked option (c) — accept
+            // the in-place rename for THIS migration and document rollback as backup-only.
+            // Hashes are one-way: reversing would leave the column in a half-state (some
+            // cleartext, some hashed) that the application could not authenticate against
+            // consistently. The application code (MemberRepository.GetByCalendarTokenAsync)
+            // hashes the incoming token at request time, so a rolled-back code path against
+            // the still-hashed column data would silently 404 every feed fetch.
+            //
+            // **Operator rollback playbook:**
+            // 1. Do NOT run `dotnet ef migrations remove` against a database that has been
+            //    upgraded with this migration. The schema is identical (column rename only)
+            //    but the data is now SHA-256-hex; tokens cannot be recovered.
+            // 2. If a rollback is required, restore from the PIT backup taken immediately
+            //    before this migration ran (operator should ALWAYS take such a backup before
+            //    deploying schema-or-data-rewriting migrations).
+            // 3. If no backup is available, the only path forward is to NULL the column and
+            //    ask every member to rotate their calendar token, breaking their existing
+            //    subscription URLs.
+            //
+            // This deliberate "no-op Down" is the same posture as data-rewriting migrations
+            // for hashed passwords and signed tokens elsewhere in the .NET ecosystem.
         }
     }
 }

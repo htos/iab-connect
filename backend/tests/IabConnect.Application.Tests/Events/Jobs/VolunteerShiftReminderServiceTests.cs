@@ -250,6 +250,11 @@ public sealed class VolunteerShiftReminderServiceTests
         var member = Member.Create("Test", "Person", resolvedEmail,
             Address.Create("Street 1", "City", "1000", "Country"),
             MembershipType.Regular);
+        // R3-M-S4-5: the reminder service now also filters Inactive / Pending / merged members
+        // in-memory (defense-in-depth on top of the DB-side filter in GetRemindersDueAsync).
+        // Test fixture members were Pending by default — activate them so the existing tests
+        // exercise the reminder send path rather than the new skip-on-inactive branch.
+        member.Activate();
         return member;
     }
 }

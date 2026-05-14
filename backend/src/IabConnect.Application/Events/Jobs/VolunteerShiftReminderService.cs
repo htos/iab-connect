@@ -42,10 +42,16 @@ public sealed class VolunteerShiftReminderService : IVolunteerShiftReminderServi
 
     public async Task<int> ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        var nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
-        var windowEnd = nowUtc + WindowSize;
+        // REQ-024 (E3.S4 Round-3 R3-H-S4-1): the window-boundary timestamp uses the batch-start
+        // clock so the GetRemindersDueAsync filter is consistent for the whole pass, but the
+        // per-row audit-stamp (MarkReminderSentAsync) is now captured per-row immediately before
+        // each mark — see the loop body below. Previously the per-row stamp reused the batch
+        // capture, so a pass sending 200 reminders over 10 minutes recorded every row as "sent
+        // at 09:00", losing audit fidelity.
+        var batchStartUtc = _timeProvider.GetUtcNow().UtcDateTime;
+        var windowEnd = batchStartUtc + WindowSize;
 
-        var due = await _assignments.GetRemindersDueAsync(nowUtc, windowEnd, cancellationToken);
+        var due = await _assignments.GetRemindersDueAsync(batchStartUtc, windowEnd, cancellationToken);
         if (due.Count == 0)
         {
             _logger.LogInformation("Volunteer shift reminder pass: no rows in the next {WindowHours}h window", WindowSize.TotalHours);
@@ -54,68 +60,95 @@ public sealed class VolunteerShiftReminderService : IVolunteerShiftReminderServi
 
         var sent = 0;
         var skipped = 0;
-        foreach (var row in due)
+        try
         {
-            // Per-row guard: a single bad recipient must not stop the rest of the batch.
-            try
+            foreach (var row in due)
             {
-                var member = await _members.GetByIdAsync(row.Assignment.MemberId, cancellationToken);
-                if (member is null)
+                // Per-row guard: a single bad recipient must not stop the rest of the batch.
+                try
                 {
-                    _logger.LogWarning(
-                        "Volunteer reminder skipped: Member {MemberId} not found for assignment {AssignmentId}",
-                        row.Assignment.MemberId, row.Assignment.Id);
-                    skipped++;
-                    continue;
-                }
+                    // REQ-024 (E3.S4 Round-3 R3-M-S4-5): member-status filter — Inactive and
+                    // merged members must not receive reminders. The DB-side filter in
+                    // GetRemindersDueAsync is preferred for performance but the in-memory check
+                    // is the defense-in-depth guard so a future repository change can't silently
+                    // re-enable reminders to retired-or-merged members.
+                    var member = await _members.GetByIdAsync(row.Assignment.MemberId, cancellationToken);
+                    if (member is null)
+                    {
+                        _logger.LogWarning(
+                            "Volunteer reminder skipped: Member {MemberId} not found for assignment {AssignmentId}",
+                            row.Assignment.MemberId, row.Assignment.Id);
+                        skipped++;
+                        continue;
+                    }
+                    if (member.Status != MembershipStatus.Active || member.MergedIntoMemberId.HasValue)
+                    {
+                        _logger.LogInformation(
+                            "Volunteer reminder skipped: Member {MemberId} is not Active (Status={MemberStatus}, MergedIntoMemberId={MergedInto}); assignment {AssignmentId}",
+                            member.Id, member.Status, member.MergedIntoMemberId, row.Assignment.Id);
+                        skipped++;
+                        continue;
+                    }
 
-                // REQ-024 (E3.S4 review H-S4-6): a null / empty email would throw inside the
-                // SMTP layer; that throw is now propagated up by the notification service, which
-                // would correctly NOT mark the row as sent — but every daily run would retry
-                // the same broken row forever. Skip with a LogWarning AND leave ReminderSentAt
-                // null so the row resurfaces if the operator fixes Member.Email.
-                if (string.IsNullOrWhiteSpace(member.Email))
-                {
-                    _logger.LogWarning(
-                        "Volunteer reminder skipped: Member {MemberId} has no email address (assignment {AssignmentId})",
-                        member.Id, row.Assignment.Id);
-                    skipped++;
-                    continue;
-                }
+                    // REQ-024 (E3.S4 review H-S4-6): a null / empty email would throw inside the
+                    // SMTP layer; that throw is now propagated up by the notification service, which
+                    // would correctly NOT mark the row as sent — but every daily run would retry
+                    // the same broken row forever. Skip with a LogWarning AND leave ReminderSentAt
+                    // null so the row resurfaces if the operator fixes Member.Email.
+                    if (string.IsNullOrWhiteSpace(member.Email))
+                    {
+                        _logger.LogWarning(
+                            "Volunteer reminder skipped: Member {MemberId} has no email address (assignment {AssignmentId})",
+                            member.Id, row.Assignment.Id);
+                        skipped++;
+                        continue;
+                    }
 
-                // REQ-024 (E3.S4 review C2 + H-S4-1): the notification service is now strict —
-                // it throws on SMTP failure instead of swallowing. We mark the row as sent ONLY
-                // after a successful send so a transient outage is retried on the next run.
-                await _notifications.SendVolunteerShiftReminderAsync(
-                    row.Assignment, row.Shift, row.Role, row.Event, member, cancellationToken);
+                    // REQ-024 (E3.S4 review C2 + H-S4-1): the notification service is now strict —
+                    // it throws on SMTP failure instead of swallowing. We mark the row as sent ONLY
+                    // after a successful send so a transient outage is retried on the next run.
+                    await _notifications.SendVolunteerShiftReminderAsync(
+                        row.Assignment, row.Shift, row.Role, row.Event, member, cancellationToken);
 
-                var marked = await _assignments.MarkReminderSentAsync(row.Assignment.Id, nowUtc, cancellationToken);
-                if (marked)
-                {
-                    sent++;
+                    // REQ-024 (E3.S4 Round-3 R3-H-S4-1): per-row clock sample so the audit
+                    // timestamp reflects WHEN this specific row was sent, not the batch start.
+                    // A 200-row pass over 10 minutes now records 200 distinct timestamps spread
+                    // across the run instead of every row claiming the same start-of-batch tick.
+                    var rowSentAtUtc = _timeProvider.GetUtcNow().UtcDateTime;
+                    var marked = await _assignments.MarkReminderSentAsync(row.Assignment.Id, rowSentAtUtc, cancellationToken);
+                    if (marked)
+                    {
+                        sent++;
+                    }
+                    else
+                    {
+                        // REQ-024 (E3.S4 review M-S4-1): a false return means the row was already
+                        // marked (concurrent run / Hangfire retry) — the recipient may now have
+                        // received a duplicate email. Log it loudly so ops can dedupe and tighten
+                        // the cron-overlap guard if it keeps happening.
+                        _logger.LogWarning(
+                            "Volunteer reminder marked-sent returned no rows for assignment {AssignmentId}; possible duplicate-send",
+                            row.Assignment.Id);
+                    }
                 }
-                else
+                catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    // REQ-024 (E3.S4 review M-S4-1): a false return means the row was already
-                    // marked (concurrent run / Hangfire retry) — the recipient may now have
-                    // received a duplicate email. Log it loudly so ops can dedupe and tighten
-                    // the cron-overlap guard if it keeps happening.
-                    _logger.LogWarning(
-                        "Volunteer reminder marked-sent returned no rows for assignment {AssignmentId}; possible duplicate-send",
+                    _logger.LogWarning(ex,
+                        "Volunteer reminder send failed for assignment {AssignmentId}; continuing with the rest",
                         row.Assignment.Id);
                 }
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                _logger.LogWarning(ex,
-                    "Volunteer reminder send failed for assignment {AssignmentId}; continuing with the rest",
-                    row.Assignment.Id);
-            }
         }
-
-        _logger.LogInformation(
-            "Volunteer shift reminder pass complete: {SentCount} sent, {SkippedCount} skipped, out of {DueCount} due",
-            sent, skipped, due.Count);
+        finally
+        {
+            // REQ-024 (E3.S4 Round-3 R3-M-S4-3): emit the summary in a finally block so partial
+            // progress is recorded when an OperationCanceledException trips mid-batch. Without
+            // this, a Hangfire job that's stopped mid-run leaves no breadcrumb of how many
+            // reminders were dispatched before the cancel.
+            _logger.LogInformation(
+                "Volunteer shift reminder pass complete: {SentCount} sent, {SkippedCount} skipped, out of {DueCount} due",
+                sent, skipped, due.Count);
+        }
         return sent;
     }
 }

@@ -43,9 +43,15 @@ public sealed class SelfSignUpForVolunteerShiftCommandHandler
         SelfSignUpForVolunteerShiftCommand request,
         CancellationToken cancellationToken)
     {
-        var member = await _members.GetByKeycloakUserIdAsync(request.KeycloakUserId, cancellationToken)
-            ?? throw new InvalidOperationException(
-                "Calling user has no linked Member record; self-signup is not available.");
+        // REQ-024 (E3.S3 Round-3 R3-M-S3-3): return a typed NoMemberLink outcome instead of
+        // throwing InvalidOperationException. The endpoint previously string-matched on the
+        // exception message and converted to a 403, which is fragile (refactoring the message
+        // breaks the HTTP shape). Typed outcomes are catchable + auditable.
+        var member = await _members.GetByKeycloakUserIdAsync(request.KeycloakUserId, cancellationToken);
+        if (member is null)
+        {
+            return new VolunteerAssignmentCommandResult(VolunteerAssignmentOutcome.NoMemberLink, null);
+        }
 
         var result = await _service.AssignAsync(
             request.EventId, request.ShiftId, member.Id, request.KeycloakUserId,

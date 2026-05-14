@@ -38,7 +38,9 @@ public static class EventVolunteerEndpoints
             .RequireAuthorization();
 
         roleGroup.MapGet("/", GetRoles)
-            .RequireAuthorization("RequireMember")
+            // R3-DN-4: RequireEventStaffOrMember accepts event-manager too. The previous
+            // RequireMember policy locked managers out of their own event's read surface.
+            .RequireAuthorization("RequireEventStaffOrMember")
             .WithName("GetEventVolunteerRoles")
             .Produces<IReadOnlyList<EventVolunteerRoleDto>>()
             .Produces(StatusCodes.Status401Unauthorized)
@@ -68,7 +70,8 @@ public static class EventVolunteerEndpoints
             .RequireAuthorization();
 
         shiftGroup.MapGet("/", GetShifts)
-            .RequireAuthorization("RequireMember")
+            // R3-DN-4: union policy so event-manager can read the shifts they own.
+            .RequireAuthorization("RequireEventStaffOrMember")
             .WithName("GetEventVolunteerShifts")
             .Produces<IReadOnlyList<EventVolunteerShiftDto>>()
             .Produces(StatusCodes.Status401Unauthorized)
@@ -100,11 +103,13 @@ public static class EventVolunteerEndpoints
             .Produces(StatusCodes.Status404NotFound);
 
         shiftGroup.MapGet("/{shiftId:guid}/assignments", GetAssignments)
-            .RequireAuthorization("RequireMember")
+            // R3-DN-4: union policy so event-manager can read the assignment roster.
+            .RequireAuthorization("RequireEventStaffOrMember")
             .WithName("GetVolunteerShiftAssignments")
             .Produces<IReadOnlyList<EventVolunteerAssignmentDto>>()
             .Produces(StatusCodes.Status401Unauthorized)
-            .Produces(StatusCodes.Status403Forbidden);
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound);
 
         shiftGroup.MapPost("/{shiftId:guid}/assignments", AssignVolunteer)
             .RequireAuthorization("RequireEventStaff")
@@ -178,8 +183,10 @@ public static class EventVolunteerEndpoints
     {
         try
         {
+            // R3-C2: pass `eventId` from the route into the command so the handler can reject
+            // cross-event tampering (event A manager updating event B's role).
             var role = await sender.Send(
-                new UpdateEventVolunteerRoleCommand(roleId, request.Name, request.Description, request.IsActive), ct);
+                new UpdateEventVolunteerRoleCommand(eventId, roleId, request.Name, request.Description, request.IsActive), ct);
             auditLogger.LogAccessGranted(user, "EventVolunteerRole", "Update", role.Id.ToString());
             return Results.Ok(role);
         }
@@ -271,7 +278,19 @@ public static class EventVolunteerEndpoints
     {
         var result = await sender.Send(new CancelEventVolunteerShiftCommand(eventId, shiftId, request?.Reason), ct);
         if (!result.ShiftFound)
+        {
+            // R3-H-S3-1: cross-event tampering is logged as access-denied so probing leaves a
+            // forensic trail. The client response stays identical to "shift does not exist"
+            // (opaque 404) so the probe cannot distinguish "wrong event" from "missing shift".
+            if (result.WrongEvent)
+            {
+                auditLogger.LogAccessDenied(
+                    user, "EventVolunteerShift", "Cancel",
+                    "Shift belongs to a different event than the route's eventId.",
+                    shiftId.ToString());
+            }
             return Results.NotFound(new { message = "Shift not found." });
+        }
         auditLogger.LogAccessGranted(user, "EventVolunteerShift", "Cancel", shiftId.ToString(),
             new Dictionary<string, object> { ["cancelledAssignmentCount"] = result.CancelledAssignmentCount });
         return Results.Ok(result);
@@ -280,8 +299,17 @@ public static class EventVolunteerEndpoints
     private static async Task<IResult> GetAssignments(
         Guid eventId, Guid shiftId, ISender sender, CancellationToken ct)
     {
-        var assignments = await sender.Send(new GetVolunteerShiftAssignmentsQuery(shiftId), ct);
-        return Results.Ok(assignments);
+        try
+        {
+            // R3-C3: pass `eventId` from the route so the handler can reject cross-event probes
+            // for shift-roster enumeration. Mismatch is opaque (404 with "Shift not found").
+            var assignments = await sender.Send(new GetVolunteerShiftAssignmentsQuery(eventId, shiftId), ct);
+            return Results.Ok(assignments);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return Results.NotFound(new { message = ex.Message });
+        }
     }
 
     private static async Task<IResult> AssignVolunteer(
@@ -314,18 +342,13 @@ public static class EventVolunteerEndpoints
         if (!TryGetUserId(user, out var keycloakUserId))
             return Results.BadRequest(new { message = "User id not found." });
 
-        try
-        {
-            var result = await sender.Send(
-                new SelfSignUpForVolunteerShiftCommand(
-                    eventId, shiftId, keycloakUserId, request?.AllowWaitlistFallback ?? false), ct);
-            return MapAssignmentResult(result, eventId, user, auditLogger, "SelfSignup");
-        }
-        catch (InvalidOperationException ex)
-        {
-            // User has no linked Member record — surface as 403.
-            return Results.Json(new { message = ex.Message, errorCode = "NoMemberLink" }, statusCode: StatusCodes.Status403Forbidden);
-        }
+        // R3-M-S3-3: NoMemberLink is now a typed outcome in the command result (no longer an
+        // InvalidOperationException). The MapAssignmentResult mapper handles it as 403 with
+        // the existing { message, errorCode = "NoMemberLink" } body.
+        var result = await sender.Send(
+            new SelfSignUpForVolunteerShiftCommand(
+                eventId, shiftId, keycloakUserId, request?.AllowWaitlistFallback ?? false), ct);
+        return MapAssignmentResult(result, eventId, user, auditLogger, "SelfSignup");
     }
 
     private static async Task<IResult> CancelAssignment(
@@ -430,6 +453,24 @@ public static class EventVolunteerEndpoints
             case VolunteerAssignmentOutcome.MemberNotFound:
                 // M-S3-2: foreign-key violation on insert surfaces as 404 with a clear message.
                 return Results.NotFound(new { message = "Member not found." });
+
+            case VolunteerAssignmentOutcome.NoMemberLink:
+                // R3-M-S3-3: typed outcome (replaces the previous string-message InvalidOperationException).
+                return Results.Json(
+                    new
+                    {
+                        message = "Calling user has no linked Member record; self-signup is not available.",
+                        errorCode = "NoMemberLink",
+                    },
+                    statusCode: StatusCodes.Status403Forbidden);
+
+            case VolunteerAssignmentOutcome.Transient:
+                // R3-H-S3-3: race-loser saw its competing row vanish; surface as retryable 409.
+                return Results.Conflict(new
+                {
+                    message = "Assignment could not be persisted due to a concurrent change; please retry.",
+                    errorCode = "Transient",
+                });
 
             default:
                 throw new InvalidOperationException($"Unhandled assignment outcome '{result.Outcome}'.");

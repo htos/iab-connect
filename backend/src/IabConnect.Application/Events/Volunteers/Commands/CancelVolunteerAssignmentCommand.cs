@@ -63,7 +63,21 @@ public sealed class CancelVolunteerAssignmentCommandHandler
             {
                 return new VolunteerAssignmentCommandResult(VolunteerAssignmentOutcome.NotAuthorized, null);
             }
-            callerMemberId = caller.Id;
+            // REQ-024 (E3.S3 Round-3 R3-H-S3-4): follow MergedIntoMemberId once so a soft-merged
+            // member can still cancel assignments they signed up for under their pre-merge row.
+            // Without this, a member who signed up for a shift and was later soft-merged into a
+            // surviving Member would be permanently locked out of their own assignment
+            // (caller.Id is the merged-source row; assignment.MemberId is the surviving target).
+            // We compare against the SURVIVING member id so owner-check works across the merge.
+            if (caller.MergedIntoMemberId.HasValue)
+            {
+                var surviving = await _members.GetByIdAsync(caller.MergedIntoMemberId.Value, cancellationToken);
+                callerMemberId = surviving?.Id ?? caller.Id;
+            }
+            else
+            {
+                callerMemberId = caller.Id;
+            }
         }
 
         var result = await _service.CancelAssignmentAsync(

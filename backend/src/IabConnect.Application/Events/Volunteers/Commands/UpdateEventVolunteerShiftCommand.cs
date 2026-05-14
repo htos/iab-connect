@@ -72,44 +72,40 @@ public sealed class UpdateEventVolunteerShiftCommandHandler
 
     public async Task<EventVolunteerShiftDto> Handle(UpdateEventVolunteerShiftCommand request, CancellationToken cancellationToken)
     {
-        var shift = await _shifts.GetByIdAsync(request.ShiftId, cancellationToken)
-            ?? throw new KeyNotFoundException($"Shift {request.ShiftId} not found.");
+        // REQ-024 (E3.S3 Round-3 R3-M-S3-1): route the entire update through the service so
+        // capacity + field updates land inside a single FOR UPDATE transaction. The previous
+        // two-phase implementation (capacity inside lock, fields after) left a TOCTOU window
+        // for concurrent writers to overwrite the unlocked field update.
+        var result = await _assignmentService.UpdateShiftAsync(
+            request.EventId,
+            request.ShiftId,
+            request.Title,
+            request.Description,
+            request.StartsAt,
+            request.EndsAt,
+            request.Capacity,
+            request.AllowWaitlist,
+            request.AllowSelfSignup,
+            request.Notes,
+            cancellationToken);
 
-        // H-S3-2: shift must belong to the route event.
-        if (shift.EventId != request.EventId)
-            throw new KeyNotFoundException($"Shift {request.ShiftId} not found.");
-
-        // Capacity change goes through the locked service path FIRST so a self-signup racing
-        // a capacity decrease cannot sneak in between our read and the persistence.
-        if (request.Capacity != shift.Capacity)
+        switch (result.Outcome)
         {
-            var capacityResult = await _assignmentService.UpdateShiftCapacityAsync(
-                request.EventId, request.ShiftId, request.Capacity, cancellationToken);
-            switch (capacityResult.Outcome)
-            {
-                case UpdateShiftCapacityOutcome.Updated:
-                    break;
-                case UpdateShiftCapacityOutcome.ShiftNotFound:
-                    throw new KeyNotFoundException($"Shift {request.ShiftId} not found.");
-                case UpdateShiftCapacityOutcome.BelowCurrentConfirmed:
-                    throw new InvalidOperationException(
-                        $"Cannot reduce capacity below current confirmed count ({capacityResult.CurrentConfirmedCount}); cancel assignments first.");
-                case UpdateShiftCapacityOutcome.InvalidCapacity:
-                    throw new InvalidOperationException("Capacity must be at least 1.");
-            }
-
-            // Re-load so the in-memory entity reflects the locked-update before UpdateDetails fires.
-            shift = await _shifts.GetByIdAsync(request.ShiftId, cancellationToken)
-                ?? throw new KeyNotFoundException($"Shift {request.ShiftId} not found.");
+            case UpdateShiftCapacityOutcome.Updated:
+                break;
+            case UpdateShiftCapacityOutcome.ShiftNotFound:
+                throw new KeyNotFoundException($"Shift {request.ShiftId} not found.");
+            case UpdateShiftCapacityOutcome.BelowCurrentConfirmed:
+                throw new InvalidOperationException(
+                    $"Cannot reduce capacity below current confirmed count ({result.CurrentConfirmedCount}); cancel assignments first.");
+            case UpdateShiftCapacityOutcome.InvalidCapacity:
+                throw new InvalidOperationException("Capacity must be at least 1.");
         }
 
-        shift.UpdateDetails(
-            request.Title, request.Description,
-            request.StartsAt, request.EndsAt,
-            request.AllowWaitlist, request.AllowSelfSignup,
-            request.Notes);
-
-        await _shifts.UpdateAsync(shift, cancellationToken);
+        // Re-load to project the post-update DTO (the service committed the transaction; the
+        // entity in the DbContext change-tracker now reflects the persisted state).
+        var shift = await _shifts.GetByIdAsync(request.ShiftId, cancellationToken)
+            ?? throw new KeyNotFoundException($"Shift {request.ShiftId} not found.");
 
         var role = await _roles.GetByIdAsync(shift.RoleId, cancellationToken);
         var confirmedCount = await _assignments.CountConfirmedAsync(shift.Id, cancellationToken);

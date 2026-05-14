@@ -6,6 +6,17 @@ namespace IabConnect.Domain.Members;
 public interface IMemberRepository
 {
     Task<Member?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// REQ-024 (E3.S3 Round-3 R3-H-S3-6): batch-load members keyed by id. Used by hot
+    /// member-facing read paths (volunteer assignment roster, future N-by-N lookups) so a list
+    /// of <c>memberIds</c> produces a single SQL round-trip rather than N per-id queries.
+    /// Returns a dictionary so callers can do `dict.TryGetValue(id, out var member)`; ids with
+    /// no matching member row are simply absent from the dictionary. <c>AsNoTracking</c> is the
+    /// default since callers expect read-only DTOs.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, Member>> GetByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default);
+
     Task<Member?> GetByEmailAsync(string email, CancellationToken cancellationToken = default);
     Task<Member?> GetByKeycloakUserIdAsync(Guid keycloakUserId, CancellationToken cancellationToken = default);
 

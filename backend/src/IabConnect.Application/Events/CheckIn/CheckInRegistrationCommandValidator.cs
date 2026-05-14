@@ -29,5 +29,18 @@ public sealed class CheckInRegistrationCommandValidator : AbstractValidator<Chec
                 .NotEqual(Guid.Empty)
                 .WithMessage("EventId is required for ID-based check-in.");
         });
+
+        // REQ-023 (E3.S2 Round-3 R3-H-S2-1): cap QrCodeToken length at the DB max (50 chars per
+        // EventRegistrationConfiguration.HasMaxLength(50)). Without this cap the validator would
+        // wave through a 1 MB attacker token, which then hits a DB constraint violation that
+        // bubbles up as a 500 — a cheap DoS vector. Matching the DB cap turns megabyte tokens
+        // into a clean 400 instead. The unique index on QrCodeToken already provides the lookup
+        // performance guarantee that motivated the review's DB-index suggestion.
+        When(x => !string.IsNullOrWhiteSpace(x.QrCodeToken), () =>
+        {
+            RuleFor(x => x.QrCodeToken!)
+                .MaximumLength(50)
+                .WithMessage("QrCodeToken must be at most 50 characters.");
+        });
     }
 }

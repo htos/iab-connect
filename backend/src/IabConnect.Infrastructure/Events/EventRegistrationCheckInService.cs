@@ -55,8 +55,16 @@ public sealed class EventRegistrationCheckInService : IEventRegistrationCheckInS
         Guid checkedInBy,
         CancellationToken cancellationToken = default)
     {
-        // Resolve token → id first (outside the transaction so the FOR UPDATE row lock
-        // can target the registration's PK like every other code path).
+        // REQ-023 (E3.S2 Round-3 R3-M-S2-1): the previous structure opened the transaction
+        // BEFORE the lock-and-load and then `return`-ed out of it on the "row deleted between
+        // resolve and lock" path. `await using` did dispose the transaction on early return,
+        // but the dispose-rollback semantics depend on the EF/Npgsql transaction provider being
+        // in a state where rollback is meaningful — an opened-but-empty transaction is
+        // technically a no-op but it briefly holds a connection and produces a stray
+        // BEGIN/ROLLBACK pair in Postgres logs. The fix: resolve the token → id, open the
+        // transaction, run the lock + apply path INSIDE a single guarded scope; the
+        // "row deleted between resolve and lock" branch returns NotFound after an explicit
+        // CommitAsync so the transaction visibly closes with no side effects.
         var resolved = await _context.EventRegistrations
             .AsNoTracking()
             .Where(r => r.QrCodeToken == qrCodeToken)
@@ -73,7 +81,9 @@ public sealed class EventRegistrationCheckInService : IEventRegistrationCheckInS
         var registration = await LockAndLoadByIdAsync(resolved.Id, cancellationToken);
         if (registration is null)
         {
-            // Row deleted between resolve and lock — treat as NotFound for the caller.
+            // Row deleted between resolve and lock — close the (empty) transaction cleanly
+            // so the connection state stays clean and the log shows a paired BEGIN/COMMIT.
+            await transaction.CommitAsync(cancellationToken);
             return CheckInResultDto.NotFound();
         }
 

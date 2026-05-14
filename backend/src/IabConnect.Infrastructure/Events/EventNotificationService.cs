@@ -177,8 +177,18 @@ public sealed class EventNotificationService : IEventNotificationService
         var shiftTitle = WebUtility.HtmlEncode(shift.Title);
         var location = WebUtility.HtmlEncode(evt.Location);
 
+        // REQ-024 (E3.S4 Round-3 R3-M-S4-1): add <meta http-equiv> charset (the canonical email-
+        // client signal) and <html lang="de"> on the German block + <div lang="en"> wrapper on
+        // the English block so screen-readers + email clients render Umlauts and language-tag
+        // pronunciation correctly. Older Outlook builds key off `http-equiv content-type`
+        // specifically rather than the HTML5 `<meta charset>` shortcut.
         return $@"<!DOCTYPE html>
-<html>
+<html lang=""de"">
+<head>
+  <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"">
+  <meta charset=""utf-8"">
+  <title>Helfer-Schicht Erinnerung</title>
+</head>
 <body style=""font-family: sans-serif; color: #222;"">
   <h2>Erinnerung: deine Helfer-Schicht</h2>
   <p>Hallo {memberName},</p>
@@ -192,17 +202,19 @@ public sealed class EventNotificationService : IEventNotificationService
   </ul>
   <p>Bitte sei pünktlich. Vielen Dank für deinen Einsatz!</p>
   <hr>
-  <h2>Reminder: your volunteer shift</h2>
-  <p>Hello {memberName},</p>
-  <p>This is a reminder for your upcoming volunteer shift at <strong>{eventTitle}</strong>.</p>
-  <ul>
-    <li><strong>Role:</strong> {roleName}</li>
-    <li><strong>Shift:</strong> {shiftTitle}</li>
-    <li><strong>Start:</strong> {startsLocal}</li>
-    <li><strong>End:</strong> {endsLocal}</li>
-    <li><strong>Location:</strong> {location}</li>
-  </ul>
-  <p>Please arrive on time. Thanks for volunteering!</p>
+  <div lang=""en"">
+    <h2>Reminder: your volunteer shift</h2>
+    <p>Hello {memberName},</p>
+    <p>This is a reminder for your upcoming volunteer shift at <strong>{eventTitle}</strong>.</p>
+    <ul>
+      <li><strong>Role:</strong> {roleName}</li>
+      <li><strong>Shift:</strong> {shiftTitle}</li>
+      <li><strong>Start:</strong> {startsLocal}</li>
+      <li><strong>End:</strong> {endsLocal}</li>
+      <li><strong>Location:</strong> {location}</li>
+    </ul>
+    <p>Please arrive on time. Thanks for volunteering!</p>
+  </div>
 </body>
 </html>";
     }

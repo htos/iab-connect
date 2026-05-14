@@ -141,6 +141,17 @@ public static class DependencyInjection
                 policy.RequireRole("admin", "vorstand", "member"))
             .AddPolicy("RequireEventStaff", policy =>
                 policy.RequireRole("admin", "vorstand", "event-manager"))
+            // REQ-024 (E3.S3 Round-3 R3-DN-4): union policy for the volunteer-shift read surface.
+            // RequireMember excludes the `event-manager` role; an event-manager who isn't ALSO
+            // an admin/vorstand/member cannot GET the volunteer shifts they manage via the
+            // staff-policy. RequireEventStaffOrMember accepts both groups so reads are open to
+            // every legitimate viewer without leaking write access (the write endpoints still
+            // gate on RequireEventStaff). Decision DN-4 picked this option (b) over (a)
+            // (loosening RequireMember) because RequireMember semantically means "member-or-
+            // higher" and adding event-manager would muddle that meaning across the rest of the
+            // codebase.
+            .AddPolicy("RequireEventStaffOrMember", policy =>
+                policy.RequireRole("admin", "vorstand", "member", "event-manager"))
             .AddPolicy("RequireFinanceRead", policy =>
                 policy.RequireRole("admin", "kassier", "auditor"))
             .AddPolicy("RequireFinanceWrite", policy =>
@@ -335,7 +346,14 @@ public static class DependencyInjection
             catch (TimeZoneNotFoundException) { }
             catch (InvalidTimeZoneException) { }
         }
-        logger.LogWarning(
+        // REQ-024 (E3.S4 Round-3 R3-M-S4-2): promoted from LogWarning to LogError because the
+        // fallback to UTC is operationally significant — the daily 09:00 Zurich schedule turns
+        // into a 09:00 UTC schedule, so reminders fire 1-2 hours earlier than expected. An
+        // operator scanning the log levels would never see the warning; an error is the right
+        // signal that the deploy needs ICU (Windows) or tzdata (Linux) installed before this
+        // becomes the production cadence. Production hosts should fail health-check on this
+        // fallback (TODO follow-up: wire a readiness probe to surface it).
+        logger.LogError(
             "VolunteerShiftReminder: Europe/Zurich timezone could not be resolved on this host; falling back to UTC for the recurring schedule. Install ICU (Windows) or tzdata (Linux) to restore local-time semantics.");
         return TimeZoneInfo.Utc;
     }

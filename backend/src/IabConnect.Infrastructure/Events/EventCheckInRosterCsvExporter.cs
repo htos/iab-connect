@@ -7,14 +7,21 @@ namespace IabConnect.Infrastructure.Events;
 /// <summary>
 /// REQ-023: Hand-rolled RFC-4180 CSV writer for the check-in roster.
 /// Emits UTF-8 with BOM (so Excel-Windows opens Umlauts correctly), CRLF
-/// line endings, comma separator. The last column is an empty "Anwesenheit"
-/// cell so paper rosters have a tick-box.
+/// line endings, comma separator. The last column is an empty "Present"
+/// cell so paper rosters have a tick-box that staff can hand-mark.
 ///
 /// <para>REQ-023 (E3.S1 review D-S1-1): the QR token column was removed from the CSV.
 /// Printed rosters are a credential-leak vector — anyone holding the paper can scan or
 /// type the token at the QR endpoint to check in / out any attendee. The token remains
 /// on the in-app DTO for the authenticated scanner UI; CSV downloads keep the lookup
 /// keys (Name + RegistrationId-equivalent row) without exposing the credential.</para>
+///
+/// <para>REQ-023 (E3.S1 Round-3 R3-DN-6 + R3-L-S1-1): header column renamed from
+/// "[ ] (Anwesenheit)" to "Present". Decision DN-6 selected option (b) — full English headers
+/// — so the German "Anwesenheit" label was the last German artifact in an otherwise English
+/// CSV. The "[ ]" literal was also dropped per L-S1-1 (some Excel locales mis-parse "[ ]" as
+/// part of a name-range expression). The cell value below the header is still empty so paper
+/// roster staff can tick it by hand.</para>
 /// </summary>
 public sealed class EventCheckInRosterCsvExporter : IEventCheckInRosterCsvExporter
 {
@@ -28,7 +35,7 @@ public sealed class EventCheckInRosterCsvExporter : IEventCheckInRosterCsvExport
         "CheckedIn",
         "CheckedInAt",
         "SpecialRequirements",
-        "[ ] (Anwesenheit)"
+        "Present"
     ];
 
     public byte[] Export(EventCheckInRosterDto roster)
@@ -91,9 +98,42 @@ public sealed class EventCheckInRosterCsvExporter : IEventCheckInRosterCsvExport
         {
             if (i > 0)
                 sb.Append(',');
-            sb.Append(QuoteIfNeeded(cells[i]));
+            // R3-M-S1-1: force-quote the last cell when empty. Some Excel locales aggressively
+            // strip a trailing empty cell after the final comma, collapsing the tick-box column
+            // out of the row. A quoted empty cell ("") survives that pass.
+            var isLast = i == cells.Count - 1;
+            sb.Append(EscapeForCsvCell(cells[i], forceQuoteEmpty: isLast));
         }
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// REQ-023 (E3.S1 Round-3 R3-C1): defense against CSV/spreadsheet formula injection.
+    /// OWASP recommends prefixing any cell whose first character is in <c>{=,+,-,@}</c> with a
+    /// single quote — Excel/Sheets/LibreOffice treat the leading <c>'</c> as a literal-string
+    /// indicator and skip formula evaluation. The cell is also force-quoted so the leading
+    /// <c>'</c> survives parser round-trips. Critical: <see cref="EventCheckInRosterItemDto.ParticipantName"/>
+    /// and <see cref="EventCheckInRosterItemDto.SpecialRequirements"/> are populated from the
+    /// public registration form, so a hostile registrant can submit
+    /// <c>=cmd|'/c calc'!A1</c> as their name and have it executed on staff workstations the
+    /// moment the CSV is opened. The escape is applied to <em>every</em> string cell — the
+    /// numeric / boolean / enum columns never start with these characters, so the broad rule
+    /// is cheap and removes any future risk if a string column is added.
+    /// </summary>
+    private static string EscapeForCsvCell(string value, bool forceQuoteEmpty)
+    {
+        if (value.Length == 0)
+            return forceQuoteEmpty ? "\"\"" : value;
+
+        var first = value[0];
+        if (first == '=' || first == '+' || first == '-' || first == '@')
+        {
+            var prefixed = "'" + value;
+            var escapedPrefix = prefixed.Replace("\"", "\"\"", StringComparison.Ordinal);
+            return $"\"{escapedPrefix}\"";
+        }
+
+        return QuoteIfNeeded(value);
     }
 
     /// <summary>

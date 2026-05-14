@@ -1,4 +1,3 @@
-using IabConnect.Application.Authorization;
 using IabConnect.Application.Events;
 using IabConnect.Application.Events.CheckIn;
 using IabConnect.Domain.Events;
@@ -347,10 +346,18 @@ public static class EventRegistrationEndpoints
         }
         else
         {
+            // REQ-023 (E3.S2 Round-3 R3-H-S2-4): MemberId is mandatory for member-bound
+            // registrations. Previous code defaulted to Guid.Empty, which the entity factory
+            // now rejects — return a clean 400 instead of letting the ArgumentException bubble
+            // up as a 500. (The waitlisted branch above accepts a nullable MemberId because
+            // `CreateWaitlisted` legitimately supports both member and guest waitlist rows.)
+            if (request.MemberId is null || request.MemberId.Value == Guid.Empty)
+                return Results.BadRequest(new { message = "MemberId is required for member registration" });
+
             registration = EventRegistration.CreateForMember(
                 eventId,
                 userId,
-                request.MemberId ?? Guid.Empty,
+                request.MemberId.Value,
                 userName,
                 userEmail,
                 request.NumberOfGuests,
@@ -509,12 +516,11 @@ public static class EventRegistrationEndpoints
         return Results.Ok(MapToDto(registration));
     }
 
-    // REQ-023 (E3.S2): ID-based check-in. Delegates to MediatR; audit-logs on state change only.
+    // REQ-023 (E3.S2): ID-based check-in. Delegates to MediatR; the handler writes the audit row.
     private static async Task<IResult> CheckInRegistration(
         Guid eventId,
         Guid registrationId,
         ISender sender,
-        ISecurityAuditLogger auditLogger,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
@@ -522,33 +528,36 @@ public static class EventRegistrationEndpoints
             return Results.BadRequest(new { message = "User ID not found" });
 
         var result = await sender.Send(
-            new CheckInRegistrationCommand(eventId, registrationId, QrCodeToken: null, checkedInBy),
+            new CheckInRegistrationCommand(eventId, registrationId, QrCodeToken: null, checkedInBy, user),
             cancellationToken);
 
-        return MapCheckInResult(result, user, auditLogger, "EventCheckInById", "Registration not found",
-            searchQueryHash: null);
+        return MapCheckInResult(result, "Registration not found");
     }
 
-    // REQ-023 (E3.S2): Manual-search check-in. Audit verb "EventCheckInManual" + searchQueryHash.
+    // REQ-023 (E3.S2): Manual-search check-in. The search hash is computed here so the raw
+    // search text never crosses into Application; the handler picks the audit verb.
     private static async Task<IResult> ManualCheckIn(
         Guid eventId,
         Guid registrationId,
         ManualCheckInRequest? request,
         ISender sender,
-        ISecurityAuditLogger auditLogger,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
         if (!TryGetUserId(user, out var checkedInBy))
             return Results.BadRequest(new { message = "User ID not found" });
 
+        var searchQueryHash = CheckInSearchHasher.Hash(request?.SearchQuery);
         var result = await sender.Send(
-            new ManualCheckInRegistrationCommand(eventId, registrationId, checkedInBy),
+            new ManualCheckInRegistrationCommand(
+                eventId,
+                registrationId,
+                checkedInBy,
+                user,
+                SearchQueryHash: string.IsNullOrEmpty(searchQueryHash) ? null : searchQueryHash),
             cancellationToken);
 
-        var searchQueryHash = CheckInSearchHasher.Hash(request?.SearchQuery);
-        return MapCheckInResult(result, user, auditLogger, "EventCheckInManual", "Registration not found",
-            searchQueryHash: string.IsNullOrEmpty(searchQueryHash) ? null : searchQueryHash);
+        return MapCheckInResult(result, "Registration not found");
     }
 
     private static async Task<IResult> MarkAsNoShow(
@@ -724,11 +733,11 @@ public static class EventRegistrationEndpoints
         return Results.Ok(MapToDto(nextOnWaitlist));
     }
 
-    // REQ-023 (E3.S2): QR-token check-in. Delegates to MediatR; audit verb "EventCheckInScanned".
+    // REQ-023 (E3.S2): QR-token check-in. Delegates to MediatR; the handler picks the
+    // EventCheckInScanned audit verb based on the non-null QrCodeToken discriminator.
     private static async Task<IResult> CheckInByQrCode(
         string qrCodeToken,
         ISender sender,
-        ISecurityAuditLogger auditLogger,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
@@ -736,12 +745,11 @@ public static class EventRegistrationEndpoints
             return Results.BadRequest(new { message = "User ID not found" });
 
         var result = await sender.Send(
-            new CheckInRegistrationCommand(EventId: Guid.Empty, RegistrationId: null, qrCodeToken, checkedInBy),
+            new CheckInRegistrationCommand(EventId: Guid.Empty, RegistrationId: null, qrCodeToken, checkedInBy, user),
             cancellationToken);
 
         // Preserve the existing 404 wording for the QR path per D7.
-        return MapCheckInResult(result, user, auditLogger, "EventCheckInScanned", "Invalid QR code",
-            searchQueryHash: null);
+        return MapCheckInResult(result, "Invalid QR code");
     }
 
     private static bool TryGetUserId(ClaimsPrincipal user, out Guid userId)
@@ -753,18 +761,13 @@ public static class EventRegistrationEndpoints
 
     /// <summary>
     /// REQ-023 (E3.S2): single result-mapper for all three check-in entry points.
-    /// Writes the <c>LogAccessGranted</c> audit row ONLY when the outcome is a real state
-    /// change (<see cref="CheckInOutcome.CheckedIn"/>) — idempotent already-checked-in returns
-    /// produce no audit row to keep the trail honest. Action verb is supplied by the caller
-    /// so the three endpoints stay distinguishable in audit forensics (D3 in the story).
+    ///
+    /// <para>REQ-023 (E3.S2 Round-3 R3-DN-3): audit-log was moved into the MediatR handlers so
+    /// this mapper now only translates the typed <see cref="CheckInResultDto"/> outcome to a
+    /// minimal-API <see cref="IResult"/>. The handler is responsible for writing the
+    /// <c>LogAccessGranted</c> audit row with the correct verb on state-changing outcomes.</para>
     /// </summary>
-    private static IResult MapCheckInResult(
-        CheckInResultDto result,
-        ClaimsPrincipal user,
-        ISecurityAuditLogger auditLogger,
-        string auditAction,
-        string notFoundMessage,
-        string? searchQueryHash)
+    private static IResult MapCheckInResult(CheckInResultDto result, string notFoundMessage)
     {
         // REQ-023 (E3.S2 review H-S2-1): redact the QR token from every check-in response. The
         // token is a credential that triggers a state-changing check-in via the QR endpoint;
@@ -775,24 +778,8 @@ public static class EventRegistrationEndpoints
         switch (sanitized.Outcome)
         {
             case CheckInOutcome.CheckedIn:
-                var registration = sanitized.Registration!;
-                var additionalData = new Dictionary<string, object>
-                {
-                    ["eventId"] = registration.EventId,
-                    ["wasAlreadyCheckedIn"] = false,
-                };
-                if (!string.IsNullOrEmpty(searchQueryHash))
-                    additionalData["searchQueryHash"] = searchQueryHash;
-                auditLogger.LogAccessGranted(
-                    user,
-                    resource: "EventRegistration",
-                    action: auditAction,
-                    resourceId: registration.Id.ToString(),
-                    additionalData: additionalData);
-                return Results.Ok(sanitized);
-
             case CheckInOutcome.AlreadyCheckedIn:
-                // Idempotent return: same 200 shape, NO audit row (no state change occurred).
+                // Both 200; the idempotent path writes no audit row (handled in the handler).
                 return Results.Ok(sanitized);
 
             case CheckInOutcome.NotFound:

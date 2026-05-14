@@ -5,7 +5,7 @@ namespace IabConnect.Application.Events.CheckIn;
 
 /// <summary>
 /// REQ-023: Handler for <see cref="ExportEventCheckInRosterQuery"/>.
-/// Delegates roster building to <see cref="GetEventCheckInRosterQuery"/> and
+/// Delegates roster building to <see cref="GetEventCheckInRosterQueryHandler"/> and
 /// CSV rendering to <see cref="IEventCheckInRosterCsvExporter"/>.
 /// </summary>
 public sealed class ExportEventCheckInRosterQueryHandler
@@ -18,14 +18,20 @@ public sealed class ExportEventCheckInRosterQueryHandler
     /// </summary>
     private const int FileNameTitleSegmentMaxLength = 80;
 
-    private readonly IMediator _mediator;
+    // REQ-023 (E3.S1 Round-3 R3-H-S1-1): inject the read handler directly instead of
+    // re-entering MediatR. Going through IMediator.Send would re-fire every IPipelineBehavior
+    // (validators, logging, audit, transactions) a second time per CSV download — double
+    // telemetry, double validation, and any future transaction behavior would open two nested
+    // scopes per request. The read handler is a sibling in the same module/namespace with no
+    // cross-cutting boundary to preserve, so a direct call is the correct composition.
+    private readonly GetEventCheckInRosterQueryHandler _rosterHandler;
     private readonly IEventCheckInRosterCsvExporter _exporter;
 
     public ExportEventCheckInRosterQueryHandler(
-        IMediator mediator,
+        GetEventCheckInRosterQueryHandler rosterHandler,
         IEventCheckInRosterCsvExporter exporter)
     {
-        _mediator = mediator;
+        _rosterHandler = rosterHandler;
         _exporter = exporter;
     }
 
@@ -33,7 +39,7 @@ public sealed class ExportEventCheckInRosterQueryHandler
         ExportEventCheckInRosterQuery request,
         CancellationToken cancellationToken)
     {
-        var lookup = await _mediator.Send(
+        var lookup = await _rosterHandler.Handle(
             new GetEventCheckInRosterQuery(request.EventId, request.IncludeWaitlisted),
             cancellationToken);
 

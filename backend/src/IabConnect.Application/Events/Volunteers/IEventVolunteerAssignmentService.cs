@@ -70,6 +70,28 @@ public interface IEventVolunteerAssignmentService
         Guid shiftId,
         int newCapacity,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// REQ-024 (E3.S3 Round-3 R3-M-S3-1): Updates ALL of a shift's mutable fields under a
+    /// single FOR UPDATE row-lock, closing the TOCTOU window between the locked capacity
+    /// change and the subsequent unlocked field update. Callers previously did two-phase
+    /// (capacity inside lock, fields outside) which allowed a concurrent writer to mutate
+    /// the row between phases. This method applies capacity + title/description/dates/flags/
+    /// notes inside the same transaction.
+    /// <para><b>H-S3-2:</b> Asserts the shift's parent event matches <paramref name="eventId"/>.</para>
+    /// </summary>
+    Task<UpdateShiftCapacityResult> UpdateShiftAsync(
+        Guid eventId,
+        Guid shiftId,
+        string title,
+        string? description,
+        DateTime startsAt,
+        DateTime endsAt,
+        int capacity,
+        bool allowWaitlist,
+        bool allowSelfSignup,
+        string? notes,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -91,8 +113,14 @@ public enum UpdateShiftCapacityOutcome
 /// <summary>
 /// REQ-024 (E3.S3, post-review H-S3-6): Result of a bulk-cancel call. Distinguishes
 /// "shift not found / belongs to another event" (404) from "successfully cancelled N rows".
+///
+/// <para>REQ-024 (E3.S3 Round-3 R3-H-S3-1): added <see cref="WrongEvent"/> to distinguish a
+/// legitimate "shift does not exist" from a "shift exists but in another event" — the latter
+/// is an attacker probing cross-event tampering and the endpoint emits a
+/// <c>LogAccessDenied</c> audit row. The shared <see cref="ShiftFound"/> flag stays
+/// <c>false</c> for both cases so the response is still opaque to the client.</para>
 /// </summary>
-public sealed record CancelShiftServiceResult(bool ShiftFound, int CancelledAssignmentCount);
+public sealed record CancelShiftServiceResult(bool ShiftFound, int CancelledAssignmentCount, bool WrongEvent = false);
 
 /// <summary>
 /// REQ-024 (E3.S3): Typed result of an assignment-altering call. The endpoint maps each
@@ -121,4 +149,19 @@ public enum VolunteerAssignmentOutcome
 
     /// <summary>Post-review C1: caller is neither the assignment owner nor an event-staff role.</summary>
     NotAuthorized,
+
+    /// <summary>
+    /// Round-3 R3-M-S3-3: the calling Keycloak user has no linked <c>Member</c> record, so
+    /// self-signup cannot resolve a member id. Previously surfaced as an
+    /// <c>InvalidOperationException</c> mapped to 403 via string-message inspection.
+    /// </summary>
+    NoMemberLink,
+
+    /// <summary>
+    /// Round-3 R3-H-S3-3: a partial-unique-index race-loser saw the active row disappear
+    /// between the rollback-to-savepoint and the re-fetch (concurrent caller cancelled it in
+    /// the same millisecond). The endpoint maps to a 409 retry-style response rather than
+    /// raising a raw <c>DbUpdateException</c> as a 500.
+    /// </summary>
+    Transient,
 }

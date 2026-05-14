@@ -48,6 +48,13 @@ public static class DependencyInjection
         // REQ-025 (E3.S5): RFC 5545 ICS feed builder (stateless, no third-party calendar dep)
         services.AddSingleton<Events.Calendar.ICalendarFeedBuilder, Events.Calendar.CalendarFeedBuilder>();
 
+        // REQ-023 (E3.S1 Round-3 R3-H-S1-1): the CSV-export handler injects the read handler
+        // directly to avoid re-entering MediatR (which would fire every IPipelineBehavior
+        // a second time per export). MediatR's RegisterServicesFromAssembly only wires up the
+        // IRequestHandler<,> interface, so the concrete handler must also be registered as
+        // itself for direct constructor injection to resolve.
+        services.AddTransient<Events.CheckIn.GetEventCheckInRosterQueryHandler>();
+
         // Note: IAuditService is registered in Infrastructure layer (requires IHttpContextAccessor)
 
         return services;

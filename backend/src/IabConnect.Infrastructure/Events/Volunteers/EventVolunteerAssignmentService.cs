@@ -109,6 +109,17 @@ public sealed class EventVolunteerAssignmentService : IEventVolunteerAssignmentS
 
             if (!created)
             {
+                // R3-H-S3-3: the repository returns `(null, false)` when the unique-violation
+                // fired AND the re-fetch of the existing active row also returned null (a
+                // concurrent caller cancelled the racing row in the same millisecond). Map
+                // this to a typed Transient outcome so the endpoint can surface a clean 409
+                // retry-style response rather than a 500.
+                if (persisted is null)
+                {
+                    await transaction.CommitAsync(cancellationToken);
+                    return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.Transient, null);
+                }
+
                 // Honest race-loser: the partial unique index fired between our pre-check and insert.
                 // Return the winning row as AlreadyAssigned.
                 await transaction.CommitAsync(cancellationToken);
@@ -246,29 +257,42 @@ public sealed class EventVolunteerAssignmentService : IEventVolunteerAssignmentS
         }
 
         var shift = shifts[0];
-        // H-S3-2: reject when the shift belongs to a different event.
+        // H-S3-2 + R3-H-S3-1: reject when the shift belongs to a different event. The
+        // WrongEvent flag lets the endpoint distinguish probing (audit-log + 404) from genuine
+        // not-found (404 only). The client-visible body is identical to keep the response
+        // opaque.
         if (eventId != Guid.Empty && shift.EventId != eventId)
         {
             await transaction.CommitAsync(cancellationToken);
-            return new CancelShiftServiceResult(ShiftFound: false, CancelledAssignmentCount: 0);
+            return new CancelShiftServiceResult(
+                ShiftFound: false,
+                CancelledAssignmentCount: 0,
+                WrongEvent: true);
         }
 
-        var active = await _context.EventVolunteerAssignments
+        // REQ-024 (E3.S3 Round-3 R3-M-S3-2): use ExecuteUpdate so concurrent CancelAssignment
+        // calls cannot lose-update us. ExecuteUpdate runs a single SQL UPDATE … WHERE status
+        // <> 'Cancelled', which is atomic at the row level; rows that another writer already
+        // cancelled in parallel keep their specific reason / timestamp. The previous load-
+        // then-foreach pattern would silently overwrite a more specific cancellation reason
+        // recorded by a concurrent caller.
+        // We capture nowUtc once at the start so the audit timestamp is stable across the batch.
+        var nowUtc = DateTime.UtcNow;
+        var cancelledCount = await _context.EventVolunteerAssignments
             .Where(a => a.ShiftId == shiftId && a.Status != VolunteerAssignmentStatus.Cancelled)
-            .ToListAsync(cancellationToken);
-
-        foreach (var assignment in active)
-        {
-            assignment.Cancel(reason);
-        }
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(a => a.Status, VolunteerAssignmentStatus.Cancelled)
+                .SetProperty(a => a.CancelledAt, nowUtc)
+                .SetProperty(a => a.CancellationReason, reason),
+                cancellationToken);
 
         // H-S3-6: flip the parent shift's status so subsequent self-signups are rejected.
+        // The shift entity itself is tracked, so its mutation needs SaveChangesAsync.
         shift.Cancel(reason);
-
         await _context.SaveChangesAsync(cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
-        return new CancelShiftServiceResult(ShiftFound: true, CancelledAssignmentCount: active.Count);
+        return new CancelShiftServiceResult(ShiftFound: true, CancelledAssignmentCount: cancelledCount);
     }
 
     public async Task<UpdateShiftCapacityResult> UpdateShiftCapacityAsync(
@@ -315,5 +339,62 @@ public sealed class EventVolunteerAssignmentService : IEventVolunteerAssignmentS
         await _context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return new UpdateShiftCapacityResult(UpdateShiftCapacityOutcome.Updated, newCapacity, confirmed);
+    }
+
+    public async Task<UpdateShiftCapacityResult> UpdateShiftAsync(
+        Guid eventId,
+        Guid shiftId,
+        string title,
+        string? description,
+        DateTime startsAt,
+        DateTime endsAt,
+        int capacity,
+        bool allowWaitlist,
+        bool allowSelfSignup,
+        string? notes,
+        CancellationToken cancellationToken = default)
+    {
+        if (capacity < 1)
+            return new UpdateShiftCapacityResult(UpdateShiftCapacityOutcome.InvalidCapacity, null, null);
+
+        // REQ-024 (E3.S3 Round-3 R3-M-S3-1): single FOR UPDATE transaction over capacity AND
+        // field updates so a concurrent writer cannot mutate the row between the two phases.
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+
+        var shifts = await _context.EventVolunteerShifts
+            .FromSqlInterpolated($"SELECT * FROM event_volunteer_shifts WHERE id = {shiftId} FOR UPDATE")
+            .AsTracking()
+            .ToListAsync(cancellationToken);
+        if (shifts.Count == 0)
+        {
+            await transaction.CommitAsync(cancellationToken);
+            return new UpdateShiftCapacityResult(UpdateShiftCapacityOutcome.ShiftNotFound, null, null);
+        }
+
+        var shift = shifts[0];
+        if (eventId != Guid.Empty && shift.EventId != eventId)
+        {
+            await transaction.CommitAsync(cancellationToken);
+            return new UpdateShiftCapacityResult(UpdateShiftCapacityOutcome.ShiftNotFound, null, null);
+        }
+
+        if (capacity != shift.Capacity)
+        {
+            var confirmed = await _assignmentRepository.CountConfirmedAsync(shiftId, cancellationToken);
+            if (capacity < confirmed)
+            {
+                await transaction.CommitAsync(cancellationToken);
+                return new UpdateShiftCapacityResult(
+                    UpdateShiftCapacityOutcome.BelowCurrentConfirmed,
+                    capacity,
+                    confirmed);
+            }
+            shift.UpdateCapacity(capacity, confirmed);
+        }
+
+        shift.UpdateDetails(title, description, startsAt, endsAt, allowWaitlist, allowSelfSignup, notes);
+        await _context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return new UpdateShiftCapacityResult(UpdateShiftCapacityOutcome.Updated, capacity, null);
     }
 }

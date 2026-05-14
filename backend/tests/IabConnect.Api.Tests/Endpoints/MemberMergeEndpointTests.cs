@@ -71,6 +71,7 @@ public sealed class MemberMergeEndpointTests
     private sealed class EmptyMemberRepository : IMemberRepository
     {
         public Task<Member?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult<Member?>(null);
+        public Task<IReadOnlyDictionary<Guid, Member>> GetByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyDictionary<Guid, Member>>(new Dictionary<Guid, Member>());
         public Task<Member?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) => Task.FromResult<Member?>(null);
         public Task<Member?> GetByKeycloakUserIdAsync(Guid keycloakUserId, CancellationToken cancellationToken = default) => Task.FromResult<Member?>(null);
         public Task<Member?> GetByCalendarTokenAsync(string token, CancellationToken cancellationToken = default) => Task.FromResult<Member?>(null);

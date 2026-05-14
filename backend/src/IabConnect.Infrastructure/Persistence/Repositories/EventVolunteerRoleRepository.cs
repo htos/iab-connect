@@ -62,8 +62,16 @@ public sealed class EventVolunteerRoleRepository : IEventVolunteerRoleRepository
 
     public async Task<EventVolunteerRole?> GetByEventAndNameAsync(Guid eventId, string name, CancellationToken cancellationToken = default)
     {
+        // REQ-024 (E3.S3 Round-3 R3-H-S3-2): `trimmed.ToLower()` uses the ambient culture, which
+        // on a Turkish-locale runtime maps `I` → `ı` (dotless), while EF translates
+        // `r.Name.ToLower()` to Postgres `lower()` running under the DB collation (en_US.UTF-8
+        // → `I` → `i`). The two sides would disagree on dotted/dotless-i, the pre-check would
+        // miss a legitimate match, and the subsequent `AddAsync` would hit the partial unique
+        // `lower(name)` index with a 409. `ToLowerInvariant()` removes the ambient-culture
+        // dependency on the input side; the EF side already runs invariant via Postgres `lower()`.
         var trimmed = name.Trim();
+        var lowered = trimmed.ToLowerInvariant();
         return await _context.EventVolunteerRoles
-            .FirstOrDefaultAsync(r => r.EventId == eventId && r.Name.ToLower() == trimmed.ToLower(), cancellationToken);
+            .FirstOrDefaultAsync(r => r.EventId == eventId && r.Name.ToLower() == lowered, cancellationToken);
     }
 }

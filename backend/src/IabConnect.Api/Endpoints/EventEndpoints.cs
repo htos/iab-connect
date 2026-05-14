@@ -116,10 +116,28 @@ public static class EventEndpoints
         // URLs into ICS feeds that subscribers will then bookmark in their calendar clients.
         // A misconfigured deployment is better surfaced as a 500 on the first feed fetch than
         // as a silent corruption of every emitted subscription URL.
+        //
+        // REQ-025 (E3.S5 Round-3 R3-M-S5-6): validate URL shape — reject anything that would
+        // produce a malformed URL embedded in the ICS body (CRLF would break line folding;
+        // non-http(s) schemes never make sense for a public-feed URL). Done at request time
+        // rather than at startup because IOptions<T>.ValidateOnStart() requires a typed
+        // options class which is a heavier refactor than this story can carry. The validation
+        // is idempotent and trivially cached by ASP.NET's IConfiguration providers.
         var configured = config["App:PublicBaseUrl"];
         if (string.IsNullOrWhiteSpace(configured))
             throw new InvalidOperationException(
                 "App:PublicBaseUrl is not configured. Calendar feeds embed this URL in every ICS body; refusing to fall back to localhost.");
+        if (!Uri.TryCreate(configured, UriKind.Absolute, out var uri)
+            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+        {
+            throw new InvalidOperationException(
+                $"App:PublicBaseUrl ('{configured}') is not a valid absolute http(s) URL; calendar feeds would embed a malformed value.");
+        }
+        if (configured.Contains('\r') || configured.Contains('\n'))
+        {
+            throw new InvalidOperationException(
+                "App:PublicBaseUrl must not contain CR/LF; calendar feeds would inject those bytes into the ICS body and break line folding.");
+        }
         return configured;
     }
 
@@ -130,6 +148,12 @@ public static class EventEndpoints
     private static void SetPublicIcsResponseHeaders(HttpResponse response)
     {
         response.Headers.CacheControl = "public, max-age=600, stale-while-revalidate=300";
+        // REQ-025 (E3.S5 Round-3 R3-M-S5-3): Vary: Accept-Encoding so a gzip-vs-identity client
+        // doesn't get a cached response in the wrong encoding from a downstream CDN. The ETag
+        // wiring is deferred — adding stable ETag derivation requires hashing the body, which
+        // would force materialization before headers go out and erase the gzip benefit. The
+        // Vary header is the immediate fix; ETag is tracked as a future optimization.
+        response.Headers.Vary = "Accept-Encoding";
     }
 
     private static void SetPrivateIcsResponseHeaders(HttpResponse response)
@@ -179,7 +203,7 @@ public static class EventEndpoints
     {
         var evt = await eventRepository.GetByIdAsync(id, ct);
         if (evt is null || evt.IsDeleted || evt.Status != EventStatus.Published)
-            return Results.NotFound(new { message = "Event not found" });
+            return Results.NotFound(new { message = "Calendar feed not found" });
 
         if (evt.Visibility == EventVisibility.Public)
         {
@@ -189,15 +213,15 @@ public static class EventEndpoints
         {
             // Token required; resolve to member.
             if (string.IsNullOrWhiteSpace(token))
-                return Results.NotFound(new { message = "Event not found" });
+                return Results.NotFound(new { message = "Calendar feed not found" });
             var member = await memberRepository.GetByCalendarTokenAsync(token, ct);
             if (member is null)
-                return Results.NotFound(new { message = "Event not found" });
+                return Results.NotFound(new { message = "Calendar feed not found" });
         }
         else
         {
             // Hidden / InviteOnly never available via the calendar feed.
-            return Results.NotFound(new { message = "Event not found" });
+            return Results.NotFound(new { message = "Calendar feed not found" });
         }
 
         var ics = builder.BuildSingle(evt, ResolveBaseUrl(config));
@@ -216,6 +240,7 @@ public static class EventEndpoints
         ISecurityAuditLogger auditLogger,
         IConfiguration config,
         ClaimsPrincipal user,
+        HttpContext httpContext,
         CancellationToken ct)
     {
         var keycloakId = ResolveKeycloakUserId(user);
@@ -228,11 +253,25 @@ public static class EventEndpoints
                 new { message = "Calendar feed requires an active membership" },
                 statusCode: StatusCodes.Status403Forbidden);
 
+        // REQ-025 (E3.S5 Round-3 R3-H-S5-5): the strict fix would acquire a FOR UPDATE row
+        // lock on the Member before regenerate+save (precedent: MemberMergeService). The
+        // narrow fix at the API layer is constrained: IUnitOfWork in Application doesn't
+        // expose transaction primitives, and pushing them through to the endpoint would
+        // break the established layering. The double-rotate race (same user double-clicks
+        // the rotate button → two responses come back, only the last persisted matches the
+        // returned token) is rare and recoverable (re-click rotate; correct token returned)
+        // — recorded as a known race on the cross-cutting Member-row concurrency-token
+        // track. SaveChangesAsync is awaited fully before the response is sent so at least
+        // the response reflects this caller's tracked entity state.
         var token = member.RegenerateCalendarToken();
         memberRepository.Update(member);
         await unitOfWork.SaveChangesAsync(ct);
 
         auditLogger.LogAccessGranted(user, "Member", "CalendarTokenRotated", member.Id.ToString());
+
+        // REQ-025 (E3.S5 Round-3 R3-M-S5-7): the response contains the brand-new cleartext
+        // token (the only time it is ever exposed). Must never be cached by intermediaries.
+        httpContext.Response.Headers.CacheControl = "no-store";
 
         var subscriptionUrl = $"{ResolveBaseUrl(config).TrimEnd('/')}/api/v1/events/my-calendar.ics?token={Uri.EscapeDataString(token)}";
         return Results.Ok(new { token, subscriptionUrl });

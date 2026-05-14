@@ -2,6 +2,7 @@ using System.Reflection;
 using FluentAssertions;
 using IabConnect.Application.Events.CheckIn;
 using IabConnect.Domain.Events;
+using Microsoft.Extensions.Time.Testing;
 using Moq;
 using Xunit;
 
@@ -23,7 +24,7 @@ public sealed class GetEventCheckInRosterQueryHandlerTests
             .Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Event?)null);
 
-        var handler = new GetEventCheckInRosterQueryHandler(eventRepo.Object, regRepo.Object);
+        var handler = new GetEventCheckInRosterQueryHandler(eventRepo.Object, regRepo.Object, new FakeTimeProvider());
 
         var result = await handler.Handle(
             new GetEventCheckInRosterQuery(Guid.NewGuid()),
@@ -55,11 +56,15 @@ public sealed class GetEventCheckInRosterQueryHandlerTests
     {
         // Post-review H-S1-3: the lookup envelope must distinguish "archive expired" from
         // generic not-found so the endpoint can return the spec-required message.
+        // R3-M-S1-2: archive-expiry math is driven by injected TimeProvider — set "now" 91d
+        // after the CancelledAt timestamp so the expiry triggers deterministically.
         var evt = CreateEvent();
+        var cancelledAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         SetField(evt, "Status", EventStatus.Cancelled);
-        SetField(evt, "CancelledAt", DateTime.UtcNow.AddDays(-91));
+        SetField(evt, "CancelledAt", cancelledAt);
+        var timeProvider = new FakeTimeProvider(cancelledAt.AddDays(91));
 
-        var handler = BuildHandler(evt, Array.Empty<EventRegistration>());
+        var handler = BuildHandler(evt, Array.Empty<EventRegistration>(), timeProvider);
 
         var result = await handler.Handle(
             new GetEventCheckInRosterQuery(evt.Id),
@@ -73,10 +78,12 @@ public sealed class GetEventCheckInRosterQueryHandlerTests
     public async Task Handle_CancelledButWithinArchiveWindow_ReturnsRoster()
     {
         var evt = CreateEvent();
+        var cancelledAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         SetField(evt, "Status", EventStatus.Cancelled);
-        SetField(evt, "CancelledAt", DateTime.UtcNow.AddDays(-89));
+        SetField(evt, "CancelledAt", cancelledAt);
+        var timeProvider = new FakeTimeProvider(cancelledAt.AddDays(89));
 
-        var handler = BuildHandler(evt, Array.Empty<EventRegistration>());
+        var handler = BuildHandler(evt, Array.Empty<EventRegistration>(), timeProvider);
 
         var result = await handler.Handle(
             new GetEventCheckInRosterQuery(evt.Id),
@@ -85,6 +92,23 @@ public sealed class GetEventCheckInRosterQueryHandlerTests
         result.Roster.Should().NotBeNull();
         result.ArchiveExpired.Should().BeFalse();
         result.Roster!.Items.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_GeneratedAt_UsesInjectedTimeProvider()
+    {
+        // R3-M-S1-2: GeneratedAt must come from TimeProvider, not DateTime.UtcNow. Fixing the
+        // clock makes the field deterministic in tests and removes a flaky-test footgun.
+        var fixedNow = new DateTime(2026, 5, 14, 9, 0, 0, DateTimeKind.Utc);
+        var evt = CreateEvent();
+        var handler = BuildHandler(evt, Array.Empty<EventRegistration>(), new FakeTimeProvider(fixedNow));
+
+        var result = await handler.Handle(
+            new GetEventCheckInRosterQuery(evt.Id),
+            TestContext.Current.CancellationToken);
+
+        result.Roster.Should().NotBeNull();
+        result.Roster!.GeneratedAt.Should().Be(fixedNow);
     }
 
     [Theory]
@@ -191,7 +215,8 @@ public sealed class GetEventCheckInRosterQueryHandlerTests
 
     private static GetEventCheckInRosterQueryHandler BuildHandler(
         Event evt,
-        IReadOnlyList<EventRegistration> registrations)
+        IReadOnlyList<EventRegistration> registrations,
+        TimeProvider? timeProvider = null)
     {
         var eventRepo = new Mock<IEventRepository>();
         eventRepo
@@ -203,7 +228,7 @@ public sealed class GetEventCheckInRosterQueryHandlerTests
             .Setup(r => r.GetByEventIdAsync(evt.Id, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(registrations);
 
-        return new GetEventCheckInRosterQueryHandler(eventRepo.Object, regRepo.Object);
+        return new GetEventCheckInRosterQueryHandler(eventRepo.Object, regRepo.Object, timeProvider ?? new FakeTimeProvider());
     }
 
     private static Event CreateEvent()

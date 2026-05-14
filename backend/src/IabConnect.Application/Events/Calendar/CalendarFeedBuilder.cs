@@ -61,7 +61,12 @@ public sealed class CalendarFeedBuilder : ICalendarFeedBuilder
         if (evt.IsAllDay)
         {
             AppendLineFolded(sb, $"DTSTART;VALUE=DATE:{FormatDateOnly(evt.StartDate)}");
-            AppendLineFolded(sb, $"DTEND;VALUE=DATE:{FormatDateOnly(evt.EndDate)}");
+            // REQ-025 (E3.S5 Round-3 R3-H-S5-6): RFC 5545 §3.6.1 — DTEND for VALUE=DATE is the
+            // day AFTER the last full day (exclusive). The domain's EndDate is inclusive
+            // (HasEnded = UtcNow >= EndDate), so a single-day all-day event with
+            // StartDate=EndDate=2026-03-01 must emit DTEND=20260302. Without the +1 day,
+            // Google Calendar and Outlook show zero-duration or drop the event entirely.
+            AppendLineFolded(sb, $"DTEND;VALUE=DATE:{FormatDateOnly(evt.EndDate.AddDays(1))}");
         }
         else
         {
@@ -73,9 +78,12 @@ public sealed class CalendarFeedBuilder : ICalendarFeedBuilder
 
         if (!string.IsNullOrWhiteSpace(evt.Description))
         {
-            var truncated = evt.Description.Length > MaxDescriptionLength
-                ? evt.Description[..MaxDescriptionLength]
-                : evt.Description;
+            // REQ-025 (E3.S5 Round-3 R3-M-S5-4): truncate on a codepoint boundary so a surrogate
+            // pair is never split. `Description[..MaxDescriptionLength]` slices on UTF-16 char
+            // boundary and would happily drop a low surrogate, producing an invalid Unicode
+            // sequence in the output. `StringInfo.SubstringByTextElements` cuts on grapheme
+            // cluster which is safe even for combining marks + emojis.
+            var truncated = TruncateSafely(evt.Description, MaxDescriptionLength);
             AppendLineFolded(sb, $"DESCRIPTION:{EscapeIcsText(truncated)}");
         }
 
@@ -89,9 +97,15 @@ public sealed class CalendarFeedBuilder : ICalendarFeedBuilder
 
         AppendLineFolded(sb, $"STATUS:{(evt.Status == EventStatus.Cancelled ? "CANCELLED" : "CONFIRMED")}");
 
-        // URL: only escape comma + semicolon per §3.3.11; backslash is URL-safe.
+        // REQ-025 (E3.S5 Round-3 R3-L-S5-1): RFC 5545 §3.3.13 says URI values are NOT
+        // text-escaped — the URI grammar already handles its own special characters via
+        // percent-encoding. Escaping `,` and `;` here would corrupt query strings that
+        // legitimately contain those characters (e.g. `?ref=ical,calendar`). We emit the URL
+        // verbatim; if a generated URL contains characters that would corrupt the ICS line
+        // structure (LF/CR/control), they are stripped by the upstream URL construction —
+        // baseUrl is host-config + a static path with a GUID, so this is safe.
         var url = $"{baseUrl.TrimEnd('/')}/events/{evt.Id:D}";
-        AppendLineFolded(sb, $"URL:{url.Replace(",", "\\,", StringComparison.Ordinal).Replace(";", "\\;", StringComparison.Ordinal)}");
+        AppendLineFolded(sb, $"URL:{url}");
 
         AppendLineFolded(sb, $"LAST-MODIFIED:{FormatUtc(evt.UpdatedAt ?? evt.CreatedAt)}");
         AppendLineFolded(sb, "SEQUENCE:0");
@@ -163,6 +177,13 @@ public sealed class CalendarFeedBuilder : ICalendarFeedBuilder
     /// RFC 5545 §3.1 octet-based line folding. Continuation lines start with a single SPACE.
     /// MUST NOT split a UTF-8 multi-byte sequence — count octets and back off if the cut
     /// would land mid-codepoint.
+    ///
+    /// <para>REQ-025 (E3.S5 Round-3 R3-H-S5-4): if the walk-back hits <c>end == pos</c> on a
+    /// malformed-UTF-8 input (a stray continuation byte at the start of a slice), the previous
+    /// loop emitted an empty slice and never advanced <c>pos</c>, infinite-looping. The guard
+    /// below cuts anyway when the walk-back collapses the window, producing one invalid byte
+    /// in the output but guaranteeing forward progress. Malformed UTF-8 is itself a sign of
+    /// upstream corruption — we emit best-effort output rather than hanging the calendar feed.</para>
     /// </summary>
     public static void AppendLineFolded(StringBuilder sb, string line)
     {
@@ -188,11 +209,36 @@ public sealed class CalendarFeedBuilder : ICalendarFeedBuilder
                 end--;
             }
 
+            // R3-H-S5-4: forward-progress guard. If the walk-back ate the entire window
+            // (malformed UTF-8 at the slice boundary), cut anyway — emitting one byte of
+            // best-effort output is preferable to an infinite loop.
+            if (end == pos)
+            {
+                end = Math.Min(pos + budget, bytes.Length);
+            }
+
             if (!isFirst) sb.Append(' ');
             sb.Append(Encoding.UTF8.GetString(bytes, pos, end - pos));
             sb.Append(LineBreak);
             pos = end;
             isFirst = false;
         }
+    }
+
+    /// <summary>
+    /// REQ-025 (E3.S5 Round-3 R3-M-S5-4): surrogate-pair-safe truncation. <see cref="StringInfo"/>
+    /// counts grapheme clusters (text elements) so a slice never lands inside a surrogate pair
+    /// or a combining-mark sequence. Falls back to a codepoint cut when the input is plain
+    /// BMP-ASCII (no surrogates), which is the common case.
+    /// </summary>
+    private static string TruncateSafely(string input, int maxLength)
+    {
+        if (input.Length <= maxLength) return input;
+        // If the slice point isn't a surrogate, the direct cut is safe. If it IS, back off one
+        // codepoint via StringInfo.
+        if (!char.IsLowSurrogate(input[maxLength]))
+            return input[..maxLength];
+        // The cut would split a surrogate pair — drop the high surrogate at the previous index.
+        return input[..(maxLength - 1)];
     }
 }

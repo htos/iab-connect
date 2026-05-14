@@ -37,13 +37,25 @@ public sealed class EventVolunteerEndpointTests
             .Should().Contain(d => d.Policy == expectedPolicy);
     }
 
+    // R3-DN-4: the GET volunteer-{roles,shifts,assignments} endpoints now use
+    // RequireEventStaffOrMember so event-managers can see their own event's surface (they were
+    // previously locked out of RequireMember). Self-signup and cancel-own keep RequireMember
+    // because they are member-driven actions.
     [Theory]
     [InlineData("/api/v1/events/{eventId:guid}/volunteer-roles/", "GET")]
     [InlineData("/api/v1/events/{eventId:guid}/volunteer-shifts/", "GET")]
     [InlineData("/api/v1/events/{eventId:guid}/volunteer-shifts/{shiftId:guid}/assignments", "GET")]
+    public void ReadEndpoints_RequireEventStaffOrMemberPolicy(string routePattern, string method)
+    {
+        var endpoint = ResolveEndpoint(routePattern, method);
+        endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>()
+            .Should().Contain(d => d.Policy == "RequireEventStaffOrMember");
+    }
+
+    [Theory]
     [InlineData("/api/v1/events/{eventId:guid}/volunteer-shifts/{shiftId:guid}/self-signup", "POST")]
     [InlineData("/api/v1/events/{eventId:guid}/volunteer-shifts/{shiftId:guid}/assignments/{assignmentId:guid}/cancel", "POST")]
-    public void MemberEndpoints_RequireMemberPolicy(string routePattern, string method)
+    public void MemberWriteEndpoints_RequireMemberPolicy(string routePattern, string method)
     {
         var endpoint = ResolveEndpoint(routePattern, method);
         endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>()
@@ -68,7 +80,9 @@ public sealed class EventVolunteerEndpointTests
         var builder = WebApplication.CreateBuilder();
         builder.Services.AddAuthorizationBuilder()
             .AddPolicy("RequireEventStaff", p => p.RequireRole("admin", "vorstand", "event-manager"))
-            .AddPolicy("RequireMember", p => p.RequireRole("admin", "vorstand", "member"));
+            .AddPolicy("RequireMember", p => p.RequireRole("admin", "vorstand", "member"))
+            // R3-DN-4: union policy for the volunteer-read surface.
+            .AddPolicy("RequireEventStaffOrMember", p => p.RequireRole("admin", "vorstand", "member", "event-manager"));
 
         builder.Services.AddSingleton<ISender, FakeSender>();
         builder.Services.AddSingleton<ISecurityAuditLogger, FakeSecurityAuditLogger>();
@@ -138,9 +152,10 @@ public sealed class EventVolunteerEndpointTests
         public Task AddAsync(EventVolunteerAssignment assignment, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task UpdateAsync(EventVolunteerAssignment assignment, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task<EventVolunteerAssignment?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult<EventVolunteerAssignment?>(null);
-        public Task<(EventVolunteerAssignment Persisted, bool Created)> AddAtomicAsync(EventVolunteerAssignment assignment, CancellationToken cancellationToken = default) => Task.FromResult((assignment, true));
+        public Task<(EventVolunteerAssignment? Persisted, bool Created)> AddAtomicAsync(EventVolunteerAssignment assignment, CancellationToken cancellationToken = default) => Task.FromResult<(EventVolunteerAssignment?, bool)>((assignment, true));
         public Task<int> CountConfirmedAsync(Guid shiftId, CancellationToken cancellationToken = default) => Task.FromResult(0);
         public Task<int> CountWaitlistedAsync(Guid shiftId, CancellationToken cancellationToken = default) => Task.FromResult(0);
+        public Task<IReadOnlyDictionary<Guid, (int Confirmed, int Waitlisted)>> GetShiftCountsAsync(IReadOnlyCollection<Guid> shiftIds, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyDictionary<Guid, (int Confirmed, int Waitlisted)>>(new Dictionary<Guid, (int, int)>());
         public Task<IReadOnlyList<EventVolunteerAssignment>> GetWaitlistAsync(Guid shiftId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<EventVolunteerAssignment>>(Array.Empty<EventVolunteerAssignment>());
         public Task<IReadOnlyList<EventVolunteerAssignment>> GetByShiftIdAsync(Guid shiftId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<EventVolunteerAssignment>>(Array.Empty<EventVolunteerAssignment>());
         public Task<IReadOnlyList<EventVolunteerAssignment>> GetByMemberIdAsync(Guid memberId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<EventVolunteerAssignment>>(Array.Empty<EventVolunteerAssignment>());
@@ -160,5 +175,7 @@ public sealed class EventVolunteerEndpointTests
             => Task.FromResult(new CancelShiftServiceResult(true, 0));
         public Task<UpdateShiftCapacityResult> UpdateShiftCapacityAsync(Guid eventId, Guid shiftId, int newCapacity, CancellationToken cancellationToken = default)
             => Task.FromResult(new UpdateShiftCapacityResult(UpdateShiftCapacityOutcome.Updated, newCapacity, 0));
+        public Task<UpdateShiftCapacityResult> UpdateShiftAsync(Guid eventId, Guid shiftId, string title, string? description, DateTime startsAt, DateTime endsAt, int capacity, bool allowWaitlist, bool allowSelfSignup, string? notes, CancellationToken cancellationToken = default)
+            => Task.FromResult(new UpdateShiftCapacityResult(UpdateShiftCapacityOutcome.Updated, capacity, 0));
     }
 }

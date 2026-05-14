@@ -108,6 +108,7 @@ public sealed class UserEndpointMetadataTests
     private sealed class FakeMemberRepository : IMemberRepository
     {
         public Task<Member?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        public Task<IReadOnlyDictionary<Guid, Member>> GetByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<Member?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<Member?> GetByKeycloakUserIdAsync(Guid keycloakUserId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<Member?> GetByCalendarTokenAsync(string token, CancellationToken cancellationToken = default) => throw new NotImplementedException();

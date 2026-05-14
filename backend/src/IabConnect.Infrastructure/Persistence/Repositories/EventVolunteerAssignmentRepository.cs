@@ -1,4 +1,5 @@
 using IabConnect.Domain.Events.Volunteers;
+using IabConnect.Domain.Members;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -34,7 +35,7 @@ public sealed class EventVolunteerAssignmentRepository : IEventVolunteerAssignme
     public Task<EventVolunteerAssignment?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         => _context.EventVolunteerAssignments.FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
 
-    public async Task<(EventVolunteerAssignment Persisted, bool Created)> AddAtomicAsync(
+    public async Task<(EventVolunteerAssignment? Persisted, bool Created)> AddAtomicAsync(
         EventVolunteerAssignment assignment,
         CancellationToken cancellationToken = default)
     {
@@ -66,9 +67,15 @@ public sealed class EventVolunteerAssignmentRepository : IEventVolunteerAssignme
             if (outerTransaction is not null)
                 await outerTransaction.RollbackToSavepointAsync(savepoint, cancellationToken);
             _context.Entry(assignment).State = EntityState.Detached;
+
+            // REQ-024 (E3.S3 Round-3 R3-H-S3-3): if the existing row vanished between the
+            // unique-violation and the re-fetch (a concurrent caller cancelled it in the same
+            // millisecond), surface the transient race rather than rethrowing the raw
+            // DbUpdateException (which the service would propagate as a 500). When `existing`
+            // is non-null we return it (the caller treats it as AlreadyAssigned, identical to
+            // pre-fix behavior); when null we return the (null, false) sentinel that the
+            // caller maps to VolunteerAssignmentOutcome.Transient → 409.
             var existing = await GetActiveForMemberAsync(assignment.ShiftId, assignment.MemberId, cancellationToken);
-            if (existing is null)
-                throw;
             return (existing, false);
         }
     }
@@ -82,6 +89,37 @@ public sealed class EventVolunteerAssignmentRepository : IEventVolunteerAssignme
         => _context.EventVolunteerAssignments
             .Where(a => a.ShiftId == shiftId && a.Status == VolunteerAssignmentStatus.Waitlisted)
             .CountAsync(cancellationToken);
+
+    public async Task<IReadOnlyDictionary<Guid, (int Confirmed, int Waitlisted)>> GetShiftCountsAsync(
+        IReadOnlyCollection<Guid> shiftIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (shiftIds.Count == 0)
+            return new Dictionary<Guid, (int, int)>();
+
+        // R3-H-S3-5: single SQL `GROUP BY (shift_id, status) COUNT(*)` translates to a single
+        // Postgres aggregate; replaces 2N+2 per-shift round-trips with one. Status filter is the
+        // same as CountConfirmedAsync / CountWaitlistedAsync (Cancelled rows excluded by neither
+        // predicate firing).
+        var groups = await _context.EventVolunteerAssignments
+            .Where(a => shiftIds.Contains(a.ShiftId)
+                     && (a.Status == VolunteerAssignmentStatus.Confirmed
+                      || a.Status == VolunteerAssignmentStatus.Waitlisted))
+            .GroupBy(a => new { a.ShiftId, a.Status })
+            .Select(g => new { g.Key.ShiftId, g.Key.Status, Count = g.Count() })
+            .ToListAsync(cancellationToken);
+
+        var result = new Dictionary<Guid, (int Confirmed, int Waitlisted)>(shiftIds.Count);
+        foreach (var row in groups)
+        {
+            result.TryGetValue(row.ShiftId, out var prior);
+            if (row.Status == VolunteerAssignmentStatus.Confirmed)
+                result[row.ShiftId] = (row.Count, prior.Waitlisted);
+            else
+                result[row.ShiftId] = (prior.Confirmed, row.Count);
+        }
+        return result;
+    }
 
     public async Task<IReadOnlyList<EventVolunteerAssignment>> GetWaitlistAsync(Guid shiftId, CancellationToken cancellationToken = default)
         => await _context.EventVolunteerAssignments
@@ -137,6 +175,7 @@ public sealed class EventVolunteerAssignmentRepository : IEventVolunteerAssignme
             join s in _context.EventVolunteerShifts on a.ShiftId equals s.Id
             join r in _context.EventVolunteerRoles on a.RoleId equals r.Id
             join e in _context.Events on s.EventId equals e.Id
+            join m in _context.Members on a.MemberId equals m.Id
             where a.Status == VolunteerAssignmentStatus.Confirmed
                   && a.ReminderSentAt == null
                   && s.StartsAt >= windowStartUtc
@@ -146,6 +185,13 @@ public sealed class EventVolunteerAssignmentRepository : IEventVolunteerAssignme
                   // added VolunteerShiftStatus, and reminders for a cancelled shift would be
                   // misleading even though the assignment status hasn't been cascade-updated.
                   && s.Status != VolunteerShiftStatus.Cancelled
+                  // REQ-024 (E3.S4 Round-3 R3-M-S4-5): member-status filter at the DB layer so
+                  // Inactive / merged-into members never even surface in the due-set. The
+                  // VolunteerShiftReminderService has a defense-in-depth in-memory check as
+                  // well, but pulling the filter into the SQL avoids the unnecessary load and
+                  // the noisy log entry for skipped rows.
+                  && m.Status == MembershipStatus.Active
+                  && m.MergedIntoMemberId == null
             select new { Assignment = a, Shift = s, Role = r, Event = e })
             .AsNoTracking()
             .ToListAsync(cancellationToken);

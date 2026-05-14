@@ -24,6 +24,20 @@ public sealed class MemberRepository : IMemberRepository
             .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
     }
 
+    public async Task<IReadOnlyDictionary<Guid, Member>> GetByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default)
+    {
+        if (ids.Count == 0)
+            return new Dictionary<Guid, Member>();
+
+        // R3-H-S3-6: single SQL `WHERE id IN (...)` translates to `id = ANY(@ids)` under Npgsql,
+        // which is index-friendly. AsNoTracking is the default since callers consume DTOs.
+        var members = await _context.Members
+            .AsNoTracking()
+            .Where(m => ids.Contains(m.Id))
+            .ToListAsync(cancellationToken);
+        return members.ToDictionary(m => m.Id);
+    }
+
     public async Task<Member?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
         return await _context.Members
@@ -47,9 +61,17 @@ public sealed class MemberRepository : IMemberRepository
         return await _context.Members
             .AsNoTracking()
             .FirstOrDefaultAsync(
+                // REQ-025 (E3.S5 Round-3 R3-DN-2 / R3-H-S5-1): broaden the filter to include
+                // both Active AND Pending members. The previous `Status == Active` excluded
+                // brand-new Pending members who rotated their token before activation, silently
+                // 404-ing every calendar fetch with no actionable signal. Decision-DN-2 picked
+                // option (a) — "soft-retire is the only exclusion": Inactive (administrative
+                // off) and merged-retired (Member.MergedIntoMemberId set) stop emitting feeds;
+                // Suspended also stops (admin enforcement); Pending keeps the feed open until
+                // explicit deactivation.
                 m => m.CalendarSubscriptionTokenHash == hash
                   && m.MergedIntoMemberId == null
-                  && m.Status == MembershipStatus.Active,
+                  && (m.Status == MembershipStatus.Active || m.Status == MembershipStatus.Pending),
                 cancellationToken);
     }
 

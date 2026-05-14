@@ -85,7 +85,11 @@ public sealed class CalendarFeedBuilderTests
         var ics = _sut.Build(new[] { evt }, BaseUrl);
 
         ics.Should().Contain("DTSTART;VALUE=DATE:20260615");
-        ics.Should().Contain("DTEND;VALUE=DATE:20260616");
+        // R3-H-S5-6: RFC 5545 §3.6.1 — DTEND for VALUE=DATE is the day AFTER the last full
+        // day (exclusive). The domain's EndDate is inclusive (2026-06-16) so the emitted
+        // DTEND is 2026-06-17. Without the +1 day, Google Calendar / Outlook drop or
+        // zero-duration the event.
+        ics.Should().Contain("DTEND;VALUE=DATE:20260617");
         ics.Should().NotContain("DTSTART:20260615T");
     }
 

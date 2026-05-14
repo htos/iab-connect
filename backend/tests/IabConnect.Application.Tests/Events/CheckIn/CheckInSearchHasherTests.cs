@@ -35,8 +35,11 @@ public sealed class CheckInSearchHasherTests
         first.Should().NotBeEmpty();
         first.Should().HaveLength(CheckInSearchHasher.PrefixLength);
         first.Should().Be(second, "hashing must be deterministic for audit forensics");
-        // Base64 chars only; the prefix excludes padding.
-        first.Should().MatchRegex("^[A-Za-z0-9+/]+$");
+        // R3-M-S2-3: base64url alphabet — `+` → `-`, `/` → `_`. Standard base64 chars are now
+        // forbidden in the output. The prefix excludes padding.
+        first.Should().MatchRegex("^[A-Za-z0-9_-]+$");
+        first.Should().NotContain("+");
+        first.Should().NotContain("/");
     }
 
     [Fact]
