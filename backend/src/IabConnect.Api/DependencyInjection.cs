@@ -143,16 +143,17 @@ public static class DependencyInjection
                 };
             });
 
-        // Authorization policies based on roles
+        // Authorization policies based on roles. Role-name strings come from the Roles
+        // single-source-of-truth (Epic-3-retro §9 / R3-Defer-5).
         services.AddAuthorizationBuilder()
             .AddPolicy("RequireAdmin", policy =>
-                policy.RequireRole("admin"))
+                policy.RequireRole(Roles.Admin))
             .AddPolicy("RequireVorstand", policy =>
-                policy.RequireRole("admin", "vorstand"))
+                policy.RequireRole(Roles.Admin, Roles.Vorstand))
             .AddPolicy("RequireMember", policy =>
-                policy.RequireRole("admin", "vorstand", "member"))
+                policy.RequireRole(Roles.Admin, Roles.Vorstand, Roles.Member))
             .AddPolicy("RequireEventStaff", policy =>
-                policy.RequireRole("admin", "vorstand", "event-manager"))
+                policy.RequireRole(Roles.EventStaff))
             // REQ-024 (E3.S3 Round-3 R3-DN-4): union policy for the volunteer-shift read surface.
             // RequireMember excludes the `event-manager` role; an event-manager who isn't ALSO
             // an admin/vorstand/member cannot GET the volunteer shifts they manage via the
@@ -163,13 +164,13 @@ public static class DependencyInjection
             // higher" and adding event-manager would muddle that meaning across the rest of the
             // codebase.
             .AddPolicy("RequireEventStaffOrMember", policy =>
-                policy.RequireRole("admin", "vorstand", "member", "event-manager"))
+                policy.RequireRole(Roles.Admin, Roles.Vorstand, Roles.Member, Roles.EventManager))
             .AddPolicy("RequireFinanceRead", policy =>
-                policy.RequireRole("admin", "kassier", "auditor"))
+                policy.RequireRole(Roles.Admin, Roles.Kassier, Roles.Auditor))
             .AddPolicy("RequireFinanceWrite", policy =>
-                policy.RequireRole("admin", "kassier"))
+                policy.RequireRole(Roles.Admin, Roles.Kassier))
             .AddPolicy("RequireSearch", policy =>
-                policy.RequireRole("admin", "vorstand", "kassier"));
+                policy.RequireRole(Roles.Admin, Roles.Vorstand, Roles.Kassier));
 
         // REQ-004: Permission-based authorization handler
         services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();

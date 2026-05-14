@@ -1,3 +1,4 @@
+using IabConnect.Api.Authorization;
 using IabConnect.Application.Events;
 using IabConnect.Application.Events.CheckIn;
 using IabConnect.Domain.Events;
@@ -34,20 +35,20 @@ public static class EventRegistrationEndpoints
             .Produces(StatusCodes.Status409Conflict);
 
         protectedGroup.MapGet("/", GetRegistrations)
-            .RequireAuthorization(policy => policy.RequireRole("admin", "vorstand", "event-manager"))
+            .RequireAuthorization(policy => policy.RequireRole(Roles.EventStaff))
             .WithName("GetEventRegistrations")
             .WithSummary("Alle Anmeldungen für ein Event abrufen")
             .Produces<PagedResult<EventRegistrationDto>>();
 
         protectedGroup.MapGet("/{registrationId:guid}", GetRegistration)
-            .RequireAuthorization(policy => policy.RequireRole("admin", "vorstand", "event-manager"))
+            .RequireAuthorization(policy => policy.RequireRole(Roles.EventStaff))
             .WithName("GetEventRegistration")
             .WithSummary("Eine Anmeldung per ID abrufen")
             .Produces<EventRegistrationDto>()
             .Produces(StatusCodes.Status404NotFound);
 
         protectedGroup.MapPost("/", RegisterMember)
-            .RequireAuthorization(policy => policy.RequireRole("admin", "vorstand", "member"))
+            .RequireAuthorization(policy => policy.RequireRole(Roles.Admin, Roles.Vorstand, Roles.Member))
             .WithName("RegisterForEvent")
             .WithSummary("Als Mitglied für ein Event anmelden")
             .Produces<EventRegistrationDto>(StatusCodes.Status201Created)
@@ -55,21 +56,21 @@ public static class EventRegistrationEndpoints
             .Produces(StatusCodes.Status409Conflict);
 
         protectedGroup.MapPut("/{registrationId:guid}", UpdateRegistration)
-            .RequireAuthorization(policy => policy.RequireRole("admin", "vorstand", "event-manager"))
+            .RequireAuthorization(policy => policy.RequireRole(Roles.EventStaff))
             .WithName("UpdateEventRegistration")
             .WithSummary("Eine Anmeldung aktualisieren")
             .Produces<EventRegistrationDto>()
             .Produces(StatusCodes.Status404NotFound);
 
         protectedGroup.MapPost("/{registrationId:guid}/cancel", CancelRegistration)
-            .RequireAuthorization(policy => policy.RequireRole("admin", "vorstand", "member"))
+            .RequireAuthorization(policy => policy.RequireRole(Roles.Admin, Roles.Vorstand, Roles.Member))
             .WithName("CancelEventRegistration")
             .WithSummary("Eine Anmeldung stornieren")
             .Produces<EventRegistrationDto>()
             .Produces(StatusCodes.Status404NotFound);
 
         protectedGroup.MapPost("/{registrationId:guid}/confirm", ConfirmRegistration)
-            .RequireAuthorization(policy => policy.RequireRole("admin", "vorstand", "event-manager"))
+            .RequireAuthorization(policy => policy.RequireRole(Roles.EventStaff))
             .WithName("ConfirmEventRegistration")
             .WithSummary("Eine ausstehende Anmeldung bestätigen")
             .Produces<EventRegistrationDto>()
@@ -97,41 +98,41 @@ public static class EventRegistrationEndpoints
             .Produces(StatusCodes.Status409Conflict);
 
         protectedGroup.MapPost("/{registrationId:guid}/no-show", MarkAsNoShow)
-            .RequireAuthorization(policy => policy.RequireRole("admin", "vorstand", "event-manager"))
+            .RequireAuthorization(policy => policy.RequireRole(Roles.EventStaff))
             .WithName("MarkEventRegistrationNoShow")
             .WithSummary("Teilnehmer als No-Show markieren")
             .Produces<EventRegistrationDto>()
             .Produces(StatusCodes.Status404NotFound);
 
         protectedGroup.MapPost("/{registrationId:guid}/revert-no-show", RevertNoShow)
-            .RequireAuthorization(policy => policy.RequireRole("admin", "vorstand", "event-manager"))
+            .RequireAuthorization(policy => policy.RequireRole(Roles.EventStaff))
             .WithName("RevertEventRegistrationNoShow")
             .WithSummary("No-Show-Status zurücksetzen auf Bestätigt")
             .Produces<EventRegistrationDto>()
             .Produces(StatusCodes.Status404NotFound);
 
         protectedGroup.MapPost("/{registrationId:guid}/revert-check-in", RevertCheckIn)
-            .RequireAuthorization(policy => policy.RequireRole("admin", "vorstand", "event-manager"))
+            .RequireAuthorization(policy => policy.RequireRole(Roles.EventStaff))
             .WithName("RevertEventRegistrationCheckIn")
             .WithSummary("Check-In-Status zurücksetzen auf Bestätigt")
             .Produces<EventRegistrationDto>()
             .Produces(StatusCodes.Status404NotFound);
 
         protectedGroup.MapPost("/{registrationId:guid}/revert-cancellation", RevertCancellation)
-            .RequireAuthorization(policy => policy.RequireRole("admin", "vorstand", "event-manager"))
+            .RequireAuthorization(policy => policy.RequireRole(Roles.EventStaff))
             .WithName("RevertEventRegistrationCancellation")
             .WithSummary("Stornierung zurücksetzen auf Bestätigt")
             .Produces<EventRegistrationDto>()
             .Produces(StatusCodes.Status404NotFound);
 
         protectedGroup.MapGet("/statistics", GetStatistics)
-            .RequireAuthorization(policy => policy.RequireRole("admin", "vorstand", "event-manager"))
+            .RequireAuthorization(policy => policy.RequireRole(Roles.EventStaff))
             .WithName("GetEventRegistrationStatistics")
             .WithSummary("Statistiken für Event-Anmeldungen")
             .Produces<EventRegistrationStatistics>();
 
         protectedGroup.MapGet("/export-pdf", ExportRegistrationsPdf)
-            .RequireAuthorization(policy => policy.RequireRole("admin", "vorstand", "event-manager"))
+            .RequireAuthorization(policy => policy.RequireRole(Roles.EventStaff))
             .WithName("ExportEventRegistrationsPdf")
             .WithSummary("Anmeldeliste als PDF exportieren")
             .Produces(200, contentType: "application/pdf")
@@ -157,13 +158,13 @@ public static class EventRegistrationEndpoints
             .Produces(StatusCodes.Status404NotFound);
 
         protectedGroup.MapGet("/waitlist", GetWaitlist)
-            .RequireAuthorization(policy => policy.RequireRole("admin", "vorstand", "event-manager"))
+            .RequireAuthorization(policy => policy.RequireRole(Roles.EventStaff))
             .WithName("GetEventWaitlist")
             .WithSummary("Warteliste für ein Event abrufen")
             .Produces<IReadOnlyList<EventRegistrationDto>>();
 
         protectedGroup.MapPost("/promote-from-waitlist", PromoteFromWaitlist)
-            .RequireAuthorization(policy => policy.RequireRole("admin", "vorstand", "event-manager"))
+            .RequireAuthorization(policy => policy.RequireRole(Roles.EventStaff))
             .WithName("PromoteFromWaitlist")
             .WithSummary("Nächste Person von der Warteliste nachrücken lassen")
             .Produces<EventRegistrationDto>()
@@ -468,7 +469,7 @@ public static class EventRegistrationEndpoints
         var isOwner = registration.UserId.HasValue &&
                       Guid.TryParse(userIdClaim, out var userId) &&
                       registration.UserId.Value == userId;
-        var isAdmin = user.IsInRole("admin") || user.IsInRole("vorstand") || user.IsInRole("event-manager");
+        var isAdmin = Roles.EventStaff.Any(user.IsInRole);
 
         if (!isOwner && !isAdmin)
             return Results.Forbid();

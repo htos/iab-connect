@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using IabConnect.Api.Authorization;
 using IabConnect.Application.Authorization;
 using IabConnect.Application.Events.Volunteers;
 using IabConnect.Application.Events.Volunteers.Commands;
@@ -23,12 +24,9 @@ namespace IabConnect.Api.Endpoints;
 /// </summary>
 public static class EventVolunteerEndpoints
 {
-    /// <summary>
-    /// Keycloak realm roles that satisfy <c>RequireEventStaff</c>. Mirrored from
-    /// <c>backend/src/IabConnect.Api/DependencyInjection.cs</c> so the staff vs member
-    /// determination for C1 reads from the same source of truth.
-    /// </summary>
-    private static readonly string[] StaffRoles = ["admin", "vorstand", "event-manager"];
+    // R3-Defer-5 (Epic-3-retro §9): the staff-role list is no longer mirrored here — both this
+    // file's IsStaffCaller check and the RequireEventStaff policy in DependencyInjection now
+    // read from the Roles.EventStaff single source of truth.
 
     public static IEndpointRouteBuilder MapEventVolunteerEndpoints(this IEndpointRouteBuilder endpoints)
     {
@@ -505,12 +503,12 @@ public static class EventVolunteerEndpoints
 
     /// <summary>
     /// C1: True when the caller holds any of the realm roles that satisfy <c>RequireEventStaff</c>.
-    /// Matches the policy definition in
-    /// <c>backend/src/IabConnect.Api/DependencyInjection.cs</c>.
+    /// Reads the same <see cref="Roles.EventStaff"/> set the policy definition uses, so the two
+    /// can never drift (R3-Defer-5).
     /// </summary>
     private static bool IsStaffCaller(ClaimsPrincipal user)
     {
-        foreach (var role in StaffRoles)
+        foreach (var role in Roles.EventStaff)
         {
             if (user.IsInRole(role)) return true;
         }

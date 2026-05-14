@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using IabConnect.Api.Authorization;
 using IabConnect.Application.Authorization;
 using IabConnect.Application.Events.Calendar;
 using IabConnect.Domain.Authorization;
@@ -339,8 +340,8 @@ public static class EventEndpoints
         CancellationToken ct = default)
     {
         // Check if user is Vorstand or Admin - they can see all events
-        var canSeeAllEvents = httpContext.User.IsInRole("vorstand") ||
-                              httpContext.User.IsInRole("admin");
+        var canSeeAllEvents = httpContext.User.IsInRole(Roles.Vorstand) ||
+                              httpContext.User.IsInRole(Roles.Admin);
 
         // For regular members: only show Published events (unless they specifically filter by status)
         // For Vorstand/Admin: show all events
@@ -381,8 +382,8 @@ public static class EventEndpoints
         var events = await eventRepository.GetUpcomingAsync(count, ct);
 
         // For regular members: only show Published events
-        var canSeeAllEvents = httpContext.User.IsInRole("vorstand") ||
-                              httpContext.User.IsInRole("admin");
+        var canSeeAllEvents = httpContext.User.IsInRole(Roles.Vorstand) ||
+                              httpContext.User.IsInRole(Roles.Admin);
 
         if (!canSeeAllEvents)
         {
@@ -404,8 +405,8 @@ public static class EventEndpoints
             return Results.NotFound(new { Error = "Event not found" });
 
         // For regular members: only allow access to Published events
-        var canSeeAllEvents = httpContext.User.IsInRole("vorstand") ||
-                              httpContext.User.IsInRole("admin");
+        var canSeeAllEvents = httpContext.User.IsInRole(Roles.Vorstand) ||
+                              httpContext.User.IsInRole(Roles.Admin);
 
         if (!canSeeAllEvents && evt.Status != EventStatus.Published)
             return Results.NotFound(new { Error = "Event not found" });
