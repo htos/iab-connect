@@ -1,6 +1,7 @@
 # IAB Connect Architecture
 
 Date: 2026-05-11
+Last revised: 2026-05-14 — added ADR-007, ADR-008, REQ-086/REQ-087 data architecture, and the Module Enforcement authorization-matrix row for the generic white-label pivot (Sprint Change Proposal 2026-05-14, handoff step 2).
 Project: IAB Connect
 Document status: Draft solution architecture from validated PRD
 Output location: `_bmad-output/planning-artifacts/architecture.md`
@@ -8,6 +9,8 @@ Primary inputs:
 
 - `_bmad-output/planning-artifacts/prd.md`
 - `_bmad-output/planning-artifacts/prd-validation-report.md`
+- `_bmad-output/planning-artifacts/prd-validation-report-2026-05-14.md`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-14.md`
 - `docs/architecture-backend.md`
 - `docs/architecture-frontend.md`
 - `docs/architecture-infra.md`
@@ -145,6 +148,90 @@ Implications:
 - Use next-intl for all user-visible strings.
 - Use lucide-react icons where suitable.
 - Add search/filter controls on list/table pages.
+
+### ADR-007: Module Configuration as a Single-Tenant Settings Model
+
+Decision: Module enablement state is persisted in a dedicated `module_settings` table — one row per module. The application remains single-organization (`SystemSettings` is a singleton), so there is no `organization_id` column and no multi-tenant data model. This resolves OD-2 from Sprint Change Proposal 2026-05-14 in favour of a dedicated table over a JSON column on `system_settings`.
+
+Rationale:
+
+- The codebase is single-tenant by construction. `SystemSettings` (`backend/src/IabConnect.Domain/Common/SystemSettings.cs`) is a singleton entity with a `CreateDefault()` factory and a single persisted row. A per-organization model would add complexity with no consumer.
+- A dedicated table — over a JSON column on `system_settings` — gives per-module audit columns (`updated_at`, `updated_by`), a natural unique key for lookup and indexing, and a clean extension point: a new module is a new seeded row plus a new module-key constant, with no schema change.
+- It follows the EF conventions already used in `backend/src/IabConnect.Infrastructure/Persistence/Configurations/` (explicit `ToTable`, explicit snake_case `HasColumnName`), so it is consistent with every other entity.
+
+Schema (`module_settings`):
+
+| Column | Type | Constraints |
+| --- | --- | --- |
+| `id` | uuid | PK |
+| `module_key` | text | UNIQUE, NOT NULL — one of the known module keys |
+| `enabled` | boolean | NOT NULL, DEFAULT true |
+| `updated_at` | timestamptz | NOT NULL |
+| `updated_by` | text | NULL |
+
+Module keys, seeded on the creating migration with all 7 enabled to preserve current behaviour: `members`, `events`, `documents`, `communication`, `finance`, `partners`, `public_view`.
+
+Implications:
+
+- New `ModuleSetting` entity in `IabConnect.Domain` with a private EF constructor and an invariant-friendly factory, following the `SystemSettings` pattern (private setters, explicit update method such as `SetEnabled(bool, string? updatedBy)`).
+- EF configuration `ModuleSettingConfiguration : IEntityTypeConfiguration<ModuleSetting>` in `Persistence/Configurations/`, with `ToTable("module_settings")`, explicit snake_case columns, and a unique index on `module_key`.
+- One EF Core migration under `backend/src/IabConnect.Infrastructure/Migrations/` that creates the table and seeds the 7 rows in the same migration, so existing deployments behave identically after upgrade.
+- Read access goes through a cached `IModuleSettingsService` (Application-layer interface, Infrastructure implementation — see ADR-008), backed by an `IModuleSettingsRepository` following the `ISystemSettingsRepository` pattern. The cache is invalidated on write.
+- The module-key list is a shared contract: a `ModuleKeys` constants class in a layer both `IabConnect.Api` and `IabConnect.Application` can reference. See the Module → Route/Endpoint Mapping table in ADR-008.
+
+### ADR-008: Three-Layer Module Enforcement
+
+Decision: A disabled module is enforced at three layers, with the backend as the single security boundary:
+
+1. Backend (security boundary): a module-aware authorization requirement gates each module's endpoint group; a disabled module returns 403 and writes a security audit event on denial.
+2. Frontend route guard (direct-URL protection): a Next.js `middleware.ts` redirects or blocks direct navigation to disabled-module routes.
+3. Navigation (UX only): the `Sidebar` hides nav items for disabled modules.
+
+Layers 2 and 3 are convenience and UX; only layer 1 is a security control, consistent with ADR-003 ("Frontend role checks are UX only").
+
+Rationale and mechanism (code-grounded):
+
+- There is no `IEndpointFilter` infrastructure in the codebase today. There is a proven authorization-extensibility pattern: `PermissionRequirement : IAuthorizationRequirement`, `PermissionAuthorizationHandler : AuthorizationHandler<PermissionRequirement>`, and `PermissionPolicyProvider : IAuthorizationPolicyProvider` (dynamic policies via a `Permission:` name prefix), all in `backend/src/IabConnect.Api/Authorization/`. Module enforcement models this existing pattern rather than introducing a parallel endpoint-filter mechanism:
+  - `ModuleRequirement(string moduleKey) : IAuthorizationRequirement`.
+  - `ModuleAuthorizationHandler : AuthorizationHandler<ModuleRequirement>` — resolves `IModuleSettingsService`, succeeds when the module is enabled, otherwise fails and logs via `ISecurityAuditLogger.LogAccessDenied(...)`.
+  - The `PermissionPolicyProvider` is extended (or a sibling provider added) to recognise a `Module:` policy-name prefix, so route groups declare `.RequireAuthorization("Module:finance")` — the same ergonomic as the existing `"Permission:..."` and named policies.
+  - This keeps one authorization model, one registration site (`DependencyInjection.cs`, alongside `PermissionAuthorizationHandler`), and reuses the access-denied audit path.
+- A failing authorization requirement yields `403 Forbidden` by default, which is the desired "module disabled" response.
+
+Layer 1 — Backend, applied per module route group:
+
+| Module | Backend endpoint groups | Enforcement policy |
+| --- | --- | --- |
+| Members | `MemberEndpoints` | `Module:members` |
+| Events | `EventEndpoints` | `Module:events` |
+| Documents | `DocumentEndpoints` | `Module:documents` |
+| Communication | `EmailCampaignEndpoints`, `EmailTemplateEndpoints` | `Module:communication` |
+| Finance | `Invoice`, `Payment`, `Dunning`, `Receipt`, `ExpenseClaim`, `FiscalPeriod`, `JournalEntry`, `AccountingReport`, `FinanceProfile` endpoints | `Module:finance` |
+| Partners | `SponsorEndpoints`, `SupplierEndpoints` | `Module:partners` |
+| Public View | public/anonymous endpoints across modules — no dedicated group | special-cased (see below) |
+
+Always-on, never gated: Dashboard, My Profile, Admin — including the module-settings endpoints themselves, so an admin can always re-enable a module.
+
+Public View is special: it has no dedicated backend endpoint group; its surface is the set of `AllowAnonymous` public endpoints (public event/blog feeds and similar). When `public_view` is disabled, those public endpoints are gated and the public site is unavailable — but `GET /api/v1/settings/public` itself must remain reachable, because the frontend shell needs branding and the module map even to render a "site not public" page.
+
+Layer 2 — Frontend route guard:
+
+- No `frontend/src/middleware.ts` exists today; it is created new.
+- The middleware reads the module map and, for a request whose path maps to a disabled module, redirects authenticated users to a safe page (dashboard) or renders a 403 / "module unavailable" page.
+- The module map is exposed to the frontend by extending the anonymous `GET /api/v1/settings/public` response (`PublicSettingsResponse`) with a `modules` map — `AppSettingsProvider` already consumes this endpoint, and middleware needs an unauthenticated-readable source.
+
+Layer 3 — Navigation:
+
+- `NavItem` in `frontend/src/components/navigation/Sidebar.tsx` gains an optional `requiresModule?: string`, filtered exactly like the existing `requiresDoubleEntry` flag (submenu filter and top-level filter).
+- The enabled-module set comes from `AppSettingsProvider` (extended `AppSettings` type with a `modules` map), consumed via the existing `useAppSettings()` hook.
+
+Implications:
+
+- New `AuditEventType` enum value (such as `ModuleAccessDenied`) in `backend/src/IabConnect.Domain/Audit/AuditEnums.cs`; denial logged via `ISecurityAuditLogger.LogAccessDenied(...)`.
+- `IModuleSettingsService` is cached; the cache is invalidated whenever the module-settings write endpoint runs, so a toggle takes effect without redeploy.
+- The module → route (frontend) and module → endpoint-group (backend) mapping is a shared contract. The frontend mapping lives where both `middleware.ts` and `Sidebar` can reference it; the backend `ModuleKeys` constants live in a layer both `IabConnect.Api` and `IabConnect.Application` reference.
+- Cross-module dependency: paid event registration (E4) needs Finance. If Events is enabled but Finance is disabled, paid-registration flows must degrade safely. Whether to hard-block such a toggle is a product rule deferred to E10-S5; the architecture flags the dependency rather than enforcing it.
+- Background jobs (Hangfire) belonging to a disabled module: behaviour defined in E10-S5. The three enforcement layers above govern HTTP and UI surfaces only.
 
 ## Backend Architecture
 
@@ -497,6 +584,61 @@ Security:
 - Webhook payloads are signed.
 - Admin can revoke credentials and disable failing webhooks.
 
+### REQ-086 Generic Positioning / White-Label Branding
+
+Primary architecture:
+
+- Extend the existing `SystemSettings` singleton (`backend/src/IabConnect.Domain/Common/SystemSettings.cs`) with additional nullable branding/profile fields rather than introducing a new entity.
+- New nullable columns on `system_settings`: `description`, `contact_email`, `contact_phone`, `contact_address`, `primary_color`, `public_site_enabled`, plus a logo asset reference. All nullable with behaviour-preserving defaults so existing rows stay valid after migration.
+- Add an update method on the entity (such as `UpdateOrganizationProfile(...)` alongside the existing `UpdateBranding(...)`), keeping the private-setter plus explicit-method invariant pattern.
+- Expose the extended fields through the existing settings endpoints: admin `GET/PUT /api/v1/settings` (`RequireRole("admin")`) for editing, anonymous `GET /api/v1/settings/public` for the public and shell read path.
+
+Key data:
+
+- Extended `SystemSettings` row (still a singleton).
+- Audit event on branding/profile change — the existing `AuditEventType.SettingsChanged` path already covers this.
+
+Frontend:
+
+- Extend the `AppSettings` type and `AppSettingsProvider` (`frontend/src/components/providers/AppSettingsProvider.tsx`) with the new fields; consumed via `useAppSettings()`.
+- New "Branding" tab in `frontend/src/app/admin/settings/page.tsx`, which already has a `general` / `customRoles` tab structure to extend.
+- No user-visible string hardcodes a specific organization; values render from `SystemSettings` or next-intl keys. The de-branding sweep itself is Epic E9 (stories E9-S2/S3/S4).
+
+Security:
+
+- The edit path is admin-only; the public read path exposes only non-sensitive presentation fields.
+
+### REQ-087 Module Configuration / Access Enforcement
+
+Primary architecture:
+
+- Data model: dedicated `module_settings` table — see ADR-007.
+- Enforcement: three-layer (backend / route guard / navigation) — see ADR-008.
+
+Suggested backend elements:
+
+- `ModuleSetting` entity, `ModuleSettingConfiguration`, and a creating-plus-seeding migration.
+- `IModuleSettingsService` (cached) and `IModuleSettingsRepository`.
+- `ModuleRequirement`, `ModuleAuthorizationHandler`, and `Module:` policy-prefix support in the policy provider.
+- Module-settings MediatR query/command plus an admin-only endpoint group (`MapModuleSettingsEndpoints`), and the `modules` map added to `PublicSettingsResponse`.
+- `ModuleAccessDenied` audit event type.
+
+Suggested frontend elements:
+
+- Extended `AppSettings` (`modules` map) and `AppSettingsProvider`.
+- `requiresModule` on `NavItem` plus Sidebar filtering.
+- New `frontend/src/middleware.ts` route guard and a 403 / "module unavailable" page.
+- New "Modules" tab in admin settings: toggle list, per-module description, dependency warnings, save and confirm.
+
+Testing:
+
+- Backend: `ModuleAuthorizationHandler` returns 403 plus audit when a module is disabled (API tests); `module_settings` persistence and seed (Testcontainers integration); `IModuleSettingsService` cache invalidation.
+- Frontend: Sidebar filtering by module; `middleware.ts` redirect and 403; admin Modules tab behaviour.
+
+Security:
+
+- The backend is the only security boundary (ADR-003, ADR-008). Admin and the module-settings endpoints themselves are never gated.
+
 ## Cross-Cutting Architecture
 
 ### Authorization Matrix
@@ -512,6 +654,7 @@ Minimum authorization expectations:
 | Budgets/cost centers | Kassier, Vorstand | Finance read/write permissions |
 | Multilingual/accessibility | All | No special backend permission except content management |
 | API/webhooks | Admin/IT | Admin-only configuration, scoped external access |
+| Module configuration and enforcement | Admin/IT | Admin-only module-settings endpoints; `Module:*` authorization requirement on every gated route group; denial returns 403 and is audit logged. Admin and module-settings endpoints are never gated. |
 
 ### Audit and Logging
 
@@ -527,6 +670,7 @@ Audit events are required for:
 - Multi-channel sends and provider failures.
 - Budget/cost center configuration changes.
 - API key creation/revocation and webhook subscription changes.
+- Module enablement changes and denied access to a disabled module.
 
 ### Integration Boundaries
 

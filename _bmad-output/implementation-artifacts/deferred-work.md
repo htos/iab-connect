@@ -198,3 +198,11 @@ Items raised during the Epic-3 boundary review and classified as defer (pre-exis
 - **[E3.S5] `Member.CalendarSubscriptionToken` renamed to `...Hash`, stores SHA-256 digest** [`backend/src/IabConnect.Domain/Members/Member.cs`] — intentional Round-2 H-S5-1 security hardening; spec reconciliation only vs AC-3.
 - **[E3.S5] `GetPublicCalendarFeedQueryHandlerTests` + `EventCalendarFeedEndpointTests` still missing** [`backend/tests/IabConnect.Application.Tests/Events/Calendar/`, `backend/tests/IabConnect.Api.Tests/`] — already deferred Round 3 as R3-H-S5-7 / R3-H-S5-8 (`calendar-feed-api-tests`); re-surfaced by the Round-4 auditor. The public-feed visibility filter (AC-1 privacy guarantee) has zero automated coverage — raise priority.
 
+---
+
+## Deferred from: code review of Epic 9 (2026-05-14)
+
+- **[E9.S3] Extra DB round-trip per email/PDF send, no `SystemSettings` caching** [`EventNotificationService.cs`, `DunningEmailService.cs`, `EventRegistrationPdfExporter.cs`] — each send independently calls `ISystemSettingsRepository.GetSettingsAsync` to read `ApplicationName`; a campaign to N recipients = N identical queries on a singleton row the frontend already caches for 300s. Not a correctness bug; introduced by E9 but a shared `SystemSettings` cache is a caching-strategy decision beyond this epic.
+- **[E9.S3] Email HTML encodes the org name but not adjacent user-controlled fields** [`DunningEmailService.cs`, `EventNotificationService.cs`] — the E9 code wraps the new dynamic `appName` in `WebUtility.HtmlEncode`, but the same templates still interpolate `{invoice.RecipientName}`, `{notice.Notes}`, `{evt.Title}`, `{registration.ParticipantEmail}` etc. raw — a pre-existing HTML-injection hole the new code draws attention to without closing. Worth a dedicated email-template encoding pass.
+- **[E9.S2] Pre-existing lint baseline failure in untouched files** [`frontend/src/app/members/segments/page.tsx`, `frontend/src/app/admin/backups/page.tsx`] — all 4 E9 stories self-report this baseline `npm run lint` failure; the files were not touched by E9, so it is not an E9 regression. Flagged for the E9 retrospective / a cleanup pass.
+

@@ -1,8 +1,33 @@
+---
+workflowType: 'prd'
+workflow: 'edit'
+classification:
+  domain: 'general'
+  projectType: 'web_app'
+inputDocuments:
+  - 'docs/Anforderungen_WebApp_Indischer_Kulturverein.csv'
+  - 'docs/10_requirements_status.md'
+  - 'docs/project-overview.md'
+  - 'docs/index.md'
+  - 'docs/09_decisions_log.md'
+  - '_bmad-output/project-context.md'
+  - '_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-14.md'
+stepsCompleted: ['step-e-01-discovery', 'step-e-02-review', 'step-e-03-edit']
+lastEdited: '2026-05-14'
+editHistory:
+  - date: '2026-05-14'
+    changes: 'Generic positioning revision per Sprint Change Proposal 2026-05-14: repositioned as a configurable white-label organization management platform; added PRD-native REQ-086 (Generic Positioning & White-Label Branding) and REQ-087 (Module Configuration & Access Enforcement) with acceptance criteria; updated Executive Summary, Product Goals, Business Outcomes, Users and Stakeholders, Scope, Product Principles, NFRs, Success Metrics, MVP Definition, Roadmap, Risks, and the Requirement Traceability Appendix; OD-1 recorded (REQ-086/087 PRD-native).'
+  - date: '2026-05-14'
+    changes: 'Post-validation simple fixes (prd-validation-report-2026-05-14): added classification frontmatter (domain general, projectType web_app); generalized the SystemSettings reference in Product Principle #5 and the REQ-086 acceptance criteria to a technology-neutral "configurable application settings store".'
+  - date: '2026-05-14'
+    changes: 'Validation-guided edit (prd-validation-report-2026-05-14): added Critical User Journey "Admin Configures the Platform" covering REQ-086 branding and REQ-087 module configuration with three-layer enforcement — closes the report''s sole Warning (REQ-086/087 traceability gap) and raises their Traceable score to 5; quantified the Performance NFRs with measurable targets (list/search endpoint p95 < 1s at up to 50 concurrent users, default/max page size 25/100, page-interaction p95 < 2s, export 10s threshold), closing the carry-over measurability observation.'
+---
+
 # IAB Connect Product Requirements Document
 
-Date: 2026-05-11
+Date: 2026-05-14
 Project: IAB Connect
-Document status: Edited after PRD validation
+Document status: Revised for generic white-label positioning (Sprint Change Proposal 2026-05-14); previously edited after PRD validation
 Output location: `_bmad-output/planning-artifacts/prd.md`
 Primary sources:
 
@@ -12,48 +37,64 @@ Primary sources:
 - `docs/index.md`
 - `docs/09_decisions_log.md`
 - `_bmad-output/project-context.md`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-14.md`
 
 ## Executive Summary
 
-IAB Connect is a web platform for the Indian Association Bern. It supports association operations across identity and access, member management, events, communication, sponsors and suppliers, document management, finance and accounting, public website features, reporting, privacy, audit, backups, and operations.
+IAB Connect is a configurable, white-label organization management platform for associations, clubs, communities, startups, and small SMEs. Organization identity and branding are admin-configurable, and functional modules can be enabled or disabled per deployment. It supports operations across identity and access, member management, events, communication, sponsors and suppliers, document management, finance and accounting, public website features, reporting, privacy, audit, backups, and operations.
 
-The product is already a substantial Brownfield application rather than an unstarted MVP. The current requirements corpus contains 85 tracked requirements, with 71 marked Done and 14 still in Backlog as of 2026-05-11. The PRD therefore defines the target product and the remaining product gaps while preserving the implemented architecture and delivery constraints.
+The product is already a substantial Brownfield application rather than an unstarted MVP. The current requirements corpus contains 85 tracked requirements, with 71 marked Done and 14 still in Backlog as of 2026-05-11. Two PRD-native requirements — REQ-086 (Generic Positioning & White-Label Branding) and REQ-087 (Module Configuration & Access Enforcement) — extend that corpus to remove the hardcoded single-organization positioning. The PRD therefore defines the target product and the remaining product gaps while preserving the implemented modular monolith architecture and delivery constraints.
 
-The product goal is to give association administrators, board members, treasurers, event managers, and members a single secure system for daily association work, replacing spreadsheet-driven and manually coordinated workflows with auditable, role-aware, multilingual web workflows.
+The product goal is to give organization administrators, board or committee members, treasurers, event managers, and members a single secure system for daily organizational work, replacing spreadsheet-driven and manually coordinated workflows with auditable, role-aware, multilingual web workflows. The platform ships as a single-tenant deployment per organization; generic positioning means each deployment is brandable and module-configurable, not multi-tenant.
 
 ## Product Goals
 
-1. Provide a secure, role-aware operational platform for association administration.
+1. Provide a secure, role-aware operational platform for organization administration that is not bound to any single organization's identity.
 2. Centralize member, event, communication, document, finance, and public website workflows.
-3. Support Swiss/EU privacy, audit, retention, and finance compliance needs.
-4. Reduce manual coordination work for board members and volunteers.
-5. Preserve a maintainable modular monolith architecture that can evolve without premature service decomposition.
+3. Make organization identity, branding, and module availability admin-configurable per deployment.
+4. Support Swiss/EU privacy, audit, retention, and finance compliance needs.
+5. Reduce manual coordination work for board or committee members and volunteers.
+6. Preserve a maintainable single-tenant modular monolith architecture that can evolve without premature service decomposition.
 
 ## Business Outcomes
 
-1. Association staff and volunteers can run core operations without parallel spreadsheet or email-only tracking for supported workflows.
-2. Board members and treasurers have auditable evidence for membership, finance, privacy, document, and event decisions.
+1. Organization staff and volunteers can run core operations without parallel spreadsheet or email-only tracking for supported workflows.
+2. Board or committee members and treasurers have auditable evidence for membership, finance, privacy, document, and event decisions.
 3. Members get a self-service experience for profile updates, communication preferences, documents, and event participation.
 4. Event managers can plan, publish, fill, communicate, and reconcile event participation from one system.
-5. The product remains feasible for a volunteer-led organization by keeping operations self-hosted, modular, and maintainable.
+5. Each organization can present its own name, branding, and selected module set without code changes.
+6. The product remains feasible for a volunteer-led or small-team organization by keeping operations self-hosted, modular, and maintainable.
 
 ## Users and Stakeholders
 
+Role names below are default labels. They represent the configurable roles an organization assigns and are not specific to any one organization type.
+
 ### Primary Users
 
-- Admin: full system administration, users, roles, audit, operations.
-- Vorstand / board member: member oversight, events, communication, reporting.
-- Kassier / treasurer: finance, invoices, payments, receipts, accounting, reporting.
+- Admin: full system administration, users, roles, organization branding, module configuration, audit, operations.
+- Board or committee member (default label "Vorstand"): member oversight, events, communication, reporting.
+- Treasurer (default label "Kassier"): finance, invoices, payments, receipts, accounting, reporting.
 - Event manager: event creation, publication, registrations, waitlists, participants.
 - Member: login, profile self-service, event registration, documents and communications.
 
 ### Secondary Users
 
-- Public visitor: reads public content, events, sponsors, blog, and contact forms.
+- Public visitor: reads public content, events, sponsors, blog, and contact forms when the Public View module is enabled.
 - Sponsor or supplier contact: appears in sponsor/supplier management workflows.
 - Auditor or compliance reviewer: consumes exports, logs, finance reports, audit evidence.
 
 ## Critical User Journeys
+
+These journeys apply to any organization deploying the platform and are independent of organization type.
+
+### Admin Configures the Platform
+
+1. Admin opens the platform configuration area covering organization identity and module availability.
+2. Admin sets organization branding — name, logo, colors, description, and contact information — and adjusts public-page settings such as visibility and content. Changes persist and apply across authenticated and public surfaces; an unconfigured deployment keeps its current presentation until branding is changed.
+3. Admin enables or disables functional modules — Members, Events, Documents, Communication, Finance, Partners, and Public View — with all modules enabled by default.
+4. The system hides disabled modules from navigation, blocks direct-URL access with a 403 or a safe redirect, and enforces module availability at the backend/API layer as the security boundary.
+5. Denied access to a disabled module is audit logged; cross-module dependencies degrade safely — for example, paid event registration that requires Finance is handled gracefully when Finance is disabled rather than breaking.
+6. Branding and module settings remain auditable and can be revised later without code changes or a schema redesign.
 
 ### Admin Onboards a New Member
 
@@ -136,14 +177,18 @@ The remaining known Backlog requirements are:
 | REQ-056 | Operations & Quality | Basic Accessibility | Should |
 | REQ-058 | Operations & Quality | API / Webhooks | Could |
 
+Beyond the 14 CSV-sourced Backlog requirements, two PRD-native requirements are added by this revision: REQ-086 (Generic Positioning & White-Label Branding) and REQ-087 (Module Configuration & Access Enforcement). They are net-new platform-configuration capabilities not present in the source requirements corpus and are tracked through Epics E9 and E10. See the Functional Requirements "Platform Configuration" subsection.
+
 ## Scope
 
 ### In Scope
 
 - Authenticated admin and member portal workflows.
-- Public website pages required for association communication.
+- Public website pages required for organization communication.
 - Member, event, communication, sponsor, supplier, document, finance, privacy, audit, search, backup, and reporting modules.
-- Backend policy-based authorization as the security boundary.
+- Admin-configurable organization identity and white-label branding (name, logo, colors, description, contact information, public-page settings).
+- Admin-controlled module configuration with enablement or disablement of functional modules, enforced at navigation, routing, and backend/API layers.
+- Backend policy-based authorization as the security boundary, including module-availability enforcement.
 - Frontend role-aware navigation and action visibility as a UX aid.
 - Local development infrastructure through Docker Compose.
 - Swiss/EU-relevant privacy, retention, audit, and finance behavior.
@@ -152,20 +197,23 @@ The remaining known Backlog requirements are:
 
 - Premature microservice decomposition.
 - Native mobile applications.
+- Multi-tenant data architecture: the platform stays single-tenant per deployment with no `organization_id` partitioning; "white-label" means brandable and module-configurable, not multi-organization.
+- Renaming the internal `IabConnect.*` namespace and assembly names: internal-only, high-churn, no user-visible value (documented deferral; OD-4 in Sprint Change Proposal 2026-05-14).
 - Non-Keycloak identity authority as the primary account source.
 - Hard deletion of finance and other compliance-sensitive records where retention is required.
-- Replacing the existing requirements CSV as the source of requirement content.
 - Replacing the modular monolith with a distributed architecture for MVP work.
 
 ## Product Principles
 
 1. Backend authorization is mandatory for every protected operation; frontend role checks are only visibility controls.
-2. Sensitive workflows must preserve audit, privacy, retention, and finance compliance behavior.
-3. Requirements content is sourced from `docs/Anforderungen_WebApp_Indischer_Kulturverein.csv`; implementation status is sourced from `docs/10_requirements_status.md`.
-4. Executable files and code win over older prose when exact stack versions or behavior disagree.
-5. MVP and follow-on delivery should extend the modular monolith rather than introduce separate deployables.
-6. User-facing frontend text must use next-intl translation keys.
-7. Authenticated UI must follow the existing page layout, shared components, orange primary actions, and searchable/filterable list patterns.
+2. Module availability is enforced at the backend as a security boundary; navigation filtering and route guards are UX and direct-URL protection, not the control.
+3. Sensitive workflows must preserve audit, privacy, retention, and finance compliance behavior.
+4. Requirement content for REQ-001 through REQ-085 is sourced from `docs/Anforderungen_WebApp_Indischer_Kulturverein.csv`; implementation status is sourced from `docs/10_requirements_status.md`. REQ-086 and REQ-087 are PRD-native: they are defined in this PRD and not added to the organization-specific CSV, because the CSV's filename and content are themselves organization-specific and are being superseded by the generic-positioning initiative (OD-1, Sprint Change Proposal 2026-05-14).
+5. No user-visible string hardcodes a specific organization; values come from a configurable application settings store or translation keys.
+6. Executable files and code win over older prose when exact stack versions or behavior disagree.
+7. MVP and follow-on delivery should extend the single-tenant modular monolith rather than introduce separate deployables.
+8. User-facing frontend text must use next-intl translation keys.
+9. Authenticated UI must follow the existing page layout, shared components, orange primary actions, and searchable/filterable list patterns.
 
 ## Functional Requirements
 
@@ -216,11 +264,11 @@ The remaining known Backlog requirements are:
 
 - Support accounts, categories, transactions, invoices, payments, reminders/dunning, receipts, fiscal periods, tax codes, exports, Swiss QR bill generation, and finance reports. Existing: REQ-038 through REQ-043, REQ-045, REQ-060 through REQ-085.
 - Preserve soft-delete, reversal, cancellation, audit, and retention rules for finance records.
-- Add budgets and cost centers if the association needs planning and cost allocation beyond the current accounting reports. Backlog: REQ-044.
+- Add budgets and cost centers if the organization needs planning and cost allocation beyond the current accounting reports. Backlog: REQ-044.
 
 ### Public Website
 
-- Support public association content, public events, sponsors, blog/news, and contact flows. Existing: REQ-046 through REQ-049.
+- Support public organization content, public events, sponsors, blog/news, and contact flows. Existing: REQ-046 through REQ-049.
 
 ### Reporting and Data
 
@@ -232,6 +280,13 @@ The remaining known Backlog requirements are:
 - Add or complete multilingual coverage for DE/EN/HI as product scope requires. Backlog: REQ-055.
 - Add a basic accessibility baseline. Backlog: REQ-056.
 - Add optional public or partner APIs/webhooks. Backlog: REQ-058.
+
+### Platform Configuration
+
+These requirements are PRD-native (not sourced from the requirements CSV) and remove the hardcoded single-organization positioning. They are tracked through Epics E9 and E10.
+
+- Provide admin-configurable organization identity and white-label branding so no user-visible string hardcodes a specific organization. PRD-native: REQ-086.
+- Provide admin-controlled module configuration so functional modules can be enabled or disabled per deployment, with enforcement at navigation, routing, and backend/API layers. PRD-native: REQ-087.
 
 ## Backlog Acceptance Criteria
 
@@ -351,11 +406,33 @@ These criteria refine the 14 remaining Backlog requirements from the source CSV.
 - Webhook deliveries are signed or otherwise verifiable by receivers.
 - Delivery attempts, failures, retries, and disabling behavior are visible to Admin/IT users.
 
+## Platform Configuration Acceptance Criteria
+
+These criteria refine the two PRD-native platform-configuration requirements. They make REQ-086 and REQ-087 implementation-ready for Epics E9 and E10.
+
+### REQ-086 Generic Positioning & White-Label Branding
+
+- Organization name, logo, colors, description, and contact information are admin-configurable and persisted.
+- Public page settings such as visibility and content are admin-configurable.
+- No user-visible string hardcodes a specific organization; values come from a configurable application settings store or translation keys.
+- Behavior-preserving defaults: an existing deployment keeps its current presentation until an admin changes branding.
+- The platform is usable by associations, clubs, communities, startups, and small SMEs without code changes.
+
+### REQ-087 Module Configuration & Access Enforcement
+
+- Admin can enable or disable the modules Members, Events, Documents, Communication, Finance, Partners, and Public View.
+- Disabled modules are hidden from navigation, blocked on direct URL access, and enforced at the backend/API layer with a 403 or a safe redirect.
+- Denied access to a disabled module is audit logged.
+- Module settings persist and the system is extensible to new modules without a schema redesign.
+- Cross-module dependencies are handled: when a dependent module is disabled, dependent workflows such as paid event registration requiring Finance degrade safely rather than break.
+- Existing functionality is unchanged when a module is enabled; all modules are enabled by default.
+
 ## Non-Functional Requirements
 
 ### Security
 
 - All protected backend endpoints must enforce authorization policies or permissions.
+- Module availability must be enforced at the backend/API layer as a security boundary; disabled-module access returns a 403 or a safe redirect and is audit logged. Navigation filtering and route guards are UX and direct-URL protection only.
 - Access denied and sensitive actions must be audit logged where relevant.
 - Authentication must remain standards-based through Keycloak/OIDC.
 - Secrets must not be committed to the repository.
@@ -375,9 +452,12 @@ These criteria refine the 14 remaining Backlog requirements from the source CSV.
 
 ### Performance
 
-- List pages should support pagination, search, and filtering.
-- Backend queries should use EF Core patterns suitable for PostgreSQL and avoid loading excessive object graphs.
-- Frontend mutation flows should refresh data through established refresh-trigger patterns rather than duplicate inline fetch chains.
+- List and search endpoints respond in under 1 second for the 95th percentile under normal load (up to 50 concurrent authenticated users per single-tenant deployment), measured by server-side request logging.
+- List pages return paginated results with a default page size of 25 items and a maximum of 100 items per request; pagination, search, and filtering are available on list/table pages.
+- Authenticated page interactions (navigation, list load, filter apply) complete in under 2 seconds for the 95th percentile under normal load.
+- Document and report exports either complete within 10 seconds or run as a background job so they do not block the requesting user's session.
+- Backend queries use EF Core patterns suitable for PostgreSQL and avoid loading excessive object graphs.
+- Frontend mutation flows refresh data through established refresh-trigger patterns rather than duplicate inline fetch chains.
 
 ### Maintainability
 
@@ -405,10 +485,14 @@ The product is successful for release planning when the following can be demonst
 - Local setup documentation is current enough for infrastructure, backend, and frontend startup from a clean checkout.
 - All remaining Backlog requirements are implemented, explicitly deferred, or dropped with documented rationale before being removed from roadmap scope.
 - Basic accessibility checks are completed for touched public pages, forms, navigation, and high-traffic authenticated workflows.
+- No user-visible surface hardcodes a specific organization; organization identity and branding render from configurable settings or translation keys (REQ-086).
+- All seven functional modules can be enabled or disabled by an admin, settings persist, and disabled-module access is blocked at navigation, routing, and backend/API layers (REQ-087).
 
 ## MVP Definition
 
-The historical MVP decision defines Must-have requirements from the CSV as the delivery baseline. As of 2026-05-11, all remaining Backlog requirements are Should or Could priority. Therefore the current product appears to have reached the Must-have MVP baseline, subject to validation of the implementation against acceptance criteria and tests.
+The historical MVP decision defines Must-have requirements from the CSV as the delivery baseline. As of 2026-05-11, all remaining CSV-sourced Backlog requirements are Should or Could priority. Therefore the current product appears to have reached the Must-have MVP baseline, subject to validation of the implementation against acceptance criteria and tests.
+
+The generic-positioning initiative (REQ-086, REQ-087) expands the MVP scope rather than reducing it: it introduces net-new platform-configuration capability and is a PRD revision, not an MVP cut. REQ-086 and REQ-087 are treated as required for the repositioned product baseline.
 
 MVP is considered releasable when:
 
@@ -420,6 +504,14 @@ MVP is considered releasable when:
 6. Known security, privacy, audit, and finance compliance regressions are resolved.
 
 ## Recommended Roadmap
+
+### Generic Positioning (Highest Priority)
+
+Per Sprint Change Proposal 2026-05-14 (OD-3, resolved), the generic-positioning work preempts the previously planned Epics E4–E8:
+
+- REQ-086 Generic Positioning & White-Label Branding (Epic E9).
+- REQ-087 Module Configuration & Access Enforcement (Epic E10).
+- Sequence: E9 (de-branding) before E10 (module configuration and enforcement). E10 stays sequenced before E8 (External Integration Surface) when E4–E8 resume, so the external API route group is covered by module enforcement from day one.
 
 ### Release Readiness
 
@@ -455,11 +547,16 @@ MVP is considered releasable when:
 - Audit login tracking is noted as not fully reliable in REQ-011 and should be triaged before release if login audit evidence is required.
 - QR check-in appears in implemented event registration notes, while REQ-023 remains Backlog; this PRD treats REQ-023 as the complete event-day check-in workflow until product owners change the requirement status.
 - The project uses German source requirements and English BMAD planning artifacts; wording should be reviewed by a stakeholder before final approval.
+- OD-1 (resolved): REQ-086 and REQ-087 are PRD-native rather than added to `docs/Anforderungen_WebApp_Indischer_Kulturverein.csv`. The organization-specific CSV remains the source for REQ-001 through REQ-085 only; future generic requirements are defined in the PRD.
+- OD-2 (open, architecture decision): module status storage — dedicated `module_settings` table versus a JSON column on `system_settings`. Recommendation is a dedicated table; the final call belongs to `bmad-create-architecture`.
+- OD-4 (resolved): the internal `IabConnect.*` namespace and assembly rename is out of scope — internal-only, high-churn, no user-visible value.
+- OD-5 (open, UX decision): behavior of public routes when the Public View module is disabled — redirect to login versus a minimal "site not public" page. Belongs to `bmad-create-ux-design`; recommendation is a minimal neutral page.
+- The requirements CSV filename (`Anforderungen_WebApp_Indischer_Kulturverein.csv`) and parts of `docs/` still carry the original organization name; a documentation refresh is a follow-up to the generic-positioning epics.
 
 ## Requirement Traceability Appendix
 
 Status source: `docs/10_requirements_status.md`.
-Requirement content source: `docs/Anforderungen_WebApp_Indischer_Kulturverein.csv`.
+Requirement content source: `docs/Anforderungen_WebApp_Indischer_Kulturverein.csv` for REQ-001 through REQ-085. REQ-086 and REQ-087 are PRD-native — defined in this PRD and not in the CSV (see Product Principles and OD-1).
 
 | ID | Area | Requirement | Priority | Status | PRD Section | Acceptance Criteria |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -548,6 +645,8 @@ Requirement content source: `docs/Anforderungen_WebApp_Indischer_Kulturverein.cs
 | REQ-083 | Finanzen | Verknuepfung Subledger zu Hauptbuch | Should | Done | Finance and Accounting | Inherited from source requirement/status evidence |
 | REQ-084 | Finanzen | Backfill fuer bestehende Daten bei DoubleEntry-Aktivierung | Should | Done | Finance and Accounting | Inherited from source requirement/status evidence |
 | REQ-085 | Finanzen | Tests fuer Posting und Balance Regeln | Should | Done | Finance and Accounting | Inherited from source requirement/status evidence |
+| REQ-086 | Platform Configuration | Generic Positioning & White-Label Branding | Must | Backlog | Platform Configuration | Expanded in Platform Configuration Acceptance Criteria |
+| REQ-087 | Platform Configuration | Module Configuration & Access Enforcement | Must | Backlog | Platform Configuration | Expanded in Platform Configuration Acceptance Criteria |
 
 ## Acceptance Criteria for This PRD
 
@@ -556,4 +655,8 @@ Requirement content source: `docs/Anforderungen_WebApp_Indischer_Kulturverein.cs
 - Remaining Backlog requirements are explicitly identified.
 - Brownfield architecture constraints from the decision log and project context are preserved.
 - Validation findings from `prd-validation-report.md` have been addressed with user journeys, measurable success criteria, backlog acceptance criteria, REQ-023 scope clarification, and full requirement traceability.
+- The sole Warning from `prd-validation-report-2026-05-14.md` is closed: REQ-086 and REQ-087 now have a supporting Critical User Journey ("Admin Configures the Platform"); the carry-over Performance NFR measurability observation is closed with quantified targets.
+- The PRD is repositioned as a generic, configurable white-label organization management platform, with single-organization positioning removed from the Executive Summary, Product Goals, Business Outcomes, Users and Stakeholders, and Scope.
+- PRD-native requirements REQ-086 (Generic Positioning & White-Label Branding) and REQ-087 (Module Configuration & Access Enforcement) are defined, given acceptance criteria, and added to the traceability appendix.
+- OD-1 is recorded: REQ-086 and REQ-087 are PRD-native and not added to the organization-specific requirements CSV.
 - The document is ready for `bmad-validate-prd` and follow-on architecture or epic/story planning.

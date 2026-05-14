@@ -1,6 +1,7 @@
 # IAB Connect Epics and Stories
 
 Date: 2026-05-11
+Last revised: 2026-05-14 — appended Epic E9 (Generic Positioning and White-Label Branding, REQ-086) and Epic E10 (Module Configuration and Access Enforcement, REQ-087) for the generic white-label pivot, with Scope, Epic Summary, Dependencies, Release Guidance, Traceability Matrix, and Validation Checklist updates (Sprint Change Proposal 2026-05-14, handoff step 4).
 Project: IAB Connect
 Document status: Draft epics and stories from validated PRD and architecture
 Output location: `_bmad-output/planning-artifacts/epics-and-stories.md`
@@ -8,7 +9,10 @@ Primary inputs:
 
 - `_bmad-output/planning-artifacts/prd.md`
 - `_bmad-output/planning-artifacts/prd-validation-report.md`
+- `_bmad-output/planning-artifacts/prd-validation-report-2026-05-14.md`
 - `_bmad-output/planning-artifacts/architecture.md`
+- `_bmad-output/planning-artifacts/ux-design.md`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-14.md`
 - `_bmad-output/project-context.md`
 
 ## Scope
@@ -29,6 +33,11 @@ This artifact covers the 14 remaining Backlog requirements:
 - REQ-055 Multilingual DE/EN/HI
 - REQ-056 Basic Accessibility
 - REQ-058 API / Webhooks
+
+The 2026-05-14 generic white-label pivot (Sprint Change Proposal 2026-05-14) adds two PRD-native requirements, covered by Epics E9 and E10:
+
+- REQ-086 Generic Positioning and White-Label Branding
+- REQ-087 Module Configuration and Access Enforcement
 
 ## Delivery Principles
 
@@ -53,6 +62,8 @@ This artifact covers the 14 remaining Backlog requirements:
 | E6 | Finance Planning | REQ-044 | Add budgets and cost center reporting. |
 | E7 | Accessibility and Localization | REQ-056, REQ-055 | Establish accessibility baseline and multilingual expansion path. |
 | E8 | External Integration Surface | REQ-058 | Add secured APIs and outbound webhooks. |
+| E9 | Generic Positioning and White-Label Branding | REQ-086 | Make organization identity and branding admin-configurable; remove hardcoded organization references. |
+| E10 | Module Configuration and Access Enforcement | REQ-087 | Let an Admin enable or disable functional modules, enforced at navigation, routing, and backend layers. |
 
 ## Dependencies
 
@@ -62,6 +73,10 @@ This artifact covers the 14 remaining Backlog requirements:
 4. E4 depends on existing finance cancellation, reversal, invoice, receipt, and audit behavior.
 5. E5 depends on existing email templates, campaigns, consent filtering, and Hangfire.
 6. E8 should happen after authorization, audit, rate limiting, and provider secret practices are clear.
+7. E9 and E10 are the active focus and preempt E4–E8 (OD-3, resolved 2026-05-14); E4–E8 were reset to backlog.
+8. E10 should land before E8 when E4–E8 resume, so the external API route group is covered by module enforcement.
+9. Within E10: E10-S3 (backend enforcement) depends on E10-S1 (module settings model and service); E10-S4 (frontend enforcement) depends on E10-S2 (the `modules` map on the public settings endpoint).
+10. E9-S4 should precede the E7 i18n stories (E7-S3, E7-S4), or use explicit file-section ownership, to avoid merge churn in `de.json` and `en.json`.
 
 ## Epic E1: Security and Identity Foundation
 
@@ -913,9 +928,249 @@ Tests/evidence:
 - Unit tests for retry policy.
 - Manual validation against a local test receiver.
 
+## Epic E9: Generic Positioning and White-Label Branding
+
+Requirements: REQ-086
+
+Goal: Make organization identity and branding admin-configurable and remove hardcoded organization references from user-visible surfaces, so the platform can be deployed white-label for any organization. The single-tenant architecture is preserved.
+
+### Story E9-S1: Extend SystemSettings and Add Branding Admin UI
+
+As an Admin, I want to configure organization identity, branding, and contact information so that the platform reflects my organization without code changes.
+
+Requirements: REQ-086
+
+Acceptance criteria:
+
+- `SystemSettings` is extended with nullable fields: description, contact email, contact phone, contact address, primary color, public-site-enabled, and a logo asset reference.
+- All new fields are nullable with behavior-preserving defaults; the existing single `system_settings` row remains valid after migration.
+- An `UpdateOrganizationProfile` method (or equivalent) on the entity sets the extended fields, keeping the private-setter plus explicit-method pattern.
+- A new "Branding" tab in `/admin/settings` lets an Admin edit all branding and profile fields with a live preview.
+- Extended fields are exposed through `GET/PUT /api/v1/settings` (admin) and the non-sensitive subset through `GET /api/v1/settings/public` (anonymous).
+- Logo asset upload is supported; no shared file-upload component exists today.
+- Branding changes write an audit event through the existing `AuditEventType.SettingsChanged` path.
+
+Architecture notes:
+
+- Extend the existing `SystemSettings` singleton (`backend/src/IabConnect.Domain/Common/SystemSettings.cs`) — do not introduce a new entity (architecture REQ-086).
+- One EF Core migration adds the nullable columns, with explicit snake_case `HasColumnName` per the `SystemSettingsConfiguration` pattern.
+- Frontend: extend the `AppSettings` type and `AppSettingsProvider`; the Branding tab docks onto the existing `general`/`customRoles` tab structure (UX: Platform Branding Configuration).
+
+Tests/evidence:
+
+- Domain/Application tests for `UpdateOrganizationProfile` validation.
+- API authorization tests for admin versus public field exposure.
+- Migration/integration test that an existing row stays valid.
+- Frontend tests for the Branding tab form and preview.
+
+### Story E9-S2: Replace Hardcoded Organization References in Frontend
+
+As an Admin, I want no hardcoded organization name or branding in the frontend so that the deployed app shows my organization everywhere.
+
+Requirements: REQ-086
+
+Acceptance criteria:
+
+- Hardcoded organization references are removed from frontend source: `app/layout.tsx` metadata, `PublicHeader`/`PublicFooter`, `login`, `app/page.tsx`, `admin/register`, `public/contact`, and email-campaign `fromName` defaults.
+- Removed references render from `SystemSettings` (via `useAppSettings()`) or next-intl keys.
+- No user-visible frontend string hardcodes a specific organization.
+- Existing behavior is preserved when settings carry the previous values.
+
+Architecture notes:
+
+- Roughly 23 occurrences across 13 files per the Sprint Change Proposal codebase scan.
+- Use the typed `AppSettings` provider; do not fetch settings ad hoc per component.
+
+Tests/evidence:
+
+- Frontend tests for components now rendering from settings.
+- Manual validation that changing `applicationName` updates all surfaces.
+
+### Story E9-S3: Replace Hardcoded Organization References in Backend
+
+As an Admin, I want no hardcoded organization name in backend-generated output so that emails, PDFs, calendar feeds, and API docs reflect my organization.
+
+Requirements: REQ-086
+
+Acceptance criteria:
+
+- Hardcoded references are removed from backend source: `EventNotificationService` (the `<h1>IAB Connect</h1>` email HTML), `DunningEmailService`, `EventRegistrationPdfExporter`, `SmtpSettings.FromName`, the Swagger title/description, `CalendarFeedBuilder.ProdId`, `DevelopmentDataSeeder`, and `appsettings`.
+- Removed references render from `SystemSettings` or configuration.
+- Email HTML, PDF exports, and the iCal `ProdId` use the configured organization name.
+- Behavior-preserving defaults: existing configuration values keep current output.
+
+Architecture notes:
+
+- Roughly 19 occurrences across 11 files per the Sprint Change Proposal scan.
+- The `CalendarFeedBuilder.ProdId` change is a forward-fix to the done E3 epic; non-breaking, with the config default preserving behavior.
+- The `IabConnect.*` namespace and assembly rename is explicitly out of scope (OD-4).
+
+Tests/evidence:
+
+- Backend tests for email, PDF, and calendar output using a configured name.
+- Regression tests for the calendar feed (done E3 functionality).
+
+### Story E9-S4: Generalize i18n Branding Strings
+
+As an Admin, I want translation files free of organization-specific text so that language files are reusable across deployments.
+
+Requirements: REQ-086
+
+Acceptance criteria:
+
+- Organization-specific strings in `frontend/messages/de.json` and `en.json` are generalized: `dashboardDescription`, `welcomeGuest`, the public-site `description`/`copyright`/`subscribeDescription`, and Bern-specific placeholder examples (`locationPlaceholder`, address placeholders).
+- Generalized strings either reference the configured organization name through interpolation or use neutral wording.
+- DE/EN behavior remains stable; no keys still used by components are removed.
+
+Architecture notes:
+
+- Roughly 19 occurrences in `de.json` and `en.json` per the Sprint Change Proposal scan.
+- Coordinate with E7-S3/E7-S4, which also edit these files — recommend E9-S4 before the E7 i18n stories, or explicit file-section ownership, to avoid merge churn.
+
+Tests/evidence:
+
+- Frontend typecheck/build validation for messages.
+- Manual validation of public site and dashboard text.
+
+## Epic E10: Module Configuration and Access Enforcement
+
+Requirements: REQ-087
+
+Goal: Let an Admin enable or disable functional modules per deployment, enforced at navigation, routing, and backend layers, with the backend as the security boundary. The solution is extensible to new modules.
+
+### Story E10-S1: Add Module Settings Data Model and Service
+
+As the system, I want module enablement state persisted and cached so that module configuration can drive enforcement.
+
+Requirements: REQ-087
+
+Acceptance criteria:
+
+- A `module_settings` table is created with `id`, `module_key` (unique), `enabled`, `updated_at`, and `updated_by`.
+- The creating migration seeds the 7 modules (`members`, `events`, `documents`, `communication`, `finance`, `partners`, `public_view`), all enabled — existing deployments behave identically after upgrade.
+- A `ModuleSetting` entity follows the `SystemSettings` pattern: private EF constructor, factory, and an explicit `SetEnabled` method.
+- An `IModuleSettingsService` provides cached reads; the cache is invalidated on write.
+- A `ModuleKeys` constants class is the shared module-key contract, referenceable by both `IabConnect.Api` and `IabConnect.Application`.
+
+Architecture notes:
+
+- Architecture ADR-007: dedicated table, no `organization_id` (single-tenant); resolves OD-2.
+- `ModuleSettingConfiguration : IEntityTypeConfiguration<ModuleSetting>` with `ToTable("module_settings")`, explicit snake_case columns, and a unique index on `module_key`.
+- `IModuleSettingsRepository` follows the `ISystemSettingsRepository` pattern.
+
+Tests/evidence:
+
+- PostgreSQL integration test for table creation, seed, and the unique constraint.
+- Application tests for `IModuleSettingsService` cache behavior and invalidation.
+
+### Story E10-S2: Add Module Settings API and Modules Admin Tab
+
+As an Admin, I want to enable or disable modules through the admin UI so that I control which functionality my deployment uses.
+
+Requirements: REQ-087
+
+Acceptance criteria:
+
+- An admin-only endpoint group exposes module-settings read and update through MediatR query/command.
+- The `modules` map is added to the anonymous `GET /api/v1/settings/public` response so the frontend shell and middleware can read it.
+- A new "Modules" tab in `/admin/settings` shows a toggle list with a per-module description and last-changed metadata.
+- Disabling a module shows a confirmation dialog; cross-module dependency warnings are shown where relevant.
+- Module-settings changes write an audit event.
+- The module-settings endpoints and the Admin module are never gated (self-lockout guard).
+
+Architecture notes:
+
+- Architecture ADR-008 and UX: Module Configuration flow.
+- Reuse the existing tab structure in `frontend/src/app/admin/settings/page.tsx`.
+
+Tests/evidence:
+
+- API authorization tests: admin-only, and the module-settings endpoints are not gated.
+- Frontend tests for the Modules tab toggle, confirmation, and dependency warnings.
+
+### Story E10-S3: Add Backend Module Enforcement
+
+As a security stakeholder, I want disabled-module endpoints to return 403 so that the backend is the real enforcement boundary.
+
+Requirements: REQ-087
+
+Acceptance criteria:
+
+- A `ModuleRequirement` plus `ModuleAuthorizationHandler` gate each module's endpoint group; a disabled module yields 403.
+- The policy provider recognizes a `Module:` policy-name prefix so route groups declare `.RequireAuthorization("Module:<key>")`.
+- Denial writes a security audit event (`ModuleAccessDenied`) via `ISecurityAuditLogger.LogAccessDenied`.
+- Enforcement is applied across the Members, Events, Documents, Communication, Finance, and Partners route groups.
+- The Admin module and the module-settings endpoints are never gated.
+
+Architecture notes:
+
+- Architecture ADR-008: model on the existing `PermissionRequirement` / `PermissionAuthorizationHandler` / `PermissionPolicyProvider` pattern in `backend/src/IabConnect.Api/Authorization/` — there is no `IEndpointFilter` infrastructure.
+- New `AuditEventType.ModuleAccessDenied` in `AuditEnums.cs`.
+- Register the handler in `DependencyInjection.cs` alongside `PermissionAuthorizationHandler`.
+
+Tests/evidence:
+
+- API tests: a disabled module returns 403 and an audit event is written; an enabled module passes.
+- Application tests for the authorization handler.
+
+### Story E10-S4: Add Frontend Module Enforcement
+
+As a user, I want disabled modules hidden from navigation and blocked on direct URL so that the UI reflects my deployment's configuration.
+
+Requirements: REQ-087
+
+Acceptance criteria:
+
+- The `AppSettings` type and `AppSettingsProvider` are extended with a `modules` map.
+- `NavItem` gains a `requiresModule` flag; the `Sidebar` filters disabled modules with the same mechanism as the existing `requiresDoubleEntry` flag.
+- A new `frontend/src/middleware.ts` rewrites direct navigation to disabled-module routes to `/module-unavailable`.
+- A new `/module-unavailable` page renders inside the authenticated shell with a back-to-dashboard action.
+- Dashboard widgets sourced from disabled modules are hidden.
+- UI hiding and route rewriting are UX only; the backend 403 from E10-S3 is the control.
+
+Architecture notes:
+
+- Architecture ADR-008 layers 2 and 3; UX: Module Unavailable and Access Denied flow.
+- No `middleware.ts` exists today — it is created new.
+- The module-to-route mapping is a shared frontend contract referenced by both `middleware.ts` and `Sidebar`.
+
+Tests/evidence:
+
+- Frontend tests for Sidebar filtering by module.
+- Tests for `middleware.ts` redirect and rewrite behavior.
+- Manual validation: disable a module, confirm the nav entry is hidden and the direct URL is rewritten.
+
+### Story E10-S5: Add Public View Toggle and Cross-Module Dependency Handling
+
+As an Admin, I want the Public View module and cross-module dependencies handled safely so that disabling a module does not break dependent functionality or expose data.
+
+Requirements: REQ-087
+
+Acceptance criteria:
+
+- When Public View is disabled, `/public/*` and the public landing `/` are rewritten by `middleware.ts` to a minimal neutral "site not public" page (OD-5 resolved).
+- The minimal page renders organization branding from the still-reachable `GET /api/v1/settings/public` and offers a discreet member-login link; it falls back to an unbranded message if settings fail.
+- Public and anonymous backend endpoints are gated when Public View is disabled, except `GET /api/v1/settings/public`.
+- Cross-module dependency handling is defined for Events and Finance (paid registration requires Finance): the behavior when Events is enabled but Finance is disabled is decided and implemented — block the toggle, warn, or degrade.
+- Background-job (Hangfire) behavior for disabled modules is defined and implemented.
+- End-to-end tests cover enabling and disabling each module.
+
+Architecture notes:
+
+- Architecture ADR-008: Public View special-casing and the cross-module dependency note; UX: Public View Disabled flow.
+- OD-5: a minimal neutral page over a login redirect.
+
+Tests/evidence:
+
+- End-to-end tests for each module enable/disable.
+- Tests for the Public View disabled page and the settings-fetch fallback.
+- Tests for the cross-module dependency behavior between Events and Finance.
+
 ## Release and Sprint Guidance
 
-Suggested implementation waves:
+Per the 2026-05-14 generic white-label pivot (OD-3, resolved), Epics E9 then E10 are the active focus and preempt the waves below. Epics E4–E8 were reset to backlog and resume after E9/E10, with E10 sequenced before E8 so the external API route group is covered by module enforcement. Detailed resequencing is handled by `bmad-sprint-planning`.
+
+Suggested implementation waves (pre-pivot order, for reference):
 
 1. Security: E1.
 2. Data quality: E2.
@@ -959,10 +1214,12 @@ Before `bmad-create-story`, each story should have:
 | REQ-055 | E7 | E7-S3, E7-S4 |
 | REQ-056 | E7 | E7-S1, E7-S2 |
 | REQ-058 | E8 | E8-S1, E8-S2, E8-S3, E8-S4 |
+| REQ-086 | E9 | E9-S1, E9-S2, E9-S3, E9-S4 |
+| REQ-087 | E10 | E10-S1, E10-S2, E10-S3, E10-S4, E10-S5 |
 
 ## Validation Checklist
 
-- All 14 Backlog requirements are assigned to epics.
+- All 14 Backlog requirements plus the two PRD-native requirements (REQ-086, REQ-087) are assigned to epics.
 - Every epic maps to the validated PRD and architecture.
 - Stories preserve the modular monolith architecture.
 - Stories identify security, audit, and testing expectations.

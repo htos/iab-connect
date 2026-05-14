@@ -1,0 +1,14 @@
+/loop Execute the next step in the BMad hybrid workflow for this project. Algorithm:
+
+1. Read _bmad-output/implementation-artifacts/sprint-status.yaml.
+2. Find the first epic with status: in-progress.
+3. Within that epic, pick the action by precedence:
+   a. ALL stories at status review/done (ignoring 'deferred') → invoke bmad-code-review (epic-scope diff input).
+   b. CR done and approved (no open findings) → invoke bmad-retrospective.
+   c. Retrospective done → flip epic in-progress -> done in sprint-status.yaml, then continue to next epic in next iteration.
+   d. A story exists at status ready-for-dev with a story file present and validated → invoke bmad-dev-story.
+   e. A story exists at status ready-for-dev WITHOUT a prepared story file → invoke bmad-create-story:create then bmad-create-story:validate.
+4. STOP the loop and report to the user if: any skill produces findings/questions requiring decision, a deferred story blocks progress, a test fails, or any skill asks for user input.
+5. STOP if all epics status: done.
+
+Honor the team-committed overrides in _bmad/custom/bmad-dev-story.toml, bmad-code-review.toml, bmad-retrospective.toml. After each skill completes, re-read sprint-status before deciding next step.

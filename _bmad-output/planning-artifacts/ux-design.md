@@ -1,6 +1,7 @@
 # IAB Connect UX Design Specification
 
 Date: 2026-05-11
+Last revised: 2026-05-14 — added Flow Specifications for the generic white-label pivot (Platform Branding Configuration, Module Configuration, Module Unavailable / Access Denied, Public View Disabled), plus Navigation Model and Permission rule updates. OD-5 resolved: minimal neutral page over login redirect (Sprint Change Proposal 2026-05-14, handoff step 3).
 Project: IAB Connect
 Document status: Draft UX artifact for future implementation
 Output location: `_bmad-output/planning-artifacts/ux-design.md`
@@ -9,6 +10,7 @@ Primary inputs:
 - `_bmad-output/planning-artifacts/prd.md`
 - `_bmad-output/planning-artifacts/architecture.md`
 - `_bmad-output/planning-artifacts/epics-and-stories.md`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-14.md`
 - `docs/13_frontend_design_standards.md`
 - `docs/component-inventory-frontend.md`
 - `docs/architecture-frontend.md`
@@ -101,6 +103,10 @@ Recommended route placement:
 | Budget reports | `/finance/reports/budget-vs-actual` | Filterable finance report. |
 | Integrations | `/admin/integrations` | API clients and webhook subscriptions. |
 | Webhook deliveries | `/admin/integrations/webhooks/[id]` | Delivery history and retry status. |
+| Platform branding | `/admin/settings` (Branding tab) | Org identity, logo, colors, contact info, public-site settings. New tab on the existing route. |
+| Module configuration | `/admin/settings` (Modules tab) | Enable/disable the 7 functional modules. New tab on the existing route. |
+| Module unavailable | `/module-unavailable` | Authenticated-shell 403 state; the new `middleware.ts` rewrites disabled-module routes here. |
+| Public view disabled | Minimal standalone page | `middleware.ts` rewrites `/public/*` and `/` here when the Public View module is off. |
 
 Sidebar additions should remain role-aware:
 
@@ -109,6 +115,7 @@ Sidebar additions should remain role-aware:
 - Automations belong under Communication.
 - Cost centers and budget reports belong under Finance.
 - API/webhooks belong under Admin.
+- Module-gated nav items carry a `requiresModule` flag, filtered with the same mechanism as the existing `requiresDoubleEntry` flag — disabled modules are hidden. Dashboard, My Profile, and Admin are never gated.
 
 ## Cross-Flow States
 
@@ -613,6 +620,195 @@ Accessibility:
 - Copy buttons need accessible names and success feedback.
 - Delivery status must include text and timestamp.
 
+### Platform Branding Configuration
+
+Stories: E9-S1 (branding admin UI), E9-S2 / E9-S3 / E9-S4 (de-branding sweep — frontend, backend, i18n)
+Requirement: REQ-086
+
+Primary screen:
+
+- `/admin/settings` — new **Branding** tab alongside the existing `general` and `customRoles` tabs.
+
+User goals:
+
+- Admin configures organization identity: name, logo, colors, description, contact information, and public-page settings.
+- Admin sees a live preview before saving.
+- No user-visible surface hardcodes a specific organization.
+
+Layout:
+
+- Page stays `max-w-5xl` with the existing tab-bar pattern (`border-b-2` active tab, `orange-600`).
+- Branding tab content is a single `rounded-xl bg-white p-6 shadow-sm` card with `space-y-6` sections — the same shell as the current `general` tab.
+- The current `general` tab fields (application name, logo text, two color pickers, logo preview) move into or merge with the Branding tab. Extended fields are added below: description, contact email / phone / address, primary color, public-site-enabled toggle, logo asset upload.
+
+Key components:
+
+- Existing: text inputs, `type=color` plus hex-text pairs, the logo preview box (round avatar plus name).
+- New: logo asset upload control (no shared file-upload component exists — a styled native file input or a new small component), a description textarea, a contact-info field group, a `publicSiteEnabled` toggle.
+- Settings message banner (success / error) — existing pattern.
+- Save button (`orange-600`); `refreshAppSettings()` on success — existing pattern.
+
+States:
+
+- Loading (spinner — existing).
+- Save success / save error (existing banner).
+- Logo upload: uploading, upload failed, invalid file type or size.
+- Unsaved changes (dirty form).
+- Live preview reflects unsaved form values.
+
+Accessibility:
+
+- Color pickers keep their hex text inputs as the accessible alternative (already present).
+- The logo upload control needs a label and accessible name; show the file name after selection.
+- The preview is decorative — keep the explicit success banner; do not let the preview be the only confirmation.
+
+i18n:
+
+- All labels, hints, the public-site toggle states, and upload messages use next-intl keys. The Branding tab is itself part of de-branding — its default and example values must not hardcode "IAB".
+
+### Module Configuration
+
+Stories: E10-S2
+Requirement: REQ-087
+
+Primary screen:
+
+- `/admin/settings` — new **Modules** tab.
+
+User goals:
+
+- Admin enables or disables the 7 functional modules: Members, Events, Documents, Communication, Finance, Partners, Public View.
+- Admin understands what each module covers and what disabling it affects.
+- Admin is warned about cross-module dependencies before disabling.
+
+Layout:
+
+- Same `max-w-5xl` page, same tab bar, a single `rounded-xl bg-white p-6 shadow-sm` card.
+- Toggle list: one row per module — module name, short description, enable/disable control, last-changed metadata (`updated_at` / `updated_by`).
+
+Key components:
+
+- Module row: label plus description text plus a toggle control (a labelled control, not color-only).
+- Dependency warning alert — for example, disabling Finance while Events is enabled and paid registration is in use.
+- Save plus confirmation: a confirmation dialog (`dialog` / `alert-dialog`) before applying a change that disables a module.
+- Settings message banner (success / error) — existing pattern.
+
+States:
+
+- All modules enabled (default seed state).
+- Module disabled.
+- Dependency conflict warning shown.
+- Confirmation pending.
+- Save success / error.
+- Self-lockout guard: Admin and the Modules tab itself are never gated — the UI must make clear these cannot be disabled.
+
+Accessibility:
+
+- Toggles need explicit on/off text labels, not color alone.
+- Dependency warnings are text, associated with the relevant module row.
+- The confirmation dialog is keyboard-accessible.
+
+i18n:
+
+- Module names, descriptions, dependency-warning text, toggle states, and confirmation copy all use next-intl keys.
+
+### Module Unavailable and Access Denied
+
+Stories: E10-S3 (backend 403), E10-S4 (frontend route guard plus page)
+Requirement: REQ-087
+
+Context:
+
+- The backend is the security boundary: a disabled module's endpoints return 403 (architecture ADR-008).
+- A new Next.js `middleware.ts` (none exists today) guards direct-URL navigation to disabled-module routes.
+
+Primary screen:
+
+- New `/module-unavailable` page, rendered inside the authenticated shell. `middleware.ts` rewrites disabled-module routes to it.
+
+User goals:
+
+- An authenticated user who reaches a disabled-module route understands why and how to proceed, without seeing a broken page or a raw 403.
+
+Layout:
+
+- Authenticated shell (`MainLayout` plus sidebar), `max-w-4xl` centered content card.
+- Clear heading ("This module is not available"), short explanatory text, a primary action back to the dashboard.
+
+Key components:
+
+- An informative lucide icon (not alarming).
+- Explanatory text.
+- "Back to dashboard" button (`orange-600`).
+- Optional hint to contact an admin.
+
+States:
+
+- Module disabled (primary state).
+- API 403 surfaced mid-page (a module is disabled while the user is active): show an inline alert and route to this page on next navigation; do not hard-crash.
+
+Behavior decision:
+
+- Direct navigation to a disabled-module route → `middleware.ts` rewrites to `/module-unavailable` (keeps the URL meaningful and avoids a confusing silent redirect).
+- The sidebar already hides the entry (enforcement layer 3), so this page is reached mainly via bookmarks, deep links, or a module disabled mid-session.
+
+Accessibility:
+
+- The page is not a keyboard trap; the primary action is focusable on load.
+- Status is conveyed in text, not by icon or color alone.
+
+i18n:
+
+- Heading, body, button, and the mid-session 403 alert use next-intl keys.
+
+### Public View Disabled
+
+Stories: E10-S5
+Requirements: REQ-086, REQ-087
+
+Context:
+
+- When the Public View module is disabled, the public website (`/public/*` and the public landing `/`) is not served. OD-5 is resolved in favour of a minimal neutral page over a login redirect.
+
+Primary screen:
+
+- New minimal "site not public" page. `middleware.ts` rewrites public routes to it when the Public View module is disabled.
+
+User goals:
+
+- An anonymous visitor understands the public site is unavailable — without being pushed into a login flow they may have no account for, and without any organization data being exposed.
+
+Layout:
+
+- A standalone minimal layout — not the authenticated shell, not the full public header/footer.
+- Centered: organization logo plus name (from `SystemSettings`, via the still-reachable `GET /api/v1/settings/public`), and one short neutral sentence.
+- A discreet link to the login page for members and staff (a link, not a forced redirect).
+
+Key components:
+
+- A branded logo-plus-name block (reuses the logo preview pattern — round avatar plus name).
+- Neutral message text.
+- A quiet "Member login" link.
+
+States:
+
+- Public View disabled (primary state).
+- Settings load failure: if `GET /api/v1/settings/public` itself fails, fall back to a plain unbranded message — the page must never error out.
+
+Behavior decision (OD-5 resolved):
+
+- A minimal neutral page, not a login redirect — a redirect to `/login` would read as a defect to anonymous visitors and would conflate "module off" with "auth required".
+- `GET /api/v1/settings/public` must remain reachable even when Public View is disabled (architecture ADR-008), so this page can render branding.
+
+Accessibility:
+
+- A single clear heading, readable body text, and a keyboard-focusable login link.
+- No reliance on imagery to convey the message.
+
+i18n:
+
+- The neutral message and the login link use next-intl keys; logo and name come from settings, not hardcoded text.
+
 ## Responsive Behavior
 
 Required behavior:
@@ -633,6 +829,7 @@ Required permission states:
 - Mixed permission page: visible read-only information with disabled/hidden actions.
 - Admin-only action: confirmation dialog and backend enforcement.
 - Finance-sensitive action: additional caution copy and audit awareness.
+- Module disabled: the navigation entry is hidden, direct-URL navigation is rewritten to `/module-unavailable` (or the minimal neutral page for Public View), and the backend returns 403. Hiding and rewriting are UX only; the backend 403 is the control.
 
 ## i18n Requirements
 
