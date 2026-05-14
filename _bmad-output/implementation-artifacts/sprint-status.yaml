@@ -34,7 +34,7 @@
 # - Each story must go through bmad-create-story and validation before development.
 
 generated: "2026-05-12"
-last_updated: "2026-05-14 (Epic-3 retrospective COMPLETE + Epic-3 closed: epic-3 flipped in-progress→done, epic-3-retrospective optional→done. Retro at epic-3-retro-2026-05-14.md. Central finding: 4 review rounds = dev-process signal; A10 judgment-only mid-epic escalation retired, replaced by mechanical checklists A12-A14. 7 action items A12-A18. Deferred-work backlog ~96 items. Next: §9 deferred-work CLEANUP SPRINT (A15 shared test fixture + A13 UTC-Kind guard first, then security-adjacent items), THEN bmad-create-story for E4.S1.)"
+last_updated: "2026-05-14 (Epic-3 retrospective COMPLETE + Epic-3 closed; §9 cleanup sprint priority-1 DONE. Retro at epic-3-retro-2026-05-14.md. Cleanup-sprint priority-1 (commit 1200958): A12 event-scoping/IDOR checklist + A13 DateTime-Kind=Utc checklist added to docs/07_dos_donts.md; A13 guard applied to EventVolunteerAssignment.MarkReminderSent (Event/EventVolunteerShift already covered by R4 fix-pass); A15 re-enabled the Serilog-deferred runtime 401 tests by migrating 3 API test classes onto the shared TestWebApplicationFactory fixture. Backend 1816/1816 green, 0 warnings. NEXT: §9 cleanup sprint priority-2 (security-adjacent: calendar-feed-api-tests, FOR UPDATE coverage audit, calendar-token HMAC pepper, member-rotate row-lock), then structural (role-registry SST), spec-text-drift batch, triage remainder; THEN bmad-create-story for E4.S1.)"
 # 2026-05-13: Epic-Close-Gate after clearing all 11 [Review][Patch] findings per
 # sprint-change-proposal-2026-05-13.md. E1.S1-S4 flipped review -> done.
 # E1.S5 deferred -- pending provider credentials/scopes/whitelist decisions.
