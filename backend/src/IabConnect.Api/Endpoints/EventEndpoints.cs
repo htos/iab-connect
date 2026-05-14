@@ -107,13 +107,20 @@ public static class EventEndpoints
             .WithName("GetSingleEventCalendarIcs")
             .WithSummary("Per-event ICS download");
 
-        group.MapPost("/calendar/token/rotate", RotateCalendarToken)
+        // REQ-087 (E10-S3 review patch): calendar-subscription token management is mapped on
+        // `app` directly — NOT on the Module:events-gated `group` — so a member can always
+        // rotate or revoke a leaked feed token even when the Events module is disabled. The
+        // .ics feeds above stay always-on (AllowAnonymous on the gated group, per Q4); only
+        // the token-management endpoints need to be un-gated to remediate a leak.
+        app.MapPost("/api/v1/events/calendar/token/rotate", RotateCalendarToken)
             .RequireAuthorization("RequireMember")
+            .WithTags("Events")
             .WithName("RotateCalendarToken")
             .WithSummary("Generate a new calendar-subscription token for the calling member");
 
-        group.MapDelete("/calendar/token", RevokeCalendarToken)
+        app.MapDelete("/api/v1/events/calendar/token", RevokeCalendarToken)
             .RequireAuthorization("RequireMember")
+            .WithTags("Events")
             .WithName("RevokeCalendarToken")
             .WithSummary("Revoke the calling member's calendar-subscription token");
 

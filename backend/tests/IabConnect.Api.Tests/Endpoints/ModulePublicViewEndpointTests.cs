@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using FluentAssertions;
 using IabConnect.Domain.Common;
 using Microsoft.Extensions.DependencyInjection;
@@ -65,6 +66,44 @@ public sealed class ModulePublicViewEndpointTests
         var client = _factory.CreateClient();
 
         var response = await client.GetAsync(path, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task NewsletterSubscribe_Returns403_WhenPublicViewDisabled()
+    {
+        // REQ-087 (E10-S5 review patch): newsletter signup is a public-site feature — it
+        // must be gated by public_view (the unsubscribe endpoints stay exempt, Q1).
+        _modules.SetEnabled(ModuleKeys.PublicView, false);
+        try
+        {
+            var client = _factory.CreateClient();
+
+            var response = await client.PostAsJsonAsync(
+                "/api/v1/public/newsletter/subscribe",
+                new { email = "someone@example.com" },
+                TestContext.Current.CancellationToken);
+
+            response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
+                "newsletter signup is a public-site feature gated by public_view");
+        }
+        finally
+        {
+            _modules.Reset();
+        }
+    }
+
+    [Fact]
+    public async Task NewsletterSubscribe_NotGated_WhenPublicViewEnabled()
+    {
+        // public_view enabled (ctor reset) — the RequireModule filter must be transparent.
+        var client = _factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/v1/public/newsletter/subscribe",
+            new { email = "someone@example.com" },
+            TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().NotBe(HttpStatusCode.Forbidden);
     }

@@ -180,9 +180,13 @@ public static class EventRegistrationEndpoints
             .Produces<WaitlistPositionDto>()
             .Produces(StatusCodes.Status404NotFound);
 
-        // QR Code check-in endpoint
+        // QR Code check-in endpoint.
+        // REQ-087 (E10-S3 review patch): mapped on `endpoints` (not `protectedGroup`), so it
+        // needs its own .RequireAuthorization("Module:events") — without it this endpoint
+        // escaped the Events module gate that AC-4 requires for the registration surface.
         endpoints.MapPost("/api/v1/registrations/check-in/{qrCodeToken}", CheckInByQrCode)
             .RequireAuthorization("RequireEventStaff")
+            .RequireAuthorization("Module:events")
             .WithTags("Event Registrations")
             .WithName("CheckInByQrCode")
             .WithSummary("Check-in per QR-Code")
@@ -192,9 +196,12 @@ public static class EventRegistrationEndpoints
             .Produces(StatusCodes.Status404NotFound)
             .Produces(StatusCodes.Status409Conflict);
 
-        // My registrations endpoint
+        // My registrations endpoint.
+        // REQ-087 (E10-S3 review patch): mapped on `endpoints` (not `protectedGroup`), so it
+        // needs its own .RequireAuthorization("Module:events") to stay inside the Events gate.
         endpoints.MapGet("/api/v1/my-registrations", GetMyRegistrations)
             .RequireAuthorization()
+            .RequireAuthorization("Module:events")
             .WithTags("Event Registrations")
             .WithName("GetMyRegistrations")
             .WithSummary("Eigene Event-Anmeldungen abrufen")

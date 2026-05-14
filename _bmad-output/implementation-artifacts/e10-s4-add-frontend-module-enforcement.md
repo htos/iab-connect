@@ -1,6 +1,6 @@
 # Story 10.4: Add Frontend Module Enforcement
 
-Status: in-progress
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -138,10 +138,11 @@ claude-opus-4-7[1m] (Amelia / bmad-dev-story)
 | Date       | Change                                                                                          |
 |------------|-------------------------------------------------------------------------------------------------|
 | 2026-05-14 | E10-S4 implemented: `AppSettings.modules` map, shared `lib/modules.ts` contract, `Sidebar` `requiresModule` filtering, `middleware.ts` direct-URL route guard, `/module-unavailable` page, dashboard widget gating, `moduleUnavailable.*` i18n. 11 new Vitest tests; frontend 70/70 green, typecheck green. Status → review. |
+| 2026-05-14 | Addressed code review findings — 2 [Review][Patch] items resolved: `hasAuthSession` matches chunked / `__Host-` / Auth.js v5 cookie variants by name shape, new shared `sanitizeModuleMap()` validates the untrusted `modules` payload in both `middleware.ts` and `AppSettingsProvider.tsx`. New Vitest cases (`modules.test.ts`, `middleware.test.ts`); frontend Vitest 92/92, typecheck + lint green. |
 
 ## Review Findings
 
 _Epic-10 boundary code review — bmad-code-review, 2026-05-14. Layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor._
 
-- [ ] [Review][Patch] `hasAuthSession` in `middleware.ts` only matches `next-auth.session-token` / `__Secure-next-auth.session-token` — it misses chunked cookies (`.0`, `.1`, … when the session JWT exceeds ~4 KB), the `__Host-` prefix, and Auth.js v5 `authjs.*` names. An authenticated user with a chunked session hitting `/` while `public_view` is off is misclassified as anonymous and rewritten to `/site-unavailable` — locked out of their own dashboard. Use prefix/`startsWith` matching [frontend/src/middleware.ts]
-- [ ] [Review][Patch] `getModules()` (middleware) and `fetchSettings()` (`AppSettingsProvider`) cast `data.modules` with no shape validation — a malformed settings response (array, string, or string-valued booleans like `"true"`) makes every `modules[key] === false` check falsey-but-not-`false`, silently disabling all frontend gating with no error [frontend/src/middleware.ts, frontend/src/components/providers/AppSettingsProvider.tsx]
+- [x] [Review][Patch] `hasAuthSession` in `middleware.ts` only matches `next-auth.session-token` / `__Secure-next-auth.session-token` — it misses chunked cookies (`.0`, `.1`, … when the session JWT exceeds ~4 KB), the `__Host-` prefix, and Auth.js v5 `authjs.*` names. An authenticated user with a chunked session hitting `/` while `public_view` is off is misclassified as anonymous and rewritten to `/site-unavailable` — locked out of their own dashboard. Use prefix/`startsWith` matching [frontend/src/middleware.ts] — **RESOLVED 2026-05-14:** `hasAuthSession` now matches by cookie-name *shape* — strips the `__Secure-`/`__Host-` prefix and tests `/^(next-auth|authjs)\.session-token(\.\d+)?$/` against every request cookie, covering chunked + Auth.js v5 variants. Covered by a 5-case `it.each` in `middleware.test.ts`.
+- [x] [Review][Patch] `getModules()` (middleware) and `fetchSettings()` (`AppSettingsProvider`) cast `data.modules` with no shape validation — a malformed settings response (array, string, or string-valued booleans like `"true"`) makes every `modules[key] === false` check falsey-but-not-`false`, silently disabling all frontend gating with no error [frontend/src/middleware.ts, frontend/src/components/providers/AppSettingsProvider.tsx] — **RESOLVED 2026-05-14:** new shared `sanitizeModuleMap()` in `lib/modules.ts` coerces the untrusted `modules` field to a clean `Record<string, boolean>` (drops non-boolean entries; non-object shapes → `{}`). Used by both `getModules()` and `fetchSettings()` (the latter merges over the all-true defaults). Covered by `sanitizeModuleMap` unit tests + a malformed-payload `it.each` in `middleware.test.ts`.

@@ -1,6 +1,9 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics.CodeAnalysis;
 using IabConnect.Application.Common;
+using IabConnect.Domain.Common;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 
 namespace IabConnect.Infrastructure.Persistence.Services;
 
@@ -21,45 +24,94 @@ public sealed class ModuleSettingsService : IModuleSettingsService
     // write, not on this expiry.
     private static readonly TimeSpan CacheLifetime = TimeSpan.FromMinutes(5);
 
+    // The service is registered Scoped, but IMemoryCache is a singleton and CacheKey is a
+    // single process-wide entry — so the load gate must be static to actually coordinate
+    // concurrent cache-miss requests (cold start / right after InvalidateCache()). Without
+    // it every concurrent request runs its own EF query (cache stampede).
+    private static readonly SemaphoreSlim LoadGate = new(1, 1);
+
     private readonly IModuleSettingsRepository _repository;
     private readonly IMemoryCache _cache;
+    private readonly ILogger<ModuleSettingsService> _logger;
 
-    public ModuleSettingsService(IModuleSettingsRepository repository, IMemoryCache cache)
+    public ModuleSettingsService(
+        IModuleSettingsRepository repository,
+        IMemoryCache cache,
+        ILogger<ModuleSettingsService> logger)
     {
         _repository = repository;
         _cache = cache;
+        _logger = logger;
     }
 
     public async Task<bool> IsEnabledAsync(string moduleKey, CancellationToken cancellationToken = default)
     {
         var map = await GetAllAsync(cancellationToken);
 
-        // Unknown key => behaviour-preserving "enabled". The seed migration guarantees a row
-        // for every ModuleKeys constant, so this only matters for keys that were never seeded.
-        return !map.TryGetValue(moduleKey, out var enabled) || enabled;
+        if (map.TryGetValue(moduleKey, out var enabled))
+        {
+            return enabled;
+        }
+
+        // Key not in the cached map. Two cases, both fail-open (behaviour-preserving — an
+        // unconfigured module is not treated as disabled):
+        //  - a known ModuleKeys constant with no seed row => documented, expected, stay quiet.
+        //  - an out-of-contract key (e.g. a typo'd "Module:financ" policy string) => still
+        //    fail-open, but log a warning: a silently no-op gate is an observability hazard.
+        if (!ModuleKeys.All.Contains(moduleKey))
+        {
+            _logger.LogWarning(
+                "IsEnabledAsync called with out-of-contract module key '{ModuleKey}' — it is not one of "
+                + "ModuleKeys.All. Likely a typo in a policy string or endpoint filter; the gate is a "
+                + "silent no-op (treated as enabled). Fix the caller.",
+                moduleKey);
+        }
+
+        return true;
     }
 
     public async Task<IReadOnlyDictionary<string, bool>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        if (_cache.TryGetValue(CacheKey, out IReadOnlyDictionary<string, bool>? cached) && cached is not null)
+        if (TryGetCached(out var cached))
         {
             return cached;
         }
 
-        var settings = await _repository.GetAllAsync(cancellationToken);
-        IReadOnlyDictionary<string, bool> map = new ReadOnlyDictionary<string, bool>(
-            settings.ToDictionary(s => s.ModuleKey, s => s.Enabled));
-
-        _cache.Set(CacheKey, map, new MemoryCacheEntryOptions
+        // Coordinated load: serialize concurrent cache-miss requests through a single gate so
+        // exactly one EF query runs; the rest re-check the cache and return the loaded map.
+        await LoadGate.WaitAsync(cancellationToken);
+        try
         {
-            AbsoluteExpirationRelativeToNow = CacheLifetime,
-        });
+            // Double-check — another request may have populated the cache while we waited.
+            if (TryGetCached(out cached))
+            {
+                return cached;
+            }
 
-        return map;
+            var settings = await _repository.GetAllAsync(cancellationToken);
+            IReadOnlyDictionary<string, bool> map = new ReadOnlyDictionary<string, bool>(
+                settings.ToDictionary(s => s.ModuleKey, s => s.Enabled));
+
+            _cache.Set(CacheKey, map, new MemoryCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = CacheLifetime,
+            });
+
+            return map;
+        }
+        finally
+        {
+            LoadGate.Release();
+        }
     }
 
     public void InvalidateCache()
     {
         _cache.Remove(CacheKey);
+    }
+
+    private bool TryGetCached([NotNullWhen(true)] out IReadOnlyDictionary<string, bool>? map)
+    {
+        return _cache.TryGetValue(CacheKey, out map) && map is not null;
     }
 }

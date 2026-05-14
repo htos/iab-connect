@@ -37,17 +37,27 @@ public sealed class ModuleSetting : Entity
     private ModuleSetting() { }
 
     /// <summary>
-    /// Create a module setting for <paramref name="moduleKey"/>. The key must be non-blank;
-    /// callers should pass a <see cref="ModuleKeys"/> constant.
+    /// Create a module setting for <paramref name="moduleKey"/>. The key must be non-blank
+    /// and one of the seven canonical <see cref="ModuleKeys"/> constants — the domain
+    /// invariant "a module setting is one of the known modules" is asserted here, not just
+    /// at the database unique index.
     /// </summary>
     public static ModuleSetting Create(string moduleKey, bool enabled, string? updatedBy)
     {
         if (string.IsNullOrWhiteSpace(moduleKey))
             throw new ArgumentException("Module key cannot be empty.", nameof(moduleKey));
 
+        var normalizedKey = moduleKey.Trim();
+        if (!ModuleKeys.All.Contains(normalizedKey))
+        {
+            throw new ArgumentException(
+                $"'{normalizedKey}' is not a known module key. Expected one of: {string.Join(", ", ModuleKeys.All)}.",
+                nameof(moduleKey));
+        }
+
         return new ModuleSetting
         {
-            ModuleKey = moduleKey.Trim(),
+            ModuleKey = normalizedKey,
             Enabled = enabled,
             UpdatedAt = DateTime.UtcNow,
             UpdatedBy = updatedBy,

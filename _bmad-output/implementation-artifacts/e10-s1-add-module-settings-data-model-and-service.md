@@ -1,6 +1,6 @@
 # Story 10.1: Add Module Settings Data Model and Service
 
-Status: in-progress
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -135,12 +135,13 @@ claude-opus-4-7 (1M context) — bmad-dev-story workflow, 2026-05-14.
 | Date       | Description                                                                 |
 |------------|-----------------------------------------------------------------------------|
 | 2026-05-14 | E10-S1 implemented: `module_settings` table + seed, `ModuleSetting` entity, `ModuleKeys` contract, EF config, repository, cached `IModuleSettingsService`, DI wiring. 13 new tests; full suite 1885/1885 green, 0 warnings. Status → review. |
+| 2026-05-14 | Addressed code review findings — 3 [Review][Patch] items resolved: `IsEnabledAsync` warning-log for out-of-contract keys, `GetAllAsync` cache-stampede guard (`SemaphoreSlim` + double-check), `ModuleSetting.Create` key-in-`ModuleKeys.All` guard. 3 new Application tests; backend 1936/1936 green, 0 warnings. |
 
 ## Review Findings
 
 _Epic-10 boundary code review — bmad-code-review, 2026-05-14. Layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor._
 
-- [ ] [Review][Patch] `IsEnabledAsync` silently returns `enabled` for any key not in `ModuleKeys.All` — a typo'd `Module:financ` policy string becomes a no-op gate with no log/error; add a warning log for out-of-contract keys (observability only, documented fail-open for known-but-unseeded keys stays) [backend/src/IabConnect.Infrastructure/Persistence/Services/ModuleSettingsService.cs]
-- [ ] [Review][Patch] Cache stampede — concurrent cache-miss on `GetAllAsync` (cold start / right after `InvalidateCache()`) has each request run its own EF query; use a coordinated load (`IMemoryCache.GetOrCreateAsync` / `Lazy<Task>`) [backend/src/IabConnect.Infrastructure/Persistence/Services/ModuleSettingsService.cs]
-- [ ] [Review][Patch] `ModuleSetting.Create` guards only `IsNullOrWhiteSpace` — the domain invariant "module key is one of the seven" is asserted nowhere; add a guard that `moduleKey` ∈ `ModuleKeys.All` [backend/src/IabConnect.Domain/Common/ModuleSetting.cs]
+- [x] [Review][Patch] `IsEnabledAsync` silently returns `enabled` for any key not in `ModuleKeys.All` — a typo'd `Module:financ` policy string becomes a no-op gate with no log/error; add a warning log for out-of-contract keys (observability only, documented fail-open for known-but-unseeded keys stays) [backend/src/IabConnect.Infrastructure/Persistence/Services/ModuleSettingsService.cs] — **RESOLVED 2026-05-14:** `IsEnabledAsync` now logs a `Warning` for keys not in `ModuleKeys.All` (known-but-unseeded keys stay quiet — documented fail-open). Covered by `IsEnabledAsync_OutOfContractKey_LogsWarning` + `IsEnabledAsync_KnownKeyMissingSeedRow_DoesNotLogWarning`.
+- [x] [Review][Patch] Cache stampede — concurrent cache-miss on `GetAllAsync` (cold start / right after `InvalidateCache()`) has each request run its own EF query; use a coordinated load (`IMemoryCache.GetOrCreateAsync` / `Lazy<Task>`) [backend/src/IabConnect.Infrastructure/Persistence/Services/ModuleSettingsService.cs] — **RESOLVED 2026-05-14:** `GetAllAsync` now serializes cold reads through a static `SemaphoreSlim` with a double-check after the gate — exactly one EF query per cold cache. Covered by `GetAllAsync_ConcurrentColdReads_HitRepositoryOnce`.
+- [x] [Review][Patch] `ModuleSetting.Create` guards only `IsNullOrWhiteSpace` — the domain invariant "module key is one of the seven" is asserted nowhere; add a guard that `moduleKey` ∈ `ModuleKeys.All` [backend/src/IabConnect.Domain/Common/ModuleSetting.cs] — **RESOLVED 2026-05-14:** `Create` now rejects any key not in `ModuleKeys.All` with an `ArgumentException`.
 - [x] [Review][Defer] `InvalidateCache()` clears only the local process — multi-instance deployments serve a stale module map until the per-process TTL expires [backend/src/IabConnect.Infrastructure/Persistence/Services/ModuleSettingsService.cs] — deferred, pre-existing architectural limitation; the `// TODO: Add caching (Redis)` marker this story replaced acknowledges it, and the modular-monolith MVP is single-instance

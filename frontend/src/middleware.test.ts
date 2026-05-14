@@ -8,7 +8,7 @@ describe("middleware", () => {
     vi.resetModules();
   });
 
-  async function loadMiddleware(modules: Record<string, boolean>) {
+  async function loadMiddlewareRaw(modules: unknown) {
     vi.resetModules();
     vi.stubGlobal(
       "fetch",
@@ -20,6 +20,10 @@ describe("middleware", () => {
     const mod = await import("./middleware");
     const { NextRequest } = await import("next/server");
     return { middleware: mod.middleware, NextRequest };
+  }
+
+  async function loadMiddleware(modules: Record<string, boolean>) {
+    return loadMiddlewareRaw(modules);
   }
 
   it("rewrites a disabled-module path to /module-unavailable", async () => {
@@ -128,4 +132,50 @@ describe("middleware", () => {
     expect(response.headers.get("x-middleware-rewrite")).toBeNull();
     expect(response.headers.get("x-middleware-next")).toBe("1");
   });
+
+  // REQ-087 (E10-S4 review patch): session-cookie detection must match the chunked,
+  // __Secure-/__Host- prefixed, and Auth.js v5 variants — not just the two v4 names.
+  it.each([
+    "next-auth.session-token.0=chunk",
+    "__Secure-next-auth.session-token=abc",
+    "__Host-next-auth.session-token=abc",
+    "authjs.session-token=abc",
+    "__Secure-authjs.session-token.1=chunk",
+  ])(
+    "treats '%s' as an authenticated session and leaves / alone with public_view off",
+    async (cookie) => {
+      const { middleware, NextRequest } = await loadMiddleware({
+        public_view: false,
+      });
+
+      const response = await middleware(
+        new NextRequest(new URL("http://localhost:3000/"), {
+          headers: { cookie },
+        })
+      );
+
+      expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+    }
+  );
+
+  // REQ-087 (E10-S4 review patch): a malformed `modules` field must not silently disable
+  // gating — anything that is not a clean boolean map is treated as "all enabled".
+  it.each([
+    ["an array", ["finance"]],
+    ["a string", "finance"],
+    ["string-valued booleans", { finance: "false" }],
+    ["null", null],
+  ])(
+    "treats a malformed modules payload (%s) as all-enabled",
+    async (_label, malformed) => {
+      const { middleware, NextRequest } = await loadMiddlewareRaw(malformed);
+
+      const response = await middleware(
+        new NextRequest(new URL("http://localhost:3000/finance/invoices"))
+      );
+
+      // Malformed shape => no gating applied; the path passes through.
+      expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+    }
+  );
 });

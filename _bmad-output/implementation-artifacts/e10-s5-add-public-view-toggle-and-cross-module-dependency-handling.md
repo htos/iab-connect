@@ -1,6 +1,6 @@
 # Story 10.5: Add Public View Toggle and Cross-Module Dependency Handling
 
-Status: in-progress
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -156,12 +156,13 @@ claude-opus-4-7[1m] (Amelia / bmad-dev-story)
 | Date       | Change                                                                                          |
 |------------|-------------------------------------------------------------------------------------------------|
 | 2026-05-14 | E10-S5 implemented (closes Epic 10): Public View middleware rewrite + `/site-unavailable` neutral page, `ModuleEnabledEndpointFilter` (`.RequireModule`) gating the public backend surface (`/settings/public` exempt), Hangfire job module-skip checks, Events↔Finance warn-and-degrade guard, Playwright E2E suite. Q1–Q5 resolved. Backend 1930/1930 green, frontend Vitest 78/78, typecheck green. Status → review. |
+| 2026-05-14 | Addressed code review findings — 2 [Review][Patch] items resolved: `ModuleEnabledEndpointFilter` now fail-opens (try/catch + log) on a module-service failure instead of 500-ing the public surface, newsletter `POST /subscribe` gated with `.RequireModule("public_view")` (unsubscribe stays exempt). 2 new Api tests; backend 1936/1936 green, 0 warnings. |
 
 ## Review Findings
 
 _Epic-10 boundary code review — bmad-code-review, 2026-05-14. Layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor._
 
-- [ ] [Review][Patch] `ModuleEnabledEndpointFilter.InvokeAsync` — wrap `IsEnabledAsync` in try/catch and **fail-open** (treat as enabled) on a module-service failure, matching the frontend middleware's degrade-to-enabled behaviour; today any service failure 500s the entire public surface _(resolves the original Decision)_ [backend/src/IabConnect.Api/Authorization/ModuleEndpointFilter.cs]
+- [x] [Review][Patch] `ModuleEnabledEndpointFilter.InvokeAsync` — wrap `IsEnabledAsync` in try/catch and **fail-open** (treat as enabled) on a module-service failure, matching the frontend middleware's degrade-to-enabled behaviour; today any service failure 500s the entire public surface _(resolves the original Decision)_ [backend/src/IabConnect.Api/Authorization/ModuleEndpointFilter.cs] — **RESOLVED 2026-05-14:** `InvokeAsync` now wraps `IsEnabledAsync` in `try/catch` — a module-service failure is logged (`LogError`) and treated as enabled (fail-open), so a cache/DB outage no longer 500s the entire public surface.
 - [x] [Review][Dismissed] Audit for `ModuleEnabledEndpointFilter` denials — reviewed and decided: keep the bare 403, do **not** audit anonymous public-endpoint denials (audit-log flood risk from bots; "public site is off" is not a security event — the authenticated `ModuleAuthorizationHandler` audit remains the meaningful signal). No code change.
-- [ ] [Review][Patch] Gate `/api/v1/public/newsletter` (newsletter signup) with `.RequireModule("public_view")` — it is a public-site feature, not a transactional-compliance flow; signups should not be accepted while the public site is off _(resolves the original Decision)_ [backend/src/IabConnect.Api/Endpoints/UnsubscribeEndpoints.cs]
+- [x] [Review][Patch] Gate `/api/v1/public/newsletter` (newsletter signup) with `.RequireModule("public_view")` — it is a public-site feature, not a transactional-compliance flow; signups should not be accepted while the public site is off _(resolves the original Decision)_ [backend/src/IabConnect.Api/Endpoints/UnsubscribeEndpoints.cs] — **RESOLVED 2026-05-14:** `.RequireModule("public_view")` applied to the `POST /subscribe` endpoint only — the unsubscribe endpoints stay exempt (Q1, transactional compliance flow). Covered by `NewsletterSubscribe_Returns403_WhenPublicViewDisabled` + `NewsletterSubscribe_NotGated_WhenPublicViewEnabled`.
 - [x] [Review][Defer] Playwright E2E suite (`module-enforcement.spec.ts`) is authored but `test.skip()`s itself without `E2E_ADMIN_PASSWORD` — AC-6/AC-7 "the E2E suite passes" is unverified in CI [frontend/e2e/module-enforcement.spec.ts] — deferred, needs the full local stack (Docker + Keycloak + seeded admin); the backend + Vitest suites are the CI-runnable proof of the same behaviour

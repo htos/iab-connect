@@ -1,6 +1,6 @@
 # Story 10.2: Add Module Settings API and Modules Admin Tab
 
-Status: in-progress
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -147,13 +147,14 @@ claude-opus-4-7 (1M context) — bmad-dev-story workflow, 2026-05-14.
 |------------|-----------------------------------------------------------------------------|
 | 2026-05-14 | E10-S2 implemented: module-settings MediatR query/command/validator, admin-only `ModuleSettingsEndpoints`, `modules` map on public settings (ADR-008), Modules admin tab with labelled toggles + disable confirmation + advisory Finance↔Events dependency warning, i18n (de/en). 13 new backend tests + 5 Vitest. Backend 1898/1898, frontend 59/59, typecheck green. Status → review. |
 | 2026-05-14 | Post-review UX fixes (user feedback during E10 review): Modules tab — the bare checkbox is now an `orange-600` toggle switch (`role="switch"`, app-consistent styling); the disable confirmation + advisory dependency warning moved from an inline amber panel into a proper modal (mirrors the existing Role modal). Files: `admin/settings/page.tsx`, `page.test.tsx` (switch selector), `en.json`/`de.json` (`moduleDisableTitle` key). Frontend Vitest 78/78, typecheck + lint green. |
+| 2026-05-14 | Addressed code review findings — 3 [Review][Patch] items resolved: mount `useEffect` calls shared `loadModules()` (no duplicate GET), `applyModuleChange` keeps the confirmation modal open + shows the error inside it on a failed save, self-lockout note re-styled off blue to neutral orange. 2 new Vitest tests; frontend Vitest 92/92, typecheck + lint green. |
 
 ## Review Findings
 
 _Epic-10 boundary code review — bmad-code-review, 2026-05-14. Layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor._
 
-- [ ] [Review][Patch] Modules tab fetches `/api/v1/module-settings` twice on mount — the mount `useEffect` duplicates `loadModules()` inline instead of calling it; two identical GETs per mount and a drift hazard [frontend/src/app/admin/settings/page.tsx]
-- [ ] [Review][Patch] `applyModuleChange` closes the confirmation modal even on a failed save (`setModuleConfirmKey(null)` runs unconditionally) — the error banner then renders on the tab card, away from where the user was acting [frontend/src/app/admin/settings/page.tsx]
-- [ ] [Review][Patch] Self-lockout note in the Modules tab uses `border-blue-200 bg-blue-50 text-blue-800` — violates project-context "no blue in authenticated UI" [frontend/src/app/admin/settings/page.tsx]
+- [x] [Review][Patch] Modules tab fetches `/api/v1/module-settings` twice on mount — the mount `useEffect` duplicates `loadModules()` inline instead of calling it; two identical GETs per mount and a drift hazard [frontend/src/app/admin/settings/page.tsx] — **RESOLVED 2026-05-14:** the mount `useEffect` now calls the shared `loadModules()` (no inline duplicate). `loadModules` no longer calls `setModulesLoading(true)` synchronously (avoids the `react-hooks/set-state-in-effect` anti-pattern; `modulesLoading` starts `true`). Covered by `fetches module settings exactly once on mount`.
+- [x] [Review][Patch] `applyModuleChange` closes the confirmation modal even on a failed save (`setModuleConfirmKey(null)` runs unconditionally) — the error banner then renders on the tab card, away from where the user was acting [frontend/src/app/admin/settings/page.tsx] — **RESOLVED 2026-05-14:** on a failed save `applyModuleChange` now early-returns and keeps the modal open; the error banner also renders inside the modal where the user is acting. Covered by `keeps the confirmation modal open and shows the error on a failed save`.
+- [x] [Review][Patch] Self-lockout note in the Modules tab uses `border-blue-200 bg-blue-50 text-blue-800` — violates project-context "no blue in authenticated UI" [frontend/src/app/admin/settings/page.tsx] — **RESOLVED 2026-05-14:** re-styled to neutral orange info (`border-orange-200 bg-orange-50 text-orange-900`).
 - [x] [Review][Defer] `ModuleSettingsEndpointTests` pins admin-only at the endpoint-metadata layer only — it does not spin up the host to prove a non-admin gets a runtime 403 (AC-7 / Task-5 wording) [backend/tests/IabConnect.Api.Tests/Endpoints/ModuleSettingsEndpointTests.cs] — deferred, pre-existing test-fidelity gap; runtime "never-gated" coverage for the module-settings group already exists in E10-S3's `ModuleEnforcementEndpointTests`
 - [x] [Review][Defer] `UpdateModuleSettingCommand` throws `KeyNotFoundException` → 404 for a key that is in `ModuleKeys.All` but has no seed row, with no upsert/self-heal path [backend/src/IabConnect.Application/ModuleSettings/Commands/UpdateModuleSettingCommand.cs] — deferred, only reachable from a broken DB state (failed/partial seed), not caused by this change

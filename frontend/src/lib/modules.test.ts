@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveModuleForPath } from "./modules";
+import { resolveModuleForPath, sanitizeModuleMap } from "./modules";
 
 // REQ-087 (E10-S4): the module → route contract is shared by middleware.ts and Sidebar,
 // so its path resolution is unit-tested directly.
@@ -30,5 +30,30 @@ describe("resolveModuleForPath", () => {
     expect(resolveModuleForPath("/")).toBeNull();
     expect(resolveModuleForPath("/profile")).toBeNull();
     expect(resolveModuleForPath("/financemvp")).toBeNull(); // prefix must be a path boundary
+  });
+});
+
+// REQ-087 (E10-S4 review patch): the public-settings `modules` field is untrusted — a
+// malformed payload must be coerced to a clean boolean map, never trusted as-is.
+describe("sanitizeModuleMap", () => {
+  it("keeps a clean boolean map", () => {
+    expect(sanitizeModuleMap({ finance: true, events: false })).toEqual({
+      finance: true,
+      events: false,
+    });
+  });
+
+  it("drops non-boolean entries (e.g. string-valued booleans)", () => {
+    expect(
+      sanitizeModuleMap({ finance: "false", events: true, members: 0 })
+    ).toEqual({ events: true });
+  });
+
+  it("returns an empty map for non-object shapes", () => {
+    expect(sanitizeModuleMap(["finance"])).toEqual({});
+    expect(sanitizeModuleMap("finance")).toEqual({});
+    expect(sanitizeModuleMap(null)).toEqual({});
+    expect(sanitizeModuleMap(undefined)).toEqual({});
+    expect(sanitizeModuleMap(42)).toEqual({});
   });
 });

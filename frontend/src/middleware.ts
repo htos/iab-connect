@@ -14,7 +14,7 @@
  * in-memory for a short window to avoid a fetch per request.
  */
 import { NextResponse, type NextRequest } from "next/server";
-import { resolveModuleForPath } from "@/lib/modules";
+import { resolveModuleForPath, sanitizeModuleMap } from "@/lib/modules";
 
 // Next.js matchers cannot be fully dynamic — list the gated prefixes broadly here, then
 // branch precisely in middleware(). `:path*` matches the bare prefix as well as nested
@@ -57,7 +57,8 @@ async function getModules(): Promise<Record<string, boolean>> {
     const response = await fetch(`${baseUrl}/api/v1/settings/public`);
     if (response.ok) {
       const data = await response.json();
-      cachedModules = (data.modules as Record<string, boolean>) ?? {};
+      // Validate the shape — a malformed `modules` field must not silently disable gating.
+      cachedModules = sanitizeModuleMap(data.modules);
       cachedAt = now;
     }
   } catch {
@@ -69,12 +70,22 @@ async function getModules(): Promise<Record<string, boolean>> {
   return cachedModules ?? {};
 }
 
-/** Whether the request carries a next-auth session cookie (http + __Secure- variants). */
+/**
+ * Whether the request carries a next-auth / Auth.js session cookie.
+ *
+ * REQ-087 (E10-S4 review patch): match by cookie-name *shape*, not an exact two-name
+ * allowlist. The session cookie varies by library version and deployment:
+ *  - next-auth v4 `next-auth.session-token` vs. Auth.js v5 `authjs.session-token`
+ *  - secure-context prefixes `__Secure-` and `__Host-`
+ *  - chunked suffixes `.0`, `.1`, … when the session JWT exceeds the ~4 KB cookie limit
+ * An exact allowlist misclassified a chunked or prefixed session as anonymous and locked
+ * the user out of their own dashboard while `public_view` was off.
+ */
 function hasAuthSession(request: NextRequest): boolean {
-  return (
-    request.cookies.has("next-auth.session-token") ||
-    request.cookies.has("__Secure-next-auth.session-token")
-  );
+  return request.cookies.getAll().some((cookie) => {
+    const name = cookie.name.replace(/^(__Secure-|__Host-)/, "");
+    return /^(next-auth|authjs)\.session-token(\.\d+)?$/.test(name);
+  });
 }
 
 export async function middleware(request: NextRequest): Promise<NextResponse> {

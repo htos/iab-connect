@@ -15,6 +15,7 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
+import { sanitizeModuleMap } from "@/lib/modules";
 
 interface AppSettings {
   applicationName: string;
@@ -90,7 +91,14 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
           // API base so <img> tags get an absolute, stable URL.
           logoUrl: data.logoUrl ? `${baseUrl}${data.logoUrl}` : null,
           // REQ-087 (E10-S4): module map from E10-S2's public settings endpoint.
-          modules: data.modules ?? defaultSettings.modules,
+          // Review patch: validate the shape — a malformed `modules` field (array,
+          // string, string-valued booleans) must not silently disable all gating.
+          // Sanitized valid entries override the all-true defaults; anything dropped
+          // keeps its default `true` (behaviour-preserving).
+          modules: {
+            ...defaultSettings.modules,
+            ...sanitizeModuleMap(data.modules),
+          },
         });
       }
     } catch {

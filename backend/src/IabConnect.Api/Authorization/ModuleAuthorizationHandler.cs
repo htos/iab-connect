@@ -71,13 +71,28 @@ public sealed class ModuleAuthorizationHandler : AuthorizationHandler<ModuleRequ
         _logger.LogWarning(
             "Module access denied: module '{ModuleKey}' is disabled", requirement.ModuleKey);
 
-        await _auditService.LogActionAsync(
-            AuditEventType.ModuleAccessDenied,
-            $"Access denied: module '{requirement.ModuleKey}' is disabled",
-            success: false,
-            errorMessage: $"Module '{requirement.ModuleKey}' is disabled",
-            entityType: "Module",
-            entityId: requirement.ModuleKey,
-            ct: cancellationToken);
+        // REQ-087 (E10-S3 review patch): the audit write must never mask the authorization
+        // outcome. If LogActionAsync throws, the unguarded call would surface as a 500 —
+        // replacing the clean 403 and losing the denial entirely. Guard it: a logging failure
+        // is itself logged and swallowed; the not-succeeded requirement (→ 403) still stands.
+        try
+        {
+            await _auditService.LogActionAsync(
+                AuditEventType.ModuleAccessDenied,
+                $"Access denied: module '{requirement.ModuleKey}' is disabled",
+                success: false,
+                errorMessage: $"Module '{requirement.ModuleKey}' is disabled",
+                entityType: "Module",
+                entityId: requirement.ModuleKey,
+                ct: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Failed to write the ModuleAccessDenied audit event for module '{ModuleKey}'. "
+                + "The 403 denial still stands; only the audit record was lost.",
+                requirement.ModuleKey);
+        }
     }
 }

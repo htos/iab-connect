@@ -1,6 +1,6 @@
 # Story 10.3: Add Backend Module Enforcement
 
-Status: in-progress
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -148,11 +148,12 @@ claude-opus-4-7[1m] (Amelia / bmad-dev-story)
 |------------|-------------------------------------------------------------------------------------------------|
 | 2026-05-14 | E10-S3 implemented: `ModuleRequirement`/`ModuleAuthorizationHandler`, `Module:` policy-provider prefix, `AuditEventType.ModuleAccessDenied`, `.RequireAuthorization("Module:<key>")` across 31 endpoint files. 20 new tests; backend 1918/1918 green, 0 warnings. Status → review. |
 | 2026-05-14 | Post-review bug fix (user feedback during E10 review): the whole `members` route group was gated by `Module:members`, which also caught the `/api/v1/members/me*` self-service endpoints — so "My Profile" broke when the members module was disabled (violates AC-4a, "My Profile … not gated"). Fix: `MemberEndpoints.cs` now applies `Module:members` to a `memberManagement` sub-group only; the 3 `/me*` endpoints stay un-gated. New regression test `MyProfileEndpoint_StaysReachable_WhenMembersModuleDisabled` + `ModuleEnforcementEndpointTests` now uses a GUID test `sub`. Backend 1931/1931 green, 0 warnings. |
+| 2026-05-14 | Addressed code review findings — 3 [Review][Patch] items resolved: calendar token rotate/revoke moved off the `Module:events` gate (feeds stay always-on), `my-registrations` + QR-code `check-in` now carry `Module:events`, `ModuleAuthorizationHandler` audit write guarded so a logging failure can't mask the 403. Backend 1936/1936 green, 0 warnings. |
 
 ## Review Findings
 
 _Epic-10 boundary code review — bmad-code-review, 2026-05-14. Layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor._
 
-- [ ] [Review][Patch] Move `calendar/token/rotate` + `calendar/token/revoke` off the `Module:events`-gated group so a member can always rotate/revoke a leaked feed token — _(resolves the original Decision: feeds stay always-on per Q4, only token management is un-gated)_ [backend/src/IabConnect.Api/Endpoints/EventEndpoints.cs:110-118]
-- [ ] [Review][Patch] `/api/v1/my-registrations` and `/api/v1/registrations/check-in/{qrCodeToken}` are mapped directly on `endpoints`, not on `protectedGroup`, so they escape `Module:events` gating — despite Task 4 / the File List claiming `EventRegistrationEndpoints.cs` fully handled (AC-4) [backend/src/IabConnect.Api/Endpoints/EventRegistrationEndpoints.cs:184,196]
-- [ ] [Review][Patch] `ModuleAuthorizationHandler` deny path calls `IAuditService.LogActionAsync` unguarded — if the audit write throws, the clean 403 is replaced by a 500 and the denial is never recorded; wrap the audit call so a logging failure cannot mask the authorization outcome [backend/src/IabConnect.Api/Authorization/ModuleAuthorizationHandler.cs]
+- [x] [Review][Patch] Move `calendar/token/rotate` + `calendar/token/revoke` off the `Module:events`-gated group so a member can always rotate/revoke a leaked feed token — _(resolves the original Decision: feeds stay always-on per Q4, only token management is un-gated)_ [backend/src/IabConnect.Api/Endpoints/EventEndpoints.cs:110-118] — **RESOLVED 2026-05-14:** both token-management endpoints are now mapped on `app` directly (`/api/v1/events/calendar/token/rotate` + `/calendar/token`, same routes) with `RequireAuthorization("RequireMember")` only — no `Module:events` gate. The `.ics` feeds stay always-on on the gated group via `.AllowAnonymous()`.
+- [x] [Review][Patch] `/api/v1/my-registrations` and `/api/v1/registrations/check-in/{qrCodeToken}` are mapped directly on `endpoints`, not on `protectedGroup`, so they escape `Module:events` gating — despite Task 4 / the File List claiming `EventRegistrationEndpoints.cs` fully handled (AC-4) [backend/src/IabConnect.Api/Endpoints/EventRegistrationEndpoints.cs:184,196] — **RESOLVED 2026-05-14:** both endpoints now chain `.RequireAuthorization("Module:events")` so they sit inside the Events gate like the rest of the registration surface.
+- [x] [Review][Patch] `ModuleAuthorizationHandler` deny path calls `IAuditService.LogActionAsync` unguarded — if the audit write throws, the clean 403 is replaced by a 500 and the denial is never recorded; wrap the audit call so a logging failure cannot mask the authorization outcome [backend/src/IabConnect.Api/Authorization/ModuleAuthorizationHandler.cs] — **RESOLVED 2026-05-14:** the audit write is now wrapped in `try/catch` — a logging failure is itself logged (`LogError`) and swallowed; the not-succeeded requirement (→ 403) still stands.

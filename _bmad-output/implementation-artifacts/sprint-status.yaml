@@ -43,7 +43,7 @@
 # - The development_status block is ordered by EXECUTION PRIORITY, not epic number.
 
 generated: "2026-05-12"
-last_updated: "2026-05-14 (bmad-code-review: epic-boundary review over the full E10 diff (7a07d7c..working tree, 96 files) complete. 3 adversarial layers (Blind Hunter / Edge Case Hunter / Acceptance Auditor). Result: 4 decision-needed (all resolved by user -> 3 patch, 1 dismissed), 13 patch, 4 defer, 13 dismissed. User chose 'leave as action items' -> all 5 E10 stories review -> in-progress; 13 [Review][Patch] items written to the per-story Review Findings sections, 4 [Review][Defer] items in deferred-work.md. Notable patches: my-registrations + check-in/{qrCodeToken} escape Module:events gating (EventRegistrationEndpoints.cs:184,196); ModuleAuthorizationHandler audit write unguarded (500 instead of 403); hasAuthSession misses next-auth chunked/__Host-/authjs cookie variants -> dashboard lockout; ModuleEnabledEndpointFilter no try/catch -> public surface 500s. NEXT: bmad-dev-story to apply the 13 patches across e10-s1..s5, then return to bmad-code-review for re-review.)"
+last_updated: "2026-05-14 (bmad-dev-story: applied all 13 [Review][Patch] findings across e10-s1..s5 from the epic-boundary review. E10-S1: IsEnabledAsync out-of-contract warn-log, GetAllAsync cache-stampede guard, ModuleSetting.Create key-in-ModuleKeys.All guard. E10-S2: mount useEffect calls shared loadModules() (no duplicate GET), applyModuleChange keeps the confirm modal open + shows the error in it on failure, self-lockout note off blue. E10-S3: calendar token rotate/revoke moved off the Module:events gate, my-registrations + QR check-in now carry Module:events, ModuleAuthorizationHandler audit write guarded. E10-S4: hasAuthSession matches chunked/__Host-/authjs cookie variants, new shared sanitizeModuleMap() validates the untrusted modules payload. E10-S5: ModuleEnabledEndpointFilter fail-opens on service failure, newsletter POST /subscribe gated by public_view. Backend 1936/1936 green 0 warnings; frontend typecheck + lint green, Vitest 92/92. All 5 E10 stories in-progress -> review. NEXT: bmad-code-review for the epic-boundary re-review over the full E10 diff.)"
 # --- history ---------------------------------------------------------------
 # 2026-05-13: Epic-Close-Gate after clearing all 11 [Review][Patch] findings per
 # sprint-change-proposal-2026-05-13.md. E1.S1-S4 flipped review -> done.
@@ -74,6 +74,10 @@ last_updated: "2026-05-14 (bmad-code-review: epic-boundary review over the full 
 # 4 decision-needed (resolved -> 3 patch + 1 dismissed), 13 patch, 4 defer,
 # 13 dismissed. User left patches as action items -> e10-s1..s5 review ->
 # in-progress. Findings in per-story Review Findings sections + deferred-work.md.
+# 2026-05-14 (bmad-dev-story): all 13 [Review][Patch] findings applied across
+# e10-s1..s5. Backend 1936/1936 green 0 warnings; frontend typecheck + lint
+# green, Vitest 92/92. e10-s1..s5 in-progress -> review. NEXT: bmad-code-review
+# epic-boundary re-review.
 # ---------------------------------------------------------------------------
 project: iab-connect
 project_key: NOKEY
@@ -124,11 +128,11 @@ development_status:
   epic-9-retrospective: done
 
   epic-10: in-progress
-  e10-s1-add-module-settings-data-model-and-service: in-progress
-  e10-s2-add-module-settings-api-and-modules-admin-tab: in-progress
-  e10-s3-add-backend-module-enforcement: in-progress
-  e10-s4-add-frontend-module-enforcement: in-progress
-  e10-s5-add-public-view-toggle-and-cross-module-dependency-handling: in-progress
+  e10-s1-add-module-settings-data-model-and-service: review
+  e10-s2-add-module-settings-api-and-modules-admin-tab: review
+  e10-s3-add-backend-module-enforcement: review
+  e10-s4-add-frontend-module-enforcement: review
+  e10-s5-add-public-view-toggle-and-cross-module-dependency-handling: review
   epic-10-retrospective: optional
 
   # === DEFERRED backlog — resumes after E9/E10 ship ========================

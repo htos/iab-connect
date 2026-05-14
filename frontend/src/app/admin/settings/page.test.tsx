@@ -271,6 +271,32 @@ describe("Modules tab (REQ-087 E10-S2)", () => {
     expect(refreshAppSettings).toHaveBeenCalled();
   });
 
+  it("fetches module settings exactly once on mount (no duplicate GET)", async () => {
+    const { container } = render(<SettingsPage />);
+    await openModulesTab(container);
+
+    const moduleGets = apiGet.mock.calls.filter(
+      (c) => c[0] === "/api/v1/module-settings"
+    );
+    expect(moduleGets.length).toBe(1);
+  });
+
+  it("keeps the confirmation modal open and shows the error on a failed save", async () => {
+    apiPut.mockResolvedValue({ data: null, error: "boom" });
+    const { container } = render(<SettingsPage />);
+    await openModulesTab(container);
+
+    fireEvent.click(container.querySelector("#module-finance")!);
+    fireEvent.click(screen.getByText("moduleConfirmDisable"));
+
+    await waitFor(() => {
+      expect(apiPut).toHaveBeenCalled();
+    });
+    // Modal stays open (confirm copy still present) and the error surfaces in it.
+    expect(screen.getByText("moduleDisableConfirm")).toBeInTheDocument();
+    expect(screen.getAllByText("moduleSaveError").length).toBeGreaterThan(0);
+  });
+
   it("enabling a disabled module applies immediately without confirmation", async () => {
     apiGet.mockImplementation((endpoint: string) => {
       if (endpoint === "/api/v1/settings") {

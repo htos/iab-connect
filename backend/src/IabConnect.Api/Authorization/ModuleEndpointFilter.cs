@@ -29,8 +29,29 @@ public sealed class ModuleEnabledEndpointFilter : IEndpointFilter
         var moduleSettings = context.HttpContext.RequestServices
             .GetRequiredService<IModuleSettingsService>();
 
-        if (!await moduleSettings.IsEnabledAsync(
-                _moduleKey, context.HttpContext.RequestAborted))
+        bool enabled;
+        try
+        {
+            enabled = await moduleSettings.IsEnabledAsync(
+                _moduleKey, context.HttpContext.RequestAborted);
+        }
+        catch (Exception ex)
+        {
+            // REQ-087 (E10-S5 review patch): fail-open on a module-service failure — treat
+            // the module as enabled, matching the frontend middleware's degrade-to-enabled
+            // behaviour. An unguarded throw here would 500 the entire public surface; a
+            // clean 200/403 outcome must never hinge on the cache/DB being reachable. The
+            // authenticated ModuleAuthorizationHandler (E10-S3) remains the real control.
+            var logger = context.HttpContext.RequestServices
+                .GetRequiredService<ILogger<ModuleEnabledEndpointFilter>>();
+            logger.LogError(
+                ex,
+                "Module check for '{ModuleKey}' failed; failing open (treating as enabled).",
+                _moduleKey);
+            enabled = true;
+        }
+
+        if (!enabled)
         {
             return Results.StatusCode(StatusCodes.Status403Forbidden);
         }

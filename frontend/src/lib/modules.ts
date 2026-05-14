@@ -39,6 +39,27 @@ export const MODULE_ROUTE_PREFIXES: Record<GatedModuleKey, string[]> = {
 };
 
 /**
+ * REQ-087 (E10-S4 review patch): defensively coerce an untrusted `modules` field from the
+ * public-settings response into a clean `Record<string, boolean>`. A malformed payload
+ * (an array, a string, or string-valued booleans like `"true"`) would otherwise make every
+ * `modules[key] === false` check falsey-but-not-`false` — silently disabling all frontend
+ * gating with no error. Only strict-boolean entries survive; anything else is dropped, and
+ * an absent key is treated as enabled by callers (behaviour-preserving).
+ */
+export function sanitizeModuleMap(raw: unknown): Record<string, boolean> {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    return {};
+  }
+  const result: Record<string, boolean> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof value === "boolean") {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
+/**
  * Resolve a request pathname to the module that owns it, or `null` if the path is not
  * module-gated. Longest matching prefix wins, so `/admin/documents` resolves to
  * `documents` rather than leaking into the never-gated rest of `/admin`.

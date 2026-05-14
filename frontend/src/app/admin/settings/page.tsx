@@ -254,8 +254,11 @@ export default function SettingsPage() {
   }, []);
 
   // --- Load module settings (REQ-087 E10-S2) ---
+  // No synchronous setModulesLoading(true) here: `modulesLoading` starts true (initial
+  // mount spinner) and this loader is also called from the mount effect — a sync setState
+  // in an effect body is a cascading-render anti-pattern. Refresh-after-save updates the
+  // rows in place without flashing the full-card spinner.
   const loadModules = useCallback(async () => {
-    setModulesLoading(true);
     const { data, error } = await apiRef.current.get<ModuleSetting[]>(
       "/api/v1/module-settings"
     );
@@ -300,21 +303,11 @@ export default function SettingsPage() {
           }
           setRolesLoading(false);
         });
-      apiRef.current
-        .get<ModuleSetting[]>("/api/v1/module-settings")
-        .then(({ data, error }) => {
-          if (error) {
-            setModulesMessage({
-              type: "error",
-              text: tRef.current("modulesLoadError"),
-            });
-          } else if (data) {
-            setModules(data);
-          }
-          setModulesLoading(false);
-        });
+      // REQ-087 (E10-S2 review patch): call the shared loader instead of an inline
+      // duplicate fetch — one GET per mount, no drift between two copies of the logic.
+      void loadModules();
     }
-  }, [isAuthenticated, isAdmin]);
+  }, [isAuthenticated, isAdmin, loadModules]);
 
   // --- Stage a logo file (REQ-086 E9-S1) ---
   const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -504,13 +497,16 @@ export default function SettingsPage() {
       { enabled }
     );
     if (error) {
+      // REQ-087 (E10-S2 review patch): keep the confirmation modal open on a failed
+      // save so the error is shown where the user is acting, not behind the modal.
       setModulesMessage({ type: "error", text: t("moduleSaveError") });
-    } else {
-      setModulesMessage({ type: "success", text: t("moduleSaveSuccess") });
-      await loadModules();
-      // Sidebar/widgets read module state from AppSettingsProvider — refresh it.
-      refreshAppSettings();
+      setModuleSavingKey(null);
+      return;
     }
+    setModulesMessage({ type: "success", text: t("moduleSaveSuccess") });
+    await loadModules();
+    // Sidebar/widgets read module state from AppSettingsProvider — refresh it.
+    refreshAppSettings();
     setModuleSavingKey(null);
     setModuleConfirmKey(null);
   };
@@ -1197,8 +1193,10 @@ export default function SettingsPage() {
               <p className="mt-1 text-sm text-gray-600">{t("modulesIntro")}</p>
             </div>
 
-            {/* Self-lockout note (AC-6): Admin + this tab can never be disabled. */}
-            <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+            {/* Self-lockout note (AC-6): Admin + this tab can never be disabled.
+                REQ-087 (E10-S2 review patch): neutral orange info styling — no blue in
+                authenticated UI (project-context). */}
+            <div className="mb-6 rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm text-orange-900">
               {t("moduleAdminNote")}
             </div>
 
@@ -1302,6 +1300,13 @@ export default function SettingsPage() {
                       .map((dep) => t(`modules.${dep}.name`))
                       .join(", "),
                   })}
+                </p>
+              )}
+              {/* REQ-087 (E10-S2 review patch): a failed save keeps the modal open and
+                  surfaces the error here, where the user is acting. */}
+              {modulesMessage?.type === "error" && (
+                <p className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+                  {modulesMessage.text}
                 </p>
               )}
               <div className="mt-6 flex justify-end gap-2">

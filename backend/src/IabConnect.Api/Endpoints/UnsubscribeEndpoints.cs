@@ -1,3 +1,4 @@
+using IabConnect.Api.Authorization;
 using IabConnect.Application.Communication;
 using IabConnect.Domain.Communication;
 using IabConnect.Domain.Members;
@@ -19,7 +20,11 @@ public static class UnsubscribeEndpoints
             .AllowAnonymous();
 
         // Subscribe
+        // REQ-087 (E10-S5 review patch): newsletter signup is a public-site feature - gate
+        // it behind public_view so signups are not accepted while the public site is off.
+        // The unsubscribe endpoints below stay exempt (Q1): transactional compliance flow.
         group.MapPost("/subscribe", Subscribe)
+            .RequireModule("public_view")
             .WithName("NewsletterSubscribe")
             .WithDescription("REQ-029: Public newsletter subscribe");
 
