@@ -34,6 +34,10 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
                 ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=test;Username=test;Password=test",
                 ["Keycloak:Authority"] = "http://localhost:8080/realms/test",
                 ["Keycloak:ClientId"] = "test-client",
+                // REQ-025 (E3.S5): calendar-feed handlers call ResolveBaseUrl which throws when
+                // App:PublicBaseUrl is unset — provide a value so feed endpoints return 200/404
+                // rather than a 500 in runtime endpoint tests.
+                ["App:PublicBaseUrl"] = "https://test.iab-connect.example",
             });
         });
 
