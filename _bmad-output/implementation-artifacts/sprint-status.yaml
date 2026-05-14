@@ -43,7 +43,7 @@
 # - The development_status block is ordered by EXECUTION PRIORITY, not epic number.
 
 generated: "2026-05-12"
-last_updated: "2026-05-14 (bmad-dev-story: e10-s2 in-progress -> review. Module-settings MediatR query/command/validator, admin-only ModuleSettingsEndpoints, modules map on public settings (ADR-008), Modules admin tab + i18n; backend 1898/1898, frontend 59/59, typecheck green. Hybrid workflow: epic-scope review after all E10 stories reach 'review'. NEXT: bmad-dev-story for e10-s3.)"
+last_updated: "2026-05-14 (bmad-code-review: epic-boundary review over the full E10 diff (7a07d7c..working tree, 96 files) complete. 3 adversarial layers (Blind Hunter / Edge Case Hunter / Acceptance Auditor). Result: 4 decision-needed (all resolved by user -> 3 patch, 1 dismissed), 13 patch, 4 defer, 13 dismissed. User chose 'leave as action items' -> all 5 E10 stories review -> in-progress; 13 [Review][Patch] items written to the per-story Review Findings sections, 4 [Review][Defer] items in deferred-work.md. Notable patches: my-registrations + check-in/{qrCodeToken} escape Module:events gating (EventRegistrationEndpoints.cs:184,196); ModuleAuthorizationHandler audit write unguarded (500 instead of 403); hasAuthSession misses next-auth chunked/__Host-/authjs cookie variants -> dashboard lockout; ModuleEnabledEndpointFilter no try/catch -> public surface 500s. NEXT: bmad-dev-story to apply the 13 patches across e10-s1..s5, then return to bmad-code-review for re-review.)"
 # --- history ---------------------------------------------------------------
 # 2026-05-13: Epic-Close-Gate after clearing all 11 [Review][Patch] findings per
 # sprint-change-proposal-2026-05-13.md. E1.S1-S4 flipped review -> done.
@@ -68,8 +68,12 @@ last_updated: "2026-05-14 (bmad-dev-story: e10-s2 in-progress -> review. Module-
 # 2026-05-14 (readiness): bmad-check-implementation-readiness re-run against the
 # re-aligned artifacts -> READY (0 critical, 0 major, 9 minor). Report:
 # planning-artifacts/implementation-readiness-report-2026-05-14.md.
-# 2026-05-14 (sprint re-planning): this run. E9/E10 placeholder keys replaced with
+# 2026-05-14 (sprint re-planning): E9/E10 placeholder keys replaced with
 # canonical keys from the epic file; block reordered to execution priority.
+# 2026-05-14 (bmad-code-review): epic-boundary review over the full E10 diff.
+# 4 decision-needed (resolved -> 3 patch + 1 dismissed), 13 patch, 4 defer,
+# 13 dismissed. User left patches as action items -> e10-s1..s5 review ->
+# in-progress. Findings in per-story Review Findings sections + deferred-work.md.
 # ---------------------------------------------------------------------------
 project: iab-connect
 project_key: NOKEY
@@ -120,11 +124,11 @@ development_status:
   epic-9-retrospective: done
 
   epic-10: in-progress
-  e10-s1-add-module-settings-data-model-and-service: review
-  e10-s2-add-module-settings-api-and-modules-admin-tab: review
-  e10-s3-add-backend-module-enforcement: ready-for-dev
-  e10-s4-add-frontend-module-enforcement: ready-for-dev
-  e10-s5-add-public-view-toggle-and-cross-module-dependency-handling: ready-for-dev
+  e10-s1-add-module-settings-data-model-and-service: in-progress
+  e10-s2-add-module-settings-api-and-modules-admin-tab: in-progress
+  e10-s3-add-backend-module-enforcement: in-progress
+  e10-s4-add-frontend-module-enforcement: in-progress
+  e10-s5-add-public-view-toggle-and-cross-module-dependency-handling: in-progress
   epic-10-retrospective: optional
 
   # === DEFERRED backlog — resumes after E9/E10 ship ========================

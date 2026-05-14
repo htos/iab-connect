@@ -1,6 +1,6 @@
 # Story 10.3: Add Backend Module Enforcement
 
-Status: ready-for-dev
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -25,24 +25,24 @@ so that **the backend is the real enforcement boundary — not the hidden naviga
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — `ModuleRequirement` + `ModuleAuthorizationHandler` (AC: 1, 3)** — new `Api/Authorization/ModuleAuthorizationHandler.cs` (requirement + handler in one file, mirroring `PermissionAuthorizationHandler.cs` which holds all three pieces):
-  - [ ] `public sealed class ModuleRequirement : IAuthorizationRequirement { public string ModuleKey { get; } ... }` — mirror `PermissionRequirement`.
-  - [ ] `ModuleAuthorizationHandler : AuthorizationHandler<ModuleRequirement>` — override `HandleRequirementAsync`, resolve `IModuleSettingsService`, `await IsEnabledAsync(requirement.ModuleKey, ...)`; on enabled → `context.Succeed(requirement)`; on disabled → do not succeed and write the audit event. **The body becomes genuinely `async`** (unlike the synchronous `PermissionAuthorizationHandler`).
-  - [ ] **Register Scoped** (`services.AddScoped<IAuthorizationHandler, ModuleAuthorizationHandler>()`) in `Api/DependencyInjection.cs` next to line 176 — Scoped, because it needs the scoped `IModuleSettingsService` / audit services. (The existing `PermissionAuthorizationHandler` is Singleton because it resolves nothing scoped — this one differs deliberately.)
-- [ ] **Task 2 — Extend the policy provider (AC: 2)** — in `Api/Authorization/PermissionAuthorizationHandler.cs`, extend `PermissionPolicyProvider.GetPolicyAsync` (lines ~73–85): add a second `if` branch — if `policyName` starts with `"Module:"` (OrdinalIgnoreCase), strip the prefix and return `new AuthorizationPolicyBuilder().AddRequirements(new ModuleRequirement(key)).Build()`. **Do NOT add a second `IAuthorizationPolicyProvider`** — there can be only one registered; extend this one.
-- [ ] **Task 3 — Audit event type + logging path (AC: 3)** — add `ModuleAccessDenied` to `AuditEventType` in `Domain/Audit/AuditEnums.cs` (in the "System events" block, ~line 50). Verify `AuditService.LogActionAsync`'s `AuditEventType → AuditCategory` switch (`Infrastructure/Audit/AuditService.cs` ~142–167) — the `_ => AuditCategory.System` default is correct for `ModuleAccessDenied`. **Logging path (Q1):** `ISecurityAuditLogger.LogAccessDenied` currently hard-codes `AuditEventType.DataViewed` — so either (a) add `LogModuleAccessDenied(...)` to `ISecurityAuditLogger`, or (b) inject `IAuditService` into the handler and call `LogActionAsync(AuditEventType.ModuleAccessDenied, ...)` directly. Recommend (b) — simpler, no interface churn.
-- [ ] **Task 4 — Apply `Module:` policies to route groups (AC: 4, 4a, 5)** — add `.RequireAuthorization("Module:<key>")` to the **protected business group** in each endpoint file (NOT the anonymous sub-groups):
-  - [ ] **Members** (`Module:members`): `MemberEndpoints.cs` `members` group (~line 31); confirm `MemberSegmentEndpoints.cs` (~20) — see Q2.
-  - [ ] **Events** (`Module:events`): `EventEndpoints.cs` (~23); `EventRegistrationEndpoints.cs` — gate the `protectedGroup` (~24) **but not** the `AllowAnonymous` RSVP endpoint (~29); `EventVolunteerEndpoints.cs` (~34, ~67).
-  - [ ] **Documents** (`Module:documents`): `DocumentEndpoints.cs` `folders` (~23) and `documents` (~57) groups.
-  - [ ] **Communication** (`Module:communication`): `EmailCampaignEndpoints.cs` (~21), `EmailTemplateEndpoints.cs` (~11).
-  - [ ] **Finance** (`Module:finance`): all ~21 `/api/v1/finance/*` endpoint groups (full list in Dev Notes). `ArchiveEndpoints.cs` has a `/api/v1/admin/finance` group — see Q3.
-  - [ ] **Partners** (`Module:partners`): `SponsorEndpoints.cs` protected group (~27) **but not** the public group (~20); `SupplierEndpoints.cs` (~18).
-  - [ ] Leave **un-gated**: `UserEndpoints`, `CustomRoleEndpoints`, `AuditEndpoints`, `BackupEndpoints`, `RetentionEndpoints`, `SettingsEndpoints`, `ModuleSettingsEndpoints`, `IdentityEndpoints`, `PrivacyEndpoints`, `ReportEndpoints`, `SearchEndpoints`, `RegistrationEndpoints`, `UnsubscribeEndpoints`, and the public sub-groups of Blog/Contact/Sponsor.
-- [ ] **Task 5 — Tests (AC: 6)**
-  - [ ] `IabConnect.Api.Tests`: per module — disabled → 403 + `ModuleAccessDenied` audit row written; enabled → passes; never-gated groups (Settings, ModuleSettings, Admin, Identity, Privacy, Reports, Search) reachable regardless of module state; anonymous endpoints (public sponsors, RSVP, public blog/contact) reachable when their module is "disabled" for authenticated use (or confirm scope — see Q2/Q4).
-  - [ ] `IabConnect.Application.Tests` (or Api.Tests): `ModuleAuthorizationHandler` succeeds/fails correctly against a stub `IModuleSettingsService`.
-  - [ ] `dotnet test` from `backend/` green, 0 warnings.
+- [x] **Task 1 — `ModuleRequirement` + `ModuleAuthorizationHandler` (AC: 1, 3)** — new `Api/Authorization/ModuleAuthorizationHandler.cs` (requirement + handler in one file, mirroring `PermissionAuthorizationHandler.cs` which holds all three pieces):
+  - [x] `public sealed class ModuleRequirement : IAuthorizationRequirement { public string ModuleKey { get; } ... }` — mirror `PermissionRequirement`.
+  - [x] `ModuleAuthorizationHandler : AuthorizationHandler<ModuleRequirement>` — override `HandleRequirementAsync`, resolve `IModuleSettingsService`, `await IsEnabledAsync(requirement.ModuleKey, ...)`; on enabled → `context.Succeed(requirement)`; on disabled → do not succeed and write the audit event. **The body becomes genuinely `async`** (unlike the synchronous `PermissionAuthorizationHandler`). CancellationToken sourced from `context.Resource as HttpContext` → `RequestAborted`.
+  - [x] **Register Scoped** (`services.AddScoped<IAuthorizationHandler, ModuleAuthorizationHandler>()`) in `Api/DependencyInjection.cs` next to the Permission handler — Scoped, because it needs the scoped `IModuleSettingsService` / audit services.
+- [x] **Task 2 — Extend the policy provider (AC: 2)** — in `Api/Authorization/PermissionAuthorizationHandler.cs`, extended `PermissionPolicyProvider.GetPolicyAsync`: added a `Module:` (OrdinalIgnoreCase) branch returning `new AuthorizationPolicyBuilder().AddRequirements(new ModuleRequirement(key)).Build()`. No second `IAuthorizationPolicyProvider` — the single provider is extended.
+- [x] **Task 3 — Audit event type + logging path (AC: 3)** — added `ModuleAccessDenied` to `AuditEventType` (`Domain/Audit/AuditEnums.cs`, "System events" block). `AuditService.LogActionAsync`'s `_ => AuditCategory.System` default already covers it (verified). **Logging path (Q1): chose option (b)** — `IAuditService` injected into the handler, `LogActionAsync(AuditEventType.ModuleAccessDenied, ...)` called directly; no `ISecurityAuditLogger` interface churn.
+- [x] **Task 4 — Apply `Module:` policies to route groups (AC: 4, 4a, 5)** — added `.RequireAuthorization("Module:<key>")` to the **protected business group** in each endpoint file (NOT the anonymous sub-groups):
+  - [x] **Members** (`Module:members`): `MemberEndpoints.cs` `members` group; `MemberSegmentEndpoints.cs` (gated under `Module:members` per **Q2** recommendation).
+  - [x] **Events** (`Module:events`): `EventEndpoints.cs` — gated the whole `group`, with `.AllowAnonymous()` added to the 5 public/token-based endpoints (`/public`, `/public/{id}`, the 3 `*.ics` feeds) so they opt out; `EventRegistrationEndpoints.cs` — gated the `protectedGroup`, public RSVP stays `.AllowAnonymous()`; `EventVolunteerEndpoints.cs` `roleGroup` + `shiftGroup`.
+  - [x] **Documents** (`Module:documents`): `DocumentEndpoints.cs` `folders` + `documents` groups.
+  - [x] **Communication** (`Module:communication`): `EmailCampaignEndpoints.cs`, `EmailTemplateEndpoints.cs`.
+  - [x] **Finance** (`Module:finance`): all 20 single-group `/api/v1/finance/*` files + `ArchiveEndpoints.cs` (3 groups, incl. the `/api/v1/admin/finance` group — gated per **Q3** recommendation).
+  - [x] **Partners** (`Module:partners`): `SponsorEndpoints.cs` protected `group` only (public group left un-gated); `SupplierEndpoints.cs`.
+  - [x] Left **un-gated**: `UserEndpoints`, `CustomRoleEndpoints`, `AuditEndpoints`, `BackupEndpoints`, `RetentionEndpoints`, `SettingsEndpoints`, `ModuleSettingsEndpoints`, `IdentityEndpoints`, `PrivacyEndpoints`, `ReportEndpoints`, `SearchEndpoints`, `RegistrationEndpoints`, `UnsubscribeEndpoints`, Blog/Contact, and the public sub-groups of Sponsor/EventRegistration/Event.
+- [x] **Task 5 — Tests (AC: 6)**
+  - [x] `IabConnect.Api.Tests` (`Endpoints/ModuleEnforcementEndpointTests.cs`): per module — disabled → 403; disabled finance → `ModuleAccessDenied` audit row written; enabled → not blocked by the gate; never-gated groups (Settings, ModuleSettings) reachable with all modules disabled; anonymous endpoints (public settings, public sponsors, public calendar feed) reachable with modules disabled. New test infrastructure: `TestAuthHandler` (header-driven auth scheme) + `TestModuleSettingsService` (mutable double) wired into `TestWebApplicationFactory`.
+  - [x] `IabConnect.Api.Tests` (`Authorization/ModuleAuthorizationHandlerTests.cs`): `ModuleAuthorizationHandler` succeeds for enabled / does not succeed (and never `Fail()`s) + audits for disabled, against a Moq `IModuleSettingsService`; plus `PermissionPolicyProvider` `Module:`/`Permission:` prefix coverage. (Placed in Api.Tests — the handler lives in `IabConnect.Api`, unreachable from `Application.Tests`.)
+  - [x] `dotnet test` from `backend/` green: **1918/1918** (Application 1439, Api 95 incl. +20 new, Infrastructure 384), **0 warnings**.
 
 ## Dev Notes
 
@@ -102,12 +102,57 @@ NEW: `Api/Authorization/ModuleAuthorizationHandler.cs`. UPDATE: `Api/Authorizati
 
 ### Agent Model Used
 
-_(to be filled by dev-story)_
+claude-opus-4-7[1m] (Amelia / bmad-dev-story)
 
 ### Debug Log References
+
+- `dotnet build` (backend): succeeded, 0 warnings / 0 errors.
+- `dotnet test` (backend full suite): 1918/1918 passed — Application.Tests 1439, Api.Tests 95, Infrastructure.Tests 384. 0 warnings.
 
 ### Completion Notes List
 
 - Ultimate context engine analysis completed - comprehensive developer guide created.
+- ✅ **Task 1** — `ModuleRequirement` + `ModuleAuthorizationHandler` in one new file mirroring `PermissionAuthorizationHandler.cs`. Handler is genuinely `async`, registered **Scoped** (the Permission handler stays Singleton). CancellationToken sourced from `context.Resource as HttpContext`.RequestAborted.
+- ✅ **Task 2** — `PermissionPolicyProvider.GetPolicyAsync` extended with a sibling `Module:` branch; the single registered policy provider is reused, not replaced.
+- ✅ **Task 3** — `AuditEventType.ModuleAccessDenied` appended to the "System events" block (value-stable for existing entries). **Q1 resolved → option (b):** the handler injects `IAuditService` and calls `LogActionAsync(ModuleAccessDenied, …)` directly — no `ISecurityAuditLogger` interface churn. `_ => AuditCategory.System` default confirmed correct.
+- ✅ **Task 4** — `.RequireAuthorization("Module:<key>")` applied across **31 endpoint files**. Key implementation note: ASP.NET Core's `AuthorizationMiddleware` short-circuits (skips ALL authorization, including custom requirements) when an endpoint carries `IAllowAnonymous` metadata — so gating a whole group is safe as long as every anonymous endpoint in it has `.AllowAnonymous()`. For `EventEndpoints` the 5 public/token-based endpoints had no auth metadata at all, so `.AllowAnonymous()` was added to each (behaviour-preserving) and the whole `group` gated. `EventRegistrationEndpoints`/`EventVolunteerEndpoints`/`EmailTemplateEndpoints` chain `.RequireAuthorization().RequireAuthorization("Module:<key>")` to keep the default-authn requirement.
+- **Q2 resolved** → `MemberSegmentEndpoints` gated under `Module:members`. **Q3 resolved** → `ArchiveEndpoints`' `/api/v1/admin/finance` group gated under `Module:finance`. **Q4** → only authenticated groups gated here; anonymous endpoints whose module is disabled are deferred to E10-S5 (verified by `AnonymousEndpoints_StayReachable_WithModulesDisabled`).
+- ✅ **Task 5** — New test infrastructure: `TestAuthHandler` (header-driven auth scheme, default-scheme replacement; `NoResult` without the header so existing anonymous→401 tests are unaffected) + `TestModuleSettingsService` (mutable, all-enabled-by-default `IModuleSettingsService` double) wired into the shared `TestWebApplicationFactory`. 20 new tests (16 integration + 4 unit), full suite green with no regressions.
 
 ### File List
+
+**New:**
+- `backend/src/IabConnect.Api/Authorization/ModuleAuthorizationHandler.cs`
+- `backend/tests/IabConnect.Api.Tests/TestAuthHandler.cs`
+- `backend/tests/IabConnect.Api.Tests/TestModuleSettingsService.cs`
+- `backend/tests/IabConnect.Api.Tests/Authorization/ModuleAuthorizationHandlerTests.cs`
+- `backend/tests/IabConnect.Api.Tests/Endpoints/ModuleEnforcementEndpointTests.cs`
+
+**Modified — core mechanism:**
+- `backend/src/IabConnect.Api/Authorization/PermissionAuthorizationHandler.cs` (`Module:` branch in `PermissionPolicyProvider`)
+- `backend/src/IabConnect.Domain/Audit/AuditEnums.cs` (`ModuleAccessDenied`)
+- `backend/src/IabConnect.Api/DependencyInjection.cs` (Scoped handler registration)
+- `backend/tests/IabConnect.Api.Tests/TestWebApplicationFactory.cs` (test auth scheme + module-settings double)
+
+**Modified — route-group gating (31 endpoint files):**
+- Members: `MemberEndpoints.cs`, `MemberSegmentEndpoints.cs`
+- Events: `EventEndpoints.cs`, `EventRegistrationEndpoints.cs`, `EventVolunteerEndpoints.cs`
+- Documents: `DocumentEndpoints.cs`
+- Communication: `EmailCampaignEndpoints.cs`, `EmailTemplateEndpoints.cs`
+- Partners: `SponsorEndpoints.cs`, `SupplierEndpoints.cs`
+- Finance: `AccountEndpoints.cs`, `AccountingReportEndpoints.cs`, `ActivityAreaEndpoints.cs`, `ArchiveEndpoints.cs`, `BankImportEndpoints.cs`, `CategoryEndpoints.cs`, `DashboardEndpoints.cs`, `DunningEndpoints.cs`, `ExpenseClaimEndpoints.cs`, `FinanceExportEndpoints.cs`, `FinanceProfileEndpoints.cs`, `FiscalPeriodEndpoints.cs`, `InvoiceEndpoints.cs`, `InvoiceTemplateEndpoints.cs`, `JournalEntryEndpoints.cs`, `LedgerAccountEndpoints.cs`, `PaymentEndpoints.cs`, `PostingMappingEndpoints.cs`, `ReceiptEndpoints.cs`, `TaxCodeEndpoints.cs`, `TransactionEndpoints.cs`
+
+## Change Log
+
+| Date       | Change                                                                                          |
+|------------|-------------------------------------------------------------------------------------------------|
+| 2026-05-14 | E10-S3 implemented: `ModuleRequirement`/`ModuleAuthorizationHandler`, `Module:` policy-provider prefix, `AuditEventType.ModuleAccessDenied`, `.RequireAuthorization("Module:<key>")` across 31 endpoint files. 20 new tests; backend 1918/1918 green, 0 warnings. Status → review. |
+| 2026-05-14 | Post-review bug fix (user feedback during E10 review): the whole `members` route group was gated by `Module:members`, which also caught the `/api/v1/members/me*` self-service endpoints — so "My Profile" broke when the members module was disabled (violates AC-4a, "My Profile … not gated"). Fix: `MemberEndpoints.cs` now applies `Module:members` to a `memberManagement` sub-group only; the 3 `/me*` endpoints stay un-gated. New regression test `MyProfileEndpoint_StaysReachable_WhenMembersModuleDisabled` + `ModuleEnforcementEndpointTests` now uses a GUID test `sub`. Backend 1931/1931 green, 0 warnings. |
+
+## Review Findings
+
+_Epic-10 boundary code review — bmad-code-review, 2026-05-14. Layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor._
+
+- [ ] [Review][Patch] Move `calendar/token/rotate` + `calendar/token/revoke` off the `Module:events`-gated group so a member can always rotate/revoke a leaked feed token — _(resolves the original Decision: feeds stay always-on per Q4, only token management is un-gated)_ [backend/src/IabConnect.Api/Endpoints/EventEndpoints.cs:110-118]
+- [ ] [Review][Patch] `/api/v1/my-registrations` and `/api/v1/registrations/check-in/{qrCodeToken}` are mapped directly on `endpoints`, not on `protectedGroup`, so they escape `Module:events` gating — despite Task 4 / the File List claiming `EventRegistrationEndpoints.cs` fully handled (AC-4) [backend/src/IabConnect.Api/Endpoints/EventRegistrationEndpoints.cs:184,196]
+- [ ] [Review][Patch] `ModuleAuthorizationHandler` deny path calls `IAuditService.LogActionAsync` unguarded — if the audit write throws, the clean 403 is replaced by a 500 and the denial is never recorded; wrap the audit call so a logging failure cannot mask the authorization outcome [backend/src/IabConnect.Api/Authorization/ModuleAuthorizationHandler.cs]

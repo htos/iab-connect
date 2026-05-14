@@ -1,6 +1,6 @@
 # Story 10.5: Add Public View Toggle and Cross-Module Dependency Handling
 
-Status: ready-for-dev
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -25,19 +25,19 @@ so that **disabling a module does not break dependent functionality or expose da
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — Public View middleware rewrite (AC: 1, 2)** — extend `frontend/src/middleware.ts` (created in E10-S4):
-  - [ ] When `modules.public_view === false`, rewrite `/public/*` **and** `/` to the neutral page. ⚠️ `/` is dual-purpose (unauthenticated landing AND authenticated dashboard) — rewrite `/` to the neutral page **only for unauthenticated requests**, or let the neutral page itself handle the authed case (recommend: gate `/` rewrite on absence of an auth session cookie).
-  - [ ] ⚠️ Confirm whether `/public/unsubscribe/*` is exempt (it's a transactional email-unsubscribe flow — see Q1).
-- [ ] **Task 2 — Neutral "site not public" page (AC: 2)** — new page (e.g. `frontend/src/app/site-unavailable/page.tsx` — a path NOT under `/public` so the rewrite target isn't itself rewritten; add it to `MainLayout`'s full-page-layout list or give it its own minimal layout). Centered: org logo + name from `GET /api/v1/settings/public`; one short neutral sentence; a discreet "Member login" link (a link, not a forced redirect). On settings-fetch failure → plain unbranded message, never errors. All text via next-intl keys. Single clear heading, readable body, keyboard-focusable login link, no reliance on imagery.
-- [ ] **Task 3 — Backend public-endpoint gating (AC: 3)** — when `public_view` is disabled, gate the anonymous/public backend endpoints (public event/sponsor/blog feeds, public contact, etc. — the `AllowAnonymous` groups E10-S3 deliberately left un-gated). **`GET /api/v1/settings/public` must stay reachable.** Mechanism: a `Module:public_view` policy on the public groups, or an equivalent check — but it must allow the settings/public endpoint through. Decide and document the exact mechanism (see Q2).
-- [ ] **Task 4 — Events ↔ Finance dependency (AC: 4)** — implement the decided behavior (see Q3 — recommend: **warn on the toggle + degrade gracefully**, don't hard-block). If Finance is disabled while Events is enabled: paid-event registration paths must degrade safely (e.g. paid events become unavailable for new registration / show a clear "registration temporarily unavailable" state) without breaking free-event registration or leaving partial finance records. Surface the dependency warning in the E10-S2 Modules tab (the advisory warning) and enforce the degraded behavior in the relevant Events/Finance code paths.
-- [ ] **Task 5 — Hangfire job behavior (AC: 5)** — audit the recurring/background jobs (dunning emails, automation sends, retention, etc.) and ensure jobs belonging to a disabled module skip/no-op cleanly (check `IModuleSettingsService.IsEnabledAsync` at job entry, log a skip). A disabled Communication or Finance module must not cause job exceptions or send messages.
-- [ ] **Task 6 — E2E + tests (AC: 6, 7)**
-  - [ ] E2E (Playwright): for each of the 7 modules — disable it, assert nav hidden + direct URL rewritten + backend 403 (or public rewrite for `public_view`); re-enable, assert restored.
-  - [ ] E2E/integration: Public-View-disabled → `/public/*` and `/` show the neutral page; the neutral page renders branding; settings-fetch-failure → unbranded fallback.
-  - [ ] Tests for the Events↔Finance degraded behavior (paid registration when Finance is off).
-  - [ ] Backend tests: public endpoints gated when `public_view` off; `GET /api/v1/settings/public` still reachable.
-  - [ ] All quality gates green.
+- [x] **Task 1 — Public View middleware rewrite (AC: 1, 2)** — extended `frontend/src/middleware.ts`:
+  - [x] When `modules.public_view === false`, `/public/*` and the **unauthenticated** landing `/` are `NextResponse.rewrite`-d to `/site-unavailable`. `/` is gated on the absence of a next-auth session cookie (`next-auth.session-token` / `__Secure-` variant) so an authenticated user still gets their dashboard. Matcher extended with `/` and `/public/:path*`.
+  - [x] **Q1 resolved → exempt:** `/public/unsubscribe/*` is left reachable even when `public_view` is off (transactional email-unsubscribe is a compliance flow).
+- [x] **Task 2 — Neutral "site not public" page (AC: 2)** — new `frontend/src/app/site-unavailable/page.tsx`: standalone minimal layout (added `/site-unavailable` to `MainLayout`'s `isFullPageLayout` list — no authenticated shell, no public header/footer). Centered org logo + name from a self-contained `GET /api/v1/settings/public` fetch; one neutral sentence; a discreet focusable "Member login" link. On fetch failure → `branding` stays `null` → plain unbranded message; errors are swallowed, the page never throws. All text via next-intl `siteUnavailable.*` keys.
+- [x] **Task 3 — Backend public-endpoint gating (AC: 3)** — **Q2 resolved:** new `ModuleEnabledEndpointFilter` (`IEndpointFilter`) + `.RequireModule(key)` extension — the `Module:` *policy* from E10-S3 cannot reach `AllowAnonymous` endpoints (auth middleware short-circuits on `IAllowAnonymous`), so an endpoint filter is the correct mechanism. Applied `.RequireModule("public_view")` to the Blog public group, Contact public group, Sponsor public group, and the two public Event endpoints + the public RSVP endpoint. **`GET /api/v1/settings/public` is deliberately NOT gated** (verified by test). `UnsubscribeEndpoints` left exempt (Q1). Calendar feeds left always-on (**Q4 resolved** — opaque-token subscription URLs; gating them would break already-distributed feeds and they expose no more than the events module itself).
+- [x] **Task 4 — Events ↔ Finance dependency (AC: 4)** — **Q3 resolved → warn + degrade, no hard-block.** The advisory warning is already rendered in the E10-S2 Modules tab (`MODULE_DEPENDENCY_WARNINGS = { finance: ["events"], events: ["finance"] }` → `enabledDependents()` → `moduleDependencyWarning` i18n). The structural backend guard is E10-S3's `Module:finance` enforcement: any future paid-event flow (Epic E4, currently deferred backlog — no paid-registration code exists today) that calls a finance endpoint while Finance is disabled gets a clean 403 instead of creating partial finance records; free-event registration touches no finance endpoint and is unaffected.
+- [x] **Task 5 — Hangfire job behavior (AC: 5)** — `MarkInvoicesOverdueJob` + `DunningScheduleGenerationJob` skip cleanly (log + return) when `finance` is disabled; `VolunteerShiftReminderJob` skips when `events` is disabled — each checks `IModuleSettingsService.IsEnabledAsync` at job entry. `RetentionEnforcementJob` is cross-cutting/admin (not a module) → left always-on. No automation/communication jobs exist yet (Epic E5 deferred).
+- [x] **Task 6 — E2E + tests (AC: 6, 7)**
+  - [x] E2E (Playwright): new `frontend/playwright.config.ts` + `frontend/e2e/module-enforcement.spec.ts` — data-driven over the 6 app modules (disable → nav hidden + direct URL rewritten; re-enable → restored), the `public_view` neutral-page rewrite, and the Events↔Finance advisory. The suite `test.skip()`s itself when `E2E_ADMIN_PASSWORD` is unset, so `npx playwright test` is a clean no-op without the full local stack and runs for real with it (see Debug Log).
+  - [x] Neutral-page coverage: `site-unavailable/page.test.tsx` (Vitest/jsdom) — renders + focused login link, branded on fetch success, **unbranded fallback on fetch failure (never errors)**.
+  - [x] Events↔Finance: covered by the advisory-warning E2E assertion + the E10-S3 `Module:finance` backend-enforcement tests (the structural guard).
+  - [x] Backend tests: `ModulePublicViewEndpointTests` — public endpoints 403 when `public_view` off, reachable when on, **`GET /api/v1/settings/public` always reachable**; `ModuleGuardedJobTests` — jobs skip/run by module state.
+  - [x] Quality gates: `dotnet test` 1930/1930 green, 0 warnings; `npm run typecheck` green; changed files lint-clean + Prettier-formatted; Vitest 78/78. (Pre-existing repo-wide lint/format debt in untouched files is unchanged — out of scope.)
 
 ## Dev Notes
 
@@ -104,12 +104,64 @@ NEW: the neutral "site unavailable" page (+ possibly a minimal layout for it). U
 
 ### Agent Model Used
 
-_(to be filled by dev-story)_
+claude-opus-4-7[1m] (Amelia / bmad-dev-story)
 
 ### Debug Log References
+
+- `dotnet build` (backend): succeeded, 0 warnings / 0 errors.
+- `dotnet test` (backend full suite): **1930/1930** — Application.Tests 1439, Api.Tests 102 (+7 `ModulePublicViewEndpointTests`), Infrastructure.Tests 389 (+5 `ModuleGuardedJobTests`). 0 warnings.
+- `npm run typecheck` (frontend): green.
+- `npm run lint` (frontend): changed files clean; repo-wide run still reports the same 2 pre-existing errors in untouched files.
+- Frontend Vitest (full suite): **78/78** passed, 15 files — incl. the new `site-unavailable/page.test.tsx` (3) and the extended `middleware.test.ts` (8).
+- Playwright E2E (`frontend/e2e/module-enforcement.spec.ts`): **authored, not executed in this environment** — the suite needs the full local stack (Docker: PostgreSQL + Keycloak + RustFS, the backend, the frontend) plus a seeded Keycloak admin. It `test.skip()`s itself when `E2E_ADMIN_PASSWORD` is unset, so `npx playwright test` is a clean no-op here; the CI-runnable proof of the same behaviour is the backend + Vitest suites above.
 
 ### Completion Notes List
 
 - Ultimate context engine analysis completed - comprehensive developer guide created.
+- ✅ **Task 1** — `middleware.ts` extended: `public_view` off rewrites `/public/*` (except `/public/unsubscribe/*`, Q1) and the unauthenticated `/` to `/site-unavailable`; `/` is session-cookie-gated so the authenticated dashboard is untouched.
+- ✅ **Task 2** — `/site-unavailable` neutral page: standalone minimal layout, self-contained branding fetch with a never-throw unbranded fallback, focused member-login link, `siteUnavailable.*` i18n.
+- ✅ **Task 3** — **Q2:** introduced `ModuleEnabledEndpointFilter` + `.RequireModule(key)` (an `IEndpointFilter` — works on `AllowAnonymous` endpoints where the E10-S3 `Module:` policy cannot). Applied to Blog/Contact/Sponsor public groups + the public Event endpoints + public RSVP. `GET /api/v1/settings/public` deliberately exempt. **Q4:** calendar feeds left always-on. **Q1:** newsletter/unsubscribe left exempt.
+- ✅ **Task 4** — **Q3:** warn + degrade. Advisory warning already present in the E10-S2 Modules tab; the backend structural guard is E10-S3's `Module:finance` enforcement (paid-event finance calls 403 cleanly when Finance is off — no partial records; free-event registration is finance-free and unaffected). Epic E4 paid-registration is deferred, so there is no degradation code path to write yet — the guard is in place for when it resumes.
+- ✅ **Task 5** — `IModuleSettingsService` skip checks at job entry: `MarkInvoicesOverdueJob` + `DunningScheduleGenerationJob` (finance), `VolunteerShiftReminderJob` (events). `RetentionEnforcementJob` is admin/cross-cutting → left always-on.
+- ✅ **Task 6** — `ModulePublicViewEndpointTests` (backend, 7), `ModuleGuardedJobTests` (backend, 5), `site-unavailable/page.test.tsx` (3) + extended `middleware.test.ts` (+5) on the frontend, and the Playwright `module-enforcement.spec.ts` E2E suite (full-stack-gated).
+- **Q5 resolved** — `module_settings['public_view']` is the single authoritative toggle for serving the public site (enforced by `middleware.ts` + the `RequireModule` filter). `SystemSettings.PublicSiteEnabled` (E9-S1) is **deprecated for enforcement** — left in place (no migration churn, still returned by the public settings endpoint) but no longer an enforcement input. A follow-up cleanup could repurpose it as a pure UX hint or drop the column.
+- **Test reconciliation** — E10-S3's `ModuleEnforcementEndpointTests` had an `AnonymousEndpoints_StayReachable_WithModulesDisabled` test asserting `/api/v1/sponsors/public/` stays reachable with all modules off; E10-S5 deliberately gates that endpoint by `public_view`, so the test was renamed `AlwaysOnAnonymousEndpoints_…` and narrowed to the genuinely-always-on surface (`/settings/public` + calendar feeds), with public_view gating now covered by `ModulePublicViewEndpointTests`.
 
 ### File List
+
+**New — backend:**
+- `backend/src/IabConnect.Api/Authorization/ModuleEndpointFilter.cs`
+- `backend/tests/IabConnect.Api.Tests/Endpoints/ModulePublicViewEndpointTests.cs`
+- `backend/tests/IabConnect.Infrastructure.Tests/ModuleGuardedJobTests.cs`
+
+**New — frontend:**
+- `frontend/src/app/site-unavailable/page.tsx`
+- `frontend/src/app/site-unavailable/page.test.tsx`
+- `frontend/playwright.config.ts`
+- `frontend/e2e/module-enforcement.spec.ts`
+
+**Modified — backend:**
+- `backend/src/IabConnect.Api/Endpoints/BlogEndpoints.cs`, `ContactEndpoints.cs`, `SponsorEndpoints.cs`, `EventEndpoints.cs`, `EventRegistrationEndpoints.cs` (`.RequireModule("public_view")` on the public surface)
+- `backend/src/IabConnect.Infrastructure/Finance/Jobs/MarkInvoicesOverdueJob.cs`, `DunningScheduleGenerationJob.cs`, `backend/src/IabConnect.Infrastructure/Events/Jobs/VolunteerShiftReminderJob.cs` (module skip checks)
+- `backend/tests/IabConnect.Api.Tests/Endpoints/ModuleEnforcementEndpointTests.cs` (test reconciliation — see Completion Notes)
+
+**Modified — frontend:**
+- `frontend/src/middleware.ts` (Public View rewrite + matcher), `frontend/src/middleware.test.ts` (+5 tests)
+- `frontend/src/components/navigation/MainLayout.tsx` (`/site-unavailable` full-page layout)
+- `frontend/messages/en.json`, `frontend/messages/de.json` (`siteUnavailable.*` keys)
+- `frontend/vitest.config.ts` (exclude `e2e/**`)
+
+## Change Log
+
+| Date       | Change                                                                                          |
+|------------|-------------------------------------------------------------------------------------------------|
+| 2026-05-14 | E10-S5 implemented (closes Epic 10): Public View middleware rewrite + `/site-unavailable` neutral page, `ModuleEnabledEndpointFilter` (`.RequireModule`) gating the public backend surface (`/settings/public` exempt), Hangfire job module-skip checks, Events↔Finance warn-and-degrade guard, Playwright E2E suite. Q1–Q5 resolved. Backend 1930/1930 green, frontend Vitest 78/78, typecheck green. Status → review. |
+
+## Review Findings
+
+_Epic-10 boundary code review — bmad-code-review, 2026-05-14. Layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor._
+
+- [ ] [Review][Patch] `ModuleEnabledEndpointFilter.InvokeAsync` — wrap `IsEnabledAsync` in try/catch and **fail-open** (treat as enabled) on a module-service failure, matching the frontend middleware's degrade-to-enabled behaviour; today any service failure 500s the entire public surface _(resolves the original Decision)_ [backend/src/IabConnect.Api/Authorization/ModuleEndpointFilter.cs]
+- [x] [Review][Dismissed] Audit for `ModuleEnabledEndpointFilter` denials — reviewed and decided: keep the bare 403, do **not** audit anonymous public-endpoint denials (audit-log flood risk from bots; "public site is off" is not a security event — the authenticated `ModuleAuthorizationHandler` audit remains the meaningful signal). No code change.
+- [ ] [Review][Patch] Gate `/api/v1/public/newsletter` (newsletter signup) with `.RequireModule("public_view")` — it is a public-site feature, not a transactional-compliance flow; signups should not be accepted while the public site is off _(resolves the original Decision)_ [backend/src/IabConnect.Api/Endpoints/UnsubscribeEndpoints.cs]
+- [x] [Review][Defer] Playwright E2E suite (`module-enforcement.spec.ts`) is authored but `test.skip()`s itself without `E2E_ADMIN_PASSWORD` — AC-6/AC-7 "the E2E suite passes" is unverified in CI [frontend/e2e/module-enforcement.spec.ts] — deferred, needs the full local stack (Docker + Keycloak + seeded admin); the backend + Vitest suites are the CI-runnable proof of the same behaviour
