@@ -4,6 +4,43 @@ Items deferred during code reviews — not caused by the reviewed change, but wo
 
 ---
 
+## Epic-3-retro §9 Cleanup Sprint — Triage & Resolutions (2026-05-14)
+
+The Epic-3 retrospective (`epic-3-retro-2026-05-14.md` §9) scheduled a dedicated cleanup sprint before Epic 4. This section records its outcome; the per-review sections below are left as the historical record.
+
+### ✅ Resolved this sprint
+
+| Item | Resolution | Commit |
+|---|---|---|
+| Shared `ICollectionFixture<TestWebApplicationFactory>` (A15) | Fixture already existed; the 3 deferred test classes (`EventCheckInRosterEndpointTests`, `MemberCreateDuplicateConflictTests`, `MemberDuplicateGroupsEndpointTests`) were migrated onto it — real runtime `→401` tests re-enabled in place of metadata-only stand-ins. | `1200958` |
+| `DateTime.Kind` enforcement at domain construction (A13) | `Event` / `EventVolunteerShift` were already guarded (Round-4 fix-pass); `EventVolunteerAssignment.MarkReminderSent` now normalises via `DateTimeUtcGuard.EnsureUtc`. Checklist added to `docs/07_dos_donts.md`. | `1200958` |
+| `calendar-feed-api-tests` — zero-coverage AC-1 privacy filter (R3-H-S5-7/8, R4-Defer-S5-5) | `GetPublicCalendarFeedQueryHandlerTests` (Application, +4) + `EventCalendarFeedEndpointTests` (API, +7) authored. The public-feed visibility guarantee now has automated coverage. | `38a2d83` |
+| FOR UPDATE row-lock coverage audit | **calendar-token rotate/revoke** (R3-H-S5-5, `member-rotate-row-lock`): new `ICalendarTokenService` — rotate+revoke run under a FOR UPDATE lock on the member row. **CancelRegistration** (H-S2-5): new `IEventRegistrationCancellationService` — cancel + waitlist promotion run under FOR UPDATE locks on the event + registration rows. **UpdateShift TOCTOU**: audited — already closed in Round 3 (`UpdateShiftAsync` wraps capacity + field updates in one FOR UPDATE transaction). Both new services ship two-task Testcontainers race tests. | `22803c0` |
+| Role-registry single source of truth (R3-Defer-5) | New `Roles` constants class (`IabConnect.Api.Authorization`); `DependencyInjection` policies, `EventVolunteerEndpoints.IsStaffCaller`, and the Event-family endpoint role checks all read from it. The `StaffRoles` hand-mirror is gone. | `421c616` |
+
+### 📝 Spec-text-drift reconciled (Round-4 AC-drift items)
+
+The Round-4 review flagged a batch of items where the shipped code intentionally diverged from the original AC text and the AC was never updated. **Disposition: the code is canonical.** Each item's full reconciliation rationale is already recorded in the relevant story file's `## Round 4 Review Findings` section (the `R4-Defer-*` entries). They are no longer tracked as open drift:
+
+- **R4-Defer-S1-1** — roster query returns the `EventCheckInRosterLookup` envelope (Round-2 H-S1-3 fix), not `EventCheckInRosterDto?`.
+- **R4-Defer-S3-1** — read endpoints use `RequireEventStaffOrMember` (Round-3 R3-DN-4 decision), not `RequireMember`.
+- **R4-Defer-S3-2** — `IncreaseCapacity` → `UpdateCapacity(newCapacity, currentConfirmedCount)` (Round-3 H-S3-4 bidirectional-capacity fix).
+- **R4-Defer-S3-3** — assignment constraint/FK cases live in `EventVolunteerAssignmentConcurrencyTests.cs`, not a separate `EventVolunteerAssignmentRepositoryTests.cs`.
+- **R4-Defer-S4-1** — reminder window is 36h (Round-2 H-S4-4 fix; a 24h window misses next-evening shifts at the 09:00 cadence), not 24h.
+- **R4-Defer-S4-2** — `SendVolunteerShiftReminderAsync` carries a `Member` parameter (avoids a duplicate fetch; documented in XML doc) not in the original AC-5 signature.
+- **R4-Defer-S5-3** — `URL` ICS property emitted unescaped (Round-3 R3-L-S5-1 fix, RFC 5545 §3.3.13).
+- **R4-Defer-S5-4** — `Member.CalendarSubscriptionToken` → `...Hash`, stores the SHA-256 digest (Round-2 H-S5-1 hardening).
+
+### ⏸️ Deferred — needs a deployment decision (NOT auto-shipped)
+
+- **`calendar-token-hmac-rehash`** (R3-H-S5-3) — moving the calendar-token hash from unkeyed SHA-256 to HMAC-SHA256 + a server-side pepper. **Why deferred rather than shipped in this sprint:** unlike the other priority-2 items this is not a pure code change — it requires (1) a **mandatory new secret** (`Auth:CalendarTokenPepper`) provisioned in *every* environment (dev, CI, staging, prod) or the app fails to start, and (2) a **one-way data-rewrite migration** to re-hash existing rows, which EF `Migration` classes cannot parameterise from `IConfiguration` (they would have to read an env var directly). The threat it closes is narrow — a DB-read attacker who *also independently* holds a known cleartext token; the stored SHA-256 of 32 random bytes is already preimage-resistant. **Recommendation:** schedule as a deliberate task with the secret-rollout planned, or fold into the Epic-5 comms/secrets track. Not a blocker for Epic 4.
+
+### Remainder triage
+
+The pre-Epic-3 items (Epic-1 / Epic-2 boundary sections) and the bulk of the Epic-3 Round-2/3/4 items below remain **open and unchanged** — they are genuinely low-severity / pre-existing / cosmetic and were correctly deferred. Notable still-open cross-cutting threads for future planning: the **server-side i18n / comms track** (Epic-3 planning + R3-Defer-S4 items — explicitly coordinated with Epic 5, not pulled forward), per-route **rate limiting** (Epic-1/Epic-2 — API-gateway concern), and the **`.gitattributes` CRLF/LF** chore. Inline role-string literals in the non-Event endpoint files (Audit / Document / Settings / CustomRole / Identity) were left as-is by the P3 role-registry refactor — converting them is mechanical and can fold into those files' next change; the `Roles` constants class is in place for it.
+
+---
+
 ## Deferred from: Epic Boundary Review E1.S1–S4 (2026-05-13)
 
 - **[E1.S2] Concurrent MFA resets send two re-enrollment emails** — admin-only action; race window is small and consequence is cosmetic (duplicate emails to target user)
