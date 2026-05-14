@@ -17,6 +17,7 @@ The Epic-3 retrospective (`epic-3-retro-2026-05-14.md` §9) scheduled a dedicate
 | `calendar-feed-api-tests` — zero-coverage AC-1 privacy filter (R3-H-S5-7/8, R4-Defer-S5-5) | `GetPublicCalendarFeedQueryHandlerTests` (Application, +4) + `EventCalendarFeedEndpointTests` (API, +7) authored. The public-feed visibility guarantee now has automated coverage. | `38a2d83` |
 | FOR UPDATE row-lock coverage audit | **calendar-token rotate/revoke** (R3-H-S5-5, `member-rotate-row-lock`): new `ICalendarTokenService` — rotate+revoke run under a FOR UPDATE lock on the member row. **CancelRegistration** (H-S2-5): new `IEventRegistrationCancellationService` — cancel + waitlist promotion run under FOR UPDATE locks on the event + registration rows. **UpdateShift TOCTOU**: audited — already closed in Round 3 (`UpdateShiftAsync` wraps capacity + field updates in one FOR UPDATE transaction). Both new services ship two-task Testcontainers race tests. | `22803c0` |
 | Role-registry single source of truth (R3-Defer-5) | New `Roles` constants class (`IabConnect.Api.Authorization`); `DependencyInjection` policies, `EventVolunteerEndpoints.IsStaffCaller`, and the Event-family endpoint role checks all read from it. The `StaffRoles` hand-mirror is gone. | `421c616` |
+| `calendar-token-hmac-rehash` (R3-H-S5-3) | `Member.HashCalendarToken` now takes an optional pepper — when configured, the stored value is `HMAC-SHA256(pepper, SHA256(token))`; when absent it stays plain SHA-256 (backwards-compatible). New `CalendarTokenOptions` (`Auth:CalendarTokenPepper`); `MemberRepository` + `CalendarTokenService` apply it. New `HmacPepperCalendarSubscriptionTokens` migration re-hashes existing digests forward via pgcrypto `hmac()` — **pepper-gated** (no-op when the `Auth__CalendarTokenPepper` env var is absent, so dev/CI/Testcontainers are unaffected). A parity test pins that the pgcrypto SQL equals the .NET hasher byte-for-byte. **Rollout: set `Auth__CalendarTokenPepper` in staging/prod before deploying this migration** (see `CalendarTokenOptions` XML doc + `appsettings.json` comment for the adopt-later caveat). | _this sprint_ |
 
 ### 📝 Spec-text-drift reconciled (Round-4 AC-drift items)
 
@@ -31,9 +32,13 @@ The Round-4 review flagged a batch of items where the shipped code intentionally
 - **R4-Defer-S5-3** — `URL` ICS property emitted unescaped (Round-3 R3-L-S5-1 fix, RFC 5545 §3.3.13).
 - **R4-Defer-S5-4** — `Member.CalendarSubscriptionToken` → `...Hash`, stores the SHA-256 digest (Round-2 H-S5-1 hardening).
 
-### ⏸️ Deferred — needs a deployment decision (NOT auto-shipped)
+### 🚀 Rollout note — `calendar-token-hmac-rehash` (shipped, pepper-gated)
 
-- **`calendar-token-hmac-rehash`** (R3-H-S5-3) — moving the calendar-token hash from unkeyed SHA-256 to HMAC-SHA256 + a server-side pepper. **Why deferred rather than shipped in this sprint:** unlike the other priority-2 items this is not a pure code change — it requires (1) a **mandatory new secret** (`Auth:CalendarTokenPepper`) provisioned in *every* environment (dev, CI, staging, prod) or the app fails to start, and (2) a **one-way data-rewrite migration** to re-hash existing rows, which EF `Migration` classes cannot parameterise from `IConfiguration` (they would have to read an env var directly). The threat it closes is narrow — a DB-read attacker who *also independently* holds a known cleartext token; the stored SHA-256 of 32 random bytes is already preimage-resistant. **Recommendation:** schedule as a deliberate task with the secret-rollout planned, or fold into the Epic-5 comms/secrets track. Not a blocker for Epic 4.
+The HMAC-pepper hardening shipped this sprint (see the Resolved table above) in a deliberately **non-breaking, pepper-gated** form — the original "needs a deployment decision" concern was resolved by making both the hasher and the migration fall back cleanly when no pepper is configured:
+
+- **Dev / CI / Testcontainers** — no `Auth__CalendarTokenPepper` set → hasher uses plain SHA-256, migration is a no-op. Nothing changes, nothing breaks.
+- **Staging / Production** — set `Auth__CalendarTokenPepper` (a strong random secret) **before** deploying the `HmacPepperCalendarSubscriptionTokens` migration. The migration then re-hashes existing stored digests forward; the app's hasher computes the matching HMAC at request time.
+- **Adopt-later caveat** — the migration is one-shot (EF history). An environment that ran it without a pepper and later wants the hardening must have members re-rotate their calendar tokens (documented in `CalendarTokenOptions` and the `appsettings.json` comment).
 
 ### Remainder triage
 

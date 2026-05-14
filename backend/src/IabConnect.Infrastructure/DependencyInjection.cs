@@ -224,6 +224,11 @@ public static class DependencyInjection
         services.AddScoped<IabConnect.Application.Events.CheckIn.IEventRegistrationCheckInService,
             Events.EventRegistrationCheckInService>();
 
+        // REQ-025 (Epic-3-retro §9 / R3-H-S5-3): calendar-token HMAC pepper. Bound from the
+        // `Auth` section; empty pepper => plain SHA-256 fallback (dev/CI default).
+        services.Configure<Events.CalendarTokenOptions>(
+            configuration.GetSection(Events.CalendarTokenOptions.SectionName));
+
         // REQ-025 (E3.S5 Round-3 R3-H-S5-5 / Epic-3-retro §9): transactional, FOR UPDATE
         // row-locked calendar-token rotate + revoke service
         services.AddScoped<IabConnect.Application.Events.Calendar.ICalendarTokenService,

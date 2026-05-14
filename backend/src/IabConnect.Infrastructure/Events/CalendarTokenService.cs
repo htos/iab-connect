@@ -2,6 +2,7 @@ using IabConnect.Application.Events.Calendar;
 using IabConnect.Domain.Members;
 using IabConnect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace IabConnect.Infrastructure.Events;
 
@@ -19,10 +20,14 @@ namespace IabConnect.Infrastructure.Events;
 public sealed class CalendarTokenService : ICalendarTokenService
 {
     private readonly ApplicationDbContext _context;
+    private readonly byte[]? _pepper;
 
-    public CalendarTokenService(ApplicationDbContext context)
+    public CalendarTokenService(
+        ApplicationDbContext context,
+        IOptions<CalendarTokenOptions> calendarTokenOptions)
     {
         _context = context;
+        _pepper = calendarTokenOptions.Value.PepperBytes;
     }
 
     public async Task<CalendarTokenRotationResult> RotateAsync(
@@ -38,7 +43,9 @@ public sealed class CalendarTokenService : ICalendarTokenService
             return CalendarTokenRotationResult.NotFound();
         }
 
-        var token = member.RegenerateCalendarToken();
+        // Epic-3-retro §9 (R3-H-S5-3): HMAC-key the stored hash with the configured pepper when
+        // one is set; null pepper keeps the backwards-compatible plain SHA-256.
+        var token = member.RegenerateCalendarToken(_pepper);
         await _context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return CalendarTokenRotationResult.Rotated(member.Id, token);

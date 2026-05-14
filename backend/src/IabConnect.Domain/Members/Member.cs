@@ -153,8 +153,11 @@ public sealed class Member : AggregateRoot
     /// REQ-025 (E3.S5): Generates a fresh opaque calendar-subscription token (Base64URL of 32
     /// random bytes ≈ 43 chars), assigns it, and returns it. Calling again invalidates the
     /// previous token. Use <see cref="RevokeCalendarToken"/> to drop the feed entirely.
+    /// <para><paramref name="pepper"/> — when supplied — keys the stored hash with HMAC; see
+    /// <see cref="HashCalendarToken"/>. Pass the configured <c>Auth:CalendarTokenPepper</c>
+    /// bytes from the Infrastructure caller; null keeps the backwards-compatible plain SHA-256.</para>
     /// </summary>
-    public string RegenerateCalendarToken()
+    public string RegenerateCalendarToken(byte[]? pepper = null)
     {
         var bytes = RandomNumberGenerator.GetBytes(32);
         // Base64 URL-safe (no padding) — ASCII-only, fits any URL.
@@ -162,12 +165,10 @@ public sealed class Member : AggregateRoot
             .TrimEnd('=')
             .Replace('+', '-')
             .Replace('/', '_');
-        // REQ-025 (E3.S5 post-review H-S5-1): persist only the SHA-256 hash. The cleartext
-        // token leaves this method via the return value, goes to the calendar client in the
-        // subscriptionUrl, and is never written to the database. A DB read therefore cannot
-        // disclose any active feed credential; only a successful preimage attack against
-        // SHA-256 would, which is computationally infeasible for 32 random bytes of input.
-        CalendarSubscriptionTokenHash = HashCalendarToken(token);
+        // REQ-025 (E3.S5 post-review H-S5-1): persist only the hash. The cleartext token leaves
+        // this method via the return value, goes to the calendar client in the subscriptionUrl,
+        // and is never written to the database.
+        CalendarSubscriptionTokenHash = HashCalendarToken(token, pepper);
         return token;
     }
 
@@ -182,14 +183,27 @@ public sealed class Member : AggregateRoot
     /// <summary>
     /// REQ-025 (E3.S5 post-review H-S5-1): canonical hash function used both at token-rotate
     /// time (stored on the entity) and at request time (computed from the incoming token to
-    /// look up the matching member). Lowercase hex of the SHA-256 digest; ASCII-only.
+    /// look up the matching member). Lowercase hex; ASCII-only.
+    ///
+    /// <para>REQ-025 (Epic-3-retro §9 / R3-H-S5-3): when <paramref name="pepper"/> is supplied
+    /// the stored value is <c>HMAC-SHA256(pepper, SHA256(token))</c> — a DB-read attacker who
+    /// also independently holds a known cleartext token still cannot confirm the matching row
+    /// without the server-side pepper. When <paramref name="pepper"/> is null or empty the
+    /// value is the plain <c>SHA256(token)</c> hex digest (the backwards-compatible default for
+    /// environments that have not configured a pepper). The HMAC is taken over the SHA-256
+    /// digest bytes — not the cleartext — so an environment can migrate its already-stored
+    /// digests forward (see migration <c>HmacPepperCalendarSubscriptionTokens</c>) without ever
+    /// needing the cleartext tokens.</para>
     /// </summary>
-    public static string HashCalendarToken(string token)
+    public static string HashCalendarToken(string token, byte[]? pepper = null)
     {
         ArgumentException.ThrowIfNullOrEmpty(token);
-        var bytes = System.Text.Encoding.UTF8.GetBytes(token);
-        var digest = System.Security.Cryptography.SHA256.HashData(bytes);
-        return Convert.ToHexString(digest).ToLowerInvariant();
+        var digest = System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(token));
+        if (pepper is null || pepper.Length == 0)
+            return Convert.ToHexString(digest).ToLowerInvariant();
+        var hmac = System.Security.Cryptography.HMACSHA256.HashData(pepper, digest);
+        return Convert.ToHexString(hmac).ToLowerInvariant();
     }
 
     public string FullName => $"{FirstName} {LastName}";

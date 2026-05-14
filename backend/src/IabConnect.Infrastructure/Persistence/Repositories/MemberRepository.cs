@@ -1,6 +1,8 @@
 using IabConnect.Application.Members.Duplicates;
 using IabConnect.Domain.Members;
+using IabConnect.Infrastructure.Events;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace IabConnect.Infrastructure.Persistence.Repositories;
 
@@ -11,11 +13,18 @@ public sealed class MemberRepository : IMemberRepository
 {
     private readonly ApplicationDbContext _context;
     private readonly IDuplicateMatcher _matcher;
+    private readonly byte[]? _calendarTokenPepper;
 
-    public MemberRepository(ApplicationDbContext context, IDuplicateMatcher matcher)
+    public MemberRepository(
+        ApplicationDbContext context,
+        IDuplicateMatcher matcher,
+        IOptions<CalendarTokenOptions>? calendarTokenOptions = null)
     {
         _context = context;
         _matcher = matcher;
+        // Optional so the many repository tests that don't touch calendar tokens need no extra
+        // wiring; the DI container always supplies the registered options in production.
+        _calendarTokenPepper = calendarTokenOptions?.Value.PepperBytes;
     }
 
     public async Task<Member?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
@@ -57,7 +66,9 @@ public sealed class MemberRepository : IMemberRepository
         // REQ-025 (E3.S5 post-review H-S5-1): hash the incoming token and look up by hash so a
         // DB-read attacker cannot replay anyone's feed and so the SQL string-equality compare
         // is over a uniformly-distributed digest (defeats timing-prefix enumeration).
-        var hash = Member.HashCalendarToken(token);
+        // Epic-3-retro §9 (R3-H-S5-3): the hash is HMAC-keyed with the configured pepper when
+        // one is set; null pepper keeps the backwards-compatible plain SHA-256.
+        var hash = Member.HashCalendarToken(token, _calendarTokenPepper);
         return await _context.Members
             .AsNoTracking()
             .FirstOrDefaultAsync(
