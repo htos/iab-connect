@@ -11,7 +11,8 @@ public static class FiscalPeriodEndpoints
     public static void MapFiscalPeriodEndpoints(this IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("/api/v1/finance/fiscal-periods")
-            .WithTags("Finance - Fiscal Periods");
+            .WithTags("Finance - Fiscal Periods")
+            .RequireAuthorization("Module:finance"); // REQ-087 (E10-S3): finance module gate
 
         group.MapGet("/", GetAll).RequireAuthorization("RequireFinanceRead");
         group.MapGet("/{id:guid}", GetById).RequireAuthorization("RequireFinanceRead");

@@ -15,7 +15,8 @@ public static class FinanceProfileEndpoints
     public static void MapFinanceProfileEndpoints(this IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("/api/v1/finance/profile")
-            .WithTags("Finance - Profile");
+            .WithTags("Finance - Profile")
+            .RequireAuthorization("Module:finance"); // REQ-087 (E10-S3): finance module gate
 
         group.MapGet("/", GetActiveProfile)
             .RequireAuthorization("RequireFinanceRead")

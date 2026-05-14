@@ -12,7 +12,8 @@ public static class FinanceExportEndpoints
     public static void MapFinanceExportEndpoints(this IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("/api/v1/finance/exports")
-            .WithTags("Finance - Exports");
+            .WithTags("Finance - Exports")
+            .RequireAuthorization("Module:finance"); // REQ-087 (E10-S3): finance module gate
 
         group.MapGet("/journal", ExportJournal)
             .RequireAuthorization("RequireFinanceRead")

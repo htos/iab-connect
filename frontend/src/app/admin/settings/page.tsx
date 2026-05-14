@@ -1211,7 +1211,6 @@ export default function SettingsPage() {
                 {MODULE_KEYS.map((key) => {
                   const m = modules.find((x) => x.moduleKey === key);
                   const enabled = m?.enabled ?? true;
-                  const dependents = enabledDependents(key);
                   return (
                     <div key={key} className="py-4">
                       <div className="flex items-start justify-between gap-4">
@@ -1243,71 +1242,86 @@ export default function SettingsPage() {
                               enabled ? "text-green-700" : "text-gray-500"
                             }`}
                           >
-                            {enabled
-                              ? t("moduleEnabled")
-                              : t("moduleDisabled")}
+                            {enabled ? t("moduleEnabled") : t("moduleDisabled")}
                           </span>
-                          <input
-                            type="checkbox"
+                          {/* REQ-087 (E10-S2, post-review): toggle switch instead of a
+                              bare checkbox — matches the app's orange primary styling. */}
+                          <button
+                            type="button"
+                            role="switch"
                             id={`module-${key}`}
-                            checked={enabled}
+                            aria-checked={enabled}
+                            aria-label={t(`modules.${key}.name`)}
                             disabled={
                               moduleSavingKey === key ||
                               moduleConfirmKey === key
                             }
-                            onChange={() => handleModuleToggle(key, enabled)}
-                            className="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500 disabled:opacity-50"
-                          />
-                          <label
-                            htmlFor={`module-${key}`}
-                            className="sr-only"
+                            onClick={() => handleModuleToggle(key, enabled)}
+                            className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
+                              enabled ? "bg-orange-600" : "bg-gray-300"
+                            }`}
                           >
-                            {t(`modules.${key}.name`)}
-                          </label>
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                                enabled ? "translate-x-6" : "translate-x-1"
+                              }`}
+                            />
+                          </button>
                         </div>
                       </div>
-
-                      {/* Inline disable confirmation + advisory dependency warning */}
-                      {moduleConfirmKey === key && (
-                        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
-                          <p className="text-sm text-amber-900">
-                            {t("moduleDisableConfirm", {
-                              module: t(`modules.${key}.name`),
-                            })}
-                          </p>
-                          {dependents.length > 0 && (
-                            <p className="mt-1 text-sm text-amber-800">
-                              {t("moduleDependencyWarning", {
-                                dependents: dependents
-                                  .map((dep) => t(`modules.${dep}.name`))
-                                  .join(", "),
-                              })}
-                            </p>
-                          )}
-                          <div className="mt-2 flex gap-2">
-                            <button
-                              onClick={() => applyModuleChange(key, false)}
-                              disabled={moduleSavingKey === key}
-                              className="rounded bg-red-600 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
-                            >
-                              {moduleSavingKey === key
-                                ? t("saving")
-                                : t("moduleConfirmDisable")}
-                            </button>
-                            <button
-                              onClick={() => setModuleConfirmKey(null)}
-                              className="rounded border border-gray-300 px-3 py-1 text-xs transition-colors hover:bg-gray-50"
-                            >
-                              {tCommon("cancel")}
-                            </button>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   );
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* ============== Module Disable Confirmation Modal ============== */}
+        {/* REQ-087 (E10-S2, post-review): the disable confirmation + advisory dependency
+            warning is now a modal instead of an inline panel. */}
+        {moduleConfirmKey && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div
+              className="absolute inset-0 bg-black/50"
+              onClick={() => setModuleConfirmKey(null)}
+            />
+            <div className="relative mx-4 w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+              <h3 className="mb-2 text-lg font-semibold text-gray-900">
+                {t("moduleDisableTitle")}
+              </h3>
+              <p className="text-sm text-gray-700">
+                {t("moduleDisableConfirm", {
+                  module: t(`modules.${moduleConfirmKey}.name`),
+                })}
+              </p>
+              {enabledDependents(moduleConfirmKey).length > 0 && (
+                <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                  {t("moduleDependencyWarning", {
+                    dependents: enabledDependents(moduleConfirmKey)
+                      .map((dep) => t(`modules.${dep}.name`))
+                      .join(", "),
+                  })}
+                </p>
+              )}
+              <div className="mt-6 flex justify-end gap-2">
+                <button
+                  onClick={() => setModuleConfirmKey(null)}
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm transition-colors hover:bg-gray-50"
+                >
+                  {tCommon("cancel")}
+                </button>
+                <button
+                  onClick={() => applyModuleChange(moduleConfirmKey, false)}
+                  disabled={moduleSavingKey === moduleConfirmKey}
+                  className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+                >
+                  {moduleSavingKey === moduleConfirmKey
+                    ? t("saving")
+                    : t("moduleConfirmDisable")}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

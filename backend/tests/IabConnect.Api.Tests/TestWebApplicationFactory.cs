@@ -1,9 +1,12 @@
+using IabConnect.Application.Common;
 using IabConnect.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 
 namespace IabConnect.Api.Tests;
@@ -65,6 +68,21 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
             {
                 options.UseInMemoryDatabase("ApiTestDb");
             });
+
+            // REQ-087 (E10-S3): header-driven test auth scheme so integration tests can issue
+            // *authenticated* requests (the real Keycloak JWT bearer needs a live IdP). This
+            // becomes the default scheme; a request without the test header still resolves to
+            // anonymous, so existing "no header → 401" tests are unaffected.
+            services.AddAuthentication(TestAuthHandler.SchemeName)
+                .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(
+                    TestAuthHandler.SchemeName, _ => { });
+
+            // REQ-087 (E10-S3): mutable module-settings double (defaults all-enabled) so module
+            // enforcement can be exercised without mutating the shared in-memory DB / cache.
+            services.RemoveAll<IModuleSettingsService>();
+            services.AddSingleton<TestModuleSettingsService>();
+            services.AddSingleton<IModuleSettingsService>(
+                sp => sp.GetRequiredService<TestModuleSettingsService>());
         });
     }
 }

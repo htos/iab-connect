@@ -12,7 +12,8 @@ public static class TaxCodeEndpoints
     public static void MapTaxCodeEndpoints(this IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("/api/v1/finance/tax-codes")
-            .WithTags("Finance - Tax Codes");
+            .WithTags("Finance - Tax Codes")
+            .RequireAuthorization("Module:finance"); // REQ-087 (E10-S3): finance module gate
 
         group.MapGet("/", GetAll)
             .RequireAuthorization("RequireFinanceRead")

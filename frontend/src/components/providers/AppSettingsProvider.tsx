@@ -25,6 +25,9 @@ interface AppSettings {
   primaryColor: string;
   publicSiteEnabled: boolean;
   logoUrl: string | null;
+  // REQ-087 (E10-S4): module-key -> enabled map, sourced from the `modules` field of
+  // GET /api/v1/settings/public (E10-S2). Drives sidebar/dashboard/route-guard hiding.
+  modules: Record<string, boolean>;
 }
 
 interface AppSettingsContextType {
@@ -42,6 +45,17 @@ const defaultSettings: AppSettings = {
   primaryColor: "#EA580C",
   publicSiteEnabled: true,
   logoUrl: null,
+  // REQ-087 (E10-S4): all modules enabled by default — behaviour-preserving until the
+  // public settings endpoint reports otherwise (or while it is unreachable).
+  modules: {
+    members: true,
+    events: true,
+    documents: true,
+    communication: true,
+    finance: true,
+    partners: true,
+    public_view: true,
+  },
 };
 
 const AppSettingsContext = createContext<AppSettingsContextType>({
@@ -75,6 +89,8 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
           // The public endpoint returns a relative path; resolve it against the
           // API base so <img> tags get an absolute, stable URL.
           logoUrl: data.logoUrl ? `${baseUrl}${data.logoUrl}` : null,
+          // REQ-087 (E10-S4): module map from E10-S2's public settings endpoint.
+          modules: data.modules ?? defaultSettings.modules,
         });
       }
     } catch {

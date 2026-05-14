@@ -12,7 +12,8 @@ public static class InvoiceTemplateEndpoints
     public static void MapInvoiceTemplateEndpoints(this IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("/api/v1/finance/invoice-templates")
-            .WithTags("Finance - Invoice Templates");
+            .WithTags("Finance - Invoice Templates")
+            .RequireAuthorization("Module:finance"); // REQ-087 (E10-S3): finance module gate
 
         group.MapGet("/", GetAll)
             .RequireAuthorization("RequireFinanceRead")

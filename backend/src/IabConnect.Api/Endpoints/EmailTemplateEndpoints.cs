@@ -10,7 +10,8 @@ public static class EmailTemplateEndpoints
     {
         var group = app.MapGroup("/api/v1/email-templates")
             .WithTags("Email Templates")
-            .RequireAuthorization();
+            .RequireAuthorization()
+            .RequireAuthorization("Module:communication"); // REQ-087 (E10-S3): communication module gate
 
         group.MapGet("/", GetAllTemplates)
             .WithName("GetEmailTemplates")

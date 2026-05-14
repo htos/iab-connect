@@ -18,16 +18,12 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
 
   // Show loading state
   if (isLoading) {
-    return (
-      <main className="pt-16">{children}</main>
-    );
+    return <main className="pt-16">{children}</main>;
   }
 
   // Not authenticated - no sidebar
   if (!isAuthenticated) {
-    return (
-      <main className="pt-16">{children}</main>
-    );
+    return <main className="pt-16">{children}</main>;
   }
 
   // Authenticated - with sidebar
@@ -35,7 +31,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
     <>
       <Sidebar />
       <main
-        className={`pt-16 min-h-screen transition-all duration-300 ease-in-out ${
+        className={`min-h-screen pt-16 transition-all duration-300 ease-in-out ${
           isOpen ? "lg:ml-64" : "lg:ml-20"
         }`}
       >
@@ -48,8 +44,14 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
 export function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  // Full-page layouts (no sidebar, no internal header) for these routes
-  const isFullPageLayout = pathname === "/login" || pathname.startsWith("/auth/") || pathname.startsWith("/public");
+  // Full-page layouts (no sidebar, no internal header) for these routes.
+  // REQ-087 (E10-S5): /site-unavailable is the neutral "public site off" page — it gets a
+  // standalone minimal layout, not the authenticated shell.
+  const isFullPageLayout =
+    pathname === "/login" ||
+    pathname.startsWith("/auth/") ||
+    pathname.startsWith("/public") ||
+    pathname === "/site-unavailable";
 
   if (isFullPageLayout) {
     return <>{children}</>;

@@ -11,7 +11,8 @@ public static class ExpenseClaimEndpoints
     public static void MapExpenseClaimEndpoints(this IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("/api/v1/finance/expense-claims")
-            .WithTags("Finance - Expense Claims");
+            .WithTags("Finance - Expense Claims")
+            .RequireAuthorization("Module:finance"); // REQ-087 (E10-S3): finance module gate
 
         // Anyone with member role can create their own claims
         group.MapGet("/", GetAll).RequireAuthorization("RequireFinanceRead");

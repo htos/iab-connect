@@ -13,7 +13,8 @@ public static class PaymentEndpoints
     public static void MapPaymentEndpoints(this IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("/api/v1/finance/payments")
-            .WithTags("Finance - Payments");
+            .WithTags("Finance - Payments")
+            .RequireAuthorization("Module:finance"); // REQ-087 (E10-S3): finance module gate
 
         group.MapGet("/", GetAll)
             .RequireAuthorization("RequireFinanceRead")

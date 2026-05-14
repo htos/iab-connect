@@ -174,6 +174,18 @@
     "accountingInvoices": "Accounting & Invoices",
     "managePartners": "Manage sponsors & suppliers"
   },
+  "moduleUnavailable": {
+    "heading": "This module is not available",
+    "body": "The area you tried to open has been switched off for this organization. There is nothing wrong on your end.",
+    "adminHint": "If you think this module should be available, please contact an administrator.",
+    "backToDashboard": "Back to dashboard",
+    "sessionAlert": "This module was switched off. You will be taken to an information page on your next step."
+  },
+  "siteUnavailable": {
+    "heading": "This site is not publicly available",
+    "body": "The public website is currently switched off. If you have an account, you can still sign in.",
+    "memberLogin": "Member login"
+  },
   "dashboard": {
     "title": "Dashboard & KPIs",
     "subtitle": "Overview of members, events, and finances.",
@@ -1335,6 +1347,7 @@
     "moduleSaveSuccess": "Module setting saved",
     "moduleSaveError": "Error saving module setting",
     "modulesLoadError": "Error loading modules",
+    "moduleDisableTitle": "Disable module?",
     "moduleDisableConfirm": "Disable the \"{module}\" module?",
     "moduleDependencyWarning": "Note: {dependents} depends on this module. Disabling it may affect related functionality.",
     "moduleConfirmDisable": "Disable",

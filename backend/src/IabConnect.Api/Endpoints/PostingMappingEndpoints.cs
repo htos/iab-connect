@@ -13,7 +13,8 @@ public static class PostingMappingEndpoints
     public static WebApplication MapPostingMappingEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/v1/finance/posting-mappings")
-            .WithTags("Finance - Posting Mappings");
+            .WithTags("Finance - Posting Mappings")
+            .RequireAuthorization("Module:finance"); // REQ-087 (E10-S3): finance module gate
 
         group.MapGet("/", async (ISender sender, CancellationToken ct) =>
         {

@@ -20,7 +20,8 @@ public static class EmailCampaignEndpoints
     {
         var group = app.MapGroup("/api/v1/email-campaigns")
             .WithTags("Email Campaigns")
-            .RequireAuthorization("RequireVorstand");
+            .RequireAuthorization("RequireVorstand")
+            .RequireAuthorization("Module:communication"); // REQ-087 (E10-S3): communication module gate
 
         // CRUD Endpoints
         group.MapGet("/", GetCampaigns).WithName("GetEmailCampaigns");

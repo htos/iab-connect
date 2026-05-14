@@ -13,7 +13,8 @@ public static class ArchiveEndpoints
     public static void MapArchiveEndpoints(this IEndpointRouteBuilder routes)
     {
         var receipts = routes.MapGroup("/api/v1/finance/receipts")
-            .WithTags("Finance - Receipts");
+            .WithTags("Finance - Receipts")
+            .RequireAuthorization("Module:finance"); // REQ-087 (E10-S3): finance module gate
 
         receipts.MapPost("/{id:guid}/archive", ArchiveReceipt)
             .RequireAuthorization("RequireFinanceWrite")
@@ -28,7 +29,8 @@ public static class ArchiveEndpoints
             .WithDescription("REQ-070: Restores a receipt from archive (Admin only).");
 
         var invoices = routes.MapGroup("/api/v1/finance/invoices")
-            .WithTags("Finance - Invoices");
+            .WithTags("Finance - Invoices")
+            .RequireAuthorization("Module:finance"); // REQ-087 (E10-S3): finance module gate
 
         invoices.MapPost("/{id:guid}/archive", ArchiveInvoice)
             .RequireAuthorization("RequireFinanceWrite")
@@ -43,7 +45,9 @@ public static class ArchiveEndpoints
             .WithDescription("REQ-070: Restores an invoice from archive (Admin only).");
 
         var admin = routes.MapGroup("/api/v1/admin/finance")
-            .WithTags("Finance - Admin");
+            .WithTags("Finance - Admin")
+            // REQ-087 (E10-S3, Q3): admin/finance archive tooling is finance data — module-gated.
+            .RequireAuthorization("Module:finance");
 
         admin.MapPost("/purge-archived", PurgeArchived)
             .RequireAuthorization("RequireAdmin")

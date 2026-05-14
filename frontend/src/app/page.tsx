@@ -181,72 +181,76 @@ export default function HomePage() {
 
         {/* Quick Actions Grid */}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {/* Events - visible to all */}
-          <Link
-            href="/events"
-            className="group rounded-xl bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
-          >
-            <div className="flex items-center gap-4">
-              <div className="rounded-lg bg-orange-100 p-3 transition-colors group-hover:bg-orange-200">
-                <svg
-                  className="h-6 w-6 text-orange-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                  />
-                </svg>
+          {/* Events — REQ-087 (E10-S4): hidden when the events module is disabled */}
+          {settings.modules.events !== false && (
+            <Link
+              href="/events"
+              className="group rounded-xl bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+            >
+              <div className="flex items-center gap-4">
+                <div className="rounded-lg bg-orange-100 p-3 transition-colors group-hover:bg-orange-200">
+                  <svg
+                    className="h-6 w-6 text-orange-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900">
+                    {t("nav.events")}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {t("home.upcomingEvents")}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">
-                  {t("nav.events")}
-                </h3>
-                <p className="text-sm text-gray-500">
-                  {t("home.upcomingEvents")}
-                </p>
-              </div>
-            </div>
-          </Link>
+            </Link>
+          )}
 
-          {/* Documents - visible to all */}
-          <Link
-            href="/documents"
-            className="group rounded-xl bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
-          >
-            <div className="flex items-center gap-4">
-              <div className="rounded-lg bg-purple-100 p-3 transition-colors group-hover:bg-purple-200">
-                <svg
-                  className="h-6 w-6 text-purple-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
-                </svg>
+          {/* Documents — REQ-087 (E10-S4): hidden when the documents module is disabled */}
+          {settings.modules.documents !== false && (
+            <Link
+              href="/documents"
+              className="group rounded-xl bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+            >
+              <div className="flex items-center gap-4">
+                <div className="rounded-lg bg-purple-100 p-3 transition-colors group-hover:bg-purple-200">
+                  <svg
+                    className="h-6 w-6 text-purple-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900">
+                    {t("nav.documents")}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {t("home.accessDocuments")}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">
-                  {t("nav.documents")}
-                </h3>
-                <p className="text-sm text-gray-500">
-                  {t("home.accessDocuments")}
-                </p>
-              </div>
-            </div>
-          </Link>
+            </Link>
+          )}
 
-          {/* Members - Vorstand/Admin only */}
-          {(isVorstand || isAdmin) && (
+          {/* Members - Vorstand/Admin only — REQ-087 (E10-S4): + members module */}
+          {(isVorstand || isAdmin) && settings.modules.members !== false && (
             <Link
               href="/members"
               className="group rounded-xl bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
@@ -279,42 +283,43 @@ export default function HomePage() {
             </Link>
           )}
 
-          {/* Communication - Vorstand/Admin only */}
-          {(isVorstand || isAdmin) && (
-            <Link
-              href="/communication"
-              className="group rounded-xl bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
-            >
-              <div className="flex items-center gap-4">
-                <div className="rounded-lg bg-green-100 p-3 transition-colors group-hover:bg-green-200">
-                  <svg
-                    className="h-6 w-6 text-green-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                    />
-                  </svg>
+          {/* Communication - Vorstand/Admin only — REQ-087 (E10-S4): + communication module */}
+          {(isVorstand || isAdmin) &&
+            settings.modules.communication !== false && (
+              <Link
+                href="/communication"
+                className="group rounded-xl bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="rounded-lg bg-green-100 p-3 transition-colors group-hover:bg-green-200">
+                    <svg
+                      className="h-6 w-6 text-green-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">
+                      {t("nav.communication")}
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      {t("home.sendEmails")}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">
-                    {t("nav.communication")}
-                  </h3>
-                  <p className="text-sm text-gray-500">
-                    {t("home.sendEmails")}
-                  </p>
-                </div>
-              </div>
-            </Link>
-          )}
+              </Link>
+            )}
 
-          {/* Finance - Vorstand/Admin only */}
-          {(isVorstand || isAdmin) && (
+          {/* Finance - Vorstand/Admin only — REQ-087 (E10-S4): + finance module */}
+          {(isVorstand || isAdmin) && settings.modules.finance !== false && (
             <Link
               href="/finance"
               className="group rounded-xl bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
@@ -347,8 +352,8 @@ export default function HomePage() {
             </Link>
           )}
 
-          {/* Partner (Sponsors & Suppliers) - Vorstand/Admin only */}
-          {(isVorstand || isAdmin) && (
+          {/* Partner (Sponsors & Suppliers) - Vorstand/Admin only — REQ-087 (E10-S4): + partners module */}
+          {(isVorstand || isAdmin) && settings.modules.partners !== false && (
             <Link
               href="/sponsors"
               className="group rounded-xl bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
@@ -437,182 +442,189 @@ export default function HomePage() {
 
             {kpiData && (
               <>
-                {/* Member KPIs */}
-                <section>
-                  <div className="mb-4 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold text-gray-900">
-                      {tDash("members.title")}
-                    </h2>
-                    <Link
-                      href="/members"
-                      className="text-sm font-medium text-orange-600 hover:text-orange-700"
-                    >
-                      {tDash("members.viewAll")} &rarr;
-                    </Link>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-                    <KpiCard
-                      label={tDash("members.total")}
-                      value={kpiData.members.totalMembers}
-                    />
-                    <KpiCard
-                      label={tDash("members.active")}
-                      value={kpiData.members.activeMembers}
-                      color="green"
-                    />
-                    <KpiCard
-                      label={tDash("members.pending")}
-                      value={kpiData.members.pendingMembers}
-                      color="yellow"
-                    />
-                    <KpiCard
-                      label={tDash("members.inactive")}
-                      value={kpiData.members.inactiveMembers}
-                      color="gray"
-                    />
-                    <KpiCard
-                      label={tDash("members.suspended")}
-                      value={kpiData.members.suspendedMembers}
-                      color="red"
-                    />
-                    <KpiCard
-                      label={tDash("members.newInPeriod")}
-                      value={kpiData.members.newMembersInPeriod}
-                      color="blue"
-                    />
-                  </div>
-
-                  {kpiData.members.monthlyTrend.length > 0 && (
-                    <div className="mt-4 overflow-hidden rounded-xl bg-white shadow-sm">
-                      <div className="border-b border-gray-200 px-6 py-4">
-                        <h3 className="text-sm font-semibold text-gray-900">
-                          {tDash("members.trend")}
-                        </h3>
-                      </div>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm">
-                          <thead className="border-b border-gray-200 bg-gray-50">
-                            <tr>
-                              <th className="px-4 py-3 font-medium text-gray-700">
-                                {tDash("members.month")}
-                              </th>
-                              <th className="px-4 py-3 text-right font-medium text-gray-700">
-                                {tDash("members.newMembers")}
-                              </th>
-                              <th className="px-4 py-3 text-right font-medium text-gray-700">
-                                {tDash("members.totalAtEnd")}
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-100">
-                            {kpiData.members.monthlyTrend.map((item) => (
-                              <tr key={item.month} className="hover:bg-gray-50">
-                                <td className="px-4 py-3 text-gray-900">
-                                  {item.month}
-                                </td>
-                                <td className="px-4 py-3 text-right text-gray-900 tabular-nums">
-                                  {item.newMembers > 0
-                                    ? `+${item.newMembers}`
-                                    : item.newMembers}
-                                </td>
-                                <td className="px-4 py-3 text-right text-gray-500 tabular-nums">
-                                  {item.totalAtEndOfMonth}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                {/* Member KPIs — REQ-087 (E10-S4): gated by the members module */}
+                {settings.modules.members !== false && (
+                  <section>
+                    <div className="mb-4 flex items-center justify-between">
+                      <h2 className="text-lg font-semibold text-gray-900">
+                        {tDash("members.title")}
+                      </h2>
+                      <Link
+                        href="/members"
+                        className="text-sm font-medium text-orange-600 hover:text-orange-700"
+                      >
+                        {tDash("members.viewAll")} &rarr;
+                      </Link>
                     </div>
-                  )}
-                </section>
-
-                {/* Event KPIs */}
-                <section>
-                  <div className="mb-4 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold text-gray-900">
-                      {tDash("events.title")}
-                    </h2>
-                    <Link
-                      href="/events"
-                      className="text-sm font-medium text-orange-600 hover:text-orange-700"
-                    >
-                      {tDash("events.viewAll")} &rarr;
-                    </Link>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-                    <KpiCard
-                      label={tDash("events.total")}
-                      value={kpiData.events.totalEvents}
-                    />
-                    <KpiCard
-                      label={tDash("events.upcoming")}
-                      value={kpiData.events.upcomingEvents}
-                      color="blue"
-                    />
-                    <KpiCard
-                      label={tDash("events.completed")}
-                      value={kpiData.events.completedEvents}
-                      color="green"
-                    />
-                    <KpiCard
-                      label={tDash("events.cancelled")}
-                      value={kpiData.events.cancelledEvents}
-                      color="red"
-                    />
-                    <KpiCard
-                      label={tDash("events.registrations")}
-                      value={kpiData.events.totalRegistrations}
-                    />
-                    <KpiCard
-                      label={tDash("events.participants")}
-                      value={kpiData.events.totalParticipantsConfirmed}
-                      color="green"
-                    />
-                  </div>
-
-                  {kpiData.events.byCategory.length > 0 && (
-                    <div className="mt-4 overflow-hidden rounded-xl bg-white shadow-sm">
-                      <div className="border-b border-gray-200 px-6 py-4">
-                        <h3 className="text-sm font-semibold text-gray-900">
-                          {tDash("events.byCategory")}
-                        </h3>
-                      </div>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm">
-                          <thead className="border-b border-gray-200 bg-gray-50">
-                            <tr>
-                              <th className="px-4 py-3 font-medium text-gray-700">
-                                {tDash("events.category")}
-                              </th>
-                              <th className="px-4 py-3 text-right font-medium text-gray-700">
-                                {tDash("events.count")}
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-100">
-                            {kpiData.events.byCategory.map((cat) => (
-                              <tr
-                                key={cat.category}
-                                className="hover:bg-gray-50"
-                              >
-                                <td className="px-4 py-3 text-gray-900">
-                                  {cat.category}
-                                </td>
-                                <td className="px-4 py-3 text-right text-gray-900 tabular-nums">
-                                  {cat.count}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+                      <KpiCard
+                        label={tDash("members.total")}
+                        value={kpiData.members.totalMembers}
+                      />
+                      <KpiCard
+                        label={tDash("members.active")}
+                        value={kpiData.members.activeMembers}
+                        color="green"
+                      />
+                      <KpiCard
+                        label={tDash("members.pending")}
+                        value={kpiData.members.pendingMembers}
+                        color="yellow"
+                      />
+                      <KpiCard
+                        label={tDash("members.inactive")}
+                        value={kpiData.members.inactiveMembers}
+                        color="gray"
+                      />
+                      <KpiCard
+                        label={tDash("members.suspended")}
+                        value={kpiData.members.suspendedMembers}
+                        color="red"
+                      />
+                      <KpiCard
+                        label={tDash("members.newInPeriod")}
+                        value={kpiData.members.newMembersInPeriod}
+                        color="blue"
+                      />
                     </div>
-                  )}
-                </section>
 
-                {/* Finance KPIs */}
-                {canReadFinance && (
+                    {kpiData.members.monthlyTrend.length > 0 && (
+                      <div className="mt-4 overflow-hidden rounded-xl bg-white shadow-sm">
+                        <div className="border-b border-gray-200 px-6 py-4">
+                          <h3 className="text-sm font-semibold text-gray-900">
+                            {tDash("members.trend")}
+                          </h3>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-sm">
+                            <thead className="border-b border-gray-200 bg-gray-50">
+                              <tr>
+                                <th className="px-4 py-3 font-medium text-gray-700">
+                                  {tDash("members.month")}
+                                </th>
+                                <th className="px-4 py-3 text-right font-medium text-gray-700">
+                                  {tDash("members.newMembers")}
+                                </th>
+                                <th className="px-4 py-3 text-right font-medium text-gray-700">
+                                  {tDash("members.totalAtEnd")}
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {kpiData.members.monthlyTrend.map((item) => (
+                                <tr
+                                  key={item.month}
+                                  className="hover:bg-gray-50"
+                                >
+                                  <td className="px-4 py-3 text-gray-900">
+                                    {item.month}
+                                  </td>
+                                  <td className="px-4 py-3 text-right text-gray-900 tabular-nums">
+                                    {item.newMembers > 0
+                                      ? `+${item.newMembers}`
+                                      : item.newMembers}
+                                  </td>
+                                  <td className="px-4 py-3 text-right text-gray-500 tabular-nums">
+                                    {item.totalAtEndOfMonth}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </section>
+                )}
+
+                {/* Event KPIs — REQ-087 (E10-S4): gated by the events module */}
+                {settings.modules.events !== false && (
+                  <section>
+                    <div className="mb-4 flex items-center justify-between">
+                      <h2 className="text-lg font-semibold text-gray-900">
+                        {tDash("events.title")}
+                      </h2>
+                      <Link
+                        href="/events"
+                        className="text-sm font-medium text-orange-600 hover:text-orange-700"
+                      >
+                        {tDash("events.viewAll")} &rarr;
+                      </Link>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+                      <KpiCard
+                        label={tDash("events.total")}
+                        value={kpiData.events.totalEvents}
+                      />
+                      <KpiCard
+                        label={tDash("events.upcoming")}
+                        value={kpiData.events.upcomingEvents}
+                        color="blue"
+                      />
+                      <KpiCard
+                        label={tDash("events.completed")}
+                        value={kpiData.events.completedEvents}
+                        color="green"
+                      />
+                      <KpiCard
+                        label={tDash("events.cancelled")}
+                        value={kpiData.events.cancelledEvents}
+                        color="red"
+                      />
+                      <KpiCard
+                        label={tDash("events.registrations")}
+                        value={kpiData.events.totalRegistrations}
+                      />
+                      <KpiCard
+                        label={tDash("events.participants")}
+                        value={kpiData.events.totalParticipantsConfirmed}
+                        color="green"
+                      />
+                    </div>
+
+                    {kpiData.events.byCategory.length > 0 && (
+                      <div className="mt-4 overflow-hidden rounded-xl bg-white shadow-sm">
+                        <div className="border-b border-gray-200 px-6 py-4">
+                          <h3 className="text-sm font-semibold text-gray-900">
+                            {tDash("events.byCategory")}
+                          </h3>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-sm">
+                            <thead className="border-b border-gray-200 bg-gray-50">
+                              <tr>
+                                <th className="px-4 py-3 font-medium text-gray-700">
+                                  {tDash("events.category")}
+                                </th>
+                                <th className="px-4 py-3 text-right font-medium text-gray-700">
+                                  {tDash("events.count")}
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {kpiData.events.byCategory.map((cat) => (
+                                <tr
+                                  key={cat.category}
+                                  className="hover:bg-gray-50"
+                                >
+                                  <td className="px-4 py-3 text-gray-900">
+                                    {cat.category}
+                                  </td>
+                                  <td className="px-4 py-3 text-right text-gray-900 tabular-nums">
+                                    {cat.count}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </section>
+                )}
+
+                {/* Finance KPIs — REQ-087 (E10-S4): + finance module */}
+                {canReadFinance && settings.modules.finance !== false && (
                   <section>
                     <div className="mb-4 flex items-center justify-between">
                       <h2 className="text-lg font-semibold text-gray-900">

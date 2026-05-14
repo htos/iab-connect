@@ -12,7 +12,8 @@ public static class ActivityAreaEndpoints
     public static void MapActivityAreaEndpoints(this IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("/api/v1/finance/activity-areas")
-            .WithTags("Finance - Activity Areas");
+            .WithTags("Finance - Activity Areas")
+            .RequireAuthorization("Module:finance"); // REQ-087 (E10-S3): finance module gate
 
         group.MapGet("/", GetAll)
             .RequireAuthorization("RequireFinanceRead")

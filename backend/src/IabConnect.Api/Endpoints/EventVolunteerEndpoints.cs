@@ -33,7 +33,8 @@ public static class EventVolunteerEndpoints
         // ---- Roles ----
         var roleGroup = endpoints.MapGroup("/api/v1/events/{eventId:guid}/volunteer-roles")
             .WithTags("Event Volunteer Roles")
-            .RequireAuthorization();
+            .RequireAuthorization()
+            .RequireAuthorization("Module:events"); // REQ-087 (E10-S3): events module gate
 
         roleGroup.MapGet("/", GetRoles)
             // R3-DN-4: RequireEventStaffOrMember accepts event-manager too. The previous
@@ -66,7 +67,8 @@ public static class EventVolunteerEndpoints
         // ---- Shifts ----
         var shiftGroup = endpoints.MapGroup("/api/v1/events/{eventId:guid}/volunteer-shifts")
             .WithTags("Event Volunteer Shifts")
-            .RequireAuthorization();
+            .RequireAuthorization()
+            .RequireAuthorization("Module:events"); // REQ-087 (E10-S3): events module gate
 
         shiftGroup.MapGet("/", GetShifts)
             // R3-DN-4: union policy so event-manager can read the shifts they own.

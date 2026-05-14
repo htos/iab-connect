@@ -59,10 +59,15 @@ public sealed class PermissionAuthorizationHandler : AuthorizationHandler<Permis
 
 /// <summary>
 /// Authorization policy provider that creates policies dynamically based on permission names.
+/// REQ-087 (E10-S3): also recognizes the <c>Module:</c> prefix so route groups can declare
+/// <c>.RequireAuthorization("Module:&lt;key&gt;")</c> exactly like <c>Permission:</c>. There
+/// can only be one registered <see cref="IAuthorizationPolicyProvider"/>, so this single
+/// provider is extended rather than adding a second one.
 /// </summary>
 public sealed class PermissionPolicyProvider : IAuthorizationPolicyProvider
 {
     private const string PermissionPolicyPrefix = "Permission:";
+    private const string ModulePolicyPrefix = "Module:";
     private readonly DefaultAuthorizationPolicyProvider _fallbackPolicyProvider;
 
     public PermissionPolicyProvider(IOptions<AuthorizationOptions> options)
@@ -77,6 +82,18 @@ public sealed class PermissionPolicyProvider : IAuthorizationPolicyProvider
             var permission = policyName[PermissionPolicyPrefix.Length..];
             var policy = new AuthorizationPolicyBuilder()
                 .AddRequirements(new PermissionRequirement(permission))
+                .Build();
+            return Task.FromResult<AuthorizationPolicy?>(policy);
+        }
+
+        // REQ-087 (E10-S3): "Module:<key>" → a policy carrying a single ModuleRequirement,
+        // resolved at request time by ModuleAuthorizationHandler against the module-settings
+        // service.
+        if (policyName.StartsWith(ModulePolicyPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            var moduleKey = policyName[ModulePolicyPrefix.Length..];
+            var policy = new AuthorizationPolicyBuilder()
+                .AddRequirements(new ModuleRequirement(moduleKey))
                 .Build();
             return Task.FromResult<AuthorizationPolicy?>(policy);
         }

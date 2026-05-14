@@ -13,7 +13,8 @@ public static class BankImportEndpoints
     public static void MapBankImportEndpoints(this IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("/api/v1/finance/bank-imports")
-            .WithTags("Finance - Bank Imports");
+            .WithTags("Finance - Bank Imports")
+            .RequireAuthorization("Module:finance"); // REQ-087 (E10-S3): finance module gate
 
         group.MapGet("/", GetAll)
             .RequireAuthorization("RequireFinanceRead")

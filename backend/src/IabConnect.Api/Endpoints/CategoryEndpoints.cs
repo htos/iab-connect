@@ -13,7 +13,8 @@ public static class CategoryEndpoints
     public static void MapCategoryEndpoints(this IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("/api/v1/finance/categories")
-            .WithTags("Finance - Categories");
+            .WithTags("Finance - Categories")
+            .RequireAuthorization("Module:finance"); // REQ-087 (E10-S3): finance module gate
 
         group.MapGet("/", GetAll)
             .RequireAuthorization("RequireFinanceRead")

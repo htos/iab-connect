@@ -13,7 +13,8 @@ public static class DunningEndpoints
     public static void MapDunningEndpoints(this IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("/api/v1/finance/dunning")
-            .WithTags("Finance - Dunning");
+            .WithTags("Finance - Dunning")
+            .RequireAuthorization("Module:finance"); // REQ-087 (E10-S3): finance module gate
 
         group.MapGet("/", GetAll)
             .RequireAuthorization("RequireFinanceRead")

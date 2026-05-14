@@ -14,7 +14,8 @@ public static class JournalEntryEndpoints
     public static WebApplication MapJournalEntryEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/v1/finance/journal-entries")
-            .WithTags("Finance - Journal Entries");
+            .WithTags("Finance - Journal Entries")
+            .RequireAuthorization("Module:finance"); // REQ-087 (E10-S3): finance module gate
 
         group.MapGet("/", async (DateTime? from, DateTime? to, string? status, ISender sender, CancellationToken ct) =>
         {

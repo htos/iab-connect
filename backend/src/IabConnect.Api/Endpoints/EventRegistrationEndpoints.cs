@@ -20,13 +20,15 @@ public static class EventRegistrationEndpoints
         var group = endpoints.MapGroup("/api/v1/events/{eventId:guid}/registrations")
             .WithTags("Event Registrations");
 
-        // Protected endpoints
-        var protectedGroup = group.RequireAuthorization();
+        // Protected endpoints — also behind the Events module gate (REQ-087, E10-S3). The
+        // public RSVP endpoint below stays on `group` with .AllowAnonymous() and is not gated.
+        var protectedGroup = group.RequireAuthorization().RequireAuthorization("Module:events");
 
         // Public endpoints MUST be mapped after RequireAuthorization and use AllowAnonymous
         // to override the group-level auth requirement
         group.MapPost("/public", RegisterPublic)
             .AllowAnonymous()
+            .RequireModule("public_view") // REQ-087 (E10-S5): public RSVP gated by public_view
             .WithName("RegisterPublicEvent")
             .WithSummary("Öffentliche Anmeldung für ein Event")
             .Produces<EventRegistrationDto>(StatusCodes.Status201Created)

@@ -11,6 +11,7 @@ import { useAuth, useApiClient, ROLES } from "@/lib/auth";
 import { useAppSettings } from "@/components/providers/AppSettingsProvider";
 import { useSidebar } from "./SidebarContext";
 import { useState, useCallback, useEffect, useRef } from "react";
+import type { ModuleKey } from "@/lib/modules";
 
 interface NavItem {
   labelKey: string;
@@ -18,6 +19,8 @@ interface NavItem {
   icon: React.ReactNode;
   requiredRoles?: string[];
   requiresDoubleEntry?: boolean;
+  // REQ-087 (E10-S4): hide this item when its module is disabled (mirrors requiresDoubleEntry).
+  requiresModule?: ModuleKey;
   submenu?: NavItem[];
 }
 
@@ -64,6 +67,7 @@ const navItems: NavItem[] = [
   },
   {
     labelKey: "nav.members",
+    requiresModule: "members",
     icon: (
       <svg
         className="h-5 w-5"
@@ -101,6 +105,7 @@ const navItems: NavItem[] = [
   {
     labelKey: "nav.events",
     href: "/events",
+    requiresModule: "events",
     icon: (
       <svg
         className="h-5 w-5"
@@ -119,6 +124,7 @@ const navItems: NavItem[] = [
   },
   {
     labelKey: "nav.documents",
+    requiresModule: "documents",
     icon: (
       <svg
         className="h-5 w-5"
@@ -156,6 +162,7 @@ const navItems: NavItem[] = [
   },
   {
     labelKey: "nav.communication",
+    requiresModule: "communication",
     icon: (
       <svg
         className="h-5 w-5"
@@ -187,6 +194,7 @@ const navItems: NavItem[] = [
   },
   {
     labelKey: "nav.finance",
+    requiresModule: "finance",
     icon: (
       <svg
         className="h-5 w-5"
@@ -265,6 +273,7 @@ const navItems: NavItem[] = [
   },
   {
     labelKey: "nav.partner",
+    requiresModule: "partners",
     icon: (
       <svg
         className="h-5 w-5"
@@ -463,7 +472,10 @@ export function Sidebar() {
     try {
       const res = await apiRef.current.get("/api/v1/finance/profile");
       if (!res.error && res.data) {
-        setIsDoubleEntry((res.data as { accountingMode?: string }).accountingMode === "DoubleEntry");
+        setIsDoubleEntry(
+          (res.data as { accountingMode?: string }).accountingMode ===
+            "DoubleEntry"
+        );
       }
     } catch {
       // ignore — default to false
@@ -493,11 +505,25 @@ export function Sidebar() {
     return null;
   }
 
-  // Filter navigation items based on user roles
-  const visibleNavItems = navItems.filter((item) => {
-    if (!item.requiredRoles) return true;
-    return item.requiredRoles.some((role) => roles.includes(role));
-  });
+  // Filter navigation items based on user roles and enabled modules.
+  // REQ-087 (E10-S4): a module-tagged item is hidden when its module is disabled. UX-only —
+  // the backend 403 (E10-S3) is the real control. settings.modules defaults to all-true, so
+  // this is behaviour-preserving until a module is actually turned off. The .map() pre-filters
+  // submenu items by module so NavItemWithSubmenu needs no extra prop threading.
+  const isModuleEnabled = (item: NavItem) =>
+    !item.requiresModule || settings.modules[item.requiresModule] !== false;
+
+  const visibleNavItems = navItems
+    .filter((item) => {
+      if (!isModuleEnabled(item)) return false;
+      if (!item.requiredRoles) return true;
+      return item.requiredRoles.some((role) => roles.includes(role));
+    })
+    .map((item) =>
+      item.submenu
+        ? { ...item, submenu: item.submenu.filter(isModuleEnabled) }
+        : item
+    );
 
   return (
     <>

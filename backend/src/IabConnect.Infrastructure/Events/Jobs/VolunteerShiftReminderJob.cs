@@ -1,5 +1,7 @@
 using Hangfire;
+using IabConnect.Application.Common;
 using IabConnect.Application.Events.Jobs;
+using IabConnect.Domain.Common;
 using Microsoft.Extensions.Logging;
 
 namespace IabConnect.Infrastructure.Events.Jobs;
@@ -12,13 +14,16 @@ namespace IabConnect.Infrastructure.Events.Jobs;
 public sealed class VolunteerShiftReminderJob
 {
     private readonly IVolunteerShiftReminderService _service;
+    private readonly IModuleSettingsService _moduleSettings;
     private readonly ILogger<VolunteerShiftReminderJob> _logger;
 
     public VolunteerShiftReminderJob(
         IVolunteerShiftReminderService service,
+        IModuleSettingsService moduleSettings,
         ILogger<VolunteerShiftReminderJob> logger)
     {
         _service = service;
+        _moduleSettings = moduleSettings;
         _logger = logger;
     }
 
@@ -33,6 +38,15 @@ public sealed class VolunteerShiftReminderJob
     [JobDisplayName("Send Volunteer Shift Reminders")]
     public async Task ExecuteAsync(CancellationToken cancellationToken)
     {
+        // REQ-087 (E10-S5): no volunteer-shift reminder emails go out while the Events
+        // module is disabled — the job no-ops cleanly instead of failing.
+        if (!await _moduleSettings.IsEnabledAsync(ModuleKeys.Events, cancellationToken))
+        {
+            _logger.LogInformation(
+                "VolunteerShiftReminderJob: skipped — the Events module is disabled");
+            return;
+        }
+
         _logger.LogInformation("VolunteerShiftReminderJob: starting execution");
         try
         {

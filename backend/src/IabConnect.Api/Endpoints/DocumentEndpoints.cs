@@ -21,7 +21,8 @@ public static class DocumentEndpoints
 
         // Document Folders
         var folders = api.MapGroup("/document-folders")
-            .WithTags("Document Folders");
+            .WithTags("Document Folders")
+            .RequireAuthorization("Module:documents"); // REQ-087 (E10-S3): documents module gate
 
         folders.MapGet("/", GetFolders)
             .RequireAuthorization("RequireMember")
@@ -55,7 +56,8 @@ public static class DocumentEndpoints
 
         // Documents
         var documents = api.MapGroup("/documents")
-            .WithTags("Documents");
+            .WithTags("Documents")
+            .RequireAuthorization("Module:documents"); // REQ-087 (E10-S3): documents module gate
 
         documents.MapGet("/", GetDocuments)
             .RequireAuthorization("RequireMember")

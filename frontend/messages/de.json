@@ -174,6 +174,18 @@
     "accountingInvoices": "Buchhaltung & Rechnungen",
     "managePartners": "Sponsoren & Lieferanten verwalten"
   },
+  "moduleUnavailable": {
+    "heading": "Dieser Bereich ist nicht verfügbar",
+    "body": "Der Bereich, den du öffnen wolltest, wurde für diese Organisation deaktiviert. Es liegt kein Fehler auf deiner Seite vor.",
+    "adminHint": "Wenn dieser Bereich verfügbar sein sollte, wende dich bitte an eine Administratorin oder einen Administrator.",
+    "backToDashboard": "Zurück zum Dashboard",
+    "sessionAlert": "Dieser Bereich wurde deaktiviert. Beim nächsten Schritt wirst du auf eine Infoseite geleitet."
+  },
+  "siteUnavailable": {
+    "heading": "Diese Website ist nicht öffentlich verfügbar",
+    "body": "Die öffentliche Website ist derzeit deaktiviert. Wenn du ein Konto hast, kannst du dich weiterhin anmelden.",
+    "memberLogin": "Mitglieder-Login"
+  },
   "dashboard": {
     "title": "Dashboard & KPIs",
     "subtitle": "Übersicht über Mitglieder, Events und Finanzen.",
@@ -1336,6 +1348,7 @@
     "moduleSaveSuccess": "Modul-Einstellung gespeichert",
     "moduleSaveError": "Fehler beim Speichern der Modul-Einstellung",
     "modulesLoadError": "Fehler beim Laden der Module",
+    "moduleDisableTitle": "Modul deaktivieren?",
     "moduleDisableConfirm": "Modul „{module}“ wirklich deaktivieren?",
     "moduleDependencyWarning": "Hinweis: {dependents} hängt von diesem Modul ab. Das Deaktivieren kann zugehörige Funktionen beeinträchtigen.",
     "moduleConfirmDisable": "Deaktivieren",

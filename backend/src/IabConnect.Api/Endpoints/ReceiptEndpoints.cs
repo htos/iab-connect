@@ -14,7 +14,8 @@ public static class ReceiptEndpoints
     public static void MapReceiptEndpoints(this IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("/api/v1/finance/receipts")
-            .WithTags("Finance - Receipts");
+            .WithTags("Finance - Receipts")
+            .RequireAuthorization("Module:finance"); // REQ-087 (E10-S3): finance module gate
 
         group.MapGet("/", GetAll)
             .RequireAuthorization("RequireFinanceRead")

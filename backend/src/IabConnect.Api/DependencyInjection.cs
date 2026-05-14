@@ -180,6 +180,11 @@ public static class DependencyInjection
         services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
         services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 
+        // REQ-087 (E10-S3): module-enforcement handler. Registered Scoped — unlike the
+        // Singleton permission handler — because it resolves the scoped IModuleSettingsService
+        // and IAuditService. PermissionPolicyProvider above also serves the "Module:" prefix.
+        services.AddScoped<IAuthorizationHandler, ModuleAuthorizationHandler>();
+
         // REQ-054: Health Checks with DB & Keycloak probes
         services.AddHealthChecks()
             .AddCheck<HealthChecks.DatabaseHealthCheck>("database", tags: ["db", "ready"])

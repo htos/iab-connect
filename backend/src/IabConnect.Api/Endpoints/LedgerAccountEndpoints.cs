@@ -15,7 +15,8 @@ public static class LedgerAccountEndpoints
     public static WebApplication MapLedgerAccountEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/v1/finance/ledger-accounts")
-            .WithTags("Finance - Ledger Accounts");
+            .WithTags("Finance - Ledger Accounts")
+            .RequireAuthorization("Module:finance"); // REQ-087 (E10-S3): finance module gate
 
         group.MapGet("/", async (ISender sender, CancellationToken ct) =>
         {

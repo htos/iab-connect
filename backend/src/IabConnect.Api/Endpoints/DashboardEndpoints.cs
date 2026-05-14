@@ -11,7 +11,8 @@ public static class DashboardEndpoints
     public static void MapDashboardEndpoints(this IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("/api/v1/finance/dashboard")
-            .WithTags("Finance - Dashboard");
+            .WithTags("Finance - Dashboard")
+            .RequireAuthorization("Module:finance"); // REQ-087 (E10-S3): finance module gate
 
         group.MapGet("/", GetDashboard)
             .RequireAuthorization("RequireFinanceRead")

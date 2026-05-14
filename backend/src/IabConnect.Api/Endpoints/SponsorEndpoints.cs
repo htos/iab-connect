@@ -1,3 +1,4 @@
+using IabConnect.Api.Authorization;
 using IabConnect.Application.Sponsors.Commands;
 using IabConnect.Domain.Sponsors;
 using IabConnect.Infrastructure.Persistence;
@@ -18,7 +19,8 @@ public static class SponsorEndpoints
     {
         // Public endpoint (no auth required) - REQ-048
         var publicGroup = routes.MapGroup("/api/v1/sponsors/public")
-            .WithTags("Sponsors");
+            .WithTags("Sponsors")
+            .RequireModule("public_view"); // REQ-087 (E10-S5): public surface gated by the public_view module
 
         publicGroup.MapGet("/", GetPublicSponsors)
             .WithName("GetPublicSponsors")
@@ -26,7 +28,8 @@ public static class SponsorEndpoints
 
         var group = routes.MapGroup("/api/v1/sponsors")
             .WithTags("Sponsors")
-            .RequireAuthorization("RequireVorstand");
+            .RequireAuthorization("RequireVorstand")
+            .RequireAuthorization("Module:partners"); // REQ-087 (E10-S3): partners module gate (publicGroup above stays un-gated)
 
         group.MapGet("/", GetAll)
             .WithName("GetSponsors")

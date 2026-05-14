@@ -21,14 +21,22 @@ public static class EventEndpoints
     public static IEndpointRouteBuilder MapEventEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/v1/events")
-            .WithTags("Events");
+            .WithTags("Events")
+            // REQ-087 (E10-S3): the Events module gate covers the whole group; the public and
+            // token-based endpoints below opt out with .AllowAnonymous() — anonymous access vs.
+            // a disabled module is E10-S5's concern, not this story's.
+            .RequireAuthorization("Module:events");
 
         // Public endpoints (no auth required for public events)
         group.MapGet("/public", GetPublicEvents)
+            .AllowAnonymous()
+            .RequireModule("public_view") // REQ-087 (E10-S5): public surface gated by public_view
             .WithName("GetPublicEvents")
             .WithSummary("Get public events (no authentication required)");
 
         group.MapGet("/public/{id:guid}", GetPublicEvent)
+            .AllowAnonymous()
+            .RequireModule("public_view") // REQ-087 (E10-S5): public surface gated by public_view
             .WithName("GetPublicEvent")
             .WithSummary("Get a single public event");
 
@@ -85,14 +93,17 @@ public static class EventEndpoints
 
         // REQ-025 (E3.S5): Calendar feed endpoints (RFC 5545 ICS)
         group.MapGet("/calendar.ics", GetPublicCalendar)
+            .AllowAnonymous()
             .WithName("GetPublicCalendarIcs")
             .WithSummary("Public calendar feed (no authentication)");
 
         group.MapGet("/my-calendar.ics", GetMemberCalendar)
+            .AllowAnonymous()
             .WithName("GetMemberCalendarIcs")
             .WithSummary("Per-member calendar feed via opaque token");
 
         group.MapGet("/{id:guid}/calendar.ics", GetSingleEventCalendar)
+            .AllowAnonymous()
             .WithName("GetSingleEventCalendarIcs")
             .WithSummary("Per-event ICS download");
 

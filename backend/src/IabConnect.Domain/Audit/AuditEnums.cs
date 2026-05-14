@@ -47,7 +47,11 @@ public enum AuditEventType
 
     // System events
     SettingsChanged,
-    SystemError
+    SystemError,
+
+    // REQ-087 (E10-S3): a request was denied because its module is disabled. Maps to
+    // AuditCategory.System via the `_ => System` default in AuditService.LogActionAsync.
+    ModuleAccessDenied
 }
 
 /// <summary>

@@ -17,7 +17,8 @@ public static class SupplierEndpoints
     {
         var group = routes.MapGroup("/api/v1/suppliers")
             .WithTags("Suppliers")
-            .RequireAuthorization("RequireAdmin");
+            .RequireAuthorization("RequireAdmin")
+            .RequireAuthorization("Module:partners"); // REQ-087 (E10-S3): partners module gate
 
         group.MapGet("/", GetAll)
             .WithName("GetSuppliers")

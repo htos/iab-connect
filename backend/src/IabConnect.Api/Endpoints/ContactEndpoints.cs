@@ -1,3 +1,4 @@
+using IabConnect.Api.Authorization;
 using IabConnect.Application.Authorization;
 using IabConnect.Domain.Communication;
 using IabConnect.Infrastructure.Persistence;
@@ -15,7 +16,8 @@ public static class ContactEndpoints
     {
         // Public endpoint (no auth)
         var publicGroup = routes.MapGroup("/api/v1/public/contact")
-            .WithTags("Contact");
+            .WithTags("Contact")
+            .RequireModule("public_view"); // REQ-087 (E10-S5): public surface gated by the public_view module
 
         publicGroup.MapPost("/", SubmitContact)
             .WithName("SubmitContactForm")

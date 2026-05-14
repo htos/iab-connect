@@ -19,7 +19,8 @@ public static class MemberSegmentEndpoints
     {
         var group = app.MapGroup("/api/v1/member-segments")
             .WithTags("Member Segments")
-            .RequireAuthorization("RequireVorstand");
+            .RequireAuthorization("RequireVorstand")
+            .RequireAuthorization("Module:members"); // REQ-087 (E10-S3, Q2): members module gate
 
         // GET /api/v1/member-segments - List all segments (paginated)
         group.MapGet("/", GetSegments)

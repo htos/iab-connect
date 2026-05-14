@@ -30,8 +30,12 @@ public static class MemberEndpoints
     {
         var members = group.MapGroup("/members")
             .WithTags("Members");
+        // REQ-087 (E10-S3, post-review fix): the Module:members gate is applied to the
+        // member-MANAGEMENT sub-group only (below). The /me* self-service endpoints belong
+        // to the "My Profile" surface, which E10-S3 AC-4a says must NEVER be module-gated —
+        // gating them broke My Profile whenever the members module was disabled.
 
-        // === Public endpoints (for self-service) ===
+        // === Public endpoints (for self-service) — NOT module-gated (AC-4a) ===
 
         // GET /api/v1/members/me - Get own member profile (REQ-016)
         members.MapGet("/me", GetOwnProfile)
@@ -51,76 +55,77 @@ public static class MemberEndpoints
             .WithName("GetProfileStatus")
             .WithDescription("REQ-007: Onboarding-Checkliste - Profilstatus prüfen");
 
-        // === Admin/Vorstand endpoints ===
+        // === Admin/Vorstand endpoints — gated by the members module (REQ-087 E10-S3) ===
+        var memberManagement = members.MapGroup("").RequireAuthorization("Module:members");
 
         // GET /api/v1/members - List all members (REQ-013)
-        members.MapGet("/", GetMembers)
+        memberManagement.MapGet("/", GetMembers)
             .RequireAuthorization("RequireVorstand")
             .WithName("GetMembers")
             .WithDescription("REQ-013: Mitgliederliste mit Suche und Filterung");
 
         // GET /api/v1/members/{id} - Get member by ID (REQ-013)
-        members.MapGet("/{id:guid}", GetMemberById)
+        memberManagement.MapGet("/{id:guid}", GetMemberById)
             .RequireAuthorization("RequireVorstand")
             .WithName("GetMemberById")
             .WithDescription("REQ-013: Einzelnes Mitglied abrufen");
 
         // POST /api/v1/members - Create new member (REQ-014)
-        members.MapPost("/", CreateMember)
+        memberManagement.MapPost("/", CreateMember)
             .RequireAuthorization("RequireVorstand")
             .WithName("CreateMember")
             .WithDescription("REQ-014: Neues Mitglied anlegen");
 
         // PUT /api/v1/members/{id} - Update member (REQ-014)
-        members.MapPut("/{id:guid}", UpdateMember)
+        memberManagement.MapPut("/{id:guid}", UpdateMember)
             .RequireAuthorization("RequireVorstand")
             .WithName("UpdateMember")
             .WithDescription("REQ-014: Mitglied bearbeiten");
 
         // DELETE /api/v1/members/{id} - Delete member (REQ-014)
-        members.MapDelete("/{id:guid}", DeleteMember)
+        memberManagement.MapDelete("/{id:guid}", DeleteMember)
             .RequireAuthorization("RequireAdmin")
             .WithName("DeleteMember")
             .WithDescription("REQ-014: Mitglied löschen (nur Admin)");
 
         // PUT /api/v1/members/{id}/status - Change membership status (REQ-014)
-        members.MapPut("/{id:guid}/status", UpdateMemberStatus)
+        memberManagement.MapPut("/{id:guid}/status", UpdateMemberStatus)
             .RequireAuthorization("RequireVorstand")
             .WithName("UpdateMemberStatus")
             .WithDescription("REQ-014: Mitgliedsstatus ändern");
 
         // PUT /api/v1/members/{id}/type - Change membership type (REQ-014)
-        members.MapPut("/{id:guid}/type", UpdateMembershipType)
+        memberManagement.MapPut("/{id:guid}/type", UpdateMembershipType)
             .RequireAuthorization("RequireVorstand")
             .WithName("UpdateMembershipType")
             .WithDescription("REQ-014: Mitgliedschaftsart ändern");
 
         // GET /api/v1/members/statistics - Get member statistics (REQ-017)
-        members.MapGet("/statistics", GetMemberStatistics)
+        memberManagement.MapGet("/statistics", GetMemberStatistics)
             .RequireAuthorization("RequireVorstand")
             .WithName("GetMemberStatistics")
             .WithDescription("REQ-017: Mitgliederstatistik");
 
         // GET /api/v1/members/duplicates - Find duplicate-candidate members (REQ-018)
-        members.MapGet("/duplicates", GetMemberDuplicates)
+        memberManagement.MapGet("/duplicates", GetMemberDuplicates)
             .RequireAuthorization("RequireVorstand")
             .WithName("GetMemberDuplicates")
             .WithDescription("REQ-018: Dubletten-Kandidaten suchen");
 
         // POST /api/v1/members/{sourceId}/merge-into/{targetId} - Safe member merge (REQ-018, E2.S3)
-        members.MapPost("/{sourceId:guid}/merge-into/{targetId:guid}", MergeMember)
+        memberManagement.MapPost("/{sourceId:guid}/merge-into/{targetId:guid}", MergeMember)
             .RequireAuthorization("RequireAdmin")
             .WithName("MergeMember")
             .WithDescription("REQ-018: Sichere Mitglieder-Zusammenführung (nur Admin)");
 
         // GET /api/v1/members/duplicate-groups - Cross-table duplicate-groups scan (REQ-018, E2.S4)
-        members.MapGet("/duplicate-groups", GetDuplicateGroups)
+        memberManagement.MapGet("/duplicate-groups", GetDuplicateGroups)
             .RequireAuthorization("RequireVorstand")
             .WithName("GetDuplicateGroups")
             .WithDescription("REQ-018: Dubletten-Gruppen-Übersicht (Vorstand)");
 
         // POST /api/v1/members/duplicate-dismissals - Dismiss a false-positive pair (REQ-018, E2.S4)
-        members.MapPost("/duplicate-dismissals", DismissDuplicateCandidate)
+        memberManagement.MapPost("/duplicate-dismissals", DismissDuplicateCandidate)
             .RequireAuthorization("RequireVorstand")
             .WithName("DismissDuplicateCandidate")
             .WithDescription("REQ-018: Dubletten-Paar als 'kein Duplikat' markieren (Vorstand)");

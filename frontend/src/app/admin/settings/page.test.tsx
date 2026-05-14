@@ -229,8 +229,8 @@ describe("Modules tab (REQ-087 E10-S2)", () => {
     const { container } = render(<SettingsPage />);
     await openModulesTab(container);
 
-    const toggles = container.querySelectorAll('input[type="checkbox"]');
-    // 7 module rows — each row has exactly one checkbox.
+    // REQ-087 (E10-S2, post-review): each row has a switch-role toggle button.
+    const toggles = container.querySelectorAll('button[role="switch"]');
     expect(toggles.length).toBe(7);
     expect(container.querySelector("#module-members")).toBeInTheDocument();
     expect(container.querySelector("#module-public_view")).toBeInTheDocument();

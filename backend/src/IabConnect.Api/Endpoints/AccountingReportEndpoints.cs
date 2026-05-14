@@ -11,7 +11,8 @@ public static class AccountingReportEndpoints
     public static WebApplication MapAccountingReportEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/v1/finance/accounting-reports")
-            .WithTags("Finance - Accounting Reports");
+            .WithTags("Finance - Accounting Reports")
+            .RequireAuthorization("Module:finance"); // REQ-087 (E10-S3): finance module gate
 
         group.MapGet("/trial-balance", async (DateTime? from, DateTime? to, ISender sender, CancellationToken ct) =>
         {

@@ -1,3 +1,4 @@
+using IabConnect.Api.Authorization;
 using IabConnect.Application.Authorization;
 using IabConnect.Domain.Blog;
 using IabConnect.Infrastructure.Persistence;
@@ -15,7 +16,8 @@ public static class BlogEndpoints
     {
         // Public endpoints (no auth)
         var publicGroup = routes.MapGroup("/api/v1/blog/public")
-            .WithTags("Blog");
+            .WithTags("Blog")
+            .RequireModule("public_view"); // REQ-087 (E10-S5): public surface gated by the public_view module
 
         publicGroup.MapGet("/", GetPublicPosts)
             .WithName("GetPublicBlogPosts")

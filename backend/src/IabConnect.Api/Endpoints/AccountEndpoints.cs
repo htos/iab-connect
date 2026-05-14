@@ -13,7 +13,8 @@ public static class AccountEndpoints
     public static void MapAccountEndpoints(this IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("/api/v1/finance/accounts")
-            .WithTags("Finance - Accounts");
+            .WithTags("Finance - Accounts")
+            .RequireAuthorization("Module:finance"); // REQ-087 (E10-S3): finance module gate
 
         group.MapGet("/", GetAll)
             .RequireAuthorization("RequireFinanceRead")
