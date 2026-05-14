@@ -22,6 +22,13 @@ public sealed class VolunteerShiftReminderJob
         _logger = logger;
     }
 
+    // R4-P-S4-4: DisableConcurrentExecution serialises this job against itself. The reminder
+    // service sends each email BEFORE marking the row sent, so two overlapping passes (the daily
+    // trigger overlapping an AutomaticRetry of a slow previous run, or a manual re-trigger) would
+    // duplicate-mail every in-window recipient. The distributed lock makes the overlap window
+    // impossible; the 10-minute timeout is well above the expected pass duration, after which a
+    // genuinely stuck run is abandoned rather than blocking forever.
+    [DisableConcurrentExecution(timeoutInSeconds: 10 * 60)]
     [AutomaticRetry(Attempts = 3)]
     [JobDisplayName("Send Volunteer Shift Reminders")]
     public async Task ExecuteAsync(CancellationToken cancellationToken)

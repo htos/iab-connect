@@ -1,7 +1,9 @@
 /**
  * REQ-024 (E3.S4): Volunteer-management page for event staff.
  *
- * Table view of shifts grouped by role + inline forms for role/shift create/edit.
+ * Table view of shifts grouped by role + a role-create form. The shift create/edit form is a
+ * react-hook-form + zod form rendered inside a Radix dialog (R4-P-S4-1 / R4-P-S4-2) — Radix
+ * handles Escape / overlay-click dismissal and focus-trapping for AC-8.
  * Backend RequireEventStaff is the security boundary; the role guard here is UX-only.
  */
 'use client';
@@ -10,7 +12,18 @@ import { use, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useAuth } from '@/lib/auth';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   type EventVolunteerRoleDto,
   type EventVolunteerShiftDto,
@@ -28,6 +41,9 @@ import {
  * to the operator's primary timezone Europe/Zurich.
  */
 const ZURICH_TIME_ZONE = 'Europe/Zurich';
+
+const SHIFT_TITLE_MAX = 200;
+const SHIFT_TEXT_MAX = 1000;
 
 function formatZurich(isoUtc: string): string {
   return new Date(isoUtc).toLocaleString('de-CH', { timeZone: ZURICH_TIME_ZONE });
@@ -82,7 +98,7 @@ function zurichLocalInputToUtcIso(localInput: string): string {
   return new Date(asUtc.getTime() - offsetMinutes * 60_000).toISOString();
 }
 
-type ShiftDraft = {
+type ShiftFormValues = {
   roleId: string;
   title: string;
   description: string;
@@ -94,17 +110,199 @@ type ShiftDraft = {
   notes: string;
 };
 
-const emptyShiftDraft = (roleId = ''): ShiftDraft => ({
-  roleId,
-  title: '',
-  description: '',
-  startsAt: '',
-  endsAt: '',
-  capacity: 1,
-  allowWaitlist: false,
-  allowSelfSignup: false,
-  notes: '',
-});
+/**
+ * R4-P-S4-1: zod schema for the shift form. Built per-render with the `next-intl` translator
+ * so every validation message is localized. The `endAfterStart` refinement attaches its error
+ * to `endsAt` so it surfaces under the End field.
+ */
+function buildShiftSchema(t: ReturnType<typeof useTranslations>) {
+  return z
+    .object({
+      roleId: z.string().min(1, t('validation.roleRequired')),
+      title: z
+        .string()
+        .trim()
+        .min(1, t('validation.titleRequired'))
+        .max(SHIFT_TITLE_MAX, t('validation.titleTooLong')),
+      description: z.string().max(SHIFT_TEXT_MAX, t('validation.descriptionTooLong')),
+      startsAt: z.string().min(1, t('validation.startRequired')),
+      endsAt: z.string().min(1, t('validation.endRequired')),
+      capacity: z.number().int().min(1, t('validation.capacityMin')),
+      allowWaitlist: z.boolean(),
+      allowSelfSignup: z.boolean(),
+      notes: z.string().max(SHIFT_TEXT_MAX, t('validation.notesTooLong')),
+    })
+    .refine(
+      (v) => !v.startsAt || !v.endsAt || new Date(v.startsAt) < new Date(v.endsAt),
+      { message: t('validation.endAfterStart'), path: ['endsAt'] }
+    );
+}
+
+type ShiftFormTarget = {
+  mode: 'create' | 'edit';
+  roleId: string;
+  shiftId?: string;
+  initial: ShiftFormValues;
+};
+
+const inputClass =
+  'w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500';
+
+/**
+ * R4-P-S4-1 / R4-P-S4-2: shift create/edit form. Rendered only while a target is set — the
+ * component mounting IS the dialog being open, so Radix's `onOpenChange(false)` (Escape,
+ * overlay click, the X button) maps cleanly to `onClose`. react-hook-form + zod own the
+ * field state + validation.
+ */
+function ShiftFormDialog({
+  target,
+  roles,
+  eventId,
+  onClose,
+  onSaved,
+  onError,
+}: {
+  target: ShiftFormTarget;
+  roles: EventVolunteerRoleDto[];
+  eventId: string;
+  onClose: () => void;
+  onSaved: () => void;
+  onError: () => void;
+}) {
+  const t = useTranslations('events.volunteers');
+  const schema = useMemo(() => buildShiftSchema(t), [t]);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<ShiftFormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: target.initial,
+  });
+
+  const onSubmit = async (values: ShiftFormValues) => {
+    const payload = {
+      title: values.title.trim(),
+      description: values.description.trim() || null,
+      // Post-review H-S4-3: treat the user's datetime-local input as Europe/Zurich local
+      // wall-clock time and convert to UTC ISO for the API.
+      startsAt: zurichLocalInputToUtcIso(values.startsAt),
+      endsAt: zurichLocalInputToUtcIso(values.endsAt),
+      capacity: values.capacity,
+      allowWaitlist: values.allowWaitlist,
+      allowSelfSignup: values.allowSelfSignup,
+      notes: values.notes.trim() || null,
+    };
+    const res = target.shiftId
+      ? await updateVolunteerShift(eventId, target.shiftId, payload)
+      : await createVolunteerShift(eventId, { ...payload, roleId: values.roleId });
+    if (res.data) {
+      onSaved();
+    } else {
+      onError();
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>{target.mode === 'edit' ? t('editShift') : t('newShift')}</DialogTitle>
+          <DialogDescription>{t('shiftDialogDescription')}</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)} noValidate>
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="block">
+              <span className="block text-sm font-medium text-gray-700 mb-1">{t('role')}</span>
+              <select
+                {...register('roleId')}
+                disabled={target.mode === 'edit'}
+                className={inputClass}
+              >
+                <option value="">{t('selectRole')}</option>
+                {roles.map((r) => (
+                  <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
+              </select>
+              {errors.roleId && <p className="mt-1 text-sm text-red-600">{errors.roleId.message}</p>}
+            </label>
+            <label className="block">
+              <span className="block text-sm font-medium text-gray-700 mb-1">{t('title')}</span>
+              <input type="text" {...register('title')} className={inputClass} maxLength={SHIFT_TITLE_MAX} />
+              {errors.title && <p className="mt-1 text-sm text-red-600">{errors.title.message}</p>}
+            </label>
+            <label className="block">
+              <span className="block text-sm font-medium text-gray-700 mb-1">{t('start')}</span>
+              <input type="datetime-local" {...register('startsAt')} className={inputClass} />
+              {errors.startsAt && <p className="mt-1 text-sm text-red-600">{errors.startsAt.message}</p>}
+            </label>
+            <label className="block">
+              <span className="block text-sm font-medium text-gray-700 mb-1">{t('end')}</span>
+              <input type="datetime-local" {...register('endsAt')} className={inputClass} />
+              {errors.endsAt && <p className="mt-1 text-sm text-red-600">{errors.endsAt.message}</p>}
+            </label>
+            <label className="block">
+              <span className="block text-sm font-medium text-gray-700 mb-1">{t('capacity')}</span>
+              <input
+                type="number"
+                min={1}
+                {...register('capacity', { valueAsNumber: true })}
+                className={inputClass}
+              />
+              {errors.capacity && <p className="mt-1 text-sm text-red-600">{errors.capacity.message}</p>}
+            </label>
+            <label className="block md:col-span-2">
+              <span className="block text-sm font-medium text-gray-700 mb-1">{t('description')}</span>
+              <textarea
+                {...register('description')}
+                className={inputClass}
+                rows={2}
+                maxLength={SHIFT_TEXT_MAX}
+              />
+              {errors.description && (
+                <p className="mt-1 text-sm text-red-600">{errors.description.message}</p>
+              )}
+            </label>
+            <label className="block md:col-span-2">
+              <span className="block text-sm font-medium text-gray-700 mb-1">{t('notes')}</span>
+              <textarea
+                {...register('notes')}
+                className={inputClass}
+                rows={2}
+                maxLength={SHIFT_TEXT_MAX}
+              />
+              {errors.notes && <p className="mt-1 text-sm text-red-600">{errors.notes.message}</p>}
+            </label>
+            <label className="inline-flex items-center gap-2">
+              <input type="checkbox" {...register('allowWaitlist')} className="h-4 w-4" />
+              <span className="text-sm text-gray-700">{t('allowWaitlist')}</span>
+            </label>
+            <label className="inline-flex items-center gap-2">
+              <input type="checkbox" {...register('allowSelfSignup')} className="h-4 w-4" />
+              <span className="text-sm text-gray-700">{t('allowSelfSignup')}</span>
+            </label>
+          </div>
+          <DialogFooter className="mt-4 gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              {t('cancel')}
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-50 transition-colors"
+            >
+              {t('save')}
+            </button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -127,8 +325,7 @@ export default function VolunteersPage({ params }: PageProps) {
   const [newRoleName, setNewRoleName] = useState('');
   const [newRoleDescription, setNewRoleDescription] = useState('');
 
-  const [shiftDraft, setShiftDraft] = useState<ShiftDraft | null>(null);
-  const [editingShiftId, setEditingShiftId] = useState<string | null>(null);
+  const [shiftFormTarget, setShiftFormTarget] = useState<ShiftFormTarget | null>(null);
   const [actionInFlight, setActionInFlight] = useState<string | null>(null);
 
   // Auth guard.
@@ -198,48 +395,48 @@ export default function VolunteersPage({ params }: PageProps) {
     }
   }, [eventId, newRoleName, newRoleDescription, t]);
 
-  const handleSaveShift = useCallback(async () => {
-    if (!shiftDraft || !shiftDraft.roleId || !shiftDraft.title || !shiftDraft.startsAt || !shiftDraft.endsAt) {
-      setError(t('saveFailed'));
-      return;
-    }
-    setActionInFlight('saveShift');
-    try {
-      const payload = {
-        title: shiftDraft.title.trim(),
-        description: shiftDraft.description.trim() || null,
-        // Post-review H-S4-3: treat the user's datetime-local input as Europe/Zurich local
-        // wall-clock time and convert to UTC ISO for the API. The previous code passed the
-        // raw value to `new Date(...)` which interpreted it as the browser's local time and
-        // round-tripped to UTC with an offset that didn't match the operator's mental model.
-        startsAt: zurichLocalInputToUtcIso(shiftDraft.startsAt),
-        endsAt: zurichLocalInputToUtcIso(shiftDraft.endsAt),
-        capacity: shiftDraft.capacity,
-        allowWaitlist: shiftDraft.allowWaitlist,
-        allowSelfSignup: shiftDraft.allowSelfSignup,
-        notes: shiftDraft.notes.trim() || null,
-      };
-      const res = editingShiftId
-        ? await updateVolunteerShift(eventId, editingShiftId, payload)
-        : await createVolunteerShift(eventId, { ...payload, roleId: shiftDraft.roleId });
-      if (res.data) {
-        setShiftDraft(null);
-        setEditingShiftId(null);
-        setRefreshKey((k) => k + 1);
-      } else {
-        setError(t('saveFailed'));
-      }
-    } finally {
-      setActionInFlight(null);
-    }
-  }, [eventId, shiftDraft, editingShiftId, t]);
+  const openCreateShift = useCallback((roleId: string) => {
+    setShiftFormTarget({
+      mode: 'create',
+      roleId,
+      initial: {
+        roleId,
+        title: '',
+        description: '',
+        startsAt: '',
+        endsAt: '',
+        capacity: 1,
+        allowWaitlist: false,
+        allowSelfSignup: false,
+        notes: '',
+      },
+    });
+  }, []);
+
+  const openEditShift = useCallback((shift: EventVolunteerShiftDto) => {
+    setShiftFormTarget({
+      mode: 'edit',
+      roleId: shift.roleId,
+      shiftId: shift.id,
+      initial: {
+        roleId: shift.roleId,
+        title: shift.title,
+        description: shift.description ?? '',
+        // Post-review H-S4-3: backend stores Kind=Utc; surface as Europe/Zurich wall-clock.
+        startsAt: utcIsoToZurichLocalInput(shift.startsAt),
+        endsAt: utcIsoToZurichLocalInput(shift.endsAt),
+        capacity: shift.capacity,
+        allowWaitlist: shift.allowWaitlist,
+        allowSelfSignup: shift.allowSelfSignup,
+        notes: shift.notes ?? '',
+      },
+    });
+  }, []);
 
   const handleCancelShift = useCallback(
     async (shiftId: string) => {
       // Post-review M-S4-7: warn the operator about how many active assignments will be
-      // cancelled. We use the shift card's confirmed/waitlist counts (already loaded) — a
-      // future iteration could move this to a custom modal, but the count surfaces the cost
-      // of the action loudly enough to address the silent-cascade concern in the review.
+      // cancelled. We use the shift card's confirmed/waitlist counts (already loaded).
       const shift = shifts.find((s) => s.id === shiftId);
       const assignmentCount = (shift?.confirmedCount ?? 0) + (shift?.waitlistCount ?? 0);
       const message = assignmentCount > 0
@@ -315,7 +512,7 @@ export default function VolunteersPage({ params }: PageProps) {
                 type="text"
                 value={newRoleName}
                 onChange={(e) => setNewRoleName(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className={inputClass}
                 maxLength={100}
               />
             </label>
@@ -325,7 +522,7 @@ export default function VolunteersPage({ params }: PageProps) {
                 type="text"
                 value={newRoleDescription}
                 onChange={(e) => setNewRoleDescription(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className={inputClass}
                 maxLength={500}
               />
             </label>
@@ -342,120 +539,21 @@ export default function VolunteersPage({ params }: PageProps) {
           </div>
         </section>
 
-        {/* Shift create / edit form (only when active) */}
-        {shiftDraft && (
-          <section className="bg-white rounded-xl shadow-sm p-4 mb-6 border-2 border-orange-200">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">
-              {editingShiftId ? t('editShift') : t('newShift')}
-            </h2>
-            <div className="grid gap-3 md:grid-cols-2">
-              <label className="block">
-                <span className="block text-sm font-medium text-gray-700 mb-1">{t('role')}</span>
-                <select
-                  value={shiftDraft.roleId}
-                  onChange={(e) => setShiftDraft({ ...shiftDraft, roleId: e.target.value })}
-                  disabled={editingShiftId !== null}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                >
-                  <option value="">{t('selectRole')}</option>
-                  {roles.map((r) => (
-                    <option key={r.id} value={r.id}>{r.name}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="block">
-                <span className="block text-sm font-medium text-gray-700 mb-1">{t('title')}</span>
-                <input
-                  type="text"
-                  value={shiftDraft.title}
-                  onChange={(e) => setShiftDraft({ ...shiftDraft, title: e.target.value })}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  maxLength={200}
-                />
-              </label>
-              <label className="block">
-                <span className="block text-sm font-medium text-gray-700 mb-1">{t('start')}</span>
-                <input
-                  type="datetime-local"
-                  value={shiftDraft.startsAt}
-                  onChange={(e) => setShiftDraft({ ...shiftDraft, startsAt: e.target.value })}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                />
-              </label>
-              <label className="block">
-                <span className="block text-sm font-medium text-gray-700 mb-1">{t('end')}</span>
-                <input
-                  type="datetime-local"
-                  value={shiftDraft.endsAt}
-                  onChange={(e) => setShiftDraft({ ...shiftDraft, endsAt: e.target.value })}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                />
-              </label>
-              <label className="block">
-                <span className="block text-sm font-medium text-gray-700 mb-1">{t('capacity')}</span>
-                <input
-                  type="number"
-                  min={1}
-                  value={shiftDraft.capacity}
-                  onChange={(e) => {
-                    // Post-review M-S4-8: parseInt returns NaN for non-numeric input (e.g.
-                    // the user clears the field then types a letter). NaN propagates into
-                    // JSON.stringify as `null` and the backend returns 400. Guard with
-                    // Number.isFinite so the field always carries a usable integer.
-                    const parsed = parseInt(e.target.value || '1', 10);
-                    const safe = Number.isFinite(parsed) ? parsed : 1;
-                    setShiftDraft({ ...shiftDraft, capacity: Math.max(1, safe) });
-                  }}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                />
-              </label>
-              <label className="block md:col-span-2">
-                <span className="block text-sm font-medium text-gray-700 mb-1">{t('description')}</span>
-                <textarea
-                  value={shiftDraft.description}
-                  onChange={(e) => setShiftDraft({ ...shiftDraft, description: e.target.value })}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  rows={2}
-                  maxLength={1000}
-                />
-              </label>
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={shiftDraft.allowWaitlist}
-                  onChange={(e) => setShiftDraft({ ...shiftDraft, allowWaitlist: e.target.checked })}
-                  className="h-4 w-4"
-                />
-                <span className="text-sm text-gray-700">{t('allowWaitlist')}</span>
-              </label>
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={shiftDraft.allowSelfSignup}
-                  onChange={(e) => setShiftDraft({ ...shiftDraft, allowSelfSignup: e.target.checked })}
-                  className="h-4 w-4"
-                />
-                <span className="text-sm text-gray-700">{t('allowSelfSignup')}</span>
-              </label>
-            </div>
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => { setShiftDraft(null); setEditingShiftId(null); }}
-                className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                {t('cancel')}
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveShift}
-                disabled={actionInFlight === 'saveShift'}
-                className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-50 transition-colors"
-              >
-                {t('save')}
-              </button>
-            </div>
-          </section>
+        {/* Shift create / edit dialog — mounted only while a target is set. The `key` forces a
+            fresh react-hook-form instance (with the right defaults) when the target changes. */}
+        {shiftFormTarget && (
+          <ShiftFormDialog
+            key={shiftFormTarget.shiftId ?? `new-${shiftFormTarget.roleId}`}
+            target={shiftFormTarget}
+            roles={roles}
+            eventId={eventId}
+            onClose={() => setShiftFormTarget(null)}
+            onSaved={() => {
+              setShiftFormTarget(null);
+              setRefreshKey((k) => k + 1);
+            }}
+            onError={() => setError(t('saveFailed'))}
+          />
         )}
 
         {/* Roles + shifts table */}
@@ -476,7 +574,7 @@ export default function VolunteersPage({ params }: PageProps) {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setShiftDraft(emptyShiftDraft(role.id))}
+                  onClick={() => openCreateShift(role.id)}
                   className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-700 transition-colors"
                 >
                   {t('newShift')}
@@ -505,22 +603,7 @@ export default function VolunteersPage({ params }: PageProps) {
                         <td className="py-2 text-right">
                           <button
                             type="button"
-                            onClick={() => {
-                              setEditingShiftId(shift.id);
-                              setShiftDraft({
-                                roleId: shift.roleId,
-                                title: shift.title,
-                                description: shift.description ?? '',
-                                // Post-review H-S4-3: backend stores Kind=Utc; surface as
-                                // Europe/Zurich wall-clock in the datetime-local input.
-                                startsAt: utcIsoToZurichLocalInput(shift.startsAt),
-                                endsAt: utcIsoToZurichLocalInput(shift.endsAt),
-                                capacity: shift.capacity,
-                                allowWaitlist: shift.allowWaitlist,
-                                allowSelfSignup: shift.allowSelfSignup,
-                                notes: shift.notes ?? '',
-                              });
-                            }}
+                            onClick={() => openEditShift(shift)}
                             className="text-orange-700 hover:text-orange-800 text-sm font-medium mr-3"
                           >
                             {t('editShift')}

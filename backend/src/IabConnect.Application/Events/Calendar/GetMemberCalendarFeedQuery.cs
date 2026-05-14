@@ -47,10 +47,22 @@ public sealed class GetMemberCalendarFeedQueryHandler
             ToDate = now.AddYears(2),
         };
 
-        var (events, _) = await _events.GetPagedAsync(filter, page: 1, pageSize: FeedPageSize, cancellationToken);
+        // R4-P-S5-2: page through ALL events in the window instead of fetching only the first
+        // page of FeedPageSize. The previous single-page call silently truncated a member's
+        // subscribed feed at 500 events with no log or error. The loop is bounded in practice by
+        // the EndDateFrom/ToDate window in the filter, so it cannot run away.
+        var collected = new List<Event>();
+        var page = 1;
+        while (true)
+        {
+            var (pageItems, _) = await _events.GetPagedAsync(filter, page, FeedPageSize, cancellationToken);
+            collected.AddRange(pageItems);
+            if (pageItems.Count < FeedPageSize) break;
+            page++;
+        }
 
         // Public + MembersOnly only — Hidden and InviteOnly are out of scope.
-        var filtered = events
+        var filtered = collected
             .Where(e => !e.IsDeleted)
             .Where(e => e.Visibility == EventVisibility.Public || e.Visibility == EventVisibility.MembersOnly);
 

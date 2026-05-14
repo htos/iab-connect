@@ -78,6 +78,21 @@ public sealed class EventVolunteerAssignmentRepository : IEventVolunteerAssignme
             var existing = await GetActiveForMemberAsync(assignment.ShiftId, assignment.MemberId, cancellationToken);
             return (existing, false);
         }
+        catch (DbUpdateException)
+        {
+            // R4-P-S3-8: any OTHER DbUpdateException (notably SQLSTATE 23503 foreign-key
+            // violation — the documented MemberNotFound case) also leaves the outer Postgres
+            // transaction in `aborted` state. The previous code let it escape WITHOUT rolling
+            // back to the savepoint, so the outer transaction was only salvaged by `await using`
+            // disposal — fragile if any code is later added between the service's catch and the
+            // dispose. Roll back to the savepoint here so the transaction stays reusable and the
+            // savepoint bookkeeping is symmetric with the unique-violation path, then rethrow for
+            // the service layer to translate (AssignAsync maps 23503 → MemberNotFound).
+            if (outerTransaction is not null)
+                await outerTransaction.RollbackToSavepointAsync(savepoint, cancellationToken);
+            _context.Entry(assignment).State = EntityState.Detached;
+            throw;
+        }
     }
 
     public Task<int> CountConfirmedAsync(Guid shiftId, CancellationToken cancellationToken = default)

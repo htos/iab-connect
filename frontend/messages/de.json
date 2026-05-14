@@ -1069,7 +1069,19 @@
       "save": "Speichern",
       "cancel": "Abbrechen",
       "memberSectionTitle": "Helfer-Schichten",
-      "memberSectionDescription": "Wo deine Hilfe gebraucht wird"
+      "memberSectionDescription": "Wo deine Hilfe gebraucht wird",
+      "shiftDialogDescription": "Lege fest, wann Helfer benötigt werden und wie viele.",
+      "validation": {
+        "roleRequired": "Bitte wähle eine Rolle aus.",
+        "titleRequired": "Titel ist erforderlich.",
+        "titleTooLong": "Titel darf höchstens 200 Zeichen lang sein.",
+        "startRequired": "Beginn ist erforderlich.",
+        "endRequired": "Ende ist erforderlich.",
+        "endAfterStart": "Das Ende muss nach dem Beginn liegen.",
+        "capacityMin": "Plätze müssen mindestens 1 sein.",
+        "descriptionTooLong": "Beschreibung darf höchstens 1000 Zeichen lang sein.",
+        "notesTooLong": "Notizen dürfen höchstens 1000 Zeichen lang sein."
+      }
     }
   },
   "emailCampaigns": {

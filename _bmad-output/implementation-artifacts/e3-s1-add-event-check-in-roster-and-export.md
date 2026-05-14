@@ -1,6 +1,6 @@
 # Story E3.S1: Add Event Check-in Roster and Export
 
-Status: review (Round-3 fix-pass complete 2026-05-14 — all 1 Critical + 1 High + 4 Medium + 1 Low + 1 Decision resolved; backend tests 1770 / 1770 green; see Round 3 Review Findings section for per-item resolutions)
+Status: done (Round-4 boundary re-review 2026-05-14 — S1 code-clean, 0 patches / 0 decisions; 1 spec-text-drift item deferred; backend 1810 / 1810 + frontend 38 / 38 green)
 
 ## Story
 
@@ -353,4 +353,12 @@ See [epic-3-review-2026-05-13-round3.md](epic-3-review-2026-05-13-round3.md) for
 - [x] [Review][Patch] R3-M-S1-3 (Medium) `OrderBy(StringComparer.Ordinal)` may misorder Unicode names; use invariant-culture comparer (AA-11). **Fixed.** Switched to `StringComparer.InvariantCulture` so apostrophes, hyphens, and any Devanagari/Latin mixed input order by Unicode collation rather than codepoint. FoldName output is mostly-ASCII so the comparer choice rarely diverges, but the invariant comparer is the locale-stable contract.
 - [x] [Review][Patch] R3-M-S1-4 (Medium) AC-5 text says 10 columns; code emits 9 per D-S1-1 — sync AC text (AA-2). **Fixed.** AC-5 above now explicitly states "9 columns", lists the new layout without `QrCodeToken`, names `Present` as the last column, and cites D-S1-1, DN-6, L-S1-1, R3-C1, R3-M-S1-1 inline so the spec history is auditable.
 - [x] [Review][Patch] R3-L-S1-1 (Low) `[ ]` literal in CSV header may confuse Excel name-range parsing (EC-24). **Fixed.** Bundled with R3-DN-6 resolution above — `[ ] (Anwesenheit)` → `Present` removes both the German label AND the `[ ]` literal in one rename.
+
+## Round 4 Review Findings (2026-05-14)
+
+**Scope:** Epic-3 boundary re-review (full diff `1466c35..HEAD`) after the Round-3 fix-pass. 3 parallel layers (Blind Hunter, Edge Case Hunter, Acceptance Auditor). The Round-3 Critical set (CSV formula-injection, IDORs, token hashing) is confirmed resolved in the current diff. S1-scoped result: **0 Patch, 0 Decision, 1 Defer** — S1 is clean on code; one spec-text drift only.
+
+### Defer
+
+- [x] [Review][Defer] R4-Defer-S1-1 Roster query return-type drift — AC-1/AC-3 still say `IRequest<EventCheckInRosterDto?>`, code returns `IRequest<EventCheckInRosterLookup>` envelope [backend/src/IabConnect.Application/Events/CheckIn/GetEventCheckInRosterQuery.cs] — deferred, spec reconciliation only; the envelope is the intentional Round-2 H-S1-3 fix and is correct, only the AC text was never updated to match.
 

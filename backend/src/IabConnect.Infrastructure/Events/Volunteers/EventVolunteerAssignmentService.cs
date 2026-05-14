@@ -152,8 +152,12 @@ public sealed class EventVolunteerAssignmentService : IEventVolunteerAssignmentS
         if (assignment is null)
             return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.AssignmentNotFound, null);
 
-        // C1: caller-ownership / staff check BEFORE we touch state.
-        if (!callerIsStaff && callerMemberId.HasValue && callerMemberId.Value != assignment.MemberId)
+        // C1 + R4-P-S3-5: caller-ownership / staff check BEFORE we touch state. Fails CLOSED —
+        // a non-staff caller with no resolved member id is rejected rather than allowed through.
+        // The previous `callerMemberId.HasValue &&` short-circuit let a (callerMemberId: null,
+        // callerIsStaff: false) caller cancel anyone's assignment; it only worked because the
+        // command handler happened to reject that case first.
+        if (!callerIsStaff && (callerMemberId is null || callerMemberId.Value != assignment.MemberId))
             return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.NotAuthorized, null);
 
         // H-S3-2: confirm the assignment's parent shift belongs to the route's event.
@@ -177,6 +181,12 @@ public sealed class EventVolunteerAssignmentService : IEventVolunteerAssignmentS
         if (shifts.Count == 0)
             return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.ShiftNotFound, null);
 
+        // R4-P-S3-6: re-assert the H-S3-2 cross-event check against the LOCKED shift row, not
+        // only the pre-transaction snapshot. shifts[0] is the assignment's parent shift, so its
+        // EventId is authoritative here.
+        if (eventId != Guid.Empty && shifts[0].EventId != eventId)
+            return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.AssignmentNotFound, null);
+
         // M-S3-4: a concurrent caller may have deleted the row between the AsNoTracking read and
         // the lock. FirstOrDefaultAsync handles the race-disappeared case cleanly.
         var tracked = await _context.EventVolunteerAssignments
@@ -185,6 +195,15 @@ public sealed class EventVolunteerAssignmentService : IEventVolunteerAssignmentS
         {
             await transaction.CommitAsync(cancellationToken);
             return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.AssignmentNotFound, null);
+        }
+
+        // R4-P-S3-6: re-assert the C1 ownership check against the locked entity. MemberId is
+        // immutable today, so this is defense-in-depth — but it closes the TOCTOU window so a
+        // future mutable-MemberId change cannot silently reopen the authorization gap.
+        if (!callerIsStaff && (callerMemberId is null || callerMemberId.Value != tracked.MemberId))
+        {
+            await transaction.CommitAsync(cancellationToken);
+            return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.NotAuthorized, null);
         }
         if (tracked.Status == VolunteerAssignmentStatus.Cancelled)
         {
@@ -283,7 +302,11 @@ public sealed class EventVolunteerAssignmentService : IEventVolunteerAssignmentS
             .ExecuteUpdateAsync(s => s
                 .SetProperty(a => a.Status, VolunteerAssignmentStatus.Cancelled)
                 .SetProperty(a => a.CancelledAt, nowUtc)
-                .SetProperty(a => a.CancellationReason, reason),
+                .SetProperty(a => a.CancellationReason, reason)
+                // R4-P-S3-7: the per-row domain EventVolunteerAssignment.Cancel() clears Position;
+                // this bulk path bypasses the change tracker, so clear it explicitly to keep the
+                // "Cancelled rows never carry a Position" invariant the single-row path guarantees.
+                .SetProperty(a => a.Position, (int?)null),
                 cancellationToken);
 
         // H-S3-6: flip the parent shift's status so subsequent self-signups are rejected.

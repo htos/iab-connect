@@ -60,6 +60,11 @@ public sealed class VolunteerShiftReminderService : IVolunteerShiftReminderServi
 
         var sent = 0;
         var skipped = 0;
+        // R4-P-S4-4: count rows where the email was dispatched but MarkReminderSentAsync returned
+        // false (the row was already marked by a concurrent pass). With DisableConcurrentExecution
+        // now on the job this should stay 0, but surfacing it in the summary keeps a visible signal
+        // if a duplicate-send ever slips through (e.g. a within-pass AutomaticRetry).
+        var duplicateSends = 0;
         try
         {
             foreach (var row in due)
@@ -126,6 +131,9 @@ public sealed class VolunteerShiftReminderService : IVolunteerShiftReminderServi
                         // marked (concurrent run / Hangfire retry) — the recipient may now have
                         // received a duplicate email. Log it loudly so ops can dedupe and tighten
                         // the cron-overlap guard if it keeps happening.
+                        // R4-P-S4-4: also count it so the summary log surfaces the incident
+                        // instead of silently under-reporting (the email DID go out).
+                        duplicateSends++;
                         _logger.LogWarning(
                             "Volunteer reminder marked-sent returned no rows for assignment {AssignmentId}; possible duplicate-send",
                             row.Assignment.Id);
@@ -146,8 +154,8 @@ public sealed class VolunteerShiftReminderService : IVolunteerShiftReminderServi
             // this, a Hangfire job that's stopped mid-run leaves no breadcrumb of how many
             // reminders were dispatched before the cancel.
             _logger.LogInformation(
-                "Volunteer shift reminder pass complete: {SentCount} sent, {SkippedCount} skipped, out of {DueCount} due",
-                sent, skipped, due.Count);
+                "Volunteer shift reminder pass complete: {SentCount} sent, {SkippedCount} skipped, {DuplicateSendCount} duplicate-send(s), out of {DueCount} due",
+                sent, skipped, duplicateSends, due.Count);
         }
         return sent;
     }

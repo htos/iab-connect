@@ -316,7 +316,7 @@ public static class EventEndpoints
         CancellationToken ct)
     {
         var utcFrom = from.HasValue ? DateTime.SpecifyKind(from.Value, DateTimeKind.Utc) : (DateTime?)null;
-        var events = await eventRepository.GetPublicEventsAsync(utcFrom, ct);
+        var events = await eventRepository.GetPublicEventsAsync(utcFrom, ct: ct);
         return Results.Ok(events.Select(MapToDto));
     }
 

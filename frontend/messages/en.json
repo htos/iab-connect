@@ -1068,7 +1068,19 @@
       "save": "Save",
       "cancel": "Cancel",
       "memberSectionTitle": "Volunteer shifts",
-      "memberSectionDescription": "Where your help is needed"
+      "memberSectionDescription": "Where your help is needed",
+      "shiftDialogDescription": "Define when volunteers are needed and how many.",
+      "validation": {
+        "roleRequired": "Please select a role.",
+        "titleRequired": "Title is required.",
+        "titleTooLong": "Title cannot exceed 200 characters.",
+        "startRequired": "Start time is required.",
+        "endRequired": "End time is required.",
+        "endAfterStart": "End time must be after the start time.",
+        "capacityMin": "Capacity must be at least 1.",
+        "descriptionTooLong": "Description cannot exceed 1000 characters.",
+        "notesTooLong": "Notes cannot exceed 1000 characters."
+      }
     }
   },
   "emailCampaigns": {

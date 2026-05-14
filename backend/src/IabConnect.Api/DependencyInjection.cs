@@ -13,6 +13,8 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
 
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("IabConnect.Api.Tests")]
+
 namespace IabConnect.Api;
 
 /// <summary>
@@ -20,6 +22,16 @@ namespace IabConnect.Api;
 /// </summary>
 public static class DependencyInjection
 {
+    /// <summary>
+    /// REQ-024 (E3.S4 R4-P-S4-3): recurring-job id + cron for the daily volunteer-shift
+    /// reminder pass. Extracted as constants so the registration is assertable by
+    /// <c>VolunteerShiftReminderJobRegistrationTests</c> without standing up Hangfire storage.
+    /// </summary>
+    internal const string VolunteerReminderJobId = "send-volunteer-shift-reminders";
+
+    /// <summary>Cron expression for the volunteer-reminder job — daily at 09:00 (job timezone).</summary>
+    internal const string VolunteerReminderCron = "0 9 * * *";
+
     public static IServiceCollection AddApiServices(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -287,9 +299,9 @@ public static class DependencyInjection
             var reminderJobTimeZone = ResolveReminderJobTimeZone(
                 app.Services.GetRequiredService<ILogger<RecurringJobOptions>>());
             jobManager.AddOrUpdate<VolunteerShiftReminderJob>(
-                "send-volunteer-shift-reminders",
+                VolunteerReminderJobId,
                 job => job.ExecuteAsync(CancellationToken.None),
-                "0 9 * * *",
+                VolunteerReminderCron,
                 new RecurringJobOptions { TimeZone = reminderJobTimeZone });
         }
 
@@ -335,7 +347,7 @@ public static class DependencyInjection
     /// instead of crashing the API at boot. Logs a warning when a fallback is used so ops
     /// can fix the host configuration.
     /// </summary>
-    private static TimeZoneInfo ResolveReminderJobTimeZone(Microsoft.Extensions.Logging.ILogger logger)
+    internal static TimeZoneInfo ResolveReminderJobTimeZone(Microsoft.Extensions.Logging.ILogger logger)
     {
         foreach (var id in new[] { "Europe/Zurich", "W. Europe Standard Time" })
         {

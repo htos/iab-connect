@@ -1,6 +1,6 @@
 # Story E3.S4: Add Volunteer Planning UI and Reminders
 
-Status: review (Round-3 fix-pass complete 2026-05-14 — 2 of 3 High + 4 of 4 Medium resolved; R3-H-S4-2 transactional rewrite deferred (rationale below); R3-H-S4-3 Vitest page test deferred (cross-cutting follow-up); backend tests 1776 / 1776 green; 2 Defer logged + 2 follow-ups)
+Status: done (Round-4 fix-pass complete 2026-05-14 — all 4 R4 patches resolved (1 High + 3 Medium: shift form refactored to react-hook-form + zod inside a Radix dialog, reminder query/job tests added, [DisableConcurrentExecution] on the reminder job); 1 decision resolved; 3 Defer logged; backend 1810 / 1810 + frontend 38 / 38 green)
 
 Depends-on: **E3.S3** (Volunteer Planning Domain and API — `EventVolunteerRole`, `EventVolunteerShift`, `EventVolunteerAssignment` entities, repositories, MediatR commands/queries, `/api/v1/events/{eventId}/volunteer-*` endpoints, and `RequireEventStaff` policy). E3.S3 MUST be `done` before this story enters `in-progress`. This story consumes that API surface — it does NOT redefine or duplicate the domain/persistence/command-side. See [Decision Log D3](#product-decisions-captured-for-this-story) for the API contract this story relies on.
 
@@ -436,4 +436,25 @@ See [epic-3-review-2026-05-13-round3.md](epic-3-review-2026-05-13-round3.md) for
 
 - [x] [Review][Defer] R3-Defer-3 Hardcoded DE/EN strings in `EventNotificationService` reminder body (AA-19) [backend/src/IabConnect.Infrastructure/Events/EventNotificationService.cs:183-232] — D8 carve-out, comms i18n track
 - [x] [Review][Defer] R3-M-S4-4 / Defer-4 `ZurichTimeZone` static-init cached; stale on tzdata update (EC-20) [backend/src/IabConnect.Infrastructure/Events/EventNotificationService.cs:90-101] — operationally rare; revisit if frequent tz changes
+
+## Round 4 Review Findings (2026-05-14)
+
+**Scope:** Epic-3 boundary re-review (full diff `1466c35..HEAD`) after the Round-3 fix-pass. 3 parallel layers. S4-scoped result: **4 Patch (1 High + 3 Medium — incl. 1 resolved from a decision), 0 open Decision, 3 Defer.**
+
+### Decisions
+
+- [x] [Review][Decision] R4-DN-S4-1 Concurrent reminder-job runs can duplicate-send. **Decision: option (a) — add `[DisableConcurrentExecution]` to the Hangfire job.** `VolunteerShiftReminderService` dispatches the email *before* `MarkReminderSentAsync`; the mark is atomic but both overlapping passes (Hangfire retry + daily trigger / manual re-trigger) already sent the email, and the `false`-return detection is `LogWarning`-only with no compensating action. Resolution converted to patch **R4-P-S4-4** below. (BH-3 + BH-13)
+
+### Patches
+
+- [x] [Review][Patch] R4-P-S4-1 (High) Shift create/edit form does not use `react-hook-form` + `zod` — AC-2 states "The form MUST use `react-hook-form` + `zod` matching the existing event-edit pattern". The implemented `volunteers/page.tsx` uses plain `useState`-backed `ShiftDraft` objects with hand-rolled validation (`if (!shiftDraft.title || !shiftDraft.startsAt ...)`); no `react-hook-form`, no `zod` schema. This also blocks AC-9's adversarial-input form-validation tests from exercising the specified schema. (AA-S4-1) [frontend/src/app/(dashboard)/events/[id]/volunteers/page.tsx]
+- [x] [Review][Patch] R4-P-S4-2 (Medium) Shift create/edit form is rendered as an inline `<section className="... border-2 border-orange-200">`, not a `@radix-ui/react-dialog` — AC-2 requires "via a Radix-dialog form" and AC-8 requires "Escape closes dialog — `@radix-ui/react-dialog` handles this". The keyboard-dismissal accessibility guarantee AC-8 leans on Radix for is unmet. (AA-S4-2) [frontend/src/app/(dashboard)/events/[id]/volunteers/page.tsx]
+- [x] [Review][Patch] R4-P-S4-3 (Medium) Missing two backend test files AC-9 / Task-8 require: `VolunteerAssignmentReminderQueryTests` (Testcontainers, verifying the lookahead-window filter and `Status != Cancelled` filter) and `VolunteerShiftReminderJobRegistrationTests` (startup assertion of the recurring-job ID + Europe/Zurich cron). `EventNotificationServiceVolunteerReminderTests` (bilingual email) and `VolunteerShiftReminderServiceTests` are present, but the repository-window integration test and the job-registration test are not. (AA-S4-4) [backend/tests/IabConnect.Infrastructure.Tests/Events/], [backend/tests/IabConnect.Api.Tests/]
+- [x] [Review][Patch] R4-P-S4-4 (Medium) Concurrent reminder-job runs can duplicate-send — resolved from decision R4-DN-S4-1, **option (a)**: add `[DisableConcurrentExecution]` to the `VolunteerShiftReminderJob` so a Hangfire retry overlapping the daily trigger (or a manual re-trigger) cannot run a second pass while the first is still in flight. Optionally also increment the `sent` counter on the `MarkReminderSentAsync` `false` return so the summary log no longer under-counts. (BH-3 + BH-13) [backend/src/IabConnect.Application/Events/Jobs/VolunteerShiftReminderJob.cs], [.../VolunteerShiftReminderService.cs]
+
+### Defer
+
+- [x] [Review][Defer] R4-Defer-S4-1 Reminder query window is 36h, AC-5 text still says 24h [backend/src/IabConnect.Application/Events/Jobs/VolunteerShiftReminderService.cs] — deferred, spec reconciliation only; the 36h window is the intentional Round-2 H-S4-4 fix (a 24h window misses next-evening shifts given the 09:00 daily cadence) and is correct, only AC-5 wording was never reconciled.
+- [x] [Review][Defer] R4-Defer-S4-2 `IEventNotificationService.SendVolunteerShiftReminderAsync` signature adds a `Member member` parameter not in the AC-5 signature [backend/src/IabConnect.Application/Events/IEventNotificationService.cs] — deferred, spec reconciliation only; the extra parameter avoids a duplicate member fetch and is documented in the XML doc.
+- [x] [Review][Defer] R4-Defer-S4-3 Frontend `volunteers/__tests__/page.test.tsx` (AC-9 Vitest) is still missing [frontend/src/app/(dashboard)/events/[id]/volunteers/] — already deferred in Round 3 as R3-H-S4-3 (`frontend-test-coverage-volunteers-page`); re-surfaced by the Round-4 auditor, no production impact, remains on the frontend test-coverage follow-up track.
 

@@ -1,3 +1,4 @@
+using IabConnect.Domain.Events;
 using IabConnect.Domain.Events.Volunteers;
 using MediatR;
 
@@ -11,21 +12,31 @@ public sealed class GetEventVolunteerShiftsQueryHandler
     private readonly IEventVolunteerShiftRepository _shifts;
     private readonly IEventVolunteerRoleRepository _roles;
     private readonly IEventVolunteerAssignmentRepository _assignments;
+    private readonly IEventRepository _events;
 
     public GetEventVolunteerShiftsQueryHandler(
         IEventVolunteerShiftRepository shifts,
         IEventVolunteerRoleRepository roles,
-        IEventVolunteerAssignmentRepository assignments)
+        IEventVolunteerAssignmentRepository assignments,
+        IEventRepository events)
     {
         _shifts = shifts;
         _roles = roles;
         _assignments = assignments;
+        _events = events;
     }
 
     public async Task<IReadOnlyList<EventVolunteerShiftDto>> Handle(
         GetEventVolunteerShiftsQuery request,
         CancellationToken cancellationToken)
     {
+        // R4-P-S3-2: verify the event exists before returning its shifts — closes the same
+        // GUID-enumeration gap as GetEventVolunteerRolesQueryHandler. An empty shift list and a
+        // non-existent event must not be indistinguishable to a probing caller.
+        var evt = await _events.GetByIdAsync(request.EventId, cancellationToken);
+        if (evt is null || evt.IsDeleted)
+            throw new KeyNotFoundException($"Event {request.EventId} not found.");
+
         // REQ-024 (E3.S3 Round-3 R3-H-S3-5): three queries total instead of 2N+2.
         // 1) shifts for the event, 2) roles for the event, 3) batched counts via GROUP BY.
         var shifts = await _shifts.GetByEventIdAsync(request.EventId, cancellationToken);

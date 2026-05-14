@@ -71,6 +71,10 @@ public sealed class EventVolunteerShift : Entity
         var trimmedNotes = notes?.Trim();
         if (trimmedNotes is { Length: > NotesMaxLength })
             throw new ArgumentException($"Notes cannot exceed {NotesMaxLength} characters", nameof(notes));
+        // R4-P-S3-1: normalize to UTC at the domain boundary so EventNotificationService's
+        // local-zone formatting can trust the Kind, matching the Event aggregate's guard.
+        startsAt = DateTimeUtcGuard.EnsureUtc(startsAt);
+        endsAt = DateTimeUtcGuard.EnsureUtc(endsAt);
         if (endsAt <= startsAt)
             throw new ArgumentException("EndsAt must be greater than StartsAt", nameof(endsAt));
         if (capacity < 1)
@@ -108,6 +112,9 @@ public sealed class EventVolunteerShift : Entity
             throw new ArgumentException("Title is required", nameof(title));
         if (trimmedTitle.Length > TitleMaxLength)
             throw new ArgumentException($"Title cannot exceed {TitleMaxLength} characters", nameof(title));
+        // R4-P-S3-1: normalize to UTC at the domain boundary (see Create).
+        startsAt = DateTimeUtcGuard.EnsureUtc(startsAt);
+        endsAt = DateTimeUtcGuard.EnsureUtc(endsAt);
         if (endsAt <= startsAt)
             throw new ArgumentException("EndsAt must be greater than StartsAt", nameof(endsAt));
         var trimmedDescription = description?.Trim();

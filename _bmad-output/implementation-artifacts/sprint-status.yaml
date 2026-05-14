@@ -34,7 +34,7 @@
 # - Each story must go through bmad-create-story and validation before development.
 
 generated: "2026-05-12"
-last_updated: "2026-05-14 (Epic-3 Round-3 fix-pass COMPLETE for all 5 stories: E3.S1-S5 each flipped in-progress→review. Aggregate Round-3 findings addressed: 4 of 4 Critical + ~20 of 23 High + ~17 of 21 Medium + 3 of 3 Low + 6 of 6 Decisions. 5 items deferred to cross-cutting follow-ups with rationale (HMAC pepper migration, member-row-version concurrency, two missing API/Application test files for calendar feed, visibility×status matrix centralisation). Backend tests 1776 / 1776 green; 0 warnings, 0 errors. Next: bmad-code-review Round 4 over full Epic-3 diff, then bmad-retrospective + epic close.)"
+last_updated: "2026-05-14 (Epic-3 Round-4 boundary code-review COMPLETE + fix-pass applied: E3.S1-S5 each flipped review→done. Round-4 found 0 Critical / 5 High / 5 Medium / 3 Low patches + 3 decisions (all resolved → 15 patches total) + 14 Defer + 6 Dismiss; report at epic-3-review-2026-05-14-round4.md. All 15 patches applied: backend 1810 / 1810 + frontend 38 / 38 green, 0 warnings. 14 items deferred to follow-up tracks (mostly spec-text reconciliation + 2 re-surfaced test-coverage items). Next: bmad-retrospective + Epic-3 close.)"
 # 2026-05-13: Epic-Close-Gate after clearing all 11 [Review][Patch] findings per
 # sprint-change-proposal-2026-05-13.md. E1.S1-S4 flipped review -> done.
 # E1.S5 deferred -- pending provider credentials/scopes/whitelist decisions.
@@ -70,11 +70,11 @@ development_status:
   epic-2-retrospective: done
 
   epic-3: in-progress
-  e3-s1-add-event-check-in-roster-and-export: review
-  e3-s2-add-qr-and-manual-check-in-flow: review
-  e3-s3-add-volunteer-planning-domain-and-api: review
-  e3-s4-add-volunteer-planning-ui-and-reminders: review
-  e3-s5-add-calendar-feed-and-ics-export: review
+  e3-s1-add-event-check-in-roster-and-export: done
+  e3-s2-add-qr-and-manual-check-in-flow: done
+  e3-s3-add-volunteer-planning-domain-and-api: done
+  e3-s4-add-volunteer-planning-ui-and-reminders: done
+  e3-s5-add-calendar-feed-and-ics-export: done
   epic-3-retrospective: optional
 
   epic-4: in-progress

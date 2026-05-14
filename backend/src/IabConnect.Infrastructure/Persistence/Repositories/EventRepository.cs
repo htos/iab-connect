@@ -76,14 +76,24 @@ public sealed class EventRepository : IEventRepository
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Event>> GetPublicEventsAsync(DateTime? from = null, CancellationToken ct = default)
+    public async Task<IReadOnlyList<Event>> GetPublicEventsAsync(
+        DateTime? from = null,
+        DateTime? to = null,
+        CancellationToken ct = default)
     {
         var fromDate = from ?? DateTime.UtcNow;
 
-        return await _context.Events
+        var query = _context.Events
             .Where(e => e.Visibility == EventVisibility.Public)
             .Where(e => e.Status == EventStatus.Published)
-            .Where(e => e.EndDate >= fromDate)
+            .Where(e => e.EndDate >= fromDate);
+
+        // R4-P-S5-1: optional forward bound pushed into SQL so the unauthenticated calendar
+        // feed no longer materialises every published public event before filtering in memory.
+        if (to.HasValue)
+            query = query.Where(e => e.EndDate <= to.Value);
+
+        return await query
             .OrderBy(e => e.StartDate)
             .ToListAsync(ct);
     }

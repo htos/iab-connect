@@ -14,7 +14,8 @@ namespace IabConnect.Application.Events.CheckIn;
 ///         Audit MUST NOT write a granted row (that would mislead the audit trail).</item>
 ///   <item><c>NotFound</c> — registration not located by id/token, OR the resolved registration's
 ///         <c>EventId</c> did not match the request's event scope. Registration is null.</item>
-///   <item><c>Conflict</c> — registration is in <c>Cancelled</c> or <c>Waitlisted</c> state.
+///   <item><c>Conflict</c> — registration is in a non-checkin-eligible state
+///         (<c>Cancelled</c>, <c>Waitlisted</c>, <c>Pending</c>, or <c>NoShow</c>).
 ///         <c>Conflict</c> field carries the typed reason; Registration is non-null.</item>
 /// </list></para>
 /// </summary>
@@ -32,6 +33,15 @@ public sealed record CheckInResultDto(
 
     public static CheckInResultDto Waitlisted(EventRegistrationDto registration) =>
         new(CheckInOutcome.Conflict, registration, WasAlreadyCheckedIn: false, ConflictReason.Waitlisted);
+
+    // R4-P-S2-1: Pending / NoShow registrations are also non-checkin-eligible — the entity
+    // throws for them (review H-S2-4). Surface them as typed Conflicts so all three entry
+    // points return a 409 with the same shape instead of an unhandled 500.
+    public static CheckInResultDto Pending(EventRegistrationDto registration) =>
+        new(CheckInOutcome.Conflict, registration, WasAlreadyCheckedIn: false, ConflictReason.Pending);
+
+    public static CheckInResultDto NoShow(EventRegistrationDto registration) =>
+        new(CheckInOutcome.Conflict, registration, WasAlreadyCheckedIn: false, ConflictReason.NoShow);
 
     public static CheckInResultDto Success(EventRegistrationDto registration) =>
         new(CheckInOutcome.CheckedIn, registration, WasAlreadyCheckedIn: false, Conflict: null);
@@ -52,4 +62,6 @@ public enum ConflictReason
 {
     Cancelled,
     Waitlisted,
+    Pending,
+    NoShow,
 }

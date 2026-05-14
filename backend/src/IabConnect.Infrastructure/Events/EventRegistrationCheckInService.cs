@@ -125,17 +125,22 @@ public sealed class EventRegistrationCheckInService : IEventRegistrationCheckInS
         }
         catch (InvalidOperationException ex)
         {
-            // The entity throws ONLY for non-idempotency cases (Cancelled / Waitlisted) —
-            // map to a typed Conflict so the API surface doesn't pattern-match on messages.
-            if (registration.Status == RegistrationStatus.Cancelled)
-                return CheckInResultDto.Cancelled(EventRegistrationDto.FromEntity(registration));
-            if (registration.Status == RegistrationStatus.Waitlisted)
-                return CheckInResultDto.Waitlisted(EventRegistrationDto.FromEntity(registration));
-
-            // Defensive: if the entity ever adds a new throw branch, surface it rather than
-            // silently swallow. The endpoint's existing catch maps to 409.
-            throw new InvalidOperationException(
-                $"Unexpected entity state '{registration.Status}' during check-in.", ex);
+            // R4-P-S2-1: the entity throws for every non-checkin-eligible status (Cancelled,
+            // Waitlisted, Pending, NoShow — review H-S2-4). Map ALL of them to a typed Conflict
+            // so the three endpoints return a uniform 409 (AC-5). The previous code only mapped
+            // Cancelled/Waitlisted; Pending/NoShow fell through to the rethrow below and — since
+            // the check-in endpoints have no try/catch — surfaced as an unhandled 500.
+            return registration.Status switch
+            {
+                RegistrationStatus.Cancelled => CheckInResultDto.Cancelled(EventRegistrationDto.FromEntity(registration)),
+                RegistrationStatus.Waitlisted => CheckInResultDto.Waitlisted(EventRegistrationDto.FromEntity(registration)),
+                RegistrationStatus.Pending => CheckInResultDto.Pending(EventRegistrationDto.FromEntity(registration)),
+                RegistrationStatus.NoShow => CheckInResultDto.NoShow(EventRegistrationDto.FromEntity(registration)),
+                // Defensive: if the entity ever adds a new throw branch for a status not handled
+                // here, surface it rather than silently swallow.
+                _ => throw new InvalidOperationException(
+                    $"Unexpected entity state '{registration.Status}' during check-in.", ex),
+            };
         }
     }
 }

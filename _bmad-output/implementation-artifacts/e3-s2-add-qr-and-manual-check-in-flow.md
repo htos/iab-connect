@@ -1,6 +1,6 @@
 # Story E3.S2: Add QR and Manual Check-in Flow
 
-Status: review (Round-3 fix-pass complete 2026-05-14 — all 3 High + 2 Medium + 2 Decisions resolved; backend tests 1776 / 1776 green; see Round 3 Review Findings section for per-item resolutions)
+Status: done (Round-4 fix-pass complete 2026-05-14 — R4-P-S2-1 High resolved (Pending/NoShow check-in now typed 409, not 500); 2 Defer logged; backend 1810 / 1810 + frontend 38 / 38 green)
 
 ## Story
 
@@ -463,4 +463,17 @@ See [epic-3-review-2026-05-13-round3.md](epic-3-review-2026-05-13-round3.md) for
 
 - [x] [Review][Defer] R3-Defer-1 `CancelRegistration` FOR UPDATE row lock (AA-7) — already deferred per round-2 H-S2-5 [backend/src/IabConnect.Api/Endpoints/EventRegistrationEndpoints.cs:465-484] — cross-cutting cancellation-concurrency track.
 - [x] [Review][Defer] R3-Defer-2 Plumb `CancellationToken` through pre-existing Epic-2 registration endpoints (`RegisterPublic`, `RegisterMember`, `CancelRegistration`, `MarkAsNoShow`, `RevertNoShow`, `RevertCheckIn`, `RevertCancellation`, `GetStatistics`, `ExportRegistrationsPdf`) (EC-11) [backend/src/IabConnect.Api/Endpoints/EventRegistrationEndpoints.cs:204-640] — pre-existing surface; out of scope for E3.
+
+## Round 4 Review Findings (2026-05-14)
+
+**Scope:** Epic-3 boundary re-review (full diff `1466c35..HEAD`) after the Round-3 fix-pass. 3 parallel layers. S2-scoped result: **1 Patch (High), 0 Decision, 2 Defer.**
+
+### Patches
+
+- [x] [Review][Patch] R4-P-S2-1 (High) `Pending` / `NoShow` check-in attempts surface as an unhandled 500, not a typed 409 — `EventRegistrationCheckInService.ApplyCheckInAsync` maps only `Cancelled`/`Waitlisted` to a typed `Conflict`; `Pending`/`NoShow` fall through to `throw new InvalidOperationException("Unexpected entity state ...")` and the three check-in endpoints (`CheckInRegistration`, `ManualCheckIn`, `CheckInByQrCode`) call `sender.Send` + `MapCheckInResult` with no try/catch. Violates AC-3 (entity must throw a *typed* conflict for Pending/NoShow) and AC-5 (all three entry points converge on the same response shape — 200/404/409, never 500). [backend/src/IabConnect.Application/Events/CheckIn/EventRegistrationCheckInService.cs:~5900-5912], [backend/src/IabConnect.Api/Endpoints/EventRegistrationEndpoints.cs:~476-529,628-656]
+
+### Defer
+
+- [x] [Review][Defer] R4-Defer-S2-1 QR-code check-in has no event scoping — any global `RequireEventStaff` user can check in registrations of any event via a held QR token [backend/src/IabConnect.Api/Endpoints/EventRegistrationEndpoints.cs:~605] — deferred, pre-existing role-model limitation (`RequireEventStaff` is a global realm role, not per-event); the ID path got an `eventId` scope check, the QR path deliberately did not. Tracked with the global-vs-per-event role-registry work alongside R3-Defer-5.
+- [x] [Review][Defer] R4-Defer-S2-2 Manual-search check-in produces an audit row with no `searchQueryHash` when `SearchQuery` is empty/omitted — AC-4 says `additionalData` MUST include `searchQueryHash` for the manual path [backend/src/IabConnect.Api/Endpoints/EventRegistrationEndpoints.cs:~517-525] — deferred, arguably acceptable: there is genuinely no query to hash when the body field is empty; revisit if audit completeness requires a sentinel value.
 

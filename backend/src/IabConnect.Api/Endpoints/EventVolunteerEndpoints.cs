@@ -44,7 +44,8 @@ public static class EventVolunteerEndpoints
             .WithName("GetEventVolunteerRoles")
             .Produces<IReadOnlyList<EventVolunteerRoleDto>>()
             .Produces(StatusCodes.Status401Unauthorized)
-            .Produces(StatusCodes.Status403Forbidden);
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound);
 
         roleGroup.MapPost("/", CreateRole)
             .RequireAuthorization("RequireEventStaff")
@@ -75,7 +76,8 @@ public static class EventVolunteerEndpoints
             .WithName("GetEventVolunteerShifts")
             .Produces<IReadOnlyList<EventVolunteerShiftDto>>()
             .Produces(StatusCodes.Status401Unauthorized)
-            .Produces(StatusCodes.Status403Forbidden);
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound);
 
         shiftGroup.MapPost("/", CreateShift)
             .RequireAuthorization("RequireEventStaff")
@@ -144,8 +146,17 @@ public static class EventVolunteerEndpoints
 
     private static async Task<IResult> GetRoles(Guid eventId, ISender sender, CancellationToken ct)
     {
-        var result = await sender.Send(new GetEventVolunteerRolesQuery(eventId), ct);
-        return Results.Ok(result);
+        try
+        {
+            // R4-P-S3-2: handler throws KeyNotFoundException when the event GUID does not
+            // resolve, so probing for event existence via this endpoint gets an opaque 404.
+            var result = await sender.Send(new GetEventVolunteerRolesQuery(eventId), ct);
+            return Results.Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return Results.NotFound(new { message = ex.Message });
+        }
     }
 
     private static async Task<IResult> CreateRole(
@@ -203,8 +214,16 @@ public static class EventVolunteerEndpoints
 
     private static async Task<IResult> GetShifts(Guid eventId, ISender sender, CancellationToken ct)
     {
-        var shifts = await sender.Send(new GetEventVolunteerShiftsQuery(eventId), ct);
-        return Results.Ok(shifts);
+        try
+        {
+            // R4-P-S3-2: opaque 404 when the event GUID does not resolve.
+            var shifts = await sender.Send(new GetEventVolunteerShiftsQuery(eventId), ct);
+            return Results.Ok(shifts);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return Results.NotFound(new { message = ex.Message });
+        }
     }
 
     private static async Task<IResult> CreateShift(

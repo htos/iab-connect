@@ -89,7 +89,7 @@ public sealed class EventCheckInEndpointTests
         public Task<IReadOnlyList<Event>> GetUpcomingAsync(int count = 10, CancellationToken ct = default) => Task.FromResult<IReadOnlyList<Event>>(Array.Empty<Event>());
         public Task<IReadOnlyList<Event>> GetByOrganizerAsync(Guid organizerId, CancellationToken ct = default) => Task.FromResult<IReadOnlyList<Event>>(Array.Empty<Event>());
         public Task<IReadOnlyList<Event>> GetByDateRangeAsync(DateTime start, DateTime end, CancellationToken ct = default) => Task.FromResult<IReadOnlyList<Event>>(Array.Empty<Event>());
-        public Task<IReadOnlyList<Event>> GetPublicEventsAsync(DateTime? from = null, CancellationToken ct = default) => Task.FromResult<IReadOnlyList<Event>>(Array.Empty<Event>());
+        public Task<IReadOnlyList<Event>> GetPublicEventsAsync(DateTime? from = null, DateTime? to = null, CancellationToken ct = default) => Task.FromResult<IReadOnlyList<Event>>(Array.Empty<Event>());
         public Task<bool> ExistsAsync(Guid id, CancellationToken ct = default) => Task.FromResult(false);
         public Task<int> GetCountAsync(EventFilterOptions? filter = null, CancellationToken ct = default) => Task.FromResult(0);
         public Task AddAsync(Event evt, CancellationToken ct = default) => Task.CompletedTask;

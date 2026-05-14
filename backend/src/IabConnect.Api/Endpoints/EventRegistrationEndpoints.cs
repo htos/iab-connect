@@ -787,9 +787,16 @@ public static class EventRegistrationEndpoints
 
             case CheckInOutcome.Conflict:
                 var reason = sanitized.Conflict?.ToString() ?? "Unknown";
-                var message = sanitized.Conflict == ConflictReason.Cancelled
-                    ? "Cannot check in a cancelled registration"
-                    : "Cannot check in a waitlisted registration";
+                // R4-P-S2-1: explicit message per ConflictReason — Pending and NoShow are now
+                // typed conflicts too (previously they escaped as an unhandled 500).
+                var message = sanitized.Conflict switch
+                {
+                    ConflictReason.Cancelled => "Cannot check in a cancelled registration",
+                    ConflictReason.Waitlisted => "Cannot check in a waitlisted registration",
+                    ConflictReason.Pending => "Cannot check in a pending (un-confirmed) registration",
+                    ConflictReason.NoShow => "Cannot check in a no-show registration; revert no-show first",
+                    _ => "Cannot check in this registration",
+                };
                 return Results.Conflict(new { message, reason });
 
             default:

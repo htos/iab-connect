@@ -24,22 +24,18 @@ public sealed class GetPublicCalendarFeedQueryHandler
 
     public async Task<CalendarFeed> Handle(GetPublicCalendarFeedQuery request, CancellationToken cancellationToken)
     {
-        // Post-review M-S5-2: bound the feed window so a malformed event with a year-3000
-        // end date can't blow up the ICS body or page count. Mirrors the member-feed window.
-        //
-        // REQ-025 (E3.S5 Round-3 R3-H-S5-9): the previous implementation called
-        // `GetPublicEventsAsync(from: now-90d)` which filters on `StartDate >= now-90d` per
-        // the repo convention — a yearly festival whose StartDate is 100d ago but still
-        // ongoing was silently dropped from the calendar feed while still appearing in the
-        // public events list. We now load with no `from` cutoff and apply BOTH bounds
-        // in-memory on `EndDate`: rows whose end-date hasn't passed the 90d back-window AND
-        // whose end-date is within the 2-year forward window. This matches the member-feed
-        // semantic (EndDateFrom) without forcing a new repo method onto every caller of
-        // GetPublicEventsAsync. The public events surface is bounded so the load is
-        // negligible.
+        // REQ-025 (E3.S5 R4-P-S5-1): both window bounds are now pushed into SQL via the
+        // GetPublicEventsAsync(from, to) overload — `EndDate >= now-90d AND EndDate <= now+2y`.
+        // This is the unauthenticated `/calendar.ics` endpoint, so the previous "load every
+        // published public event ever created, filter in memory" shape was an unbounded-load
+        // surface. Filtering on EndDate (not StartDate) keeps the R3-H-S5-9 semantic — a yearly
+        // festival that started 100d ago but is still ongoing stays in the feed — while the
+        // forward bound caps the row count the anonymous endpoint can be made to materialise.
         var now = DateTime.UtcNow;
-        var events = await _events.GetPublicEventsAsync(from: null, cancellationToken);
-        var bounded = events.Where(e => e.EndDate >= now.AddDays(-90) && e.EndDate <= now.AddYears(2));
-        return new CalendarFeed(_builder.Build(bounded, request.BaseUrl));
+        var events = await _events.GetPublicEventsAsync(
+            from: now.AddDays(-90),
+            to: now.AddYears(2),
+            ct: cancellationToken);
+        return new CalendarFeed(_builder.Build(events, request.BaseUrl));
     }
 }

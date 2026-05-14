@@ -16,7 +16,14 @@ public interface IEventRepository
     Task<IReadOnlyList<Event>> GetUpcomingAsync(int count = 10, CancellationToken ct = default);
     Task<IReadOnlyList<Event>> GetByOrganizerAsync(Guid organizerId, CancellationToken ct = default);
     Task<IReadOnlyList<Event>> GetByDateRangeAsync(DateTime start, DateTime end, CancellationToken ct = default);
-    Task<IReadOnlyList<Event>> GetPublicEventsAsync(DateTime? from = null, CancellationToken ct = default);
+    /// <summary>
+    /// REQ-025 (E3.S5 R4-P-S5-1): Published Public events. <paramref name="from"/> bounds
+    /// <c>EndDate &gt;= from</c> (defaults to "now" — drops events that have fully ended);
+    /// <paramref name="to"/> optionally bounds <c>EndDate &lt;= to</c> so the unauthenticated
+    /// calendar feed can push its forward window into SQL instead of materialising every
+    /// public event ever created and filtering in memory.
+    /// </summary>
+    Task<IReadOnlyList<Event>> GetPublicEventsAsync(DateTime? from = null, DateTime? to = null, CancellationToken ct = default);
     Task<bool> ExistsAsync(Guid id, CancellationToken ct = default);
     Task<int> GetCountAsync(EventFilterOptions? filter = null, CancellationToken ct = default);
 
