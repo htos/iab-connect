@@ -1324,7 +1324,51 @@
     "roleUpdateSuccess": "Rolle erfolgreich aktualisiert",
     "roleDeleteSuccess": "Rolle erfolgreich gelöscht",
     "roleError": "Fehler bei der Rollenoperation",
-    "rolesLoadError": "Fehler beim Laden der Rollen"
+    "rolesLoadError": "Fehler beim Laden der Rollen",
+    "tabModules": "Module",
+    "modulesTitle": "Module",
+    "modulesIntro": "Aktivieren oder deaktivieren Sie Funktionsbereiche dieser Installation. Deaktivierte Module werden in Navigation und Oberfläche ausgeblendet und im Backend gesperrt.",
+    "moduleAdminNote": "Die Administration und dieser Modul-Tab können nicht deaktiviert werden – so kann ein Modul jederzeit wieder aktiviert werden.",
+    "moduleEnabled": "Aktiviert",
+    "moduleDisabled": "Deaktiviert",
+    "moduleLastChanged": "Zuletzt geändert am {date} von {user}",
+    "moduleNeverChanged": "Noch nicht geändert",
+    "moduleSaveSuccess": "Modul-Einstellung gespeichert",
+    "moduleSaveError": "Fehler beim Speichern der Modul-Einstellung",
+    "modulesLoadError": "Fehler beim Laden der Module",
+    "moduleDisableConfirm": "Modul „{module}“ wirklich deaktivieren?",
+    "moduleDependencyWarning": "Hinweis: {dependents} hängt von diesem Modul ab. Das Deaktivieren kann zugehörige Funktionen beeinträchtigen.",
+    "moduleConfirmDisable": "Deaktivieren",
+    "modules": {
+      "members": {
+        "name": "Mitglieder",
+        "description": "Mitgliederverwaltung, Profile und Segmente"
+      },
+      "events": {
+        "name": "Veranstaltungen",
+        "description": "Events, Anmeldungen und Freiwilligenplanung"
+      },
+      "documents": {
+        "name": "Dokumente",
+        "description": "Dokumentenablage und Freigaben"
+      },
+      "communication": {
+        "name": "Kommunikation",
+        "description": "E-Mail-Kampagnen, Vorlagen und Newsletter"
+      },
+      "finance": {
+        "name": "Finanzen",
+        "description": "Buchhaltung, Rechnungen und Zahlungen"
+      },
+      "partners": {
+        "name": "Partner",
+        "description": "Sponsoren und Lieferanten"
+      },
+      "public_view": {
+        "name": "Öffentliche Website",
+        "description": "Öffentlich zugängliche Webseiten"
+      }
+    }
   },
   "finance": {
     "title": "Finanzen",

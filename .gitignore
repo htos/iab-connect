@@ -20,7 +20,8 @@ Desktop.ini
 *.user
 *.userosscache
 *.sln.docstates
-
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
 # ───────────────────────────────────────────────
 #  Node / npm / pnpm
 # ───────────────────────────────────────────────

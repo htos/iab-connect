@@ -96,6 +96,9 @@ public static class DependencyInjection
         services.AddScoped<ISystemSettingsRepository, SystemSettingsRepository>();
         services.AddScoped<ICustomRoleRepository, CustomRoleRepository>();
 
+        // REQ-087 (E10-S1): Module settings — per-module enablement state
+        services.AddScoped<IModuleSettingsRepository, ModuleSettingsRepository>();
+
         // REQ-038..045: Finance repositories
         services.AddScoped<IAccountRepository, AccountRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
@@ -280,7 +283,13 @@ public static class DependencyInjection
         services.AddScoped<SwissQrBillInvoiceGenerator>();
         services.AddScoped<IInvoicePdfGeneratorFactory, InvoicePdfGeneratorFactory>();
 
-        // TODO: Add caching (Redis)
+        // In-memory caching. First cache in the codebase — introduced by REQ-087 (E10-S1)
+        // for the module-settings service. A distributed cache (Redis) can replace this
+        // later if multi-instance deployment requires it.
+        services.AddMemoryCache();
+
+        // REQ-087 (E10-S1): cached module-settings service (depends on IMemoryCache + repo)
+        services.AddScoped<IModuleSettingsService, Persistence.Services.ModuleSettingsService>();
 
         return services;
     }

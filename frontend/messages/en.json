@@ -1323,7 +1323,51 @@
     "roleUpdateSuccess": "Role updated successfully",
     "roleDeleteSuccess": "Role deleted successfully",
     "roleError": "Error with role operation",
-    "rolesLoadError": "Error loading roles"
+    "rolesLoadError": "Error loading roles",
+    "tabModules": "Modules",
+    "modulesTitle": "Modules",
+    "modulesIntro": "Enable or disable functional areas of this deployment. Disabled modules are hidden from navigation and the UI, and blocked in the backend.",
+    "moduleAdminNote": "Administration and this Modules tab can never be disabled — so a module can always be re-enabled.",
+    "moduleEnabled": "Enabled",
+    "moduleDisabled": "Disabled",
+    "moduleLastChanged": "Last changed on {date} by {user}",
+    "moduleNeverChanged": "Not yet changed",
+    "moduleSaveSuccess": "Module setting saved",
+    "moduleSaveError": "Error saving module setting",
+    "modulesLoadError": "Error loading modules",
+    "moduleDisableConfirm": "Disable the \"{module}\" module?",
+    "moduleDependencyWarning": "Note: {dependents} depends on this module. Disabling it may affect related functionality.",
+    "moduleConfirmDisable": "Disable",
+    "modules": {
+      "members": {
+        "name": "Members",
+        "description": "Member management, profiles and segments"
+      },
+      "events": {
+        "name": "Events",
+        "description": "Events, registrations and volunteer planning"
+      },
+      "documents": {
+        "name": "Documents",
+        "description": "Document storage and sharing"
+      },
+      "communication": {
+        "name": "Communication",
+        "description": "Email campaigns, templates and newsletters"
+      },
+      "finance": {
+        "name": "Finance",
+        "description": "Accounting, invoices and payments"
+      },
+      "partners": {
+        "name": "Partners",
+        "description": "Sponsors and suppliers"
+      },
+      "public_view": {
+        "name": "Public website",
+        "description": "Publicly accessible web pages"
+      }
+    }
   },
   "finance": {
     "title": "Finance",

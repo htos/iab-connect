@@ -1,6 +1,6 @@
 # Story 10.1: Add Module Settings Data Model and Service
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -25,16 +25,16 @@ so that **module configuration can drive navigation, routing, and backend enforc
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — `ModuleKeys` constants (AC: 4)** — create `ModuleKeys` mirroring `backend/src/IabConnect.Api/Authorization/Roles.cs` style. **Decision:** place it where both Api and Application can reference it — `Roles.cs` is in `IabConnect.Api/Authorization`, but `Application` cannot depend on `Api`. Put `ModuleKeys` in **`IabConnect.Domain`** (both Api and Application reference Domain) — e.g. `IabConnect.Domain/Common/ModuleKeys.cs`. Constants: `Members="members"`, `Events="events"`, `Documents="documents"`, `Communication="communication"`, `Finance="finance"`, `Partners="partners"`, `PublicView="public_view"`, plus `public static readonly IReadOnlyList<string> All`.
-- [ ] **Task 2 — `ModuleSetting` entity (AC: 3)** — `IabConnect.Domain/Common/ModuleSetting.cs`, mirror `SystemSettings.cs`: `: Entity`, props `ModuleKey` (string), `Enabled` (bool), `UpdatedAt` (DateTime), `UpdatedBy` (string?) all private-set; `private ModuleSetting()` EF ctor; `static ModuleSetting Create(string moduleKey, bool enabled, string? updatedBy)` factory with guard on `moduleKey`; `void SetEnabled(bool enabled, string? updatedBy)` stamping `UpdatedAt = DateTime.UtcNow`.
-- [ ] **Task 3 — EF config + DbSet (AC: 5)** — `Infrastructure/Persistence/Configurations/ModuleSettingConfiguration.cs` mirroring `SystemSettingsConfiguration.cs`: `ToTable("module_settings")`, `HasKey(m => m.Id)` → `id`, `module_key` (required, maxlength e.g. 50), `enabled`, `updated_at`, `updated_by` (nullable) — all explicit `HasColumnName`; `builder.HasIndex(m => m.ModuleKey).IsUnique()`. Add `public DbSet<ModuleSetting> ModuleSettings => Set<ModuleSetting>();` to `ApplicationDbContext.cs` (~line 48, sibling of `SystemSettings`). The global UTC `DateTime` converter applies automatically.
-- [ ] **Task 4 — Migration with seed (AC: 1, 2)** — `dotnet ef migrations add AddModuleSettings --project src/IabConnect.Infrastructure --startup-project src/IabConnect.Api` (from `backend/`). The migration must `CreateTable("module_settings")` + `CreateIndex` unique on `module_key` + 7 `InsertData(...)` rows (all `enabled=true`, fixed `Guid`s, a fixed `updated_at` UTC timestamp). Add a class XML-doc explaining REQ-087 / ADR-007 / behavior-preserving seed (follow the `AddSystemSettingsAndCustomRoles` + `AddEventVolunteerPlanning` doc style). Verify `ApplicationDbContextModelSnapshot.cs` regenerates cleanly.
-- [ ] **Task 5 — Repository (AC: 6)** — `IabConnect.Application/Common/IModuleSettingsRepository.cs` (mirror `ISystemSettingsRepository`): `Task<IReadOnlyList<ModuleSetting>> GetAllAsync(ct)`, `Task<ModuleSetting?> GetByKeyAsync(string moduleKey, ct)`, `void Update(ModuleSetting setting)` (no SaveChanges — caller uses `IUnitOfWork`). Impl `Infrastructure/Persistence/Repositories/ModuleSettingsRepository.cs` (`sealed`, ctor injects `ApplicationDbContext`). Register Scoped in `Infrastructure/DependencyInjection.cs` next to line 95–97.
-- [ ] **Task 6 — Cached service (AC: 7)** — `IModuleSettingsService` interface + impl. **Decision:** Application-layer interface (`IabConnect.Application/Common/IModuleSettingsService.cs`), Infrastructure impl (it needs `IMemoryCache` + the repo) — register in Infrastructure DI. Methods: `Task<bool> IsEnabledAsync(string, ct)`, `Task<IReadOnlyDictionary<string,bool>> GetAllAsync(ct)`, `void InvalidateCache()`. Cache the full module map under one stable key with a sensible expiry; `InvalidateCache()` removes it. Add `services.AddMemoryCache();` to `Infrastructure/DependencyInjection.cs` (nothing registers it today — there's a `// TODO: Add caching` marker at line 271).
-- [ ] **Task 7 — Tests (AC: 8)**
-  - [ ] `IabConnect.Infrastructure.Tests` (Testcontainers PostgreSQL): migration applies; 7 rows seeded all enabled; the `module_key` unique constraint rejects a duplicate; repository round-trips an update.
-  - [ ] `IabConnect.Application.Tests`: `ModuleSetting.SetEnabled` stamps `UpdatedAt`; `IModuleSettingsService` caches reads (repo hit once), `InvalidateCache()` forces a re-read, `IsEnabledAsync` returns the seeded value.
-  - [ ] `dotnet test` from `backend/` green, 0 warnings.
+- [x] **Task 1 — `ModuleKeys` constants (AC: 4)** — create `ModuleKeys` mirroring `backend/src/IabConnect.Api/Authorization/Roles.cs` style. **Decision:** place it where both Api and Application can reference it — `Roles.cs` is in `IabConnect.Api/Authorization`, but `Application` cannot depend on `Api`. Put `ModuleKeys` in **`IabConnect.Domain`** (both Api and Application reference Domain) — e.g. `IabConnect.Domain/Common/ModuleKeys.cs`. Constants: `Members="members"`, `Events="events"`, `Documents="documents"`, `Communication="communication"`, `Finance="finance"`, `Partners="partners"`, `PublicView="public_view"`, plus `public static readonly IReadOnlyList<string> All`.
+- [x] **Task 2 — `ModuleSetting` entity (AC: 3)** — `IabConnect.Domain/Common/ModuleSetting.cs`, mirror `SystemSettings.cs`: `: Entity`, props `ModuleKey` (string), `Enabled` (bool), `UpdatedAt` (DateTime), `UpdatedBy` (string?) all private-set; `private ModuleSetting()` EF ctor; `static ModuleSetting Create(string moduleKey, bool enabled, string? updatedBy)` factory with guard on `moduleKey`; `void SetEnabled(bool enabled, string? updatedBy)` stamping `UpdatedAt = DateTime.UtcNow`.
+- [x] **Task 3 — EF config + DbSet (AC: 5)** — `Infrastructure/Persistence/Configurations/ModuleSettingConfiguration.cs` mirroring `SystemSettingsConfiguration.cs`: `ToTable("module_settings")`, `HasKey(m => m.Id)` → `id`, `module_key` (required, maxlength e.g. 50), `enabled`, `updated_at`, `updated_by` (nullable) — all explicit `HasColumnName`; `builder.HasIndex(m => m.ModuleKey).IsUnique()`. Add `public DbSet<ModuleSetting> ModuleSettings => Set<ModuleSetting>();` to `ApplicationDbContext.cs` (~line 48, sibling of `SystemSettings`). The global UTC `DateTime` converter applies automatically.
+- [x] **Task 4 — Migration with seed (AC: 1, 2)** — `dotnet ef migrations add AddModuleSettings --project src/IabConnect.Infrastructure --startup-project src/IabConnect.Api` (from `backend/`). The migration must `CreateTable("module_settings")` + `CreateIndex` unique on `module_key` + 7 `InsertData(...)` rows (all `enabled=true`, fixed `Guid`s, a fixed `updated_at` UTC timestamp). Add a class XML-doc explaining REQ-087 / ADR-007 / behavior-preserving seed (follow the `AddSystemSettingsAndCustomRoles` + `AddEventVolunteerPlanning` doc style). Verify `ApplicationDbContextModelSnapshot.cs` regenerates cleanly.
+- [x] **Task 5 — Repository (AC: 6)** — `IabConnect.Application/Common/IModuleSettingsRepository.cs` (mirror `ISystemSettingsRepository`): `Task<IReadOnlyList<ModuleSetting>> GetAllAsync(ct)`, `Task<ModuleSetting?> GetByKeyAsync(string moduleKey, ct)`, `void Update(ModuleSetting setting)` (no SaveChanges — caller uses `IUnitOfWork`). Impl `Infrastructure/Persistence/Repositories/ModuleSettingsRepository.cs` (`sealed`, ctor injects `ApplicationDbContext`). Register Scoped in `Infrastructure/DependencyInjection.cs` next to line 95–97.
+- [x] **Task 6 — Cached service (AC: 7)** — `IModuleSettingsService` interface + impl. **Decision:** Application-layer interface (`IabConnect.Application/Common/IModuleSettingsService.cs`), Infrastructure impl (it needs `IMemoryCache` + the repo) — register in Infrastructure DI. Methods: `Task<bool> IsEnabledAsync(string, ct)`, `Task<IReadOnlyDictionary<string,bool>> GetAllAsync(ct)`, `void InvalidateCache()`. Cache the full module map under one stable key with a sensible expiry; `InvalidateCache()` removes it. Add `services.AddMemoryCache();` to `Infrastructure/DependencyInjection.cs` (nothing registers it today — there's a `// TODO: Add caching` marker at line 271).
+- [x] **Task 7 — Tests (AC: 8)**
+  - [x] `IabConnect.Infrastructure.Tests` (Testcontainers PostgreSQL): migration applies; 7 rows seeded all enabled; the `module_key` unique constraint rejects a duplicate; repository round-trips an update.
+  - [x] `IabConnect.Application.Tests`: `ModuleSetting.SetEnabled` stamps `UpdatedAt`; `IModuleSettingsService` caches reads (repo hit once), `InvalidateCache()` forces a re-read, `IsEnabledAsync` returns the seeded value.
+  - [x] `dotnet test` from `backend/` green, 0 warnings.
 
 ## Dev Notes
 
@@ -91,12 +91,47 @@ NEW files: `Domain/Common/ModuleKeys.cs`, `Domain/Common/ModuleSetting.cs`, `App
 
 ### Agent Model Used
 
-_(to be filled by dev-story)_
+claude-opus-4-7 (1M context) — bmad-dev-story workflow, 2026-05-14.
 
 ### Debug Log References
+
+- `dotnet build` (full solution): succeeded, 0 warnings, 0 errors.
+- `dotnet ef migrations add AddModuleSettings`: generated `20260514181057_AddModuleSettings`; `ApplicationDbContextModelSnapshot.cs` regenerated cleanly with the `ModuleSetting` entity.
+- `dotnet test` (full backend suite): **1885 passed, 0 failed, 0 skipped, 0 warnings** (1430 Application, 71 Api, 384 Infrastructure). Baseline grew past the story's stated 1837 because E9-S1..S4 shipped after this story was contexted; all 13 new E10-S1 tests are included in the 1885.
 
 ### Completion Notes List
 
 - Ultimate context engine analysis completed — comprehensive developer guide created.
+- **AC-1/AC-4 (ModuleKeys location):** placed `ModuleKeys` in `IabConnect.Domain/Common/` as the story recommended — `Roles` lives in `IabConnect.Api` which `Application` cannot reference, so Domain is the only cross-layer home. Open Question 1 resolved as recommended.
+- **AC-7 (caching):** `IMemoryCache` / `AddMemoryCache` were available transitively (via EF Core's `Microsoft.Extensions.Caching.Memory` dependency) — no new `Directory.Packages.props` entry needed. `AddMemoryCache()` replaced the `// TODO: Add caching (Redis)` marker in `Infrastructure/DependencyInjection.cs`; this is the first cache in the codebase.
+- **AC-7 design choice:** `IsEnabledAsync` returns `true` for an unknown module key (behaviour-preserving — an unconfigured module is not treated as disabled). The seed guarantees all 7 `ModuleKeys` rows exist, so this only matters for never-seeded keys. Documented on the interface and covered by a unit test.
+- **Migration:** `AddModuleSettings` creates the table + unique index and seeds the 7 modules (all `enabled = true`) with fixed `Guid` literals and a fixed UTC `updated_at` for determinism. `Down()` drops the table (which also removes the seed rows). Behaviour-preserving — an existing deployment behaves identically after `database update`.
+- **Open Question 2 (`public_site_enabled` vs `public_view` overlap):** noted, not resolved here — it is explicitly E10-S5's decision. No action taken in E10-S1.
+- Hybrid workflow: story set to `review`; per-project policy says no per-story code-review — epic-scope review runs after all E10 stories reach `review`.
 
 ### File List
+
+**New:**
+- `backend/src/IabConnect.Domain/Common/ModuleKeys.cs`
+- `backend/src/IabConnect.Domain/Common/ModuleSetting.cs`
+- `backend/src/IabConnect.Application/Common/IModuleSettingsRepository.cs`
+- `backend/src/IabConnect.Application/Common/IModuleSettingsService.cs`
+- `backend/src/IabConnect.Infrastructure/Persistence/Configurations/ModuleSettingConfiguration.cs`
+- `backend/src/IabConnect.Infrastructure/Persistence/Repositories/ModuleSettingsRepository.cs`
+- `backend/src/IabConnect.Infrastructure/Persistence/Services/ModuleSettingsService.cs`
+- `backend/src/IabConnect.Infrastructure/Migrations/20260514181057_AddModuleSettings.cs`
+- `backend/src/IabConnect.Infrastructure/Migrations/20260514181057_AddModuleSettings.Designer.cs`
+- `backend/tests/IabConnect.Application.Tests/Common/ModuleSettingTests.cs`
+- `backend/tests/IabConnect.Application.Tests/Common/ModuleSettingsServiceTests.cs`
+- `backend/tests/IabConnect.Infrastructure.Tests/Repositories/ModuleSettingsMigrationTests.cs`
+
+**Modified:**
+- `backend/src/IabConnect.Infrastructure/Persistence/ApplicationDbContext.cs` — added `DbSet<ModuleSetting> ModuleSettings`
+- `backend/src/IabConnect.Infrastructure/DependencyInjection.cs` — registered `IModuleSettingsRepository`, `IModuleSettingsService`, `AddMemoryCache()`
+- `backend/src/IabConnect.Infrastructure/Migrations/ApplicationDbContextModelSnapshot.cs` — regenerated (EF migration)
+
+## Change Log
+
+| Date       | Description                                                                 |
+|------------|-----------------------------------------------------------------------------|
+| 2026-05-14 | E10-S1 implemented: `module_settings` table + seed, `ModuleSetting` entity, `ModuleKeys` contract, EF config, repository, cached `IModuleSettingsService`, DI wiring. 13 new tests; full suite 1885/1885 green, 0 warnings. Status → review. |

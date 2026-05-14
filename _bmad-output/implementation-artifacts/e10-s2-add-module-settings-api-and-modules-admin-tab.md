@@ -1,6 +1,6 @@
 # Story 10.2: Add Module Settings API and Modules Admin Tab
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -25,19 +25,19 @@ so that **I control which functionality my deployment uses**.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — MediatR query + command (AC: 1, 5)** — in `IabConnect.Application/ModuleSettings/Queries/` and `/Commands/` (auto-discovered by `RegisterServicesFromAssembly` — no manual DI): `GetModuleSettingsQuery` → returns all 7 module settings with metadata; `UpdateModuleSettingCommand(string moduleKey, bool enabled)` → loads via `IModuleSettingsRepository`, calls `ModuleSetting.SetEnabled(...)`, `repo.Update`, `IUnitOfWork.SaveChangesAsync`, then `IModuleSettingsService.InvalidateCache()`, then audit. FluentValidation validator: `moduleKey` must be in `ModuleKeys.All`.
-- [ ] **Task 2 — Admin endpoint group (AC: 1, 6)** — new `Api/Endpoints/ModuleSettingsEndpoints.cs` with `MapModuleSettingsEndpoints`, mirroring the `SettingsEndpoints.cs` admin group (`MapGroup("/api/v1/module-settings")` + `.RequireAuthorization(policy => policy.RequireRole("admin"))`). `GET /` → query; `PUT /{moduleKey}` → command. Register in `EndpointMapper.cs`. **This group must never be `Module:`-gated** (E10-S3 enforces; just don't add the policy here).
-- [ ] **Task 3 — `modules` on public settings (AC: 2)** — extend `PublicSettingsResponse` record in `SettingsEndpoints.cs` (lines 139–143) with `IReadOnlyDictionary<string,bool> Modules`; populate it in `GetPublicSettings` (lines 45–56) via `IModuleSettingsService.GetAllAsync(ct)`. **Coordinate with E9-S1**, which also extends `PublicSettingsResponse` (with branding fields) — both add to the same record.
-- [ ] **Task 4 — Modules admin tab (AC: 3, 4)** — `frontend/src/app/admin/settings/page.tsx`:
-  - [ ] Add `"modules"` to the `Tab` type (line 50 — **note E9-S1 renames `general`→`branding`; coordinate**) and a third tab button (lines 331–352 block) with a `settings.tabModules` i18n key.
-  - [ ] New `{activeTab === "modules" && (...)}` panel: a `rounded-xl bg-white p-6 shadow-sm` card, one row per module — label + description text + a labelled toggle (reuse the checkbox pattern from the role modal, lines 826–845) + last-changed metadata. Own `modulesMessage` state for the success/error banner.
-  - [ ] Disabling a module → confirmation dialog (reuse the `deleteConfirmId` inline-confirm pattern or a modal); show a dependency-warning alert for known cross-module pairs (Finance↔Events).
-  - [ ] Load via `GET /api/v1/module-settings`, save via `PUT /api/v1/module-settings/{key}`, then `refreshAppSettings()`.
-  - [ ] Add `settings.tabModules` + per-module name/description + warning/confirmation i18n keys to `de.json` and `en.json`.
-- [ ] **Task 5 — Tests (AC: 7)**
-  - [ ] `IabConnect.Api.Tests`: `GET`/`PUT /api/v1/module-settings` require admin; non-admin → 403; the module-settings endpoints are reachable regardless of any module state.
-  - [ ] `IabConnect.Application.Tests`: command validates `moduleKey`, updates, invalidates cache, audits; query returns all 7.
-  - [ ] Vitest: Modules tab renders 7 toggles, disabling shows confirmation, dependency warning renders for Finance↔Events, save calls `PUT` + `refreshAppSettings()`.
+- [x] **Task 1 — MediatR query + command (AC: 1, 5)** — in `IabConnect.Application/ModuleSettings/Queries/` and `/Commands/` (auto-discovered by `RegisterServicesFromAssembly` — no manual DI): `GetModuleSettingsQuery` → returns all 7 module settings with metadata; `UpdateModuleSettingCommand(string moduleKey, bool enabled)` → loads via `IModuleSettingsRepository`, calls `ModuleSetting.SetEnabled(...)`, `repo.Update`, `IUnitOfWork.SaveChangesAsync`, then `IModuleSettingsService.InvalidateCache()`, then audit. FluentValidation validator: `moduleKey` must be in `ModuleKeys.All`.
+- [x] **Task 2 — Admin endpoint group (AC: 1, 6)** — new `Api/Endpoints/ModuleSettingsEndpoints.cs` with `MapModuleSettingsEndpoints`, mirroring the `SettingsEndpoints.cs` admin group (`MapGroup("/api/v1/module-settings")` + `.RequireAuthorization(policy => policy.RequireRole("admin"))`). `GET /` → query; `PUT /{moduleKey}` → command. Register in `EndpointMapper.cs`. **This group must never be `Module:`-gated** (E10-S3 enforces; just don't add the policy here).
+- [x] **Task 3 — `modules` on public settings (AC: 2)** — extend `PublicSettingsResponse` record in `SettingsEndpoints.cs` (lines 139–143) with `IReadOnlyDictionary<string,bool> Modules`; populate it in `GetPublicSettings` (lines 45–56) via `IModuleSettingsService.GetAllAsync(ct)`. **Coordinate with E9-S1**, which also extends `PublicSettingsResponse` (with branding fields) — both add to the same record.
+- [x] **Task 4 — Modules admin tab (AC: 3, 4)** — `frontend/src/app/admin/settings/page.tsx`:
+  - [x] Add `"modules"` to the `Tab` type (line 50 — **note E9-S1 renames `general`→`branding`; coordinate**) and a third tab button (lines 331–352 block) with a `settings.tabModules` i18n key.
+  - [x] New `{activeTab === "modules" && (...)}` panel: a `rounded-xl bg-white p-6 shadow-sm` card, one row per module — label + description text + a labelled toggle (reuse the checkbox pattern from the role modal, lines 826–845) + last-changed metadata. Own `modulesMessage` state for the success/error banner.
+  - [x] Disabling a module → confirmation dialog (reuse the `deleteConfirmId` inline-confirm pattern or a modal); show a dependency-warning alert for known cross-module pairs (Finance↔Events).
+  - [x] Load via `GET /api/v1/module-settings`, save via `PUT /api/v1/module-settings/{key}`, then `refreshAppSettings()`.
+  - [x] Add `settings.tabModules` + per-module name/description + warning/confirmation i18n keys to `de.json` and `en.json`.
+- [x] **Task 5 — Tests (AC: 7)**
+  - [x] `IabConnect.Api.Tests`: `GET`/`PUT /api/v1/module-settings` require admin; non-admin → 403; the module-settings endpoints are reachable regardless of any module state.
+  - [x] `IabConnect.Application.Tests`: command validates `moduleKey`, updates, invalidates cache, audits; query returns all 7.
+  - [x] Vitest: Modules tab renders 7 toggles, disabling shows confirmation, dependency warning renders for Finance↔Events, save calls `PUT` + `refreshAppSettings()`.
 
 ## Dev Notes
 
@@ -98,12 +98,51 @@ NEW: `Application/ModuleSettings/Queries/GetModuleSettingsQuery*.cs`, `Applicati
 
 ### Agent Model Used
 
-_(to be filled by dev-story)_
+claude-opus-4-7 (1M context) — bmad-dev-story workflow, 2026-05-14.
 
 ### Debug Log References
+
+- `dotnet build` (full solution): succeeded, 0 warnings, 0 errors.
+- `dotnet test` (full backend suite): **1898 passed, 0 failed, 0 skipped** (1439 Application, 75 Api, 384 Infrastructure) — +13 over e10-s1's 1885 (9 Application + 4 Api new).
+- `npm run typecheck`: green. `npx vitest run`: **59 passed, 0 failed** (10 files) — +5 over the prior 54 (Modules-tab tests).
+- `npm run lint`: the changed file `admin/settings/page.tsx` is lint-clean (`npx eslint` on it returns nothing). The suite still reports **2 pre-existing errors + 1 warning in `src/app/members/segments/page.tsx`** — un-owned lint debt from commit `5eef682` (REQ-017), tracked as Epic-9-retro action item A19. **Not introduced by E10-S2**; left untouched to avoid out-of-scope edits.
 
 ### Completion Notes List
 
 - Ultimate context engine analysis completed — comprehensive developer guide created.
+- **E9 coordination resolved:** E9-S1 already landed (epic-9 `done`), so `admin/settings/page.tsx` already had the `branding` tab rename and `PublicSettingsResponse` already carried the branding fields. E10-S2 built on the post-E9 state — added `"modules"` to the `Tab` union + a third tab + panel; appended `Modules` to the existing `PublicSettingsResponse` record. No conflict.
+- **Q1 (audit event type):** reused `AuditEventType.SettingsChanged` for module enable/disable, consistent with how `SystemSettings` edits are audited (as the story recommended).
+- **Q2 (dependency warnings):** implemented a minimal static advisory rule set (`MODULE_DEPENDENCY_WARNINGS` = Finance↔Events). The warning is **advisory only — it never blocks the toggle**. Full cross-module dependency *handling* remains E10-S5.
+- **Command signature deviation:** `UpdateModuleSettingCommand` is `(ModuleKey, Enabled, UpdatedBy)` — the story sketched `(moduleKey, enabled)`, but there is no usable `ICurrentUser` in the Application layer (the interface exists but is never implemented/registered). The endpoint supplies `UpdatedBy` from `httpContext.GetUserName()` — the established `SettingsEndpoints` pattern. `updated_by` is needed for AC-3's last-changed metadata.
+- **Self-lockout guard (AC-6):** there is no "admin" module key — the validator rejects any key not in `ModuleKeys.All`, so the API cannot gate a non-existent admin module. The `/api/v1/module-settings` group carries only the admin-role policy and no module gate (E10-S3 enforcement must skip it). The Modules tab shows an explicit note that Admin and the tab itself cannot be disabled.
+- **`modules` on public settings (AC-2, ADR-008):** `GET /api/v1/settings/public` (anonymous) now returns a `modules` map via `IModuleSettingsService.GetAllAsync` — the unauthenticated-readable source the frontend shell + future `middleware.ts` (E10-S4) need.
+- Validation (unknown key) → 400 and not-found → 404 are handled by the existing `ExceptionHandlingMiddleware`; the endpoint stays thin.
+- Hybrid workflow: story set to `review`; no per-story code-review — epic-scope review after all E10 stories reach `review`.
 
 ### File List
+
+**New — backend:**
+- `backend/src/IabConnect.Application/ModuleSettings/ModuleSettingDto.cs`
+- `backend/src/IabConnect.Application/ModuleSettings/Queries/GetModuleSettingsQuery.cs`
+- `backend/src/IabConnect.Application/ModuleSettings/Commands/UpdateModuleSettingCommand.cs`
+- `backend/src/IabConnect.Api/Endpoints/ModuleSettingsEndpoints.cs`
+
+**New — tests:**
+- `backend/tests/IabConnect.Application.Tests/ModuleSettings/ModuleSettingsCommandQueryTests.cs`
+- `backend/tests/IabConnect.Api.Tests/Endpoints/ModuleSettingsEndpointTests.cs`
+
+**Modified — backend:**
+- `backend/src/IabConnect.Api/Endpoints/EndpointMapper.cs` — wired `MapModuleSettingsEndpoints`
+- `backend/src/IabConnect.Api/Endpoints/SettingsEndpoints.cs` — `PublicSettingsResponse.Modules` + `GetPublicSettings` populates it via `IModuleSettingsService`
+
+**Modified — frontend:**
+- `frontend/src/app/admin/settings/page.tsx` — `Modules` tab: `Tab` union + tab button + panel, module state/load/handlers, inline disable-confirm + advisory dependency warning, save → `PUT` + `refreshAppSettings()`
+- `frontend/messages/de.json` — `settings.tabModules` + module names/descriptions + warning/confirmation keys
+- `frontend/messages/en.json` — same keys (English)
+- `frontend/src/app/admin/settings/page.test.tsx` — 5 new Vitest tests for the Modules tab
+
+## Change Log
+
+| Date       | Description                                                                 |
+|------------|-----------------------------------------------------------------------------|
+| 2026-05-14 | E10-S2 implemented: module-settings MediatR query/command/validator, admin-only `ModuleSettingsEndpoints`, `modules` map on public settings (ADR-008), Modules admin tab with labelled toggles + disable confirmation + advisory Finance↔Events dependency warning, i18n (de/en). 13 new backend tests + 5 Vitest. Backend 1898/1898, frontend 59/59, typecheck green. Status → review. |

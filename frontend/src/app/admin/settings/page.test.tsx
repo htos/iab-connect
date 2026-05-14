@@ -70,6 +70,23 @@ const mockSettings = {
   updatedBy: "admin",
 };
 
+// REQ-087 (E10-S2): all 7 modules enabled — finance + events both on so the
+// Finance<->Events dependency warning has something to render.
+const mockModules = [
+  "members",
+  "events",
+  "documents",
+  "communication",
+  "finance",
+  "partners",
+  "public_view",
+].map((moduleKey) => ({
+  moduleKey,
+  enabled: true,
+  updatedAt: "2026-05-14T00:00:00Z",
+  updatedBy: moduleKey === "events" ? "admin" : null,
+}));
+
 beforeEach(() => {
   // jsdom has no object-URL support — stub it for the logo preview path.
   global.URL.createObjectURL = vi.fn(() => "blob:mock-logo");
@@ -78,6 +95,9 @@ beforeEach(() => {
   apiGet.mockImplementation((endpoint: string) => {
     if (endpoint === "/api/v1/settings") {
       return Promise.resolve({ data: mockSettings, error: null });
+    }
+    if (endpoint === "/api/v1/module-settings") {
+      return Promise.resolve({ data: mockModules, error: null });
     }
     return Promise.resolve({ data: [], error: null });
   });
@@ -190,5 +210,93 @@ describe("Branding tab (REQ-086 E9-S1)", () => {
     await waitFor(() => {
       expect(screen.getAllByText("logoUploadFailed").length).toBeGreaterThan(0);
     });
+  });
+});
+
+describe("Modules tab (REQ-087 E10-S2)", () => {
+  async function openModulesTab(container: HTMLElement) {
+    await waitFor(() => {
+      expect(screen.getByText("tabModules")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText("tabModules"));
+    // Wait for the module rows (loaded from GET /api/v1/module-settings) to render.
+    await waitFor(() => {
+      expect(container.querySelector("#module-finance")).toBeInTheDocument();
+    });
+  }
+
+  it("renders one labelled toggle per module (7 modules)", async () => {
+    const { container } = render(<SettingsPage />);
+    await openModulesTab(container);
+
+    const toggles = container.querySelectorAll('input[type="checkbox"]');
+    // 7 module rows — each row has exactly one checkbox.
+    expect(toggles.length).toBe(7);
+    expect(container.querySelector("#module-members")).toBeInTheDocument();
+    expect(container.querySelector("#module-public_view")).toBeInTheDocument();
+  });
+
+  it("disabling a module shows a confirmation before applying", async () => {
+    const { container } = render(<SettingsPage />);
+    await openModulesTab(container);
+
+    fireEvent.click(container.querySelector("#module-documents")!);
+
+    // Confirmation copy appears; no PUT yet.
+    expect(screen.getByText("moduleDisableConfirm")).toBeInTheDocument();
+    expect(apiPut).not.toHaveBeenCalled();
+  });
+
+  it("shows the Finance<->Events dependency warning when disabling Finance", async () => {
+    const { container } = render(<SettingsPage />);
+    await openModulesTab(container);
+
+    fireEvent.click(container.querySelector("#module-finance")!);
+
+    expect(screen.getByText("moduleDependencyWarning")).toBeInTheDocument();
+  });
+
+  it("confirming a disable calls PUT and refreshes app settings", async () => {
+    const { container } = render(<SettingsPage />);
+    await openModulesTab(container);
+
+    fireEvent.click(container.querySelector("#module-finance")!);
+    fireEvent.click(screen.getByText("moduleConfirmDisable"));
+
+    await waitFor(() => {
+      expect(apiPut).toHaveBeenCalledWith("/api/v1/module-settings/finance", {
+        enabled: false,
+      });
+    });
+    expect(refreshAppSettings).toHaveBeenCalled();
+  });
+
+  it("enabling a disabled module applies immediately without confirmation", async () => {
+    apiGet.mockImplementation((endpoint: string) => {
+      if (endpoint === "/api/v1/settings") {
+        return Promise.resolve({ data: mockSettings, error: null });
+      }
+      if (endpoint === "/api/v1/module-settings") {
+        return Promise.resolve({
+          data: mockModules.map((m) =>
+            m.moduleKey === "partners" ? { ...m, enabled: false } : m
+          ),
+          error: null,
+        });
+      }
+      return Promise.resolve({ data: [], error: null });
+    });
+    const { container } = render(<SettingsPage />);
+    await openModulesTab(container);
+
+    fireEvent.click(container.querySelector("#module-partners")!);
+
+    await waitFor(() => {
+      expect(apiPut).toHaveBeenCalledWith("/api/v1/module-settings/partners", {
+        enabled: true,
+      });
+    });
+    // Enabling is non-destructive — no confirmation dialog.
+    expect(screen.queryByText("moduleDisableConfirm")).not.toBeInTheDocument();
   });
 });

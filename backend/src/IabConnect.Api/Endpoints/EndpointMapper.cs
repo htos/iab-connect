@@ -28,6 +28,7 @@ public static class EndpointMapper
         app.MapEmailCampaignEndpoints(); // REQ-026: E-Mail-Kampagnen
         app.MapEmailTemplateEndpoints(); // REQ-027: Email Template Editor
         app.MapSettingsEndpoints(); // REQ-059: System Settings
+        app.MapModuleSettingsEndpoints(); // REQ-087 (E10-S2): Module enablement configuration
         app.MapCustomRoleEndpoints(); // REQ-003: Custom Roles
         app.MapDocumentEndpoints(); // REQ-034..037: Documents
 

@@ -47,6 +47,9 @@ public sealed class ApplicationDbContext : DbContext
     public DbSet<SystemSettings> SystemSettings => Set<SystemSettings>();
     public DbSet<CustomRole> CustomRoles => Set<CustomRole>();
 
+    // REQ-087 (E10-S1): per-module enablement state
+    public DbSet<ModuleSetting> ModuleSettings => Set<ModuleSetting>();
+
     // Finance (REQ-038..045)
     public DbSet<Account> Accounts => Set<Account>();
     public DbSet<Category> Categories => Set<Category>();

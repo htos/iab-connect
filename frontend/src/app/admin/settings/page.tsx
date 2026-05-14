@@ -55,7 +55,35 @@ interface CustomRoleForm {
   isActive: boolean;
 }
 
-type Tab = "branding" | "customRoles";
+// REQ-087 (E10-S2): per-module enablement state from GET /api/v1/module-settings.
+interface ModuleSetting {
+  moduleKey: string;
+  enabled: boolean;
+  updatedAt: string;
+  updatedBy: string | null;
+}
+
+type Tab = "branding" | "customRoles" | "modules";
+
+// REQ-087 (E10-S2): canonical module keys, mirrored from backend `ModuleKeys`. Drives the
+// Modules tab row order. There is no "admin" module — Admin is never gateable (AC-6).
+const MODULE_KEYS = [
+  "members",
+  "events",
+  "documents",
+  "communication",
+  "finance",
+  "partners",
+  "public_view",
+] as const;
+
+// REQ-087 (E10-S2): advisory cross-module dependency pairs. Disabling a key surfaces a
+// warning when a listed dependent is still enabled. Full dependency *handling* is E10-S5;
+// this is advisory only and never blocks the toggle.
+const MODULE_DEPENDENCY_WARNINGS: Record<string, string[]> = {
+  finance: ["events"],
+  events: ["finance"],
+};
 
 // REQ-086 (E9-S1): logo upload sub-state surfaced inline in the Branding tab.
 type LogoUploadState = "idle" | "uploading" | "failed" | "invalid";
@@ -178,6 +206,17 @@ export default function SettingsPage() {
   const [roleSaving, setRoleSaving] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
+  // --- Module settings state (REQ-087 E10-S2) ---
+  const [modules, setModules] = useState<ModuleSetting[]>([]);
+  const [modulesLoading, setModulesLoading] = useState(true);
+  // Key of the module whose PUT is in flight, and the key awaiting disable-confirmation.
+  const [moduleSavingKey, setModuleSavingKey] = useState<string | null>(null);
+  const [moduleConfirmKey, setModuleConfirmKey] = useState<string | null>(null);
+  const [modulesMessage, setModulesMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+
   // --- Auth redirect ---
   useEffect(() => {
     if (!authLoading && (!isAuthenticated || !isAdmin)) {
@@ -214,6 +253,23 @@ export default function SettingsPage() {
     setRolesLoading(false);
   }, []);
 
+  // --- Load module settings (REQ-087 E10-S2) ---
+  const loadModules = useCallback(async () => {
+    setModulesLoading(true);
+    const { data, error } = await apiRef.current.get<ModuleSetting[]>(
+      "/api/v1/module-settings"
+    );
+    if (error) {
+      setModulesMessage({
+        type: "error",
+        text: tRef.current("modulesLoadError"),
+      });
+    } else if (data) {
+      setModules(data);
+    }
+    setModulesLoading(false);
+  }, []);
+
   useEffect(() => {
     if (isAuthenticated && isAdmin) {
       apiRef.current
@@ -243,6 +299,19 @@ export default function SettingsPage() {
             setRoles(data);
           }
           setRolesLoading(false);
+        });
+      apiRef.current
+        .get<ModuleSetting[]>("/api/v1/module-settings")
+        .then(({ data, error }) => {
+          if (error) {
+            setModulesMessage({
+              type: "error",
+              text: tRef.current("modulesLoadError"),
+            });
+          } else if (data) {
+            setModules(data);
+          }
+          setModulesLoading(false);
         });
     }
   }, [isAuthenticated, isAdmin]);
@@ -426,6 +495,41 @@ export default function SettingsPage() {
     setDeleteConfirmId(null);
   };
 
+  // --- Module enable/disable (REQ-087 E10-S2) ---
+  const applyModuleChange = async (moduleKey: string, enabled: boolean) => {
+    setModuleSavingKey(moduleKey);
+    setModulesMessage(null);
+    const { error } = await api.put<ModuleSetting>(
+      `/api/v1/module-settings/${moduleKey}`,
+      { enabled }
+    );
+    if (error) {
+      setModulesMessage({ type: "error", text: t("moduleSaveError") });
+    } else {
+      setModulesMessage({ type: "success", text: t("moduleSaveSuccess") });
+      await loadModules();
+      // Sidebar/widgets read module state from AppSettingsProvider — refresh it.
+      refreshAppSettings();
+    }
+    setModuleSavingKey(null);
+    setModuleConfirmKey(null);
+  };
+
+  const handleModuleToggle = (moduleKey: string, currentlyEnabled: boolean) => {
+    if (currentlyEnabled) {
+      // Disabling is the destructive direction — confirm before applying.
+      setModuleConfirmKey(moduleKey);
+    } else {
+      void applyModuleChange(moduleKey, true);
+    }
+  };
+
+  // Dependents of `moduleKey` that are still enabled — drives the advisory warning.
+  const enabledDependents = (moduleKey: string): string[] =>
+    (MODULE_DEPENDENCY_WARNINGS[moduleKey] ?? []).filter(
+      (dep) => modules.find((m) => m.moduleKey === dep)?.enabled ?? false
+    );
+
   // --- Loading / auth guard ---
   if (authLoading) {
     return (
@@ -508,6 +612,16 @@ export default function SettingsPage() {
             }`}
           >
             {t("tabCustomRoles")}
+          </button>
+          <button
+            onClick={() => setActiveTab("modules")}
+            className={`border-b-2 px-6 py-3 text-sm font-medium transition-colors ${
+              activeTab === "modules"
+                ? "border-orange-600 text-orange-600"
+                : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+            }`}
+          >
+            {t("tabModules")}
           </button>
         </div>
 
@@ -1056,6 +1170,142 @@ export default function SettingsPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ===================== Modules Tab ===================== */}
+        {activeTab === "modules" && (
+          <div className="rounded-xl bg-white p-6 shadow-sm">
+            {modulesMessage && (
+              <div
+                className={`mb-6 rounded-lg p-4 text-sm ${
+                  modulesMessage.type === "success"
+                    ? "border border-green-200 bg-green-50 text-green-800"
+                    : "border border-red-200 bg-red-50 text-red-800"
+                }`}
+              >
+                {modulesMessage.text}
+              </div>
+            )}
+
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">
+                {t("modulesTitle")}
+              </h2>
+              <p className="mt-1 text-sm text-gray-600">{t("modulesIntro")}</p>
+            </div>
+
+            {/* Self-lockout note (AC-6): Admin + this tab can never be disabled. */}
+            <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+              {t("moduleAdminNote")}
+            </div>
+
+            {modulesLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-orange-600"></div>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {MODULE_KEYS.map((key) => {
+                  const m = modules.find((x) => x.moduleKey === key);
+                  const enabled = m?.enabled ?? true;
+                  const dependents = enabledDependents(key);
+                  return (
+                    <div key={key} className="py-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            {t(`modules.${key}.name`)}
+                          </p>
+                          <p className="mt-0.5 text-sm text-gray-600">
+                            {t(`modules.${key}.description`)}
+                          </p>
+                          <p className="mt-1 text-xs text-gray-400">
+                            {m && m.updatedBy
+                              ? t("moduleLastChanged", {
+                                  date: new Date(
+                                    m.updatedAt
+                                  ).toLocaleDateString("de-CH", {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric",
+                                  }),
+                                  user: m.updatedBy,
+                                })
+                              : t("moduleNeverChanged")}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-3">
+                          <span
+                            className={`text-sm font-medium ${
+                              enabled ? "text-green-700" : "text-gray-500"
+                            }`}
+                          >
+                            {enabled
+                              ? t("moduleEnabled")
+                              : t("moduleDisabled")}
+                          </span>
+                          <input
+                            type="checkbox"
+                            id={`module-${key}`}
+                            checked={enabled}
+                            disabled={
+                              moduleSavingKey === key ||
+                              moduleConfirmKey === key
+                            }
+                            onChange={() => handleModuleToggle(key, enabled)}
+                            className="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500 disabled:opacity-50"
+                          />
+                          <label
+                            htmlFor={`module-${key}`}
+                            className="sr-only"
+                          >
+                            {t(`modules.${key}.name`)}
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Inline disable confirmation + advisory dependency warning */}
+                      {moduleConfirmKey === key && (
+                        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                          <p className="text-sm text-amber-900">
+                            {t("moduleDisableConfirm", {
+                              module: t(`modules.${key}.name`),
+                            })}
+                          </p>
+                          {dependents.length > 0 && (
+                            <p className="mt-1 text-sm text-amber-800">
+                              {t("moduleDependencyWarning", {
+                                dependents: dependents
+                                  .map((dep) => t(`modules.${dep}.name`))
+                                  .join(", "),
+                              })}
+                            </p>
+                          )}
+                          <div className="mt-2 flex gap-2">
+                            <button
+                              onClick={() => applyModuleChange(key, false)}
+                              disabled={moduleSavingKey === key}
+                              className="rounded bg-red-600 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+                            >
+                              {moduleSavingKey === key
+                                ? t("saving")
+                                : t("moduleConfirmDisable")}
+                            </button>
+                            <button
+                              onClick={() => setModuleConfirmKey(null)}
+                              className="rounded border border-gray-300 px-3 py-1 text-xs transition-colors hover:bg-gray-50"
+                            >
+                              {tCommon("cancel")}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

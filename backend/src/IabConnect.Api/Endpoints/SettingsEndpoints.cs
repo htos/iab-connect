@@ -72,9 +72,14 @@ public static class SettingsEndpoints
 
     private static async Task<IResult> GetPublicSettings(
         ISystemSettingsRepository settingsRepository,
+        IModuleSettingsService moduleSettingsService,
         CancellationToken cancellationToken)
     {
         var settings = await settingsRepository.GetSettingsAsync(cancellationToken);
+
+        // REQ-087 (E10-S2) ADR-008: the module map is exposed anonymously so the frontend
+        // shell, AppSettingsProvider and middleware.ts can read module state without auth.
+        var modules = await moduleSettingsService.GetAllAsync(cancellationToken);
 
         // REQ-086 AC-5: non-sensitive subset only — contact email/phone/address are
         // NOT exposed anonymously.
@@ -86,7 +91,8 @@ public static class SettingsEndpoints
             settings.Description,
             settings.PrimaryColor,
             settings.PublicSiteEnabled,
-            settings.LogoAssetKey is null ? null : LogoUrlPath));
+            settings.LogoAssetKey is null ? null : LogoUrlPath,
+            modules));
     }
 
     private static async Task<IResult> GetSettings(
@@ -380,7 +386,9 @@ public static class SettingsEndpoints
         string? Description,
         string? PrimaryColor,
         bool? PublicSiteEnabled,
-        string? LogoUrl);
+        string? LogoUrl,
+        // REQ-087 (E10-S2): module-key -> enabled map, anonymously readable (ADR-008).
+        IReadOnlyDictionary<string, bool> Modules);
 
     public sealed record SettingsResponse(
         Guid Id,
