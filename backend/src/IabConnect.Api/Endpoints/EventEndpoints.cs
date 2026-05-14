@@ -235,8 +235,7 @@ public static class EventEndpoints
     }
 
     private static async Task<IResult> RotateCalendarToken(
-        IMemberRepository memberRepository,
-        IUnitOfWork unitOfWork,
+        ICalendarTokenService calendarTokenService,
         ISecurityAuditLogger auditLogger,
         IConfiguration config,
         ClaimsPrincipal user,
@@ -247,39 +246,29 @@ public static class EventEndpoints
         if (keycloakId is null)
             return Results.Forbid();
 
-        var member = await memberRepository.GetByKeycloakUserIdAsync(keycloakId.Value, ct);
-        if (member is null)
+        // REQ-025 (E3.S5 Round-3 R3-H-S5-5 / Epic-3-retro §9): the rotate now runs inside a
+        // FOR UPDATE-locked transaction (ICalendarTokenService). Concurrent rotate calls from
+        // the same member serialise, so the cleartext token returned here always matches the
+        // hash that was persisted — the previous double-rotate race (two responses, only the
+        // last write matches) is closed.
+        var result = await calendarTokenService.RotateAsync(keycloakId.Value, ct);
+        if (!result.MemberFound || result.Token is null)
             return Results.Json(
                 new { message = "Calendar feed requires an active membership" },
                 statusCode: StatusCodes.Status403Forbidden);
 
-        // REQ-025 (E3.S5 Round-3 R3-H-S5-5): the strict fix would acquire a FOR UPDATE row
-        // lock on the Member before regenerate+save (precedent: MemberMergeService). The
-        // narrow fix at the API layer is constrained: IUnitOfWork in Application doesn't
-        // expose transaction primitives, and pushing them through to the endpoint would
-        // break the established layering. The double-rotate race (same user double-clicks
-        // the rotate button → two responses come back, only the last persisted matches the
-        // returned token) is rare and recoverable (re-click rotate; correct token returned)
-        // — recorded as a known race on the cross-cutting Member-row concurrency-token
-        // track. SaveChangesAsync is awaited fully before the response is sent so at least
-        // the response reflects this caller's tracked entity state.
-        var token = member.RegenerateCalendarToken();
-        memberRepository.Update(member);
-        await unitOfWork.SaveChangesAsync(ct);
-
-        auditLogger.LogAccessGranted(user, "Member", "CalendarTokenRotated", member.Id.ToString());
+        auditLogger.LogAccessGranted(user, "Member", "CalendarTokenRotated", result.MemberId.ToString());
 
         // REQ-025 (E3.S5 Round-3 R3-M-S5-7): the response contains the brand-new cleartext
         // token (the only time it is ever exposed). Must never be cached by intermediaries.
         httpContext.Response.Headers.CacheControl = "no-store";
 
-        var subscriptionUrl = $"{ResolveBaseUrl(config).TrimEnd('/')}/api/v1/events/my-calendar.ics?token={Uri.EscapeDataString(token)}";
-        return Results.Ok(new { token, subscriptionUrl });
+        var subscriptionUrl = $"{ResolveBaseUrl(config).TrimEnd('/')}/api/v1/events/my-calendar.ics?token={Uri.EscapeDataString(result.Token)}";
+        return Results.Ok(new { token = result.Token, subscriptionUrl });
     }
 
     private static async Task<IResult> RevokeCalendarToken(
-        IMemberRepository memberRepository,
-        IUnitOfWork unitOfWork,
+        ICalendarTokenService calendarTokenService,
         ISecurityAuditLogger auditLogger,
         ClaimsPrincipal user,
         CancellationToken ct)
@@ -288,17 +277,15 @@ public static class EventEndpoints
         if (keycloakId is null)
             return Results.Forbid();
 
-        var member = await memberRepository.GetByKeycloakUserIdAsync(keycloakId.Value, ct);
-        if (member is null)
+        // REQ-025 (Epic-3-retro §9): revoke also runs under the FOR UPDATE row lock so it
+        // serialises against a concurrent rotate on the same member row.
+        var revoked = await calendarTokenService.RevokeAsync(keycloakId.Value, ct);
+        if (!revoked)
             return Results.Json(
                 new { message = "Calendar feed requires an active membership" },
                 statusCode: StatusCodes.Status403Forbidden);
 
-        member.RevokeCalendarToken();
-        memberRepository.Update(member);
-        await unitOfWork.SaveChangesAsync(ct);
-
-        auditLogger.LogAccessGranted(user, "Member", "CalendarTokenRevoked", member.Id.ToString());
+        auditLogger.LogAccessGranted(user, "Member", "CalendarTokenRevoked", keycloakId.Value.ToString());
         return Results.NoContent();
     }
 

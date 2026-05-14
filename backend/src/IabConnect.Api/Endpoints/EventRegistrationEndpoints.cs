@@ -451,11 +451,15 @@ public static class EventRegistrationEndpoints
         Guid registrationId,
         CancelRegistrationRequest? request,
         IEventRegistrationRepository registrationRepository,
-        IEventRepository eventRepository,
+        IEventRegistrationCancellationService cancellationService,
         IEventNotificationService notificationService,
-        ClaimsPrincipal user)
+        ClaimsPrincipal user,
+        CancellationToken ct)
     {
-        var registration = await registrationRepository.GetByIdAsync(registrationId);
+        // Authorization pre-read. UserId is immutable on a registration, so an un-locked read
+        // is safe for the ownership check; the state-changing cancel + waitlist promotion runs
+        // under a FOR UPDATE transaction inside the cancellation service.
+        var registration = await registrationRepository.GetByIdAsync(registrationId, ct);
         if (registration == null || registration.EventId != eventId)
             return Results.NotFound(new { message = "Registration not found" });
 
@@ -469,36 +473,35 @@ public static class EventRegistrationEndpoints
         if (!isOwner && !isAdmin)
             return Results.Forbid();
 
-        registration.Cancel(request?.Reason, cancelledByParticipant: isOwner && !isAdmin);
-        await registrationRepository.UpdateAsync(registration);
+        // REQ-021 (H-S2-5 / Epic-3-retro §9): cancel + waitlist promotion run inside a single
+        // FOR UPDATE transaction (event row + registration row) so two concurrent cancellations
+        // for the same event cannot both promote the same waitlisted registration.
+        var result = await cancellationService.CancelAsync(
+            eventId, registrationId, request?.Reason,
+            cancelledByParticipant: isOwner && !isAdmin, ct);
 
-        // If waitlist is enabled, promote next person
-        var evt = await eventRepository.GetByIdAsync(eventId);
-        if (evt != null && evt.WaitlistEnabled)
+        if (result.Outcome == CancelRegistrationOutcome.NotFound)
+            return Results.NotFound(new { message = "Registration not found" });
+
+        // Notifications are sent outside the transaction — an email failure must not break the
+        // committed cancellation.
+        if (result.PromotedFromWaitlist is not null && result.Event is not null)
         {
-            var nextOnWaitlist = await registrationRepository.GetNextOnWaitlistAsync(eventId);
-            if (nextOnWaitlist != null)
+            try
             {
-                nextOnWaitlist.PromoteFromWaitlist();
-                await registrationRepository.UpdateAsync(nextOnWaitlist);
-                // REQ-021: Send promotion notification
-                try
-                {
-                    await notificationService.SendWaitlistPromotionAsync(nextOnWaitlist, evt);
-                }
-                catch { /* Email failure should not break cancellation */ }
+                await notificationService.SendWaitlistPromotionAsync(result.PromotedFromWaitlist, result.Event, ct);
             }
+            catch { /* Email failure should not break cancellation */ }
         }
 
-        // REQ-021: Send cancellation notification
         try
         {
-            if (evt != null)
-                await notificationService.SendCancellationNotificationAsync(registration, evt);
+            if (result.Event is not null)
+                await notificationService.SendCancellationNotificationAsync(result.Registration!, result.Event, ct);
         }
         catch { /* Email failure should not break cancellation */ }
 
-        return Results.Ok(MapToDto(registration));
+        return Results.Ok(MapToDto(result.Registration!));
     }
 
     private static async Task<IResult> ConfirmRegistration(

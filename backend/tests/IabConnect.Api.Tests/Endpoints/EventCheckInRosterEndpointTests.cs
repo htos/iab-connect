@@ -95,6 +95,9 @@ public sealed class EventCheckInRosterEndpointTests
         builder.Services.AddSingleton<ISender, FakeSender>();
         // E3.S2: the new check-in endpoints sharing this Map call need an audit logger
         builder.Services.AddSingleton<ISecurityAuditLogger, FakeSecurityAuditLogger>();
+        // H-S2-5 (Epic-3-retro §9): the CancelRegistration endpoint in this Map call now
+        // depends on the transactional cancellation service.
+        builder.Services.AddSingleton<IEventRegistrationCancellationService, FakeEventRegistrationCancellationService>();
         builder.Services.AddDbContext<ApplicationDbContext>(options =>
             options.UseInMemoryDatabase($"checkin-roster-{routePattern}"));
 
@@ -156,6 +159,12 @@ public sealed class EventCheckInRosterEndpointTests
     {
         public Task<byte[]> GenerateRegistrationListPdfAsync(Event evt, IReadOnlyList<EventRegistration> registrations, EventRegistrationStatistics statistics)
             => Task.FromResult(Array.Empty<byte>());
+    }
+
+    private sealed class FakeEventRegistrationCancellationService : IEventRegistrationCancellationService
+    {
+        public Task<CancelRegistrationResult> CancelAsync(Guid eventId, Guid registrationId, string? reason, bool cancelledByParticipant, CancellationToken cancellationToken = default)
+            => Task.FromResult(CancelRegistrationResult.NotFound());
     }
 
     private sealed class FakeCsvExporter : IEventCheckInRosterCsvExporter

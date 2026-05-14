@@ -69,6 +69,7 @@ public sealed class EventCheckInEndpointTests
         builder.Services.AddSingleton<IEventCheckInRosterCsvExporter, FakeCsvExporter>();
         builder.Services.AddSingleton<ISender, FakeSender>();
         builder.Services.AddSingleton<ISecurityAuditLogger, FakeSecurityAuditLogger>();
+        builder.Services.AddSingleton<IEventRegistrationCancellationService, FakeEventRegistrationCancellationService>();
         builder.Services.AddDbContext<ApplicationDbContext>(options =>
             options.UseInMemoryDatabase($"checkin-{routePattern}"));
 
@@ -130,6 +131,12 @@ public sealed class EventCheckInEndpointTests
     {
         public Task<byte[]> GenerateRegistrationListPdfAsync(Event evt, IReadOnlyList<EventRegistration> registrations, EventRegistrationStatistics statistics)
             => Task.FromResult(Array.Empty<byte>());
+    }
+
+    private sealed class FakeEventRegistrationCancellationService : IEventRegistrationCancellationService
+    {
+        public Task<CancelRegistrationResult> CancelAsync(Guid eventId, Guid registrationId, string? reason, bool cancelledByParticipant, CancellationToken cancellationToken = default)
+            => Task.FromResult(CancelRegistrationResult.NotFound());
     }
 
     private sealed class FakeCsvExporter : IEventCheckInRosterCsvExporter

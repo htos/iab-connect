@@ -224,6 +224,16 @@ public static class DependencyInjection
         services.AddScoped<IabConnect.Application.Events.CheckIn.IEventRegistrationCheckInService,
             Events.EventRegistrationCheckInService>();
 
+        // REQ-025 (E3.S5 Round-3 R3-H-S5-5 / Epic-3-retro §9): transactional, FOR UPDATE
+        // row-locked calendar-token rotate + revoke service
+        services.AddScoped<IabConnect.Application.Events.Calendar.ICalendarTokenService,
+            Events.CalendarTokenService>();
+
+        // REQ-021 (E3.S2 H-S2-5 / Epic-3-retro §9): transactional, FOR UPDATE row-locked
+        // registration cancellation + waitlist-promotion service
+        services.AddScoped<IabConnect.Application.Events.IEventRegistrationCancellationService,
+            Events.EventRegistrationCancellationService>();
+
         // REQ-034: Document Storage (RustFS via S3 SDK)
         services.Configure<DocumentStorageSettings>(configuration.GetSection(DocumentStorageSettings.SectionName));
         var storageSettings = configuration.GetSection(DocumentStorageSettings.SectionName).Get<DocumentStorageSettings>()
