@@ -107,7 +107,9 @@ public sealed class EventVolunteerAssignment : Entity
     /// </summary>
     internal void MarkReminderSent(DateTime sentAtUtc)
     {
-        ReminderSentAt = sentAtUtc;
+        // A13 (Epic-3-Retro): normalise to UTC at the domain boundary so downstream
+        // formatting/audit can trust the Kind, matching the Event / EventVolunteerShift guards.
+        ReminderSentAt = DateTimeUtcGuard.EnsureUtc(sentAtUtc);
     }
 
     public void Cancel(string? reason)

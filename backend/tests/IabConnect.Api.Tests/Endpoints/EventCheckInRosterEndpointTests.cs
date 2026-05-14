@@ -1,3 +1,4 @@
+using System.Net;
 using System.Security.Claims;
 using FluentAssertions;
 using IabConnect.Api.Endpoints;
@@ -21,17 +22,36 @@ namespace IabConnect.Api.Tests.Endpoints;
 /// <summary>
 /// REQ-023: API-layer tests for the check-in roster + CSV export endpoints.
 /// Verifies endpoint-metadata authorization wiring (RequireEventStaff policy
-/// applied to BOTH new endpoints).
+/// applied to BOTH new endpoints) AND the runtime unauthenticated → 401 behaviour.
 ///
-/// Note: A runtime unauthenticated → 401 test would mirror
-/// <see cref="MemberDuplicatesEndpointTests.DuplicatesEndpoint_Unauthenticated_Returns401"/>,
-/// but spinning up a second <c>WebApplicationFactory&lt;Program&gt;</c> instance in
-/// the same test run conflicts with Serilog's static frozen-logger state. Deferred
-/// until a shared collection-fixture or test-auth handler is wired up (matches
-/// the E2.S1 carry-over note about the authenticated-200 case).
+/// Runtime tests share <see cref="TestWebApplicationFactory"/> via the <c>Api</c>
+/// collection (A15, Epic-3-Retro): a single factory instance per test run sidesteps
+/// the Serilog frozen-logger collision that a second <c>WebApplicationFactory&lt;Program&gt;</c>
+/// boot would trip.
 /// </summary>
+[Collection("Api")]
 public sealed class EventCheckInRosterEndpointTests
 {
+    private readonly TestWebApplicationFactory _factory;
+
+    public EventCheckInRosterEndpointTests(TestWebApplicationFactory factory)
+    {
+        _factory = factory;
+    }
+
+    [Theory]
+    [InlineData("/api/v1/events/{0}/registrations/check-in-roster")]
+    [InlineData("/api/v1/events/{0}/registrations/check-in-roster/export.csv")]
+    public async Task CheckInRosterEndpoints_Unauthenticated_Returns401(string routeTemplate)
+    {
+        var client = _factory.CreateClient();
+        var url = string.Format(routeTemplate, Guid.NewGuid());
+
+        var response = await client.GetAsync(url, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
     [Theory]
     [InlineData("/api/v1/events/{eventId:guid}/registrations/check-in-roster")]
     [InlineData("/api/v1/events/{eventId:guid}/registrations/check-in-roster/export.csv")]

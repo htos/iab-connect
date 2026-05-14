@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Http.Json;
 using FluentAssertions;
 using IabConnect.Api.Endpoints;
 using IabConnect.Application.Authorization;
@@ -24,13 +26,46 @@ namespace IabConnect.Api.Tests.Endpoints;
 /// - Endpoint metadata: POST and PUT for <c>/api/v1/members/...</c> require the <c>RequireVorstand</c> policy.
 /// - The <see cref="DuplicateMemberConflictResponse"/> contract (Error + ExistingMemberId) the UI deep-link relies on.
 ///
-/// Note: full 401-unauthenticated coverage for these routes is already provided by
-/// <see cref="MemberDuplicatesEndpointTests"/>. We intentionally do NOT boot a second
-/// <c>WebApplicationFactory&lt;Program&gt;</c> here — Serilog's bootstrap-logger static
-/// state cannot survive two parallel host boots in the same test process.
+/// Runtime unauthenticated → 401 coverage uses the shared <see cref="TestWebApplicationFactory"/>
+/// via the <c>Api</c> collection (A15, Epic-3-Retro) — one factory instance per test run, so the
+/// Serilog frozen-logger collision never arises.
 /// </summary>
+[Collection("Api")]
 public sealed class MemberCreateDuplicateConflictTests
 {
+    private readonly TestWebApplicationFactory _factory;
+
+    public MemberCreateDuplicateConflictTests(TestWebApplicationFactory factory)
+    {
+        _factory = factory;
+    }
+
+    [Fact]
+    public async Task CreateMemberEndpoint_Unauthenticated_Returns401()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/v1/members/",
+            new { },
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task UpdateMemberEndpoint_Unauthenticated_Returns401()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.PutAsJsonAsync(
+            $"/api/v1/members/{Guid.NewGuid()}",
+            new { },
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
     [Fact]
     public void CreateMemberEndpoint_ShouldRequireVorstandAuthorization()
     {

@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Http.Json;
 using System.Security.Claims;
 using FluentAssertions;
 using IabConnect.Api.Endpoints;
@@ -20,13 +22,47 @@ namespace IabConnect.Api.Tests.Endpoints;
 ///   POST /api/v1/members/duplicate-dismissals   — Vorstand-only
 /// </summary>
 /// <remarks>
-/// Metadata-only assertions (no <c>TestWebApplicationFactory</c>) — verifying the
-/// <c>RequireVorstand</c> policy is wired is the same guarantee an integration 401 test would
-/// give, without the flaky Serilog "logger is already frozen" race that occurs when multiple
-/// <c>WebApplicationFactory</c> instances boot in the same xUnit run.
+/// Metadata assertions verify the <c>RequireVorstand</c> policy is wired; the runtime
+/// unauthenticated → 401 tests confirm the live pipeline rejects anonymous callers. Runtime
+/// tests share <see cref="TestWebApplicationFactory"/> via the <c>Api</c> collection (A15,
+/// Epic-3-Retro) — one factory instance per test run, so the Serilog frozen-logger collision
+/// never arises.
 /// </remarks>
+[Collection("Api")]
 public sealed class MemberDuplicateGroupsEndpointTests
 {
+    private readonly TestWebApplicationFactory _factory;
+
+    public MemberDuplicateGroupsEndpointTests(TestWebApplicationFactory factory)
+    {
+        _factory = factory;
+    }
+
+    [Fact]
+    public async Task DuplicateGroupsEndpoint_Unauthenticated_Returns401()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.GetAsync(
+            "/api/v1/members/duplicate-groups",
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task DuplicateDismissalsEndpoint_Unauthenticated_Returns401()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/v1/members/duplicate-dismissals",
+            new { },
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
     [Fact]
     public void DuplicateGroupsEndpoint_ShouldRequireVorstandAuthorization()
     {

@@ -197,3 +197,39 @@ For regex matchers (PostgreSQL `~`, C# `Regex`), escape via `Regex.Escape(input)
 - Control characters where the column allows them.
 
 A test suite that only covers the friendly normalisations (diacritics, case-folding, `+tag` aliases) is not enough to prove the matcher is safe. The LIKE-wildcard injection in `BuildNormalizedEmailPatterns` survived 17 repository tests + the full `DuplicateMatcherTests` suite because no row contained `_` or `%`.
+
+## Event-Scoping / IDOR Enforcement Checklist (Epic-3-Retro Action A12)
+
+Cross-event IDOR was the dominant defect class of Epic 3 — it took **four review rounds** to fully close on the volunteer surface (E3.S3: C1 authorization bypass → R3-C2/C3 cross-event IDOR → R4-P-S3-2 list-query IDOR → R4-P-S3-5 fail-open guard). The root cause every time: a command or query carried a child-entity ID but not its parent `EventId`, so the handler never verified the child actually belonged to the event in the route. Patching sibling handlers one finding at a time never abstracted the pattern, so each round re-discovered it on a different endpoint.
+
+**The rule — no exceptions, no "the sibling handler already does it":**
+
+When a command or query carries a **child-entity ID** scoped to a parent (e.g. `roleId`, `shiftId`, `assignmentId`, `registrationId`, `feeId`, anything under an `event/{eventId}/...` route), it **MUST also carry the parent `EventId`**, and the handler **MUST enforce `child.EventId == request.EventId`** before reading or mutating the child.
+
+1. **Carry the parent ID end-to-end.** The route already has `{eventId}` — propagate it into the command/query record, do not drop it. A command shaped `UpdateXCommand(Guid XId, ...)` with no `EventId` is the smell; it should be `UpdateXCommand(Guid EventId, Guid XId, ...)`.
+2. **Enforce in the handler, not the endpoint.** Load the child, compare `child.EventId == request.EventId`. Endpoint-only checks are bypassed by internal MediatR callers.
+3. **Return opaque `NotFound` on mismatch** — never a distinct "wrong event" vs "does not exist" response. Distinguishable errors turn the endpoint into a cross-event enumeration oracle. (A `LogAccessDenied` audit row on mismatch is still required — log internally, stay opaque externally.)
+4. **List/collection queries are in scope too.** A `GET .../{shiftId}/assignments` that filters by `shiftId` only — ignoring the route `eventId` — lets any caller enumerate rosters across every event. The handler must first verify the parent (`shift.EventId == request.EventId` **and** the event is visible to the caller) before returning the collection. R4-P-S3-2 was exactly this: list queries that skipped event existence/visibility and enumerated Hidden/InviteOnly events.
+5. **No fail-open guards.** An ownership check that passes when `callerMemberId == null` (R4-P-S3-5) is worse than no check — it looks safe in review. Null/absent caller identity must fail **closed**.
+6. **Audit the whole endpoint group when you touch one.** When adding or fixing event-scoping on any handler, grep the endpoint group for every sibling command/query carrying a child ID and confirm each one carries + enforces `EventId`. This is the same symmetric-guard discipline as A2 — fixing only `UpdateEventVolunteerShiftCommand` while leaving `UpdateEventVolunteerRoleCommand` unguarded is the bug. Record the audit in the story's Completion Notes.
+
+When in doubt, the test that proves event-scoping works is an **API/integration test that issues a cross-event request** — `PUT /events/{eventA}/volunteer-roles/{roleId-belonging-to-eventB}` — and asserts `404` plus a `LogAccessDenied` audit row. Every story that adds an event-scoped child endpoint must include at least one such cross-event negative test.
+
+## DateTime.Kind=Utc Construction Guard (Epic-3-Retro Action A13)
+
+`DateTime.Kind` mishandling was a recurring Epic-3 defect family — H-S1-2 (CSV `CheckedInAt`), H-S5-2 (ICS `DTSTART`/`DTEND`), part of S4-C3 (reminder times), R4-P-S3-1 (`EventVolunteerShift` times). Root cause every time: a domain field stored a `DateTime` with `Kind=Unspecified` or `Kind=Local`, and a downstream exporter called `.ToUniversalTime()` — which silently shifts the wall-clock for `Unspecified` and double-shifts for `Local`.
+
+**The rule:** every domain aggregate constructor / factory / mutator that **accepts an inbound `DateTime` (or `DateTime?`) parameter** MUST normalise it through `DateTimeUtcGuard.EnsureUtc(...)` (`IabConnect.Domain.Common`) before assigning it to a property. Timestamps the aggregate sets itself from `DateTime.UtcNow` are already UTC and need no guard — the guard is specifically for **values that crossed the domain boundary from a caller**.
+
+```csharp
+// Factory / mutator accepting caller-supplied DateTime:
+public static EventVolunteerShift Create(..., DateTime startsAt, DateTime endsAt, ...)
+{
+    startsAt = DateTimeUtcGuard.EnsureUtc(startsAt);   // ✅ guard at the boundary
+    endsAt = DateTimeUtcGuard.EnsureUtc(endsAt);
+    if (endsAt <= startsAt) throw new ArgumentException(...);
+    // ... assign the already-normalised values
+}
+```
+
+Established call sites to mirror: `Event.Create` / `Event.UpdateSchedule` / `Event.UpdateRegistrationSettings`, `EventVolunteerShift.Create` / `UpdateDetails`, `EventVolunteerAssignment.MarkReminderSent`. Do **not** re-implement with a bare `DateTime.SpecifyKind(...)` — the older Finance-module pattern (`Payment`, `Transaction`) only handles `Unspecified` and mishandles `Local`; `DateTimeUtcGuard.EnsureUtc` handles all three `Kind` cases. New E4 fee/finance entities that carry caller-supplied dates must adopt the guard.
