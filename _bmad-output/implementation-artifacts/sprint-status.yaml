@@ -34,7 +34,7 @@
 # - Each story must go through bmad-create-story and validation before development.
 
 generated: "2026-05-12"
-last_updated: "2026-05-14 (Epic-3 Round-4 boundary code-review COMPLETE + fix-pass applied: E3.S1-S5 each flipped review→done. Round-4 found 0 Critical / 5 High / 5 Medium / 3 Low patches + 3 decisions (all resolved → 15 patches total) + 14 Defer + 6 Dismiss; report at epic-3-review-2026-05-14-round4.md. All 15 patches applied: backend 1810 / 1810 + frontend 38 / 38 green, 0 warnings. 14 items deferred to follow-up tracks (mostly spec-text reconciliation + 2 re-surfaced test-coverage items). Next: bmad-retrospective + Epic-3 close.)"
+last_updated: "2026-05-14 (Epic-3 retrospective COMPLETE + Epic-3 closed: epic-3 flipped in-progress→done, epic-3-retrospective optional→done. Retro at epic-3-retro-2026-05-14.md. Central finding: 4 review rounds = dev-process signal; A10 judgment-only mid-epic escalation retired, replaced by mechanical checklists A12-A14. 7 action items A12-A18. Deferred-work backlog ~96 items. Next: §9 deferred-work CLEANUP SPRINT (A15 shared test fixture + A13 UTC-Kind guard first, then security-adjacent items), THEN bmad-create-story for E4.S1.)"
 # 2026-05-13: Epic-Close-Gate after clearing all 11 [Review][Patch] findings per
 # sprint-change-proposal-2026-05-13.md. E1.S1-S4 flipped review -> done.
 # E1.S5 deferred -- pending provider credentials/scopes/whitelist decisions.
@@ -69,13 +69,13 @@ development_status:
   e2-s4-add-duplicate-review-ui: done
   epic-2-retrospective: done
 
-  epic-3: in-progress
+  epic-3: done
   e3-s1-add-event-check-in-roster-and-export: done
   e3-s2-add-qr-and-manual-check-in-flow: done
   e3-s3-add-volunteer-planning-domain-and-api: done
   e3-s4-add-volunteer-planning-ui-and-reminders: done
   e3-s5-add-calendar-feed-and-ics-export: done
-  epic-3-retrospective: optional
+  epic-3-retrospective: done
 
   epic-4: in-progress
   e4-s1-add-event-fee-configuration: ready-for-dev
