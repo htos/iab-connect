@@ -1,7 +1,7 @@
 # IAB Connect UX Design Specification
 
 Date: 2026-05-11
-Last revised: 2026-05-14 — added Flow Specifications for the generic white-label pivot (Platform Branding Configuration, Module Configuration, Module Unavailable / Access Denied, Public View Disabled), plus Navigation Model and Permission rule updates. OD-5 resolved: minimal neutral page over login redirect (Sprint Change Proposal 2026-05-14, handoff step 3).
+Last revised: 2026-05-15 — added Beta and Open Source Surface Flow Specifications (BETA Banner, Frontend License Footer, About Info Display, Beta Feedback Channel) plus Navigation Model and Permission rule updates for the Beta-on-Railway and Open Source Foundation pivot (Sprint Change Proposal 2026-05-15, handoff step 4). Previously revised 2026-05-14 — added Flow Specifications for the generic white-label pivot (Platform Branding Configuration, Module Configuration, Module Unavailable / Access Denied, Public View Disabled), plus Navigation Model and Permission rule updates. OD-5 resolved: minimal neutral page over login redirect (Sprint Change Proposal 2026-05-14, handoff step 3).
 Project: IAB Connect
 Document status: Draft UX artifact for future implementation
 Output location: `_bmad-output/planning-artifacts/ux-design.md`
@@ -11,6 +11,7 @@ Primary inputs:
 - `_bmad-output/planning-artifacts/architecture.md`
 - `_bmad-output/planning-artifacts/epics-and-stories.md`
 - `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-14.md`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-15.md`
 - `docs/13_frontend_design_standards.md`
 - `docs/component-inventory-frontend.md`
 - `docs/architecture-frontend.md`
@@ -107,6 +108,10 @@ Recommended route placement:
 | Module configuration | `/admin/settings` (Modules tab) | Enable/disable the 7 functional modules. New tab on the existing route. |
 | Module unavailable | `/module-unavailable` | Authenticated-shell 403 state; the new `middleware.ts` rewrites disabled-module routes here. |
 | Public view disabled | Minimal standalone page | `middleware.ts` rewrites `/public/*` and `/` here when the Public View module is off. |
+| Source disclosure (`/about`) | Backend `/about` JSON endpoint; optional frontend `/about` page wrapper | AGPL §13 source-disclosure surface — name, license, version, commit SHA, build date, source URL. Linked from the persistent License Footer (E20-S4). Unauthenticated; reachable from every page. |
+| License footer slot | Persistent footer on every authenticated and public page | Renders project name, license badge linked to AGPL text, and Source link to `/about`. New `<Footer />` shared component (E20-S4). |
+| BETA banner slot | Persistent banner above the authenticated and public shells when `NEXT_PUBLIC_ENV_LABEL=beta` | Orange background, dismiss button per session, contains the Feedback link. New `<BetaBanner />` component (E18-S3 + E18-S4). |
+| Feedback channel | Link in the BETA banner | Targets a GitHub issue template (`.github/ISSUE_TEMPLATE/beta-feedback.md`) or a `mailto:` fallback (E18-S4). |
 
 Sidebar additions should remain role-aware:
 
@@ -809,6 +814,194 @@ i18n:
 
 - The neutral message and the login link use next-intl keys; logo and name come from settings, not hardcoded text.
 
+### BETA Banner
+
+Stories: E18-S3, E18-S4
+Requirements: REQ-088, REQ-089
+
+Context:
+
+- The Beta environment is visually distinguished by a persistent banner driven by the build-time public variable `NEXT_PUBLIC_ENV_LABEL=beta` (architecture ADR-015). The banner is rendered above both the authenticated shell and the public layout so testers see it on every page, including the public landing and `/module-unavailable`.
+
+Primary screen:
+
+- New `<BetaBanner />` shared component, mounted in the root layout. Renders only when `NEXT_PUBLIC_ENV_LABEL=beta`.
+
+User goals:
+
+- Tester immediately recognises this is Beta data — not Production — and understands data may be reset.
+- Tester has a one-click path to file feedback without leaving the app for long.
+
+Layout:
+
+- Full-width strip above the header, height `2.5rem`–`3rem`, `bg-orange-500` (visibility), `text-white`, `text-sm`.
+- Left: short message "Beta — Daten können jederzeit zurückgesetzt werden".
+- Right: small Feedback link plus a dismiss `×` button.
+- The banner pushes the authenticated header down by its own height; it does not overlap.
+
+Key components:
+
+- Banner container (flex row).
+- Message text (next-intl key `beta.bannerMessage`).
+- Feedback link (next-intl key `beta.feedbackLink`, target from `NEXT_PUBLIC_FEEDBACK_URL` or a sensible default GitHub issue-template URL).
+- Dismiss button (`aria-label="dismiss"`, persists state in `sessionStorage`).
+
+States:
+
+- Banner visible (default while `NEXT_PUBLIC_ENV_LABEL=beta` and not dismissed this session).
+- Banner dismissed for the session (component returns `null`).
+- Banner hidden (default in Production where `NEXT_PUBLIC_ENV_LABEL` is unset or differs from `beta`).
+
+Accessibility:
+
+- Banner is keyboard-focusable; the dismiss button receives focus before any in-page content.
+- Status is conveyed in text, not by colour alone.
+- Dismiss button has `aria-label`; Feedback link uses descriptive link text, not just "click here".
+
+i18n:
+
+- Message, Feedback-link text, and dismiss `aria-label` all use next-intl keys.
+
+### Frontend License Footer
+
+Story: E20-S4
+Requirement: REQ-089
+
+Context:
+
+- AGPL §13 requires that users interacting with a network-deployed instance can discover the running source. The footer is the primary surface for that discovery and is rendered on every authenticated and public page (architecture ADR-021).
+
+Primary screen:
+
+- New `<Footer />` shared component mounted in the root layout below the page content area (and below the authenticated shell's main content).
+
+User goals:
+
+- User can identify the application by name and license at a glance.
+- User can reach the source-disclosure information in one click (Source link → `/about`).
+- The footer does not visually compete with primary product actions.
+
+Layout:
+
+- Full-width footer strip at the bottom of every page, height ≈ `2.5rem`, `bg-gray-50` (matches page background), `text-gray-600`, `text-xs`.
+- Centred row: project name (from `SystemSettings.applicationName` via `useAppSettings()`), license badge ("AGPL-3.0-or-later" — linked to either an internal `/license` static page or the FSF AGPL text), and a "Source" link to `/about`.
+- The footer is part of normal document flow (not fixed) so it does not cover content on long pages.
+
+Key components:
+
+- Footer container (flex row, justified centre).
+- Project-name text (binds to `useAppSettings()`).
+- License badge link (next-intl key `footer.licenseLabel`, target either `/license` or `https://www.gnu.org/licenses/agpl-3.0.html`).
+- Source link (next-intl key `footer.sourceLink`, target `NEXT_PUBLIC_SOURCE_URL` and `/about`).
+
+States:
+
+- Default (rendered on every page).
+- App-settings loading (project name shows a non-breaking-space placeholder rather than a flash of empty content).
+- App-settings unavailable (falls back to a generic neutral label — must not error).
+
+Accessibility:
+
+- All footer links use descriptive text, not just URLs or icons.
+- Colour contrast meets WCAG AA against the page background.
+- Footer is keyboard-reachable in normal tab order.
+
+i18n:
+
+- License label and Source link text use next-intl keys. The license identifier itself (`AGPL-3.0-or-later`) is a contract value and not translated.
+
+### About Info Display
+
+Story: E20-S3 (backend), E20-S4 (footer link)
+Requirement: REQ-089
+
+Context:
+
+- The `/about` route exposes source-disclosure metadata. The backend endpoint returns JSON; the frontend renders a small page wrapping that JSON in human-readable form, so users following the License Footer's Source link land on something readable rather than raw JSON.
+
+Primary screen:
+
+- New `<AboutPage />` route at `/about` (frontend), rendering the backend `GET /about` payload `{ name, license, version, commitSha, buildDate, sourceUrl }`.
+
+User goals:
+
+- User can confirm which version, build, and source repository they are interacting with.
+- User can navigate to the source repository in one click.
+
+Layout:
+
+- Centred container `max-w-3xl mx-auto p-6 md:p-8`, neutral background.
+- Page title: project name (next-intl key `about.title`).
+- Definition-list-style rows: License, Version, Commit, Build, Source.
+- Each row has a translated label and a value rendered as plain text or as a link (Commit links to `${sourceUrl}/commit/${commitSha}`; Source links to `sourceUrl`).
+
+Key components:
+
+- Title (`<h1>`).
+- Definition list (`<dl>` / `<dt>` / `<dd>`).
+- External-link anchors (commit, source) with `rel="noopener noreferrer"`.
+
+States:
+
+- Default (data fetched from backend).
+- Fetch in progress (loading skeleton or single-line "Loading…").
+- Fetch failure (fallback page that still shows project name + license + a Source link from `NEXT_PUBLIC_SOURCE_URL`, so AGPL §13 disclosure remains satisfied even if the backend is unreachable).
+
+Accessibility:
+
+- Headings follow document outline (one `<h1>`).
+- Definition-list semantics make label-value pairs explicit for screen readers.
+- External links carry visible "opens in new tab" hinting via icon plus accessible name.
+
+i18n:
+
+- Labels (License, Version, Commit, Build, Source) use next-intl keys. The values (license identifier, commit SHA, timestamp, URL) are not translated.
+
+### Beta Feedback Channel
+
+Story: E18-S4
+Requirement: REQ-088
+
+Context:
+
+- The BETA Banner contains the primary path for testers to submit feedback. The link target is configured at build time and points either to a GitHub issue template (preferred) or a `mailto:` fallback.
+
+Primary screen:
+
+- Feedback link rendered inside the BETA Banner (not a standalone page). On click, the user lands on either a pre-filled GitHub issue form or their default mail client.
+
+User goals:
+
+- Tester reaches a feedback surface within one click of any page.
+- Feedback context (which page, which session) is at least partly captured automatically so the tester does not have to write boilerplate.
+
+Layout:
+
+- Inline link inside the BETA Banner's right-hand side, preceding the dismiss button.
+- Visual: underlined `text-white`, hover lighter; keyboard focus visible.
+
+Key components:
+
+- Anchor element with `target="_blank" rel="noopener noreferrer"` (opens in new tab).
+- `href` from `NEXT_PUBLIC_FEEDBACK_URL` if set; otherwise from `NEXT_PUBLIC_SOURCE_URL` + `/issues/new?template=beta-feedback.md&title=...&body=...` (the body pre-fills the current URL and a placeholder).
+- The query-string prefill includes only non-sensitive data: current page path and a tester-supplied free-text section. No JWTs, no member identifiers.
+
+States:
+
+- Default (link visible while the banner is visible).
+- Banner dismissed for the session (the feedback link is hidden along with the banner; the link is not duplicated elsewhere — a tester wanting to re-find it must re-load the page).
+- `NEXT_PUBLIC_FEEDBACK_URL` unset and `NEXT_PUBLIC_SOURCE_URL` unset (the feedback link is hidden; the banner still renders its message; this fallback is documented in the Beta runbook).
+
+Accessibility:
+
+- Link text describes the destination ("Feedback geben", not "hier klicken").
+- New-tab behaviour announced via accessible name or visible hint.
+- Keyboard reachable in the banner's tab order.
+
+i18n:
+
+- Link text uses a next-intl key (`beta.feedbackLink`). The URL itself is a configuration value, not translated.
+
 ## Responsive Behavior
 
 Required behavior:
@@ -830,6 +1023,10 @@ Required permission states:
 - Admin-only action: confirmation dialog and backend enforcement.
 - Finance-sensitive action: additional caution copy and audit awareness.
 - Module disabled: the navigation entry is hidden, direct-URL navigation is rewritten to `/module-unavailable` (or the minimal neutral page for Public View), and the backend returns 403. Hiding and rewriting are UX only; the backend 403 is the control.
+- BETA banner: visible to all authenticated and unauthenticated users when `NEXT_PUBLIC_ENV_LABEL=beta` is set at frontend build time; not gated by role or module. Dismissable per session (state in `sessionStorage`). Never visible in Production builds (where the variable is unset or differs).
+- Frontend License Footer: visible to all authenticated and unauthenticated users on every page; not gated by role or module. Renders project name from `SystemSettings` and links to `/about` and the configured `NEXT_PUBLIC_SOURCE_URL`.
+- About Info Display: the `/about` route is unauthenticated and always reachable (architecture ADR-021), including when the Public View module is disabled — it is not part of the public site that gets gated. Backend `GET /about` likewise stays reachable; it is one of the always-on endpoints alongside `GET /api/v1/settings/public`.
+- Feedback link: visible while the BETA banner is visible. Not visible after banner dismiss for the session. Not duplicated elsewhere (a re-page-load re-shows it).
 
 ## i18n Requirements
 
@@ -867,4 +1064,6 @@ This artifact upgrades UX readiness from Partial to Present for planning purpose
 Remaining condition:
 
 - Complex UI stories still need story-level UX state details after inspecting the actual route/component code, but they no longer start from a blank UX baseline.
+
+The 2026-05-15 Beta-on-Railway and Open Source Foundation revision keeps UX readiness at Present. Four new Flow Specifications (BETA Banner, Frontend License Footer, About Info Display, Beta Feedback Channel) cover the only user-visible surfaces introduced by the Beta-pivot epics E11–E20. All other Beta-pivot epics (E11, E12, E13, E14, E15, E16, E17, E19, E20-S1, E20-S2, E20-S5) are infrastructure, CI, configuration, or operations work without an end-user UI surface and therefore have no UX-spec entries here.
 
