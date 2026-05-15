@@ -43,7 +43,7 @@
 # - The development_status block is ordered by EXECUTION PRIORITY, not epic number.
 
 generated: "2026-05-12"
-last_updated: "2026-05-15 (bmad-code-review: Epic-10 boundary RE-REVIEW closed. Full E10 diff (7a07d7c..d1958da, 93 files / +9.719/-821) re-reviewed via 3 adversarial layers (Blind Hunter 40, Edge Case Hunter 37, Acceptance Auditor 13/13 prior patches verified). Triage: 4 decision-needed, 13 patch, 10 defer, ~25 dismissed. All 4 decisions resolved to patches (DN-1 JWT validate in Edge / DN-2 PolicyProvider strict suffix / DN-3 auth handler fail-graceful 403 / DN-4 Blog+Contact admin chain Module:communication). 16/17 patches applied as code; P-S4-4 (Sidebar submenu test) demoted to defer (untestable without Sidebar refactor). Backend 1942/1942 tests green (+6 vs round-1 1936); frontend Vitest 89/89 green, typecheck + lint green. All 5 E10 stories review -> done; epic-10 in-progress -> done. NEXT: bmad-retrospective for Epic-10 close.)"
+last_updated: "2026-05-15 (bmad-retrospective: Epic-10 closed. Retro doc epic-10-retro-2026-05-15.md saved. Central finding: round-1 fixes created round-2 problems twice (filter fail-open / handler fail-closed asymmetry + cookie-shape / JWT validation) -> interim-patch labeling (A24) + companion-surface scanning (A26) would have caught both earlier. 4 new action items A24-A27 (interim patch labeling, test-gap testability triage check, companion-surface fail-mode patching, dev-API restart documentation). Epic-9 A19-A23 follow-through: A19 lint green completed; A20+A21 partial; A22 mostly applied; A23 N/A. epic-10-retrospective optional -> done. PIVOT WEDGE COMPLETE: E9 + E10 shipped. No epic currently in-progress; E4-E8 all backlog. NEXT: bmad-sprint-planning to re-prioritize / re-validate E4-E8 readiness after the pivot (pre-pivot story files may have spec drift); then bmad-create-story for that epic's first ready-for-dev story.)"
 # --- history ---------------------------------------------------------------
 # 2026-05-13: Epic-Close-Gate after clearing all 11 [Review][Patch] findings per
 # sprint-change-proposal-2026-05-13.md. E1.S1-S4 flipped review -> done.
@@ -86,6 +86,15 @@ last_updated: "2026-05-15 (bmad-code-review: Epic-10 boundary RE-REVIEW closed. 
 # review -> done; epic-10 in-progress -> done. NEXT: bmad-retrospective for
 # Epic-10 close, then E4-E8 backlog resumes (E10 ships first so the external
 # API in E8 inherits module enforcement from day one).
+# 2026-05-15 (bmad-retrospective): Epic-10 closed via epic-10-retro-2026-05-15.md.
+# 4 new action items A24-A27 (interim-patch labeling, test-gap testability triage
+# check, companion-surface fail-mode patching, dev-API restart documentation).
+# Epic-9 A19-A23 follow-through evaluated. epic-10-retrospective optional -> done.
+# PIVOT WEDGE COMPLETE: E9 + E10 shipped. No epic currently in-progress; E4-E8
+# all backlog. NEXT: bmad-sprint-planning to re-prioritize / re-validate E4-E8
+# readiness after the 2026-05-14 pivot (pre-pivot story files may have spec
+# drift — branding strings + module-less assumptions); then bmad-create-story
+# for that epic's first ready-for-dev story.
 # ---------------------------------------------------------------------------
 project: iab-connect
 project_key: NOKEY
@@ -141,7 +150,7 @@ development_status:
   e10-s3-add-backend-module-enforcement: done
   e10-s4-add-frontend-module-enforcement: done
   e10-s5-add-public-view-toggle-and-cross-module-dependency-handling: done
-  epic-10-retrospective: optional
+  epic-10-retrospective: done
 
   # === DEFERRED backlog — resumes after E9/E10 ship ========================
   # Epics 4-8 were consciously reset to 'backlog' on 2026-05-14 because the
