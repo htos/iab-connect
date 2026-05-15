@@ -28,9 +28,16 @@ public static class BlogEndpoints
             .WithSummary("Get a published blog post by ID");
 
         // Admin endpoints
+        // Round-2 [Review][Patch] (DN-4): admin Blog operations are part of the
+        // communication-tools module surface alongside admin email templates and email
+        // campaigns. Gate under Module:communication so disabling communication consistently
+        // turns off all communication admin tools, including for Vorstand. Self-lockout is
+        // not a concern: Module:communication can always be re-enabled from the Modules
+        // admin tab (which is never gated — AC-6).
         var adminGroup = routes.MapGroup("/api/v1/blog")
             .WithTags("Blog Admin")
-            .RequireAuthorization("RequireVorstand");
+            .RequireAuthorization("RequireVorstand")
+            .RequireAuthorization("Module:communication");
 
         adminGroup.MapGet("/", GetAll)
             .WithName("GetBlogPosts")

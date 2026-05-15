@@ -79,7 +79,23 @@ public static class SettingsEndpoints
 
         // REQ-087 (E10-S2) ADR-008: the module map is exposed anonymously so the frontend
         // shell, AppSettingsProvider and middleware.ts can read module state without auth.
-        var modules = await moduleSettingsService.GetAllAsync(cancellationToken);
+        //
+        // Round-2 [Review][Patch] (P-S5-1): wrap the module fetch so a transient
+        // module-service failure (DB blip, cache layer crash) cannot 500 the anonymous
+        // public-settings endpoint. Branding and i18n MUST keep rendering — falling back
+        // to an empty map means the frontend treats every module as enabled, which is
+        // both behaviour-preserving and consistent with middleware.ts's
+        // degrade-to-enabled posture (and with the ModuleEnabledEndpointFilter fail-open
+        // pattern landed in the round-1 patch).
+        IReadOnlyDictionary<string, bool> modules;
+        try
+        {
+            modules = await moduleSettingsService.GetAllAsync(cancellationToken);
+        }
+        catch (Exception)
+        {
+            modules = new Dictionary<string, bool>();
+        }
 
         // REQ-086 AC-5: non-sensitive subset only — contact email/phone/address are
         // NOT exposed anonymously.

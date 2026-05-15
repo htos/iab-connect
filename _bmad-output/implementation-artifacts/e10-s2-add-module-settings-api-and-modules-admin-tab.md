@@ -1,6 +1,6 @@
 # Story 10.2: Add Module Settings API and Modules Admin Tab
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -148,6 +148,7 @@ claude-opus-4-7 (1M context) — bmad-dev-story workflow, 2026-05-14.
 | 2026-05-14 | E10-S2 implemented: module-settings MediatR query/command/validator, admin-only `ModuleSettingsEndpoints`, `modules` map on public settings (ADR-008), Modules admin tab with labelled toggles + disable confirmation + advisory Finance↔Events dependency warning, i18n (de/en). 13 new backend tests + 5 Vitest. Backend 1898/1898, frontend 59/59, typecheck green. Status → review. |
 | 2026-05-14 | Post-review UX fixes (user feedback during E10 review): Modules tab — the bare checkbox is now an `orange-600` toggle switch (`role="switch"`, app-consistent styling); the disable confirmation + advisory dependency warning moved from an inline amber panel into a proper modal (mirrors the existing Role modal). Files: `admin/settings/page.tsx`, `page.test.tsx` (switch selector), `en.json`/`de.json` (`moduleDisableTitle` key). Frontend Vitest 78/78, typecheck + lint green. |
 | 2026-05-14 | Addressed code review findings — 3 [Review][Patch] items resolved: mount `useEffect` calls shared `loadModules()` (no duplicate GET), `applyModuleChange` keeps the confirmation modal open + shows the error inside it on a failed save, self-lockout note re-styled off blue to neutral orange. 2 new Vitest tests; frontend Vitest 92/92, typecheck + lint green. |
+| 2026-05-15 | Round-2 epic-boundary re-review: 3 [Review][Patch] items applied — `UpdateModuleSettingCommand` no-op early-return, audit write `try/catch` (mirror of round-1 handler guard), route constraint `{moduleKey:regex(^[a-z_]+$)}` on the PUT. `ModuleSettingsEndpointTests` `InlineData` updated to the constrained route template. 1 defer added (no `RowVersion` on concurrent admin toggles). Backend 1942/1942 green. Status → done. |
 
 ## Review Findings
 
@@ -158,3 +159,12 @@ _Epic-10 boundary code review — bmad-code-review, 2026-05-14. Layers: Blind Hu
 - [x] [Review][Patch] Self-lockout note in the Modules tab uses `border-blue-200 bg-blue-50 text-blue-800` — violates project-context "no blue in authenticated UI" [frontend/src/app/admin/settings/page.tsx] — **RESOLVED 2026-05-14:** re-styled to neutral orange info (`border-orange-200 bg-orange-50 text-orange-900`).
 - [x] [Review][Defer] `ModuleSettingsEndpointTests` pins admin-only at the endpoint-metadata layer only — it does not spin up the host to prove a non-admin gets a runtime 403 (AC-7 / Task-5 wording) [backend/tests/IabConnect.Api.Tests/Endpoints/ModuleSettingsEndpointTests.cs] — deferred, pre-existing test-fidelity gap; runtime "never-gated" coverage for the module-settings group already exists in E10-S3's `ModuleEnforcementEndpointTests`
 - [x] [Review][Defer] `UpdateModuleSettingCommand` throws `KeyNotFoundException` → 404 for a key that is in `ModuleKeys.All` but has no seed row, with no upsert/self-heal path [backend/src/IabConnect.Application/ModuleSettings/Commands/UpdateModuleSettingCommand.cs] — deferred, only reachable from a broken DB state (failed/partial seed), not caused by this change
+
+### Round 2 — Re-Review (2026-05-15)
+
+_E10-S2 routing: 3 patches, 1 defer._
+
+- [x] [Review][Patch] `UpdateModuleSettingCommand.Handle` writes audit + invalidates cache + stamps `UpdatedAt`/`UpdatedBy` even when `request.Enabled == setting.Enabled` (no-op double-click) [backend/src/IabConnect.Application/ModuleSettings/Commands/UpdateModuleSettingCommand.cs] — **RESOLVED 2026-05-15:** added an early-return short-circuit before `SetEnabled`/`SaveChangesAsync` so a no-op write produces no audit row and no timestamp churn.
+- [x] [Review][Patch] `UpdateModuleSettingCommand.Handle` calls `_auditService.LogActionAsync(...)` unguarded after `SaveChangesAsync` + `InvalidateCache()` already succeeded [backend/src/IabConnect.Application/ModuleSettings/Commands/UpdateModuleSettingCommand.cs] — **RESOLVED 2026-05-15:** audit write wrapped in `try/catch` (log + swallow), mirroring the round-1 `ModuleAuthorizationHandler` audit-guard pattern. A failed audit no longer turns a successful toggle into a 500.
+- [x] [Review][Patch] `ModuleSettingsEndpoints.UpdateModuleSetting` accepts any `{moduleKey}` route value [backend/src/IabConnect.Api/Endpoints/ModuleSettingsEndpoints.cs] — **RESOLVED 2026-05-15:** route declared as `PUT /api/v1/module-settings/{moduleKey:regex(^[a-z_]+$)}` — URL-encoded slashes, `%0A` log-injection chars, and other non-canonical shapes 404 before reaching the handler. `ModuleSettingsEndpointTests` `InlineData` updated to match the new route template.
+- [x] [Review][Defer] Two concurrent admin toggles on the same module — no `RowVersion`/optimistic concurrency token; last-write-wins silently overwrites the first toggle [backend/src/IabConnect.Domain/Common/ModuleSetting.cs] — deferred, low-frequency admin race; revisit if multi-admin module management becomes common

@@ -44,7 +44,16 @@ export default function SiteUnavailablePage() {
           logoTextColor: data.logoTextColor ?? "#FFFFFF",
         })
       )
-      .catch(() => setBranding(null));
+      .catch((err) => {
+        // Round-2 [Review][Patch] (P-S5-5): a silent swallow hid misconfigured
+        // NEXT_PUBLIC_API_URL deployments. Warn so the operator sees the cause in
+        // devtools / log aggregation instead of just "the unbranded fallback".
+        console.warn(
+          "[SiteUnavailablePage] Failed to fetch branding from /api/v1/settings/public — rendering the unbranded fallback. Check NEXT_PUBLIC_API_URL and that the API is reachable.",
+          err
+        );
+        setBranding(null);
+      });
   }, []);
 
   // Focus the login link on load — a sensible keyboard starting point, not a trap.

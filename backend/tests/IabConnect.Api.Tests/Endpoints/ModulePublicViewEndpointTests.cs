@@ -71,6 +71,59 @@ public sealed class ModulePublicViewEndpointTests
     }
 
     [Fact]
+    public async Task PublicRsvp_Returns403_WhenPublicViewDisabled()
+    {
+        // Round-2 [Review][Patch] (P-S5-3): the public RSVP endpoint
+        // POST /api/v1/events/{eventId}/registrations/public is gated by .RequireModule
+        // ("public_view"). It is a POST (not GET like the rest of the public theory data),
+        // so it gets its own dedicated fact. We don't care what its happy-path response
+        // would be — only that the module gate intercepts before validation reaches the
+        // handler.
+        _modules.SetEnabled(ModuleKeys.PublicView, false);
+        try
+        {
+            var client = _factory.CreateClient();
+
+            var response = await client.PostAsJsonAsync(
+                $"/api/v1/events/{Guid.NewGuid()}/registrations/public",
+                new { firstName = "x", lastName = "y", email = "z@example.com" },
+                TestContext.Current.CancellationToken);
+
+            response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
+                "public RSVP is a public-site feature gated by public_view");
+        }
+        finally
+        {
+            _modules.Reset();
+        }
+    }
+
+    [Fact]
+    public async Task PublicContactSubmit_Returns403_WhenPublicViewDisabled()
+    {
+        // Round-2 [Review][Patch] (P-S5-3): the public contact-form submit endpoint
+        // POST /api/v1/public/contact is gated by .RequireModule("public_view"). Same
+        // POST-vs-GET reasoning as PublicRsvp_Returns403_WhenPublicViewDisabled.
+        _modules.SetEnabled(ModuleKeys.PublicView, false);
+        try
+        {
+            var client = _factory.CreateClient();
+
+            var response = await client.PostAsJsonAsync(
+                "/api/v1/public/contact/",
+                new { name = "x", email = "z@example.com", message = "hi" },
+                TestContext.Current.CancellationToken);
+
+            response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
+                "public contact submission is a public-site feature gated by public_view");
+        }
+        finally
+        {
+            _modules.Reset();
+        }
+    }
+
+    [Fact]
     public async Task NewsletterSubscribe_Returns403_WhenPublicViewDisabled()
     {
         // REQ-087 (E10-S5 review patch): newsletter signup is a public-site feature — it

@@ -14,6 +14,7 @@
  * in-memory for a short window to avoid a fetch per request.
  */
 import { NextResponse, type NextRequest } from "next/server";
+import { getToken } from "next-auth/jwt";
 import { resolveModuleForPath, sanitizeModuleMap } from "@/lib/modules";
 
 // Next.js matchers cannot be fully dynamic — list the gated prefixes broadly here, then
@@ -71,21 +72,22 @@ async function getModules(): Promise<Record<string, boolean>> {
 }
 
 /**
- * Whether the request carries a next-auth / Auth.js session cookie.
+ * Whether the request carries a valid signed next-auth / Auth.js JWT.
  *
- * REQ-087 (E10-S4 review patch): match by cookie-name *shape*, not an exact two-name
- * allowlist. The session cookie varies by library version and deployment:
- *  - next-auth v4 `next-auth.session-token` vs. Auth.js v5 `authjs.session-token`
- *  - secure-context prefixes `__Secure-` and `__Host-`
- *  - chunked suffixes `.0`, `.1`, … when the session JWT exceeds the ~4 KB cookie limit
- * An exact allowlist misclassified a chunked or prefixed session as anonymous and locked
- * the user out of their own dashboard while `public_view` was off.
+ * REQ-087 (Round-2 [Review][Patch] DN-1): validate the JWT (not just the cookie name) —
+ * the round-1 cookie-shape regex made the neutral "site off" UX trivially bypassable
+ * (any visitor could set `document.cookie = "authjs.session-token=anything"` and defeat
+ * the rewrite to `/site-unavailable`). `getToken` from `next-auth/jwt` is Edge-compatible
+ * and verifies the HMAC signature, so a forged cookie returns `null` here. As a free
+ * bonus, `getToken` handles all the cookie variants we used to hand-match (chunked,
+ * `__Secure-`/`__Host-` prefixes, next-auth v4 vs Auth.js v5 names).
  */
-function hasAuthSession(request: NextRequest): boolean {
-  return request.cookies.getAll().some((cookie) => {
-    const name = cookie.name.replace(/^(__Secure-|__Host-)/, "");
-    return /^(next-auth|authjs)\.session-token(\.\d+)?$/.test(name);
+async function hasAuthSession(request: NextRequest): Promise<boolean> {
+  const token = await getToken({
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET,
   });
+  return token !== null;
 }
 
 export async function middleware(request: NextRequest): Promise<NextResponse> {
@@ -96,15 +98,25 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   // served — /public/* and the *unauthenticated* landing `/` are rewritten to a neutral
   // page (OD-5: a neutral page, not a login redirect).
   if (modules.public_view === false) {
+    // Round-2 [Review][Patch] (P-S5-4): explicit segment matching. A bare
+    // `startsWith("/public")` also matches `/publication`, `/publichistory`, etc.;
+    // `startsWith("/public/unsubscribe")` also exempts `/public/unsubscribe-page`. Pin
+    // the matches to the actual segments so an accidental matcher widening (or a new
+    // future route prefix) cannot quietly mis-classify a path.
+    //
     // Q1: transactional email-unsubscribe links stay reachable for compliance even when
     // the public site is switched off.
-    const isUnsubscribe = pathname.startsWith("/public/unsubscribe");
-    if (pathname.startsWith("/public") && !isUnsubscribe) {
+    const isUnsubscribe =
+      pathname === "/public/unsubscribe" ||
+      pathname.startsWith("/public/unsubscribe/");
+    const isPublic =
+      pathname === "/public" || pathname.startsWith("/public/");
+    if (isPublic && !isUnsubscribe) {
       return NextResponse.rewrite(new URL("/site-unavailable", request.url));
     }
     // `/` is dual-purpose (landing + dashboard) — only rewrite it for unauthenticated
     // visitors; an authenticated user still gets their dashboard.
-    if (pathname === "/" && !hasAuthSession(request)) {
+    if (pathname === "/" && !(await hasAuthSession(request))) {
       return NextResponse.rewrite(new URL("/site-unavailable", request.url));
     }
   }

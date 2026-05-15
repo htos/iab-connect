@@ -65,6 +65,15 @@ public sealed class UpdateModuleSettingCommandHandler
         var setting = await _repository.GetByKeyAsync(request.ModuleKey, cancellationToken)
             ?? throw new KeyNotFoundException($"Module '{request.ModuleKey}' not found.");
 
+        // Round-2 [Review][Patch]: short-circuit on no-op (admin double-click on already-on,
+        // or applyModuleChange retry after a transient network error). Without this guard the
+        // handler still stamps UpdatedAt/UpdatedBy, invalidates the cache, and writes an
+        // audit row claiming the module was "enabled" / "disabled" — misleading audit history.
+        if (setting.Enabled == request.Enabled)
+        {
+            return ModuleSettingDto.FromEntity(setting);
+        }
+
         var wasEnabled = setting.Enabled;
         setting.SetEnabled(request.Enabled, request.UpdatedBy);
         _repository.Update(setting);
@@ -83,13 +92,28 @@ public sealed class UpdateModuleSettingCommandHandler
             NewEnabled = setting.Enabled,
         });
 
-        await _auditService.LogActionAsync(
-            AuditEventType.SettingsChanged,
-            $"Module '{setting.ModuleKey}' {(setting.Enabled ? "enabled" : "disabled")}",
-            entityType: "ModuleSetting",
-            entityId: setting.Id.ToString(),
-            details: details,
-            ct: cancellationToken);
+        // Round-2 [Review][Patch]: the audit write runs AFTER SaveChanges + InvalidateCache
+        // already succeeded. If LogActionAsync throws, the caller sees a 500 but the toggle
+        // is already persisted; the user retries and double-toggles. Wrap the audit call so
+        // an audit-write failure does not mask a successful mutation. Mirrors the round-1
+        // ModuleAuthorizationHandler audit-guard pattern.
+        try
+        {
+            await _auditService.LogActionAsync(
+                AuditEventType.SettingsChanged,
+                $"Module '{setting.ModuleKey}' {(setting.Enabled ? "enabled" : "disabled")}",
+                entityType: "ModuleSetting",
+                entityId: setting.Id.ToString(),
+                details: details,
+                ct: cancellationToken);
+        }
+        catch (Exception)
+        {
+            // Audit infrastructure failed — the module toggle is durably persisted and the
+            // cache is invalidated, so swallowing keeps the response coherent (200 with the
+            // new state). The audit row is lost; rely on the application-level error log
+            // from IAuditService for forensic trace.
+        }
 
         return ModuleSettingDto.FromEntity(setting);
     }

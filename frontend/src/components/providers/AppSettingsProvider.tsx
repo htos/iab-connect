@@ -76,6 +76,21 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
       const response = await fetch(`${baseUrl}/api/v1/settings/public`);
       if (response.ok) {
         const data = await response.json();
+        // Round-2 [Review][Patch] (P-S4-5): a 2xx response that silently drops the
+        // `modules` projection (backend regression, broken upgrade, partial response)
+        // would otherwise default every module to enabled with no operator signal.
+        // Warn so the regression is visible in browser devtools / Serilog frontend logs.
+        if (
+          data.modules === undefined ||
+          data.modules === null ||
+          typeof data.modules !== "object" ||
+          Array.isArray(data.modules)
+        ) {
+          console.warn(
+            "[AppSettingsProvider] /api/v1/settings/public returned a 2xx response but no valid 'modules' field — every module will default to enabled. Backend regression?",
+            { receivedModules: data.modules }
+          );
+        }
         setSettings({
           applicationName:
             data.applicationName || defaultSettings.applicationName,

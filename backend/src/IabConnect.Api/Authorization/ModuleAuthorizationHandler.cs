@@ -59,7 +59,50 @@ public sealed class ModuleAuthorizationHandler : AuthorizationHandler<ModuleRequ
             ? httpContext.RequestAborted
             : CancellationToken.None;
 
-        if (await _moduleSettings.IsEnabledAsync(requirement.ModuleKey, cancellationToken))
+        // Round-2 [Review][Patch] (DN-3): IsEnabledAsync can throw on a transient cache/DB
+        // failure. Without this guard the exception propagates → ASP.NET 500, inconsistent
+        // with the public ModuleEnabledEndpointFilter (round-1 patch made it fail-open).
+        // Resolution: fail-GRACEFUL 403 — log the infra failure as Error, audit with a
+        // distinguishing errorMessage so ops can tell "module disabled" vs "module check
+        // crashed", and leave the requirement not-succeeded so the caller gets a clean 403
+        // instead of a 500. Asymmetric to the public filter (which fails-open) is intentional:
+        // for authenticated callers, fail-CLOSED is the safer default — they will retry with
+        // a clear 403 once infra recovers.
+        bool enabled;
+        try
+        {
+            enabled = await _moduleSettings.IsEnabledAsync(requirement.ModuleKey, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Module check failed for '{ModuleKey}' — failing closed (request will be denied with a clean 403). "
+                + "Cause is likely a transient cache/DB infrastructure failure.",
+                requirement.ModuleKey);
+
+            try
+            {
+                await _auditService.LogActionAsync(
+                    AuditEventType.ModuleAccessDenied,
+                    $"Access denied: module check failed for '{requirement.ModuleKey}' (infrastructure failure)",
+                    success: false,
+                    errorMessage: $"Module check for '{requirement.ModuleKey}' threw {ex.GetType().Name}: {ex.Message}",
+                    entityType: "Module",
+                    entityId: requirement.ModuleKey,
+                    ct: cancellationToken);
+            }
+            catch (Exception auditEx)
+            {
+                _logger.LogError(
+                    auditEx,
+                    "Failed to write the infra-failure ModuleAccessDenied audit event for module '{ModuleKey}'.",
+                    requirement.ModuleKey);
+            }
+            return;
+        }
+
+        if (enabled)
         {
             context.Succeed(requirement);
             return;

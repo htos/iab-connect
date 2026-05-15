@@ -1,6 +1,6 @@
 # Story 10.1: Add Module Settings Data Model and Service
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -136,6 +136,7 @@ claude-opus-4-7 (1M context) — bmad-dev-story workflow, 2026-05-14.
 |------------|-----------------------------------------------------------------------------|
 | 2026-05-14 | E10-S1 implemented: `module_settings` table + seed, `ModuleSetting` entity, `ModuleKeys` contract, EF config, repository, cached `IModuleSettingsService`, DI wiring. 13 new tests; full suite 1885/1885 green, 0 warnings. Status → review. |
 | 2026-05-14 | Addressed code review findings — 3 [Review][Patch] items resolved: `IsEnabledAsync` warning-log for out-of-contract keys, `GetAllAsync` cache-stampede guard (`SemaphoreSlim` + double-check), `ModuleSetting.Create` key-in-`ModuleKeys.All` guard. 3 new Application tests; backend 1936/1936 green, 0 warnings. |
+| 2026-05-15 | Round-2 epic-boundary re-review (bmad-code-review): 0 patches routed to S1, 3 defers added (multi-instance cache TTL, static `LoadGate` lifetime, hardcoded seed timestamp + `DateTime` vs `DateTimeOffset`). Auditor: all 3 round-1 [Review][Patch] items verified resolved. Status → done. |
 
 ## Review Findings
 
@@ -145,3 +146,11 @@ _Epic-10 boundary code review — bmad-code-review, 2026-05-14. Layers: Blind Hu
 - [x] [Review][Patch] Cache stampede — concurrent cache-miss on `GetAllAsync` (cold start / right after `InvalidateCache()`) has each request run its own EF query; use a coordinated load (`IMemoryCache.GetOrCreateAsync` / `Lazy<Task>`) [backend/src/IabConnect.Infrastructure/Persistence/Services/ModuleSettingsService.cs] — **RESOLVED 2026-05-14:** `GetAllAsync` now serializes cold reads through a static `SemaphoreSlim` with a double-check after the gate — exactly one EF query per cold cache. Covered by `GetAllAsync_ConcurrentColdReads_HitRepositoryOnce`.
 - [x] [Review][Patch] `ModuleSetting.Create` guards only `IsNullOrWhiteSpace` — the domain invariant "module key is one of the seven" is asserted nowhere; add a guard that `moduleKey` ∈ `ModuleKeys.All` [backend/src/IabConnect.Domain/Common/ModuleSetting.cs] — **RESOLVED 2026-05-14:** `Create` now rejects any key not in `ModuleKeys.All` with an `ArgumentException`.
 - [x] [Review][Defer] `InvalidateCache()` clears only the local process — multi-instance deployments serve a stale module map until the per-process TTL expires [backend/src/IabConnect.Infrastructure/Persistence/Services/ModuleSettingsService.cs] — deferred, pre-existing architectural limitation; the `// TODO: Add caching (Redis)` marker this story replaced acknowledges it, and the modular-monolith MVP is single-instance
+
+### Round 2 — Re-Review (2026-05-15)
+
+_bmad-code-review epic-boundary re-review over full E10 diff (`7a07d7c..d1958da`, 93 files / +9.719/-821) after the 13-patch fix-pass. Layers: Blind Hunter (40 findings), Edge Case Hunter (37), Acceptance Auditor (**13/13 prior patches verified**, 0 AC defects). E10-S1 routing: 0 patches, 3 defers._
+
+- [x] [Review][Defer] `IMemoryCache` is process-local plus 30s middleware TTL — admin's enable/disable change can be invisible to peer instances and to the Edge cache for up to 30s [backend/src/IabConnect.Infrastructure/Persistence/Services/ModuleSettingsService.cs, frontend/src/middleware.ts] — deferred, extends the existing E10.S1 multi-instance defer; Redis is the planned fix when multi-instance ships
+- [x] [Review][Defer] Static `LoadGate` `SemaphoreSlim` lifetime is process-wide, not scoped — leaks across DI scope disposal / hot reload / parallel tests [backend/src/IabConnect.Infrastructure/Persistence/Services/ModuleSettingsService.cs] — deferred, acceptable for single-instance MVP; bind to `IMemoryCache` instance when Redis lands
+- [x] [Review][Defer] Migration seeds `updated_at = 2026-05-14 00:00:00` (hard-coded historical UTC) and `ModuleSetting.UpdatedAt` is `DateTime` not `DateTimeOffset` — fresh deploys show a stale "last changed" date; round-trip `DateTime.Kind` may be `Unspecified` [backend/src/IabConnect.Infrastructure/Migrations/20260514181057_AddModuleSettings.cs:55-57] — deferred, fold into the cross-cutting `DateTime.Kind` cleanup track (cf. epic-3 A13 deferred-work entries)

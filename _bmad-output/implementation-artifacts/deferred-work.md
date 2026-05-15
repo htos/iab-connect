@@ -215,3 +215,12 @@ Items raised during the Epic-3 boundary review and classified as defer (pre-exis
 - **[E10.S2] `UpdateModuleSettingCommand` returns 404 for a valid-but-unseeded key** [`backend/src/IabConnect.Application/ModuleSettings/Commands/UpdateModuleSettingCommand.cs`] — a key in `ModuleKeys.All` whose seed row is missing passes validation, then `GetByKeyAsync` returns null → `KeyNotFoundException` → 404, with no upsert/self-heal path. Only reachable from a broken DB state (failed/partial migration seed); not caused by this change.
 - **[E10.S5] Playwright E2E suite authored but unverified in CI** [`frontend/e2e/module-enforcement.spec.ts`] — the suite `test.skip()`s itself without `E2E_ADMIN_PASSWORD`, so AC-6/AC-7 "the E2E suite passes" is unproven. Needs the full local stack (Docker + Keycloak + seeded admin) to run for real; the backend + Vitest suites are the CI-runnable proof of the same behaviour. Run it when the full stack is available.
 
+---
+
+## Deferred from: code review of Epic 10 boundary re-review (2026-05-15)
+
+Round 2 of the Epic-10 epic-boundary review, run over the full E10 diff (`7a07d7c..d1958da`, 93 files / +9.719/-821 lines) after the 13-patch fix-pass. Layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor (13/13 prior patches verified). Per-story round-2 defers are recorded inline in the e10-s1..s5 `## Review Findings` sections; the two items below are cross-cutting (don't belong to a single story).
+
+- **[Cross-cutting] Audit actor identity uses username, not stable `sub` claim** — `Member.UpdatedBy`, `SystemSettings.UpdatedBy`, `ModuleSetting.UpdatedBy`, and audit-row actor fields throughout the codebase store `HttpContext.GetUserName()`. A Keycloak user rename breaks forensic traceability of any historical action by that user. Pre-existing project-wide pattern; cross-cutting audit-identity hardening track. (Surfaced again by E10's `UpdateModuleSettingCommand` + `ModuleAuthorizationHandler` audit writes.)
+- **[Cross-cutting] `ModuleAuthorizationHandler` writes one audit row per denied request with no rate-limit / coalescing** — a misconfigured polling client (e.g. once-per-second to `/api/v1/finance/transactions` while `Module:finance` is off) produces ~86k audit rows/day in the "System Security" category. Same pattern applies to other audit-write-on-deny endpoints across the codebase. Cross-cutting audit-volume control track.
+

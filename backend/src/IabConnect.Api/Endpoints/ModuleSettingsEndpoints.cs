@@ -28,7 +28,12 @@ public static class ModuleSettingsEndpoints
             .WithSummary("Get all module settings")
             .WithDescription("REQ-087: Returns every module's enablement state with last-changed metadata. Admin only.");
 
-        adminGroup.MapPut("/{moduleKey}", UpdateModuleSetting)
+        // Round-2 [Review][Patch]: constrain the {moduleKey} route param to the
+        // lowercase/underscore shape of canonical module keys (members, events,
+        // documents, communication, finance, partners, public_view) — defense in depth so
+        // URL-encoded slashes, control characters (e.g. %0A for log poisoning) never reach
+        // the validator's exception message.
+        adminGroup.MapPut("/{moduleKey:regex(^[a-z_]+$)}", UpdateModuleSetting)
             .WithName("UpdateModuleSetting")
             .WithSummary("Enable or disable a module")
             .WithDescription("REQ-087: Updates one module's enabled flag. Change is audited. Admin only.");

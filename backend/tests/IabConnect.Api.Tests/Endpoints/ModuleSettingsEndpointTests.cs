@@ -20,7 +20,10 @@ public sealed class ModuleSettingsEndpointTests
 {
     [Theory]
     [InlineData("/api/v1/module-settings/")]
-    [InlineData("/api/v1/module-settings/{moduleKey}")]
+    // Round-2 [Review][Patch] (P-S2-3): the PUT route param is constrained to
+    // `{moduleKey:regex(^[a-z_]+$)}` for log-injection defense in depth — RawText
+    // includes the constraint suffix.
+    [InlineData("/api/v1/module-settings/{moduleKey:regex(^[a-z_]+$)}")]
     public void ModuleSettingsEndpoints_RequireAdminRole(string routePattern)
     {
         var endpoint = ResolveEndpoint(routePattern);
@@ -35,7 +38,10 @@ public sealed class ModuleSettingsEndpointTests
 
     [Theory]
     [InlineData("/api/v1/module-settings/")]
-    [InlineData("/api/v1/module-settings/{moduleKey}")]
+    // Round-2 [Review][Patch] (P-S2-3): the PUT route param is constrained to
+    // `{moduleKey:regex(^[a-z_]+$)}` for log-injection defense in depth — RawText
+    // includes the constraint suffix.
+    [InlineData("/api/v1/module-settings/{moduleKey:regex(^[a-z_]+$)}")]
     public void ModuleSettingsEndpoints_AreReachable_RegardlessOfModuleState(string routePattern)
     {
         // Self-lockout guard (AC-6): E10-S3 introduces module enforcement but must skip this

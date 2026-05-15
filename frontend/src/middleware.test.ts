@@ -6,10 +6,22 @@ describe("middleware", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.resetModules();
+    vi.doUnmock("next-auth/jwt");
   });
 
-  async function loadMiddlewareRaw(modules: unknown) {
+  // Round-2 [Review][Patch] (DN-1): the middleware now validates the JWT via
+  // next-auth/jwt's `getToken` instead of sniffing cookie names. Mock it per test so
+  // we can simulate authenticated / anonymous without managing real signatures.
+  async function loadMiddlewareRaw(
+    modules: unknown,
+    options: { authenticated?: boolean } = {}
+  ) {
     vi.resetModules();
+    vi.doMock("next-auth/jwt", () => ({
+      getToken: vi
+        .fn()
+        .mockResolvedValue(options.authenticated ? { sub: "user-123" } : null),
+    }));
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -22,8 +34,11 @@ describe("middleware", () => {
     return { middleware: mod.middleware, NextRequest };
   }
 
-  async function loadMiddleware(modules: Record<string, boolean>) {
-    return loadMiddlewareRaw(modules);
+  async function loadMiddleware(
+    modules: Record<string, boolean>,
+    options: { authenticated?: boolean } = {}
+  ) {
+    return loadMiddlewareRaw(modules, options);
   }
 
   it("rewrites a disabled-module path to /module-unavailable", async () => {
@@ -106,18 +121,43 @@ describe("middleware", () => {
   });
 
   it("leaves / alone for an authenticated user even when public_view is disabled", async () => {
-    const { middleware, NextRequest } = await loadMiddleware({
-      public_view: false,
-    });
+    // Round-2 [Review][Patch] (DN-1): getToken returns a non-null decoded JWT —
+    // the user is treated as authenticated, regardless of cookie name shape (which
+    // next-auth/jwt handles internally).
+    const { middleware, NextRequest } = await loadMiddleware(
+      { public_view: false },
+      { authenticated: true }
+    );
 
     const response = await middleware(
-      new NextRequest(new URL("http://localhost:3000/"), {
-        headers: { cookie: "next-auth.session-token=abc123" },
-      })
+      new NextRequest(new URL("http://localhost:3000/"))
     );
 
     // `/` is dual-purpose — an authenticated user still gets their dashboard.
     expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+  });
+
+  it("rewrites / for an anonymous visitor when public_view is disabled (getToken returns null)", async () => {
+    // Round-2 [Review][Patch] (DN-1): a missing or forged cookie produces null from
+    // getToken, so the visitor is treated as anonymous and the rewrite applies. This
+    // is the *strict* neutral-UX contract — a fabricated `authjs.session-token=anything`
+    // cookie no longer bypasses the rewrite as the round-1 cookie-shape check allowed.
+    const { middleware, NextRequest } = await loadMiddleware(
+      { public_view: false }
+      // default: authenticated: false (getToken returns null)
+    );
+
+    const response = await middleware(
+      new NextRequest(new URL("http://localhost:3000/"), {
+        // Even with a cookie that LOOKS like a session, getToken returns null because
+        // the signature does not verify. The visitor is treated as anonymous.
+        headers: { cookie: "authjs.session-token=forged-value" },
+      })
+    );
+
+    expect(response.headers.get("x-middleware-rewrite")).toContain(
+      "/site-unavailable"
+    );
   });
 
   it("serves /public/* normally when public_view is enabled", async () => {
@@ -133,30 +173,24 @@ describe("middleware", () => {
     expect(response.headers.get("x-middleware-next")).toBe("1");
   });
 
-  // REQ-087 (E10-S4 review patch): session-cookie detection must match the chunked,
-  // __Secure-/__Host- prefixed, and Auth.js v5 variants — not just the two v4 names.
-  it.each([
-    "next-auth.session-token.0=chunk",
-    "__Secure-next-auth.session-token=abc",
-    "__Host-next-auth.session-token=abc",
-    "authjs.session-token=abc",
-    "__Secure-authjs.session-token.1=chunk",
-  ])(
-    "treats '%s' as an authenticated session and leaves / alone with public_view off",
-    async (cookie) => {
-      const { middleware, NextRequest } = await loadMiddleware({
-        public_view: false,
-      });
+  // Round-2 [Review][Patch] (P-S5-4): explicit-segment matching for /public and
+  // /public/unsubscribe. A hyphenated similar path is NOT an unsubscribe link — it
+  // must be rewritten like any other public path.
+  it("rewrites /public/unsubscribe-page (not an unsubscribe route) when public_view is off", async () => {
+    const { middleware, NextRequest } = await loadMiddleware({
+      public_view: false,
+    });
 
-      const response = await middleware(
-        new NextRequest(new URL("http://localhost:3000/"), {
-          headers: { cookie },
-        })
-      );
+    const response = await middleware(
+      new NextRequest(
+        new URL("http://localhost:3000/public/unsubscribe-page")
+      )
+    );
 
-      expect(response.headers.get("x-middleware-rewrite")).toBeNull();
-    }
-  );
+    expect(response.headers.get("x-middleware-rewrite")).toContain(
+      "/site-unavailable"
+    );
+  });
 
   // REQ-087 (E10-S4 review patch): a malformed `modules` field must not silently disable
   // gating — anything that is not a clean boolean map is treated as "all enabled".

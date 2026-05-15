@@ -43,7 +43,7 @@
 # - The development_status block is ordered by EXECUTION PRIORITY, not epic number.
 
 generated: "2026-05-12"
-last_updated: "2026-05-14 (bmad-dev-story: applied all 13 [Review][Patch] findings across e10-s1..s5 from the epic-boundary review. E10-S1: IsEnabledAsync out-of-contract warn-log, GetAllAsync cache-stampede guard, ModuleSetting.Create key-in-ModuleKeys.All guard. E10-S2: mount useEffect calls shared loadModules() (no duplicate GET), applyModuleChange keeps the confirm modal open + shows the error in it on failure, self-lockout note off blue. E10-S3: calendar token rotate/revoke moved off the Module:events gate, my-registrations + QR check-in now carry Module:events, ModuleAuthorizationHandler audit write guarded. E10-S4: hasAuthSession matches chunked/__Host-/authjs cookie variants, new shared sanitizeModuleMap() validates the untrusted modules payload. E10-S5: ModuleEnabledEndpointFilter fail-opens on service failure, newsletter POST /subscribe gated by public_view. Backend 1936/1936 green 0 warnings; frontend typecheck + lint green, Vitest 92/92. All 5 E10 stories in-progress -> review. NEXT: bmad-code-review for the epic-boundary re-review over the full E10 diff.)"
+last_updated: "2026-05-15 (bmad-code-review: Epic-10 boundary RE-REVIEW closed. Full E10 diff (7a07d7c..d1958da, 93 files / +9.719/-821) re-reviewed via 3 adversarial layers (Blind Hunter 40, Edge Case Hunter 37, Acceptance Auditor 13/13 prior patches verified). Triage: 4 decision-needed, 13 patch, 10 defer, ~25 dismissed. All 4 decisions resolved to patches (DN-1 JWT validate in Edge / DN-2 PolicyProvider strict suffix / DN-3 auth handler fail-graceful 403 / DN-4 Blog+Contact admin chain Module:communication). 16/17 patches applied as code; P-S4-4 (Sidebar submenu test) demoted to defer (untestable without Sidebar refactor). Backend 1942/1942 tests green (+6 vs round-1 1936); frontend Vitest 89/89 green, typecheck + lint green. All 5 E10 stories review -> done; epic-10 in-progress -> done. NEXT: bmad-retrospective for Epic-10 close.)"
 # --- history ---------------------------------------------------------------
 # 2026-05-13: Epic-Close-Gate after clearing all 11 [Review][Patch] findings per
 # sprint-change-proposal-2026-05-13.md. E1.S1-S4 flipped review -> done.
@@ -78,6 +78,14 @@ last_updated: "2026-05-14 (bmad-dev-story: applied all 13 [Review][Patch] findin
 # e10-s1..s5. Backend 1936/1936 green 0 warnings; frontend typecheck + lint
 # green, Vitest 92/92. e10-s1..s5 in-progress -> review. NEXT: bmad-code-review
 # epic-boundary re-review.
+# 2026-05-15 (bmad-code-review): Epic-10 boundary RE-REVIEW closed. 4 decisions
+# (DN-1..DN-4) resolved to patches, 16/17 patches applied as code (P-S4-4
+# demoted to defer — Sidebar submenu test untestable without refactor), 10
+# defers logged (2 cross-cutting in deferred-work.md, rest per-story). Backend
+# 1942/1942 green (+6 new tests), frontend Vitest 89/89 green. e10-s1..s5
+# review -> done; epic-10 in-progress -> done. NEXT: bmad-retrospective for
+# Epic-10 close, then E4-E8 backlog resumes (E10 ships first so the external
+# API in E8 inherits module enforcement from day one).
 # ---------------------------------------------------------------------------
 project: iab-connect
 project_key: NOKEY
@@ -127,12 +135,12 @@ development_status:
   e9-s4-generalize-i18n-branding-strings: done
   epic-9-retrospective: done
 
-  epic-10: in-progress
-  e10-s1-add-module-settings-data-model-and-service: review
-  e10-s2-add-module-settings-api-and-modules-admin-tab: review
-  e10-s3-add-backend-module-enforcement: review
-  e10-s4-add-frontend-module-enforcement: review
-  e10-s5-add-public-view-toggle-and-cross-module-dependency-handling: review
+  epic-10: done
+  e10-s1-add-module-settings-data-model-and-service: done
+  e10-s2-add-module-settings-api-and-modules-admin-tab: done
+  e10-s3-add-backend-module-enforcement: done
+  e10-s4-add-frontend-module-enforcement: done
+  e10-s5-add-public-view-toggle-and-cross-module-dependency-handling: done
   epic-10-retrospective: optional
 
   # === DEFERRED backlog — resumes after E9/E10 ship ========================

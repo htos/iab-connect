@@ -51,8 +51,16 @@ export function sanitizeModuleMap(raw: unknown): Record<string, boolean> {
     return {};
   }
   const result: Record<string, boolean> = {};
+  // Round-2 [Review][Patch] (P-S4-3): defensive own-property check. JSON.parse can
+  // produce objects where `__proto__` is an OWN enumerable key (rather than the
+  // inherited prototype slot) — those would otherwise survive `Object.entries` and
+  // land in the module map.
   for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
-    if (typeof value === "boolean") {
+    if (
+      Object.hasOwn(raw as object, key) &&
+      key !== "__proto__" &&
+      typeof value === "boolean"
+    ) {
       result[key] = value;
     }
   }
@@ -65,6 +73,11 @@ export function sanitizeModuleMap(raw: unknown): Record<string, boolean> {
  * `documents` rather than leaking into the never-gated rest of `/admin`.
  */
 export function resolveModuleForPath(pathname: string): GatedModuleKey | null {
+  // Round-2 [Review][Patch] (P-S4-2): strip trailing slashes so "/finance/" resolves
+  // to the same module as "/finance". Without this, "/finance/" is neither
+  // === "/finance" nor startsWith("/finance/") and would slip through the guard.
+  const normalized =
+    pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
   let match: { module: GatedModuleKey; length: number } | null = null;
 
   for (const [moduleKey, prefixes] of Object.entries(MODULE_ROUTE_PREFIXES) as [
@@ -72,7 +85,7 @@ export function resolveModuleForPath(pathname: string): GatedModuleKey | null {
     string[],
   ][]) {
     for (const prefix of prefixes) {
-      if (pathname === prefix || pathname.startsWith(prefix + "/")) {
+      if (normalized === prefix || normalized.startsWith(prefix + "/")) {
         if (!match || prefix.length > match.length) {
           match = { module: moduleKey, length: prefix.length };
         }

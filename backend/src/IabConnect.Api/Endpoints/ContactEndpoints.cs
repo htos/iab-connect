@@ -24,9 +24,14 @@ public static class ContactEndpoints
             .WithSummary("REQ-049: Submit public contact form");
 
         // Admin endpoints for managing contact messages
+        // Round-2 [Review][Patch] (DN-4): admin Contact-message operations are part of the
+        // communication-tools module surface alongside admin email templates and email
+        // campaigns. Gate under Module:communication so disabling communication consistently
+        // turns off all communication admin tools, including for Vorstand.
         var adminGroup = routes.MapGroup("/api/v1/contact-messages")
             .WithTags("Contact Messages")
-            .RequireAuthorization("RequireVorstand");
+            .RequireAuthorization("RequireVorstand")
+            .RequireAuthorization("Module:communication");
 
         adminGroup.MapGet("/", GetAll)
             .WithName("GetContactMessages")

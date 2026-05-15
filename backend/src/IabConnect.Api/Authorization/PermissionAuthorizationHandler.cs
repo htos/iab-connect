@@ -1,4 +1,5 @@
 using IabConnect.Domain.Authorization;
+using IabConnect.Domain.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
 
@@ -89,9 +90,26 @@ public sealed class PermissionPolicyProvider : IAuthorizationPolicyProvider
         // REQ-087 (E10-S3): "Module:<key>" → a policy carrying a single ModuleRequirement,
         // resolved at request time by ModuleAuthorizationHandler against the module-settings
         // service.
+        //
+        // Round-2 [Review][Patch] (DN-2 + P-1): the prefix match is case-insensitive, so we
+        // lowercase the suffix before building the requirement — `Module:Finance` and
+        // `module:finance` both resolve to the canonical `"finance"` key that
+        // IsEnabledAsync stores. We also fail-FAST on unknown suffixes (`Module:financ`,
+        // `Module:` with empty suffix, anything not in ModuleKeys.All) — the runtime
+        // warn-log in IsEnabledAsync stays as defense-in-depth, but a typo in a
+        // `RequireAuthorization("Module:...")` declaration now surfaces immediately on
+        // first request to the misconfigured endpoint instead of silently failing-open.
         if (policyName.StartsWith(ModulePolicyPrefix, StringComparison.OrdinalIgnoreCase))
         {
-            var moduleKey = policyName[ModulePolicyPrefix.Length..];
+            var rawSuffix = policyName[ModulePolicyPrefix.Length..];
+            var moduleKey = rawSuffix.ToLowerInvariant();
+            if (!ModuleKeys.All.Contains(moduleKey))
+            {
+                throw new InvalidOperationException(
+                    $"Unknown module key '{rawSuffix}' in authorization policy '{policyName}'. "
+                    + $"Module keys are case-insensitive and must be one of: {string.Join(", ", ModuleKeys.All)}. "
+                    + "Check the RequireAuthorization(\"Module:...\") declaration on the endpoint group.");
+            }
             var policy = new AuthorizationPolicyBuilder()
                 .AddRequirements(new ModuleRequirement(moduleKey))
                 .Build();

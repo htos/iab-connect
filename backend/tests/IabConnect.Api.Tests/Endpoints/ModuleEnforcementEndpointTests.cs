@@ -55,12 +55,18 @@ public sealed class ModuleEnforcementEndpointTests
 
     // One representative protected endpoint per module, with a role that satisfies the
     // endpoint's own role policy — so the only thing that can produce a 403 is the module gate.
+    //
+    // Round-2 [Review][Patch] (DN-4 follow-up): Blog admin (/api/v1/blog/) and Contact
+    // admin (/api/v1/contact-messages/) were chained onto Module:communication in
+    // round 2, so they belong to the GatedEndpoints surface for theory coverage.
     public static TheoryData<string, string, string> GatedEndpoints() => new()
     {
         { ModuleKeys.Members, "/api/v1/members/", Roles.Vorstand },
         { ModuleKeys.Events, "/api/v1/events/upcoming", Roles.Member },
         { ModuleKeys.Documents, "/api/v1/document-folders/", Roles.Member },
         { ModuleKeys.Communication, "/api/v1/email-templates/", Roles.Vorstand },
+        { ModuleKeys.Communication, "/api/v1/blog/", Roles.Vorstand },
+        { ModuleKeys.Communication, "/api/v1/contact-messages/", Roles.Vorstand },
         { ModuleKeys.Finance, "/api/v1/finance/accounts/", Roles.Admin },
         { ModuleKeys.Partners, "/api/v1/suppliers/", Roles.Admin },
     };
@@ -199,6 +205,20 @@ public sealed class ModuleEnforcementEndpointTests
                 .Should().Be(HttpStatusCode.OK);
             (await client.GetAsync("/api/v1/events/calendar.ics", ct)).StatusCode
                 .Should().Be(HttpStatusCode.OK);
+
+            // Round-2 [Review][Patch] (P-S5-2): the also-un-gated /my-calendar.ics and
+            // /{id}/calendar.ics need their own theory coverage so an accidental
+            // re-gating slips through. They take auth/token/ID and may return 401/404
+            // (not 200), so the assertion is "not 403" — the proof that the Module gate
+            // isn't intercepting them. The other status codes are owned by their own
+            // handlers, not by the module-enforcement layer.
+            (await client.GetAsync("/api/v1/events/my-calendar.ics", ct)).StatusCode
+                .Should().NotBe(HttpStatusCode.Forbidden,
+                    "/my-calendar.ics is Q4 always-on, not module-gated");
+            (await client.GetAsync(
+                $"/api/v1/events/{Guid.NewGuid()}/calendar.ics", ct)).StatusCode
+                .Should().NotBe(HttpStatusCode.Forbidden,
+                    "/{id}/calendar.ics is Q4 always-on, not module-gated");
         }
         finally
         {
