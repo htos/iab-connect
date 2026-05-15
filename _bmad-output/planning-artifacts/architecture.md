@@ -1,7 +1,7 @@
 # IAB Connect Architecture
 
 Date: 2026-05-11
-Last revised: 2026-05-14 — added ADR-007, ADR-008, REQ-086/REQ-087 data architecture, and the Module Enforcement authorization-matrix row for the generic white-label pivot (Sprint Change Proposal 2026-05-14, handoff step 2).
+Last revised: 2026-05-15 — appended ADR-009 through ADR-021 for the Beta-on-Railway and Open Source Foundation pivot (Sprint Change Proposal 2026-05-15, handoff step 2); updated Executive Summary, Deployment and Infrastructure Impact, Residual Risks, and Architecture Validation Checklist accordingly. Previously revised 2026-05-14 (ADR-007, ADR-008, REQ-086/087 data architecture, and the Module Enforcement authorization-matrix row) for the generic white-label pivot (Sprint Change Proposal 2026-05-14, handoff step 2).
 Project: IAB Connect
 Document status: Draft solution architecture from validated PRD
 Output location: `_bmad-output/planning-artifacts/architecture.md`
@@ -10,7 +10,9 @@ Primary inputs:
 - `_bmad-output/planning-artifacts/prd.md`
 - `_bmad-output/planning-artifacts/prd-validation-report.md`
 - `_bmad-output/planning-artifacts/prd-validation-report-2026-05-14.md`
+- `_bmad-output/planning-artifacts/prd-validation-report-2026-05-15.md`
 - `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-14.md`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-15.md`
 - `docs/architecture-backend.md`
 - `docs/architecture-frontend.md`
 - `docs/architecture-infra.md`
@@ -22,6 +24,8 @@ Primary inputs:
 IAB Connect remains a modular monolith with a Next.js frontend, ASP.NET Core backend, PostgreSQL persistence, Keycloak identity, RustFS document storage, Hangfire background jobs, and Docker Compose local infrastructure.
 
 This architecture document does not replace the generated backend, frontend, infrastructure, or integration architecture docs. It defines solution decisions for the validated PRD, especially the 14 remaining Backlog requirements. The central architectural choice is to extend existing modules and integration points rather than introduce new deployables, microservices, or alternate identity/storage stacks.
+
+The 2026-05-15 revision (Sprint Change Proposal 2026-05-15) extends the architecture for a Beta deployment on Railway and an Open Source release under AGPL-3.0-or-later. ADR-001 through ADR-008 (modular monolith, Keycloak identity, mandatory backend authorization, PostgreSQL + EF Core persistence, Hangfire background jobs, frontend App Router patterns, module-configuration data model, and three-layer module enforcement) remain unchanged and continue to govern in-application decisions. ADR-009 through ADR-021 (this revision) add Open Source licensing and contributor identity, the Beta deployment target and service topology, container image distribution, configuration-and-environment strategy, custom Keycloak image construction, logging and health for container runtimes, Beta mail routing, backup destination, Beta-mode job suppression, and the source-disclosure mechanism for AGPL §13 compliance.
 
 ## Architecture Goals
 
@@ -232,6 +236,175 @@ Implications:
 - The module → route (frontend) and module → endpoint-group (backend) mapping is a shared contract. The frontend mapping lives where both `middleware.ts` and `Sidebar` can reference it; the backend `ModuleKeys` constants live in a layer both `IabConnect.Api` and `IabConnect.Application` reference.
 - Cross-module dependency: paid event registration (E4) needs Finance. If Events is enabled but Finance is disabled, paid-registration flows must degrade safely. Whether to hard-block such a toggle is a product rule deferred to E10-S5; the architecture flags the dependency rather than enforcing it.
 - Background jobs (Hangfire) belonging to a disabled module: behaviour defined in E10-S5. The three enforcement layers above govern HTTP and UI surfaces only.
+
+### ADR-009: License — AGPL-3.0-or-later
+
+**Status:** Accepted (2026-05-15).
+
+**Context:** The project will be released as Open Source. The dominant question is whether to use a permissive license (Apache-2.0, MIT) that maximizes downstream adoption or a strong copyleft license (AGPL) that prevents closed-source SaaS forks. The current dependency set is permissive across the board (.NET MIT, Next.js MIT, Hangfire LGPL, Keycloak Apache-2.0, RustFS Apache-2.0, all NuGet/npm deps Apache/MIT/ISC/PostgreSQL/LGPL — all AGPL-compatible).
+
+**Decision:** Adopt AGPL-3.0-or-later for the application source (frontend, backend, infrastructure scripts, Dockerfiles, CI workflows). The `-or-later` variant retains flexibility to accept future AGPL versions if FSF publishes them.
+
+**Consequences:** Closed-source forks offering the application as a network service must publish their modifications. Some corporate contributors may decline to participate due to internal policies — accepted tradeoff. The maintainer retains the option to dual-license commercially (subject to DCO compliance and a future explicit CLA addition for that purpose).
+
+**Alternatives rejected:** Apache-2.0 (permits closed-source SaaS — contrary to author intent); MIT (no patent grant); MPL-2.0 (file-level copyleft is too weak for the network-use scenario); SSPL (not OSI-approved, fragments OSS ecosystem).
+
+### ADR-010: Contributor Identity — DCO
+
+**Status:** Accepted (2026-05-15).
+
+**Context:** Every contribution must carry an audit trail of who legally certified the right to submit the code. Two mainstream mechanisms exist: DCO (commit sign-off, used by Linux/Docker/Kubernetes/Hangfire) and CLA (out-of-band agreement, used by Google/Apache projects). DCO is lower-friction and sufficient for the project's current scope.
+
+**Decision:** Require DCO sign-off (`Signed-off-by: Name <email>` commit trailer) on every commit merged to `main` or `beta`. Enforce via the `dcoapp/dco`-style GitHub App or an equivalent GitHub Actions check.
+
+**Consequences:** Drive-by contributions need a one-line `git commit -s`. Maintainer keeps dual-license option open in principle (DCO grants the rights AGPL-3.0-or-later requires), but a future commercial dual-license would need explicit per-contributor consent — DCO does not by itself authorize re-licensing.
+
+### ADR-011: Beta Deployment Target — Railway
+
+**Status:** Accepted (2026-05-15).
+
+**Context:** A managed PaaS for the Beta phase reduces operational overhead compared to a VPS/Kubernetes deployment. Candidates considered: Railway, Render, Fly.io, Hetzner Cloud (raw VPS). Railway offers Dockerfile builds, managed PostgreSQL, private networking (`*.railway.internal`), volumes for stateful services, built-in healthchecks, GitHub auto-deploy, and is feasible inside a hobby budget for the duration of Beta.
+
+**Decision:** Use Railway as the reference Beta deployment target. The architecture remains portable — every Railway-specific feature has an OSS-equivalent self-host path (private networking → docker-compose internal network; managed PG → docker postgres; volumes → docker volumes).
+
+**Consequences:** Documentation explicitly covers Railway (RUNBOOK-beta.md) and lokales Docker Compose (`infra/docker-compose.yml`). Other deployment targets (VPS, K8s, other PaaS) are not officially supported in the Beta phase; the architecture does not preclude them but does not promise them.
+
+### ADR-012: Service Topology on Railway
+
+**Status:** Accepted (2026-05-15).
+
+**Context:** Five logical components — frontend, backend, identity provider, application database, object storage — can be packed onto Railway as separate services, co-located, or shared with infrastructure dependencies. Three architectural questions: (1) frontend and backend co-deployed or separate; (2) one shared Postgres or split per consumer; (3) object storage on Railway or external.
+
+**Decision:**
+- **Five application services** on Railway: `web` (Next.js), `api` (.NET), `keycloak` (custom image), `rustfs` (object storage with volume), and two managed Postgres instances (`postgres-app` for the API, `postgres-kc` for Keycloak — separated for ownership clarity and migration safety).
+- `web`, `api`, `keycloak` get public Railway domains.
+- `postgres-app`, `postgres-kc`, `rustfs` are reachable only via Railway private networking (`*.railway.internal`).
+- Browsers call `api` directly (CORS strict-allowlists `web`'s public domain).
+
+```
+                       Public Internet
+                       │           │
+              ┌────────┘           └──────────┐
+              ▼                                 ▼
+       web (Next.js)                    keycloak
+       Dockerfile, port 3000            Dockerfile, port 8080
+              │                                 │
+              └───────────► api ◄──────────────┘
+                            (.NET, port 8080)
+                            │
+                ┌───────────┼────────────────────┐
+                ▼           ▼                    ▼
+        postgres-app   postgres-kc            rustfs
+        (managed PG)   (managed PG)           (volume-backed)
+```
+
+**Consequences:** Frontend can be redeployed independently of backend. Database migration mishaps in the API cannot corrupt the Keycloak schema. Object storage is self-hostable as part of the same Railway project.
+
+**Alternatives rejected:** Shared Postgres for API and Keycloak (would couple migration risk); external S3-compatible storage like Cloudflare R2 (contradicts "fully self-hostable" OSS posture); reverse-proxying API through the web service (extra hop, no clear benefit for Beta).
+
+### ADR-013: Object Storage — RustFS on Railway with Volume
+
+**Status:** Accepted (2026-05-15).
+
+**Context:** The application talks to an S3-compatible storage layer for documents and finance artifacts (existing `DocumentStorage:*` configuration). For Beta, the storage backend can be (a) self-hosted in the Railway project, (b) external SaaS (R2, B2, Tigris, SES), or (c) re-used as a contract with no shipped default. RustFS (Apache-2.0) is already the local-dev backend and works against Railway volumes.
+
+**Decision:** Run RustFS as a fifth Railway service with a Railway volume mounted at `/data`. The same instance serves application documents (bucket `iabconnect-documents`) and backups (bucket `backups`). The application's S3 client configuration (`DocumentStorage:ServiceUrl` etc.) points to the private network address.
+
+**Consequences:** A single OSS service handles both document storage and backup destination. No external SaaS dependency for storage. Storage durability is limited to Railway volume durability (no off-site replication in Beta); for Production, an off-site replication strategy is on E19's scope.
+
+**Alternatives rejected:** Cloudflare R2 (proprietary service, contradicts OSS-self-host story); MinIO (AGPL-3.0 is fine but adds license-talk surface unnecessarily when RustFS suffices); SeaweedFS (mature but heavier setup); not shipping a default (forks would need to make this choice cold).
+
+### ADR-014: Container Image Distribution — GHCR
+
+**Status:** Accepted (2026-05-15).
+
+**Context:** Forks and self-hosters benefit from pre-built container images they can pull directly instead of building from source. The maintainer's CI must produce reproducible artifacts. Three registry options: Docker Hub (rate-limited for anonymous pulls), GitHub Container Registry (free for public OSS, OCI-compliant), self-hosted (operational overhead).
+
+**Decision:** Publish public images to GHCR under `ghcr.io/htos/iabc-{api,web,keycloak}`. Tag strategy: `:beta` (moving, tracks the `beta` branch HEAD) and `:sha-{commit}` (immutable, every Beta build). Railway pulls `:beta` for routine deploys. Rollback in production means redeploying a previously good `:sha-` tag.
+
+**Consequences:** Identical artifacts run in CI, in Beta, in fork environments. Image OCI labels (`org.opencontainers.image.{source,licenses,revision,created}`) carry provenance metadata. CI requires a GitHub Personal Access Token or GITHUB_TOKEN with `packages:write` scope.
+
+**Alternatives rejected:** Docker Hub (anonymous pull rate limits); building only on Railway (forks lose pre-built convenience); semver-tagged images (premature ceremony for Beta iterations — can be added in E19).
+
+### ADR-015: Configuration and Environment Strategy
+
+**Status:** Accepted (2026-05-15).
+
+**Context:** Today's configuration uses `appsettings.json` + `appsettings.Development.json` + environment overrides on the backend; `.env.local` + Next.js `process.env` on the frontend. Beta introduces a third environment between Development and Production. Production deployment-time behavior (HSTS, no Swagger, strict CORS, real auth) must match Beta; tester-visible behavior (BETA banner) must differ.
+
+**Decision:**
+- Introduce `ASPNETCORE_ENVIRONMENT=Beta` and `appsettings.Beta.json` (non-sensitive defaults only).
+- Existing `IsDevelopment()` checks in code stay **Development-only**, not "Beta or Production". Production hardenings (HSTS, HTTPS-redirect, no Swagger, no Hangfire-Dashboard, strict CORS) apply to Beta verbatim.
+- Frontend tester-visible difference uses `NEXT_PUBLIC_ENV_LABEL=beta` (build-time) → orange BETA banner component.
+- Backend `Database__AutoMigrate` toggle is added but defaults remain unchanged in Beta (auto-migrate on); E19 introduces the manual migration path for Production.
+
+**Consequences:** A misconfigured environment never accidentally exposes Swagger or relaxes CORS — only `IsDevelopment()` does that. The Beta environment behaves like Production save for the visual label and the auto-migrate convenience.
+
+### ADR-016: Custom Keycloak Image with SPI Baked In
+
+**Status:** Accepted (2026-05-15).
+
+**Context:** The Keycloak deployment depends on `infra/keycloak/providers/disable-new-users/`, a Maven-built custom SPI JAR. Today, Docker Compose mounts the JAR as a volume. Railway does not support per-service file mounts from a Git source path; the SPI must travel with the image.
+
+**Decision:** Build a custom Keycloak image (`infra/keycloak/Dockerfile`) that copies the SPI JAR into `/opt/keycloak/providers/` and runs `kc.sh build` as part of the image build. The CI workflow first compiles the SPI (`mvn package` on `infra/keycloak/providers/disable-new-users/`) and feeds the resulting JAR into the Keycloak image build. The realm import JSON travels in the image at `/opt/keycloak/data/import` with placeholders for tester accounts (no committed credentials).
+
+**Consequences:** Keycloak start time on Railway is fast (build is image-time, not container-start time). A new SPI version requires an image rebuild — acceptable for Beta cadence. The realm import JSON must be sanitized of any committed dev client secrets before merge.
+
+### ADR-017: Logging and Health for Container Runtimes
+
+**Status:** Accepted (2026-05-15).
+
+**Context:** The backend currently writes Serilog logs to both Console and File sinks (`backend/src/IabConnect.Api/appsettings.json:21–30`). Container runtimes (Railway, GHCR-pulled-anywhere) treat the container filesystem as ephemeral, and Railway aggregates Console output. File logging on Railway is wasted writes at best and a non-recoverable crash at worst if the `logs/` directory is not writable.
+
+**Decision:**
+- In Beta (and Production), override Serilog to **Console-only**. File sink remains in `appsettings.Development.json` for developer ergonomics.
+- Health probes wire to Railway: `api` → `/health/ready` (covers `db` + `keycloak` health-checks already registered at `backend/src/IabConnect.Api/DependencyInjection.cs:189–191`); `web` → `/api/health` (a new minimal Next.js route handler returning `{status:"ok"}`).
+- External uptime monitoring (UptimeRobot or BetterStack free tier) polls `/health/ready` every 5 minutes and alerts on three consecutive failures.
+
+**Consequences:** All log data is available via Railway's log viewer with CorrelationId enrichment (already implemented via `CorrelationIdMiddleware`). Long-term log storage requires shipping logs to an external aggregator (Seq, Loki) — out of Beta scope.
+
+### ADR-018: Beta Mail Routing — Mailtrap Sandbox
+
+**Status:** Accepted (2026-05-15).
+
+**Context:** Outbound mail from cloud PaaS providers like Railway is structurally hostile to real-world delivery: port 25 is blocked for outbound to arbitrary hosts; cloud IP ranges sit on RBL blocklists; reverse-DNS cannot be configured. Tester-visible features (password reset, invoices, dunning, volunteer-shift-reminders) all generate outbound mail. Three options: route through an external transactional provider (Brevo, Postmark, SES), self-host a mail server on a separate VPS (Postal, mailcow, docker-mailserver, xmox), or use a sandbox that captures mail without delivering.
+
+**Decision:** Use **Mailtrap Sandbox** for Beta. SMTP variables (`Smtp__Host`, `Smtp__Port`, `Smtp__Username`, `Smtp__Password`) point to the Mailtrap sandbox endpoint. Mails are visible in the Mailtrap inbox but never delivered to real recipients. Tester guide (`E18-S2`) documents how testers either receive a Mailtrap inbox link or use Mailtrap's "forward-to-email" feature.
+
+**Consequences:** Zero deliverability risk and zero spam-reputation exposure during Beta. The backend's SMTP code stays provider-agnostic; transition to a real provider in Post-Beta is a four-environment-variable change. A self-hosted Postal-on-Hetzner path is documented in `E19` as the Production-Sovereignty option.
+
+### ADR-019: Backup Destination — Same RustFS
+
+**Status:** Accepted (2026-05-15).
+
+**Context:** Daily `pg_dump` output needs a durable destination. Options range from "same infrastructure as primary storage" (single failure domain) to "separate cloud provider" (off-site, but introduces non-OSS surface).
+
+**Decision:** Backups land in a dedicated bucket (`backups`) on the same RustFS instance that hosts documents. Dumps are gzipped and encrypted symmetrically with a key from `Backup__EncryptionKey`. Retention: 30 days, enforced by a second Hangfire job. For Production (E19), off-site replication to a second RustFS in a different Railway project (or to a different OSS S3 on Hetzner) becomes the durability story.
+
+**Consequences:** A catastrophic Railway-volume loss takes down both primary documents and backups — an accepted Beta-phase risk documented in the RUNBOOK. The backup encryption key must be stored separately from the database credentials (Railway Variable, never logged).
+
+### ADR-020: Beta-Mode Job Suppression
+
+**Status:** Accepted (2026-05-15).
+
+**Context:** The application registers four recurring Hangfire jobs in `backend/src/IabConnect.Api/DependencyInjection.cs:286–316`: `mark-invoices-overdue` (daily, status mutation), `generate-dunning-notices` (weekly, mail+status), `enforce-retention-policies` (weekly, **data deletion**), and `send-volunteer-shift-reminders` (daily 09:00 Europe/Zurich, mail). In Beta, the retention-enforcement job can permanently delete tester data based on default policies that are not yet finalized for white-label deployments.
+
+**Decision:** Introduce a feature flag `RetentionEnforcement__Enabled` (default `true`, set to `false` in `appsettings.Beta.json` and on the Beta Railway service). When false, the recurring job is not registered. The other three jobs run normally; their mail outputs land in Mailtrap (ADR-018).
+
+**Consequences:** Beta data is not retention-deleted. The retention behavior must be explicitly re-validated and re-enabled as part of Production-readiness (E19). The flag also enables individual organizations (Post-Beta white-label deployments) to disable retention enforcement during their own initial setup phase.
+
+### ADR-021: Source-Disclosure Mechanism (AGPL §13)
+
+**Status:** Accepted (2026-05-15).
+
+**Context:** AGPL-3.0 §13 requires that users interacting with a modified version over a network be able to access the corresponding source code. A repository link is sufficient in principle, but a runtime-introspectable build identity (commit SHA, build date) is best practice and helpful for forks.
+
+**Decision:**
+- Frontend footer (visible on every page): `IAB Connect — AGPL-3.0-or-later — Source` with the "Source" link pointing to `/about`.
+- Backend `/about` endpoint (unauthenticated): returns JSON `{ name: "IAB Connect", license: "AGPL-3.0-or-later", version: <package-version>, commitSha: <git-sha>, buildDate: <ISO-timestamp>, sourceUrl: "https://github.com/htos/iab-connect" }`.
+- `commitSha` and `buildDate` are injected as Docker build-args in CI.
+
+**Consequences:** Forks that modify the application must update `sourceUrl` to their fork URL (an item in the fork-setup checklist documented in README). The `/about` endpoint is part of the application contract and must remain reachable in all environments.
 
 ## Backend Architecture
 
@@ -705,12 +878,35 @@ Expected infrastructure changes by Backlog area:
 - Cost centers: database migrations only.
 - Accessibility/multilingual: frontend assets/message files only unless content language metadata is added.
 
+### Beta Deployment on Railway
+
+The 2026-05-15 pivot introduces a Beta deployment target on Railway. Service topology and decisions are documented in ADR-011 (Railway as Beta target), ADR-012 (five-service topology: `web`, `api`, `keycloak`, `rustfs`, plus two managed Postgres instances `postgres-app` and `postgres-kc`), ADR-013 (RustFS on Railway volume), ADR-014 (GHCR image distribution), ADR-015 (`ASPNETCORE_ENVIRONMENT=Beta` and environment-variable-driven configuration), ADR-016 (custom Keycloak image with SPI baked in), ADR-017 (Serilog Console-only and healthcheck wiring), ADR-018 (Mailtrap Sandbox SMTP), ADR-019 (backup to same RustFS instance), and ADR-020 (`RetentionEnforcement:Enabled=false` in Beta).
+
+Infrastructure requirements introduced by the Beta target:
+
+- Railway project `iab-connect-beta` with five application services and two managed PostgreSQL instances; private networking via `*.railway.internal` for datastore services.
+- Public GitHub Container Registry (GHCR) images at `ghcr.io/htos/iabc-{api,web,keycloak}`, tagged `:beta` (moving, tracks the `beta` branch HEAD) and `:sha-{commit}` (immutable per build).
+- GitHub Actions CI pipeline (`.github/workflows/build-images.yml`) triggered on push to the `beta` branch, building the three images with `BUILD_SHA` and `BUILD_DATE` build-args; OCI labels populate from CI environment.
+- Railway volume mounted at `/data` on the `rustfs` service; buckets `iabconnect-documents` for primary storage and `backups` for daily encrypted PostgreSQL dumps with 30-day retention.
+- DSGVO Article 28 data-processing agreement signed with Railway before tester onboarding (PRD Beta Environment Operations NFR).
+- `backend/src/IabConnect.Api/appsettings.Beta.json` carries non-sensitive Beta defaults (Console-only Serilog, `RetentionEnforcement:Enabled=false`, `Database:AutoMigrate=true`); secrets are Railway Variables, sealed where the platform supports it.
+- Daily Hangfire backup job (`daily-pg-backup`, 03:00 UTC) and retention prune job (`prune-old-backups`, 04:00 UTC) added to the existing four recurring jobs.
+
+Open Source release surface introduced by ADR-009, ADR-010, and ADR-021:
+
+- Repository-root files: `LICENSE` (full AGPL-3.0-or-later text), `NOTICE.md` (direct production dependency licenses from `dotnet list package` and `npm ls`), `CONTRIBUTING.md` (DCO sign-off requirement and example trailer).
+- DCO sign-off enforcement via `.github/workflows/dco.yml` GitHub Actions check on protected branches `main` and `beta`.
+- Backend `GET /about` endpoint (unauthenticated) returns `{ name, license, version, commitSha, buildDate, sourceUrl }`; `commitSha` and `buildDate` from Docker build-args, `sourceUrl` from `Branding:SourceUrl` config.
+- Frontend `<Footer />` component on every page links to `/about` with project name, license, and Source link; reads `NEXT_PUBLIC_SOURCE_URL` for the GitHub repo link.
+- OCI provenance labels on published images: `org.opencontainers.image.source`, `licenses=AGPL-3.0-or-later`, `revision=${commit}`, `created=<ISO timestamp>`.
+
 Production considerations:
 
 - Provider credentials must be per-environment secrets.
 - Outbound webhooks and SMS/WhatsApp providers require monitoring and failure handling.
 - Rate limiting should be reviewed before external API exposure.
 - Backup/restore coverage must include any new tables.
+- For Production (E19): `Database:AutoMigrate` defaults to `false` (manual migration path); off-site backup replication is required (single-volume failure domain accepted only in Beta per ADR-019); custom-domain migration (Keycloak hostname, redirect URIs, `Frontend__BaseUrl`) is documented in the Beta runbook; retention enforcement (ADR-020) re-enabled with audited defaults.
 
 ## Testing Architecture
 
@@ -774,6 +970,11 @@ This order reduces risk by stabilizing identity, member data, and event operatio
 - Finance changes preserve audit, retention, soft-delete, cancellation, and reversal behavior.
 - Frontend work uses shared layout, typed API wrappers, next-intl, and existing UI standards.
 - Each remaining Backlog requirement has an architecture path and security/testing expectations.
+- The Beta deployment uses Railway-managed PostgreSQL (two instances: `postgres-app`, `postgres-kc`), a self-hosted RustFS service with a Railway volume, and outbound mail routed to Mailtrap Sandbox (ADR-018) — never to real recipients in Beta. Backups land in the same RustFS instance under the `backups` bucket with 30-day retention (ADR-019).
+- Open Source license surface is present: `LICENSE` (AGPL-3.0-or-later), `NOTICE.md`, `CONTRIBUTING.md` with DCO sign-off enforcement on protected branches, unauthenticated `/about` endpoint returning `{name, license, version, commitSha, buildDate, sourceUrl}`, frontend footer linking to source, SPDX headers on new files, and OCI provenance labels on published images (ADR-009, ADR-010, ADR-014, ADR-021).
+- Container images are reproducible: backend, frontend, and Keycloak images are built by GitHub Actions on push to `beta`, published to GHCR with both moving (`:beta`) and immutable per-commit (`:sha-{commit}`) tags (ADR-014).
+- Backend honours `Database:AutoMigrate` (true in Beta per ADR-015; gated for Production via E19) and `RetentionEnforcement:Enabled` (false in Beta per ADR-020).
+- Beta and Production share the same hardening profile (HSTS, HTTPS-redirect, strict CORS, Swagger off, Hangfire-Dashboard off); only the tester-visible BETA banner, the auto-migrate default, and the sandboxed SMTP destination differ from Production (ADR-015).
 
 ## Residual Risks
 
@@ -781,4 +982,13 @@ This order reduces risk by stabilizing identity, member data, and event operatio
 - Some source implementation details may differ from generated docs; epic/story planning should inspect relevant code before assigning work.
 - Provider-specific details for Google, Microsoft Entra ID, SMS, WhatsApp, and production webhooks require environment-specific configuration decisions.
 - REQ-023 remains a product/status ambiguity in the source status file; this architecture treats it as event-day workflow completion until product owners update status.
+- Railway's free-tier limits and pricing changes are outside the project's control; if Railway becomes non-viable, the same architecture transplants to Hetzner Cloud + Docker Compose via the documented self-host path (ADR-011 alternatives).
+- RustFS is currently pinned to the upstream `:latest` tag (ADR-013); the project should pin a specific tag once a stable release exists and document the pinning rationale.
+- Mailtrap Sandbox free-tier limits (typically 100 mails/day) may be hit by a Beta with many testers; transition to a real SMTP provider or self-hosted Postal (E19-S4) is the documented escape path.
+- DCO grants the rights AGPL-3.0-or-later requires but does not by itself authorize commercial dual-licensing (ADR-010); any future commercial dual-license decision requires explicit per-contributor consent.
+- `NEXT_PUBLIC_API_URL` is build-time-constant in the frontend image (ADR-015); any future API-URL change (such as a custom-domain swap) requires a frontend image rebuild and redeploy. Documented in the Beta runbook.
+- The Beta backup destination shares the RustFS volume with primary document storage (ADR-019); a catastrophic Railway-volume loss would take down both. This single-failure-domain risk is accepted for the Beta phase and addressed in E19 (off-site backup replication for Production).
+- The retention-enforcement Hangfire job is disabled in Beta (ADR-020); retention behavior must be explicitly re-validated and re-enabled as part of Production-readiness.
+- The Keycloak realm import JSON travels in the custom Keycloak image (ADR-016) and must be sanitized of any committed dev client secrets before merge.
+- `docs/10_requirements_status.md` is out of sync with closed Epics E1/E2/E3/E9/E10 (PRD OD-6); a separate documentation-sync task updates that file before the Backlog-area sections in this architecture (REQ-006..058) can be marked as retrospectively complete.
 
