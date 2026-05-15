@@ -1,12 +1,18 @@
 # generated: 2026-05-12
-# last_updated: 2026-05-14 (Sprint re-planning post-pivot: bmad-sprint-planning re-run against the
-#   finalized epics-and-stories.md — E9 + E10 now carry their CANONICAL story keys derived from the
-#   epic file headers, replacing the 2026-05-14 correct-course placeholder keys. Development-status
-#   block REORDERED to execution priority: done epics (E1-E3), then the ACTIVE FOCUS (E9 -> E10),
-#   then the DEFERRED backlog (E4-E8). This makes "first found non-done story" resolve to e9-s1,
-#   matching the E9->E10 sequencing the pivot requires. No status downgrades. Implementation
-#   readiness re-confirmed READY by implementation-readiness-report-2026-05-14.md. NEXT:
-#   bmad-create-story for e9-s1-extend-systemsettings-and-add-branding-admin-ui.)
+# last_updated: 2026-05-15 (Sprint re-planning post Beta-on-Railway and Open Source
+#   Foundation pivot: bmad-sprint-planning re-run against the SCP-2026-05-15-aligned
+#   epics-and-stories.md. 10 new epics (E11-E20) and 40 new stories added.
+#   Status assignment uses the project's established wave-aware convention: file
+#   presence does NOT auto-upgrade to ready-for-dev when the wave order parks a
+#   story behind dependencies. Only Wave 1 stories (E20-S1, E20-S2 — both
+#   dependency-free per SCP-2026-05-15 §6) are promoted to ready-for-dev. All
+#   other 38 E11-E20 stubs stay backlog and will be promoted wave-by-wave during
+#   sprint execution. Development-status block REORDERED to execution priority:
+#   done epics (E1-E3, E9, E10) first, then the ACTIVE FOCUS (E20 with Wave 1
+#   ready, then E11..E19 in approximate first-wave-appearance order), then the
+#   DEFERRED backlog (E4-E8). Implementation readiness re-confirmed READY by
+#   implementation-readiness-report-2026-05-15.md. NEXT: bmad-create-story for
+#   e20-s1-add-license-dco-and-contributing — Wave 1 start.)
 # project: iab-connect
 # project_key: NOKEY
 # tracking_system: file-system
@@ -24,8 +30,8 @@
 #   - in-progress -> done: Manually when all stories reach done
 #
 # Story Status:
-#   - backlog: Story only exists in epic file
-#   - ready-for-dev: Story file created in implementation artifacts
+#   - backlog: Story only exists in epic file (file may or may not be on disk)
+#   - ready-for-dev: Story file created in implementation artifacts AND wave-order permits
 #   - in-progress: Developer actively working on implementation
 #   - review: Ready for code review
 #   - done: Story completed
@@ -41,9 +47,12 @@
 # - Stories can be worked in parallel if team capacity allows.
 # - Each story must go through bmad-create-story and validation before development.
 # - The development_status block is ordered by EXECUTION PRIORITY, not epic number.
+# - Wave-aware status: file presence does NOT auto-promote to ready-for-dev when
+#   the wave order documented in epics-and-stories.md Release and Sprint Guidance
+#   parks a story behind unmet dependencies.
 
 generated: "2026-05-12"
-last_updated: "2026-05-15 (bmad-retrospective: Epic-10 closed. Retro doc epic-10-retro-2026-05-15.md saved. Central finding: round-1 fixes created round-2 problems twice (filter fail-open / handler fail-closed asymmetry + cookie-shape / JWT validation) -> interim-patch labeling (A24) + companion-surface scanning (A26) would have caught both earlier. 4 new action items A24-A27 (interim patch labeling, test-gap testability triage check, companion-surface fail-mode patching, dev-API restart documentation). Epic-9 A19-A23 follow-through: A19 lint green completed; A20+A21 partial; A22 mostly applied; A23 N/A. epic-10-retrospective optional -> done. PIVOT WEDGE COMPLETE: E9 + E10 shipped. No epic currently in-progress; E4-E8 all backlog. NEXT: bmad-sprint-planning to re-prioritize / re-validate E4-E8 readiness after the pivot (pre-pivot story files may have spec drift); then bmad-create-story for that epic's first ready-for-dev story.)"
+last_updated: "2026-05-15 (bmad-sprint-planning post Beta-on-Railway and OSS Foundation pivot: added E11-E20 with 40 stories. Wave-aware status: only Wave 1 (E20-S1, E20-S2) promoted to ready-for-dev; remaining 38 E11-E20 stubs stay backlog held by wave order per SCP-2026-05-15 §6. Block reordered to execution priority: done (E1-E3, E9, E10) -> ACTIVE FOCUS Beta pivot (E20 with Wave 1 ready, then E11..E19) -> DEFERRED backlog (E4-E8). Readiness READY per implementation-readiness-report-2026-05-15.md. NEXT: bmad-create-story for e20-s1-add-license-dco-and-contributing.)"
 # --- history ---------------------------------------------------------------
 # 2026-05-13: Epic-Close-Gate after clearing all 11 [Review][Patch] findings per
 # sprint-change-proposal-2026-05-13.md. E1.S1-S4 flipped review -> done.
@@ -95,13 +104,44 @@ last_updated: "2026-05-15 (bmad-retrospective: Epic-10 closed. Retro doc epic-10
 # readiness after the 2026-05-14 pivot (pre-pivot story files may have spec
 # drift — branding strings + module-less assumptions); then bmad-create-story
 # for that epic's first ready-for-dev story.
+# 2026-05-15 (SCP-2026-05-15 Beta-on-Railway and Open Source Foundation pivot):
+# bmad-edit-prd -> bmad-create-architecture -> bmad-create-epics-and-stories ->
+# bmad-create-ux-design all re-run against SCP-2026-05-15. PRD merged REQ-088
+# (Beta Deployment Readiness) and REQ-089 (Open Source License Surface) as
+# PRD-native, added Product Principles 10 (OSS by Default) and 11 (Deployment
+# Portability), Beta Environment Operations NFR group, Beta+OSS Acceptance
+# Criteria section, restructured Recommended Roadmap to make E11-E20 the active
+# sprint focus and demote E4-E8 to Deferred Backlog, recorded OD-6 (status-doc
+# out of sync with closed epics — separate task). Architecture appended
+# ADR-009..021 (AGPL, DCO, Railway, Topology, RustFS+volume, GHCR, Beta env
+# strategy, custom Keycloak image, container logging/health, Mailtrap, backup
+# destination, retention suppression, AGPL §13 source-disclosure). Epics+stories
+# appended E11-E20 with 40 new stories all carrying observable ACs, ADR
+# references, and tests/evidence. UX-design appended 4 Beta+OSS Flow Specs
+# (BETA Banner, License Footer, About Info Display, Feedback Channel) plus
+# Navigation Model and Permission Rule updates. 40 story stubs committed to
+# disk (e11-s1..e20-s5) plus generate-beta-stubs.sh.
+# 2026-05-15 (bmad-validate-prd Round 2): PRD re-validated after the simple
+# fixes and downstream alignment. Overall Pass clean. Holistic Quality 5/5
+# Excellent (up from 4/5 in Round 1). All Round-1 Top-3 Improvements closed:
+# Success Metrics gap for REQ-088/089 closed, Mailtrap FR/AC inconsistency
+# closed, downstream artifact alignment complete. Report: planning-artifacts/
+# prd-validation-report-2026-05-15-round2.md.
+# 2026-05-15 (bmad-check-implementation-readiness): READY verdict. 0 critical,
+# 0 major, 4 minor/informational (operational epics framing, story-stub drift
+# check pending, OD-6 doc-sync, ADR style mix — all non-blocking). Report:
+# planning-artifacts/implementation-readiness-report-2026-05-15.md.
+# 2026-05-15 (bmad-sprint-planning, this update): added 10 new epics, 40 new
+# stories, 10 new retrospectives. Wave-aware status: E20-S1 and E20-S2 promoted
+# to ready-for-dev (Wave 1 of SCP-2026-05-15 §6); all other E11-E20 stubs stay
+# backlog held by wave order. Block reordered to execution priority.
 # ---------------------------------------------------------------------------
 project: iab-connect
 project_key: NOKEY
 tracking_system: file-system
 story_location: "_bmad-output/implementation-artifacts"
 epics_source: "_bmad-output/planning-artifacts/epics-and-stories.md"
-readiness_report: "_bmad-output/planning-artifacts/implementation-readiness-report-2026-05-14.md"
+readiness_report: "_bmad-output/planning-artifacts/implementation-readiness-report-2026-05-15.md"
 
 development_status:
   # === DONE — pre-pivot delivery (E1-E3) ===================================
@@ -128,15 +168,7 @@ development_status:
   e3-s5-add-calendar-feed-and-ics-export: done
   epic-3-retrospective: done
 
-  # === ACTIVE FOCUS — generic white-label pivot (E9 then E10) ==============
-  # These two epics PREEMPT E4-E8 (OD-3, resolved). Sequencing: E9 (de-branding)
-  # fully before E10 (module config & enforcement). Story keys below are the
-  # canonical keys derived from epics-and-stories.md headers (they replace the
-  # 2026-05-14 correct-course placeholder keys). No story files exist on disk
-  # yet -> all backlog; bmad-create-story starts with e9-s1.
-  # Intra-epic dependency note (per readiness report): e9-s2/s3/s4 depend on
-  # e9-s1; e10-s3 depends on e10-s1; e10-s4 depends on e10-s2; e10-s5 depends on
-  # e10-s3 + e10-s4.
+  # === DONE — generic white-label pivot (E9, E10) ==========================
   epic-9: done
   e9-s1-extend-systemsettings-and-add-branding-admin-ui: done
   e9-s2-replace-hardcoded-organization-references-in-frontend: done
@@ -152,14 +184,116 @@ development_status:
   e10-s5-add-public-view-toggle-and-cross-module-dependency-handling: done
   epic-10-retrospective: done
 
-  # === DEFERRED backlog — resumes after E9/E10 ship ========================
+  # === ACTIVE FOCUS — Beta-on-Railway and Open Source Foundation pivot ====
+  # SCP-2026-05-15 introduces 10 new epics (E11-E20) covering REQ-088 (Beta
+  # Deployment Readiness, E11-E19) and REQ-089 (Open Source License Surface,
+  # E20). Wave order from SCP-2026-05-15 §6:
+  #   Wave 1: E20-S1, E20-S2 (LICENSE/DCO + SPDX policy — dependency-free)
+  #   Wave 2: E11-S1, E11-S2, E11-S3 (configuration hygiene)
+  #   Wave 3: E12-S1, E12-S2, E12-S3 (containerization)
+  #   Wave 4: E20-S3, E20-S4 (source-disclosure /about + footer — needs Wave 3 build-args)
+  #   Wave 5: E20-S5 (CI publish to GHCR — needs Wave 3 Dockerfiles)
+  #   Wave 6: E13-S1..S4 (Railway provisioning — needs Wave 5 images)
+  #   Wave 7: E15-S1..S4, E16-S3 (persistence + storage on Beta)
+  #   Wave 8: E14-S1..S5, E17-S1..S4 (security + observability)
+  #   Wave 9: E18-S1..S4 (Beta tester operations)
+  #   Wave 10: E19-S1..S4 (production prep — NOT a Beta blocker)
+  #
+  # Status convention: file presence does NOT auto-promote to ready-for-dev.
+  # Only Wave 1 stories (E20-S1, E20-S2) are ready-for-dev now. Promote the
+  # next wave's stories to ready-for-dev when starting that wave.
+  #
+  # Cross-epic dependencies (epics-and-stories.md Dependencies items 11-17):
+  #   - E13 depends on E20-S5 (Railway pulls images from GHCR)
+  #   - E20-S4 depends on E20-S3 (footer links to /about)
+  #   - E18-S3 depends on E11-S2 (BETA banner needs ASPNETCORE_ENVIRONMENT=Beta)
+  #   - E8 (when it resumes) depends on E14-S4 (rate-limiting baseline)
+  #
+  # Beta-pivot epics are ordered below by approximate first-wave-appearance.
+  # E20 first because Wave 1 is here. E11..E18 in their first-wave order.
+  # E19 last because it is Production prep and not on the Beta-Go-Live path.
+
+  epic-20: backlog
+  e20-s1-add-license-dco-and-contributing: ready-for-dev
+  e20-s2-add-spdx-headers-policy-for-new-files: ready-for-dev
+  e20-s3-add-backend-about-endpoint: backlog
+  e20-s4-add-frontend-license-footer: backlog
+  e20-s5-add-ghcr-image-publishing-pipeline: backlog
+  epic-20-retrospective: optional
+
+  epic-11: backlog
+  e11-s1-add-env-examples-and-document-config-precedence: backlog
+  e11-s2-introduce-aspnetcore-environment-beta: backlog
+  e11-s3-make-next-config-environment-driven: backlog
+  epic-11-retrospective: optional
+
+  epic-12: backlog
+  e12-s1-add-backend-dockerfile-multistage: backlog
+  e12-s2-add-frontend-dockerfile-standalone: backlog
+  e12-s3-add-custom-keycloak-image-with-spi: backlog
+  e12-s4-add-optional-docker-compose-full: backlog
+  epic-12-retrospective: optional
+
+  epic-13: backlog
+  e13-s1-create-railway-project-and-services: backlog
+  e13-s2-configure-railway-environment-variables: backlog
+  e13-s3-enforce-public-and-private-networking: backlog
+  e13-s4-add-health-probes-and-first-deploy: backlog
+  epic-13-retrospective: optional
+
+  epic-15: backlog
+  e15-s1-verify-two-postgres-separation: backlog
+  e15-s2-add-database-automigrate-toggle: backlog
+  e15-s3-add-daily-postgres-backup-to-rustfs: backlog
+  e15-s4-document-beta-seeding-strategy: backlog
+  epic-15-retrospective: optional
+
+  epic-16: backlog
+  e16-s1-verify-frontend-public-urls: backlog
+  e16-s2-validate-end-to-end-oidc-in-beta: backlog
+  e16-s3-validate-document-upload-against-rustfs: backlog
+  epic-16-retrospective: optional
+
+  epic-14: backlog
+  e14-s1-secrets-audit-and-repo-cleanup: backlog
+  e14-s2-review-security-headers-and-https: backlog
+  e14-s3-verify-hangfire-dashboard-dev-only: backlog
+  e14-s4-add-rate-limiting-baseline: backlog
+  e14-s5-audit-logs-for-sensitive-data: backlog
+  epic-14-retrospective: optional
+
+  epic-17: backlog
+  e17-s1-restrict-serilog-to-console-in-containers: backlog
+  e17-s2-validate-structured-logs-with-correlation-id: backlog
+  e17-s3-add-frontend-api-health-endpoint: backlog
+  e17-s4-add-external-uptime-monitoring: backlog
+  epic-17-retrospective: optional
+
+  epic-18: backlog
+  e18-s1-author-runbook-beta: backlog
+  e18-s2-author-beta-tester-onboarding-guide: backlog
+  e18-s3-add-beta-banner-in-ui: backlog
+  e18-s4-add-feedback-channel: backlog
+  epic-18-retrospective: optional
+
+  epic-19: backlog
+  e19-s1-add-custom-domain-runbook-entry: backlog
+  e19-s2-perform-backup-restore-drill: backlog
+  e19-s3-define-production-gate-checklist: backlog
+  e19-s4-document-postal-smtp-migration-plan: backlog
+  epic-19-retrospective: optional
+
+  # === DEFERRED backlog — pre-Beta-pivot work (resumes after Beta validation) ===
   # Epics 4-8 were consciously reset to 'backlog' on 2026-05-14 because the
-  # generic-platform initiative (E9 + E10) preempts them. Story files for many
-  # E4-E8 stories already exist on disk from the pre-pivot planning pass, but
-  # they are intentionally HELD at backlog and NOT auto-upgraded to
-  # ready-for-dev — the pivot decision outranks file-presence detection.
-  # When E4-E8 resume, E10 must already be done so the external API route group
-  # (E8) is covered by module enforcement from day one.
+  # generic-platform initiative (E9 + E10) preempted them. SCP-2026-05-15
+  # extended this hold: E11-E20 (Beta + OSS) now preempt E4-E8 as well.
+  # Story files for many E4-E8 stories already exist on disk from the pre-pivot
+  # planning pass, but they are intentionally HELD at backlog and NOT
+  # auto-upgraded to ready-for-dev — the pivot decisions outrank file-presence
+  # detection. When E4-E8 resume, E10 must already be done (it is) so the
+  # external API route group (E8) is covered by module enforcement from day
+  # one, and E14-S4 (rate-limiting baseline) must already be done so external
+  # API routes inherit the rate-limit policy.
   epic-4: backlog
   e4-s1-add-event-fee-configuration: backlog
   e4-s2-connect-paid-registration-to-finance: backlog
