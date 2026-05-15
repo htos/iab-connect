@@ -12,8 +12,9 @@ inputDocuments:
   - 'docs/09_decisions_log.md'
   - '_bmad-output/project-context.md'
   - '_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-14.md'
+  - '_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-15.md'
 stepsCompleted: ['step-e-01-discovery', 'step-e-02-review', 'step-e-03-edit']
-lastEdited: '2026-05-14'
+lastEdited: '2026-05-15'
 editHistory:
   - date: '2026-05-14'
     changes: 'Generic positioning revision per Sprint Change Proposal 2026-05-14: repositioned as a configurable white-label organization management platform; added PRD-native REQ-086 (Generic Positioning & White-Label Branding) and REQ-087 (Module Configuration & Access Enforcement) with acceptance criteria; updated Executive Summary, Product Goals, Business Outcomes, Users and Stakeholders, Scope, Product Principles, NFRs, Success Metrics, MVP Definition, Roadmap, Risks, and the Requirement Traceability Appendix; OD-1 recorded (REQ-086/087 PRD-native).'
@@ -21,6 +22,10 @@ editHistory:
     changes: 'Post-validation simple fixes (prd-validation-report-2026-05-14): added classification frontmatter (domain general, projectType web_app); generalized the SystemSettings reference in Product Principle #5 and the REQ-086 acceptance criteria to a technology-neutral "configurable application settings store".'
   - date: '2026-05-14'
     changes: 'Validation-guided edit (prd-validation-report-2026-05-14): added Critical User Journey "Admin Configures the Platform" covering REQ-086 branding and REQ-087 module configuration with three-layer enforcement — closes the report''s sole Warning (REQ-086/087 traceability gap) and raises their Traceable score to 5; quantified the Performance NFRs with measurable targets (list/search endpoint p95 < 1s at up to 50 concurrent users, default/max page size 25/100, page-interaction p95 < 2s, export 10s threshold), closing the carry-over measurability observation.'
+  - date: '2026-05-15'
+    changes: 'Beta-on-Railway and Open Source Foundation pivot per Sprint Change Proposal 2026-05-15: added PRD-native REQ-088 (Beta Deployment Readiness) and REQ-089 (Open Source License Surface) with acceptance criteria; added Product Principles 10 (Open Source by Default) and 11 (Deployment-Target Portability); added Operations and Deployment FR subsection; added Beta and Open Source Acceptance Criteria section; added Beta Environment Operations NFR subsection; restructured Recommended Roadmap to make Beta-on-Railway (E11–E20) the active sprint wave with Deferred Backlog (E4–E8) demoted; expanded Out of Scope with Beta-specific items; expanded Risks and Open Questions with SCP §9 items and recorded OD-6 (requirements-status doc out of sync with closed epics E1/E2/E3/E9/E10); updated REQ-086/REQ-087 status to Done in traceability appendix per Epic-9/Epic-10 retros; added REQ-088/REQ-089 rows to traceability appendix.'
+  - date: '2026-05-15'
+    changes: 'Post-validation simple fixes (prd-validation-report-2026-05-15): added two Success Metrics lines for REQ-088 (Beta Deployment Readiness) and REQ-089 (Open Source License Surface) analogous to the existing REQ-086/087 entries — closes the report''s sole Warning and raises the REQ-088/089 SMART Traceable score from 4 to 5; generalized the "Mailtrap Sandbox" reference in the Operations and Deployment FR statement to "a non-delivering sandbox provider" — closes the FR/AC inconsistency informational finding and keeps the PRD provider-agnostic per SCP-2026-05-15 §2 rationale (specific provider name remains in Architecture ADR-018).'
 ---
 
 # IAB Connect Product Requirements Document
@@ -46,6 +51,8 @@ IAB Connect is a configurable, white-label organization management platform for 
 The product is already a substantial Brownfield application rather than an unstarted MVP. The current requirements corpus contains 85 tracked requirements, with 71 marked Done and 14 still in Backlog as of 2026-05-11. Two PRD-native requirements — REQ-086 (Generic Positioning & White-Label Branding) and REQ-087 (Module Configuration & Access Enforcement) — extend that corpus to remove the hardcoded single-organization positioning. The PRD therefore defines the target product and the remaining product gaps while preserving the implemented modular monolith architecture and delivery constraints.
 
 The product goal is to give organization administrators, board or committee members, treasurers, event managers, and members a single secure system for daily organizational work, replacing spreadsheet-driven and manually coordinated workflows with auditable, role-aware, multilingual web workflows. The platform ships as a single-tenant deployment per organization; generic positioning means each deployment is brandable and module-configurable, not multi-tenant.
+
+The platform is released as Open Source under the GNU Affero General Public License version 3.0 or later (AGPL-3.0-or-later), with public container images and a documented reference Beta deployment on Railway. Self-hosters can run the identical reference stack locally via Docker Compose. Source-code disclosure is exposed to running users through a frontend footer link and an unauthenticated `/about` endpoint that reports name, license, version, commit SHA, build date, and source URL (AGPL §13 compliance).
 
 ## Product Goals
 
@@ -177,7 +184,12 @@ The remaining known Backlog requirements are:
 | REQ-056 | Operations & Quality | Basic Accessibility | Should |
 | REQ-058 | Operations & Quality | API / Webhooks | Could |
 
-Beyond the 14 CSV-sourced Backlog requirements, two PRD-native requirements are added by this revision: REQ-086 (Generic Positioning & White-Label Branding) and REQ-087 (Module Configuration & Access Enforcement). They are net-new platform-configuration capabilities not present in the source requirements corpus and are tracked through Epics E9 and E10. See the Functional Requirements "Platform Configuration" subsection.
+Beyond the 14 CSV-sourced Backlog requirements, four PRD-native requirements are added by successive PRD revisions:
+
+- REQ-086 (Generic Positioning & White-Label Branding) and REQ-087 (Module Configuration & Access Enforcement) — net-new platform-configuration capabilities, tracked through Epics E9 and E10 (now closed per Epic-9 and Epic-10 retros). See the Functional Requirements "Platform Configuration" subsection.
+- REQ-088 (Beta Deployment Readiness) and REQ-089 (Open Source License Surface) — net-new operations-and-deployment capabilities introduced by Sprint Change Proposal 2026-05-15, tracked through Epics E11–E20. See the Functional Requirements "Operations and Deployment" subsection.
+
+The status doc `docs/10_requirements_status.md` carries the 71-Done / 14-Backlog snapshot as of 2026-05-11 and has not yet been updated to reflect the closures of Epics E1, E2, E3, E9, and E10; see OD-6 in Risks and Open Questions.
 
 ## Scope
 
@@ -202,6 +214,12 @@ Beyond the 14 CSV-sourced Backlog requirements, two PRD-native requirements are 
 - Non-Keycloak identity authority as the primary account source.
 - Hard deletion of finance and other compliance-sensitive records where retention is required.
 - Replacing the modular monolith with a distributed architecture for MVP work.
+- Production deployment for the Beta release: Epic E19 prepares Production readiness (custom-domain runbook, restore drill, gate checklist, self-hosted SMTP migration plan) but the Production-Go-Live deployment itself is a separate decision after Beta validation.
+- Real outbound mail delivery in the Beta environment: outbound mail is routed to a sandbox SMTP destination so the application does not deliver mail to real recipients.
+- Custom domains in the Beta environment: services use the deployment target's default public domains; custom-domain migration is a Production-prep story in Epic E19.
+- Off-site backup replication during Beta: backups share an object-storage volume with primary document storage. Off-site replication is a Production-prep story in Epic E19.
+- Mass SPDX-header sweep across the existing codebase: SPDX headers apply to new files only during Beta; a sweep across existing files is a follow-up story after Beta.
+- Officially supported deployment targets beyond the reference Beta target and local Docker Compose: other deployment targets (VPS, Kubernetes, alternative PaaS) are not precluded by the architecture but are not officially documented for the Beta phase.
 
 ## Product Principles
 
@@ -214,6 +232,8 @@ Beyond the 14 CSV-sourced Backlog requirements, two PRD-native requirements are 
 7. MVP and follow-on delivery should extend the single-tenant modular monolith rather than introduce separate deployables.
 8. User-facing frontend text must use next-intl translation keys.
 9. Authenticated UI must follow the existing page layout, shared components, orange primary actions, and searchable/filterable list patterns.
+10. Open Source by Default. All product surfaces — UI, API, deployment configuration, container images — are released under AGPL-3.0-or-later. Third-party dependencies must be license-compatible with AGPL-3.0-or-later. New source files carry SPDX identifiers. Contributions are accepted under DCO sign-off.
+11. Deployment-Target Portability. The platform must run identically on a developer workstation (Docker Compose) and on the reference Beta target (Railway). Configuration is environment-variable-driven; environment-specific code branches are limited to existing `IsDevelopment()` checks, which remain Development-only and do not extend to Beta or Production.
 
 ## Functional Requirements
 
@@ -287,6 +307,13 @@ These requirements are PRD-native (not sourced from the requirements CSV) and re
 
 - Provide admin-configurable organization identity and white-label branding so no user-visible string hardcodes a specific organization. PRD-native: REQ-086.
 - Provide admin-controlled module configuration so functional modules can be enabled or disabled per deployment, with enforcement at navigation, routing, and backend/API layers. PRD-native: REQ-087.
+
+### Operations and Deployment
+
+These requirements are PRD-native (not sourced from the requirements CSV) and define the Beta release and Open Source foundation. They are tracked through Epics E11–E20.
+
+- Provide a Beta deployment on Railway built from versioned public container images, with environment-variable-driven configuration, two managed PostgreSQL instances, self-hosted RustFS, daily encrypted PostgreSQL backups, health probes, a tester-visible BETA banner, retention enforcement disabled, and outbound mail routed to a non-delivering sandbox provider so the application does not deliver mail to real recipients during Beta. PRD-native: REQ-088.
+- Provide an Open Source license surface comprising AGPL-3.0-or-later licensing of the application source, dependency NOTICE, contributor guide with DCO sign-off enforcement, an unauthenticated `/about` endpoint reporting `{ name, license, version, commitSha, buildDate, sourceUrl }`, a frontend footer linking to source, SPDX headers on new files, and OCI provenance labels on published images. PRD-native: REQ-089.
 
 ## Backlog Acceptance Criteria
 
@@ -427,6 +454,33 @@ These criteria refine the two PRD-native platform-configuration requirements. Th
 - Cross-module dependencies are handled: when a dependent module is disabled, dependent workflows such as paid event registration requiring Finance degrade safely rather than break.
 - Existing functionality is unchanged when a module is enabled; all modules are enabled by default.
 
+## Beta and Open Source Acceptance Criteria
+
+These criteria refine the two PRD-native operations-and-deployment requirements. They make REQ-088 and REQ-089 implementation-ready for Epics E11–E20.
+
+### REQ-088 Beta Deployment Readiness
+
+- The application is deployable to the Beta target via published, versioned container images for the `api`, `web`, and `keycloak` services, each tagged with a moving `:beta` tag and an immutable per-commit tag.
+- Build artifacts are produced by a continuous-integration pipeline on push to the `beta` branch and published to a public container registry under the project's organization namespace.
+- The Beta deployment uses two managed PostgreSQL instances — one for the application and one for the identity provider — and a self-hosted S3-compatible object storage instance with a persistent volume for document storage.
+- All secrets are supplied at runtime through deployment-target environment variables; the repository contains no production secrets and the built container images contain no embedded secrets.
+- The Beta environment exposes health endpoints consumed by the deployment target's healthchecks (`/health/ready` on the API and `/api/health` on the web service).
+- A daily PostgreSQL backup job runs against the application database and writes encrypted dumps to a dedicated `backups` bucket on the object storage instance with 30-day retention.
+- The tester-facing UI shows a persistent dismissable "BETA" banner driven by a public environment-label variable.
+- The retention-enforcement recurring job is disabled in Beta to prevent retention-driven deletion of tester data while retention defaults are not yet final per deployment.
+- Outbound mail in Beta is routed to a non-delivering sandbox provider; the application does not deliver mail to real recipients in this environment.
+- A documented Beta runbook covers deployment, rollback via redeploy of a previous immutable image tag, database restore, common incidents, and tester-onboarding steps.
+
+### REQ-089 Open Source License Surface
+
+- The repository root contains a `LICENSE` file with the full AGPL-3.0-or-later text and a `NOTICE.md` listing direct production dependencies with their declared licenses.
+- The repository root contains a `CONTRIBUTING.md` explaining the DCO sign-off requirement and the contribution workflow.
+- The protected branches require DCO sign-off via a continuous-integration check; pull requests without a `Signed-off-by:` trailer fail status.
+- The frontend renders a persistent footer on every page with the project name, license name, and a link to the `/about` endpoint.
+- The backend exposes an unauthenticated `GET /about` endpoint returning JSON `{ name, license, version, commitSha, buildDate, sourceUrl }`; `commitSha` and `buildDate` are injected at container build time.
+- New source files committed after this requirement is implemented include an SPDX header (`SPDX-License-Identifier: AGPL-3.0-or-later`). A mass sweep of existing files is out of scope for the Beta release and may be pursued in a follow-up story.
+- Published container images carry OCI labels for source URL, license (`AGPL-3.0-or-later`), revision, and build timestamp.
+
 ## Non-Functional Requirements
 
 ### Security
@@ -472,6 +526,14 @@ These criteria refine the two PRD-native platform-configuration requirements. Th
 - Existing DE/EN behavior should be preserved.
 - Basic accessibility should become an explicit acceptance baseline for new UI and when touching existing high-traffic workflows.
 
+### Beta Environment Operations
+
+- Availability target for Beta is best-effort with no service-level agreement. External uptime monitoring polls `/health/ready` every 5 minutes and alerts on three consecutive failures.
+- Recovery point objective for Beta is 24 hours, sized by the daily PostgreSQL backup cadence.
+- Recovery time objective for Beta is 1 hour, sized by manual `pg_restore` plus container redeploy.
+- Tester data is classified as personal data under DSGVO; a data-processing agreement with the deployment-target provider (Article 28) must be in place before tester onboarding.
+- Beta and Production share the same hardening profile (HSTS, HTTPS redirect, strict CORS, Swagger and Hangfire Dashboard off); Beta differs from Production only in the tester-visible banner, auto-migration on startup, and the sandboxed SMTP destination.
+
 ## Success Metrics
 
 The product is successful for release planning when the following can be demonstrated:
@@ -487,6 +549,8 @@ The product is successful for release planning when the following can be demonst
 - Basic accessibility checks are completed for touched public pages, forms, navigation, and high-traffic authenticated workflows.
 - No user-visible surface hardcodes a specific organization; organization identity and branding render from configurable settings or translation keys (REQ-086).
 - All seven functional modules can be enabled or disabled by an admin, settings persist, and disabled-module access is blocked at navigation, routing, and backend/API layers (REQ-087).
+- The application is deployable to the reference Beta target via versioned public container images for the api, web, and keycloak services; configuration is environment-variable-driven; the application database is backed up daily with encrypted dumps retained for 30 days; health probes are wired to the deployment target's healthchecks; the tester-facing UI shows a persistent BETA banner; outbound mail is routed to a non-delivering sandbox provider (REQ-088).
+- The repository carries a `LICENSE` (AGPL-3.0-or-later), `NOTICE.md` (direct production dependency licenses), and `CONTRIBUTING.md` (DCO sign-off requirement); protected branches enforce DCO sign-off via a CI check; the running application exposes source-disclosure through an unauthenticated `/about` endpoint and a frontend footer; published container images carry OCI provenance labels (REQ-089).
 
 ## MVP Definition
 
@@ -505,40 +569,54 @@ MVP is considered releasable when:
 
 ## Recommended Roadmap
 
-### Generic Positioning (Highest Priority)
+### Recently Shipped
 
-Per Sprint Change Proposal 2026-05-14 (OD-3, resolved), the generic-positioning work preempts the previously planned Epics E4–E8:
+The following epics have closed retros and are reflected in `_bmad-output/implementation-artifacts/sprint-status.yaml`:
 
-- REQ-086 Generic Positioning & White-Label Branding (Epic E9).
-- REQ-087 Module Configuration & Access Enforcement (Epic E10).
-- Sequence: E9 (de-branding) before E10 (module configuration and enforcement). E10 stays sequenced before E8 (External Integration Surface) when E4–E8 resume, so the external API route group is covered by module enforcement from day one.
+- Epic E1 — Security Foundation (MFA, session and device management, social/enterprise identity provider — provider story deferred).
+- Epic E2 — Member Data Quality (duplicate detection, review, and safe merge).
+- Epic E3 — Event Operations (check-in roster and export, QR and manual check-in, volunteer planning, calendar feed).
+- Epic E9 — Generic Positioning & White-Label Branding (REQ-086).
+- Epic E10 — Module Configuration & Access Enforcement (REQ-087).
+
+The corresponding REQ status entries in `docs/10_requirements_status.md` for REQ-009, REQ-010, REQ-018, REQ-023, REQ-024, REQ-025 are out of sync with these closures (OD-6); the status doc remains the source of truth and must be updated as a separate task before the per-REQ traceability appendix can reflect Done state.
+
+### Beta Release on Railway (Highest Priority)
+
+Per Sprint Change Proposal 2026-05-15, the Beta-on-Railway and Open Source Foundation initiative is the active sprint focus and preempts the Deferred Backlog below. It is driven by the two PRD-native requirements REQ-088 and REQ-089 across Epics E11–E20.
+
+- Epic E11 — Environment and Configuration Management for Beta.
+- Epic E12 — Dockerization (backend, frontend, custom Keycloak image with SPI baked in).
+- Epic E13 — Railway Beta deployment (project + services, environment variables, networking, health probes, first deploy).
+- Epic E14 — Security and Secrets Management (secrets audit, security headers, Hangfire-dashboard verification, rate limiting, log audit).
+- Epic E15 — Database, Persistence, and Migrations (two-Postgres separation, `Database__AutoMigrate` toggle, daily PostgreSQL backup, Beta seeding).
+- Epic E16 — Frontend ↔ Backend Integration on Railway (public URLs, end-to-end OIDC, document upload/download against RustFS).
+- Epic E17 — Monitoring, Logging, and Health Checks (Serilog Console-only, structured logs with CorrelationId, frontend health endpoint, external uptime monitoring).
+- Epic E18 — Beta Test Preparation and Operations Documentation (runbook, tester onboarding guide, BETA banner, feedback channel).
+- Epic E19 — Production Readiness Preparation (custom-domain runbook, backup-restore drill, production gate checklist, self-host SMTP migration plan).
+- Epic E20 — Open Source Foundation (LICENSE/NOTICE/CONTRIBUTING, DCO enforcement, SPDX policy, backend `/about` endpoint, frontend license footer, GHCR image publishing pipeline).
+
+Suggested implementation waves are documented in Sprint Change Proposal 2026-05-15 §6.
+
+### Deferred Backlog
+
+These epics are deliberately held until the Beta-on-Railway sprint completes. Story files for many of them are pre-authored on disk but remain at backlog and are not auto-upgraded to ready-for-dev.
+
+- Epic E4 — Event Monetization (REQ-022 Event Ticketing / Fees).
+- Epic E5 — Communication Automation (REQ-028 Automations / Journeys; REQ-030 Multi-channel Messages).
+- Epic E6 — Finance Planning (REQ-044 Budgets and Cost Centers).
+- Epic E7 — Quality Baseline (REQ-055 Multilingual DE/EN/HI; REQ-056 Basic Accessibility).
+- Epic E8 — External Integration Surface (REQ-058 API / Webhooks).
+- Pending identity-provider decisions: REQ-006 Social / Enterprise Logins (E1-S5 deferred pending provider credentials, scopes, and account-linking decisions).
+
+When E4–E8 resume, the E10 module enforcement already in place ensures that the external API route group introduced by E8 is covered by module-availability checks from day one.
 
 ### Release Readiness
 
-- Validate the 71 Done requirements against code and tests.
+- Validate Done requirements against code and tests.
 - Confirm whether any Done notes contain known limitations that affect release, especially audit login tracking and event QR check-in.
 - Run backend and frontend quality gates.
 - Validate local infrastructure startup and documented login/setup flows.
-
-### Should-Have Completion
-
-- REQ-006 Social / Enterprise Logins.
-- REQ-009 Multi-factor Authentication.
-- REQ-010 Session and Device Management.
-- REQ-018 Duplicate Detection.
-- REQ-022 Event Ticketing / Fees.
-- REQ-024 Volunteer Planning and Tasks.
-- REQ-028 Automations / Journeys.
-- REQ-056 Basic Accessibility.
-
-### Could-Have Enhancements
-
-- REQ-023 On-site QR Check-in improvements if not already production-ready.
-- REQ-025 Calendar Integration.
-- REQ-030 Multi-channel Messages.
-- REQ-044 Budgets and Cost Centers.
-- REQ-055 DE/EN/HI multilingual expansion.
-- REQ-058 APIs and Webhooks.
 
 ## Risks and Open Questions
 
@@ -552,11 +630,19 @@ Per Sprint Change Proposal 2026-05-14 (OD-3, resolved), the generic-positioning 
 - OD-4 (resolved): the internal `IabConnect.*` namespace and assembly rename is out of scope — internal-only, high-churn, no user-visible value.
 - OD-5 (open, UX decision): behavior of public routes when the Public View module is disabled — redirect to login versus a minimal "site not public" page. Belongs to `bmad-create-ux-design`; recommendation is a minimal neutral page.
 - The requirements CSV filename (`Anforderungen_WebApp_Indischer_Kulturverein.csv`) and parts of `docs/` still carry the original organization name; a documentation refresh is a follow-up to the generic-positioning epics.
+- OD-6 (open, documentation-sync): `docs/10_requirements_status.md` is out of sync with the closed epics E1, E2, E3, E9, and E10. The status doc still lists REQ-009, REQ-010, REQ-018, REQ-023, REQ-024, REQ-025 as Backlog even though their owning epics have shipped per `sprint-status.yaml` and the Epic-1/2/3/9/10 retros. The PRD treats the status doc as the source of truth (Product Principle 4) and therefore does not unilaterally flip these statuses to Done. A separate documentation-sync task must update the status doc; the PRD's Requirement Traceability Appendix can be updated to match after that sync.
+- The Open Source contribution model uses DCO sign-off; DCO grants the rights AGPL-3.0-or-later requires but does not by itself authorize commercial dual-licensing. Any future commercial dual-license decision requires explicit per-contributor consent.
+- The Beta object-storage backend is pinned to RustFS at the upstream `:latest` tag; the project should pin a specific tag once a stable release exists and document the pinning rationale.
+- The frontend `NEXT_PUBLIC_API_URL` is build-time-constant; any future API-URL change (such as a custom-domain swap) requires a frontend image rebuild and redeploy. Documented in the Beta runbook.
+- The Beta SMTP destination (sandbox provider) has free-tier limits typically around 100 mails per day; a Beta with many testers may hit the cap and need a plan upgrade or earlier transition to a self-hosted SMTP path (Epic E19-S4).
+- Deployment-target pricing and free-tier limits are outside the project's control; if the deployment target becomes non-viable, the same architecture transplants to a Hetzner Cloud + Docker Compose self-host path that is documented in the runbook.
+- The Beta backup destination shares an object-storage volume with primary document storage; a catastrophic volume loss would take down both. This single-failure-domain risk is accepted for the Beta phase and addressed in E19 (off-site backup replication for Production).
+- The retention-enforcement Hangfire job is disabled in Beta to protect tester data while retention defaults are not yet finalized per deployment; retention behavior must be explicitly re-validated and re-enabled as part of Production-readiness.
 
 ## Requirement Traceability Appendix
 
-Status source: `docs/10_requirements_status.md`.
-Requirement content source: `docs/Anforderungen_WebApp_Indischer_Kulturverein.csv` for REQ-001 through REQ-085. REQ-086 and REQ-087 are PRD-native — defined in this PRD and not in the CSV (see Product Principles and OD-1).
+Status source: `docs/10_requirements_status.md` for REQ-001 through REQ-085 (see OD-6 for the documentation-sync gap with recently closed epics). For PRD-native requirements (REQ-086, REQ-087, REQ-088, REQ-089) the PRD itself is the source of truth for status.
+Requirement content source: `docs/Anforderungen_WebApp_Indischer_Kulturverein.csv` for REQ-001 through REQ-085. REQ-086 and REQ-087 are PRD-native — defined in this PRD and not in the CSV (see Product Principles and OD-1). REQ-088 and REQ-089 are PRD-native — defined in this PRD and added by Sprint Change Proposal 2026-05-15. REQ-086 and REQ-087 are marked Done in this table per the Epic-9 and Epic-10 retros even while OD-6 keeps the CSV-sourced REQ statuses unchanged.
 
 | ID | Area | Requirement | Priority | Status | PRD Section | Acceptance Criteria |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -645,8 +731,10 @@ Requirement content source: `docs/Anforderungen_WebApp_Indischer_Kulturverein.cs
 | REQ-083 | Finanzen | Verknuepfung Subledger zu Hauptbuch | Should | Done | Finance and Accounting | Inherited from source requirement/status evidence |
 | REQ-084 | Finanzen | Backfill fuer bestehende Daten bei DoubleEntry-Aktivierung | Should | Done | Finance and Accounting | Inherited from source requirement/status evidence |
 | REQ-085 | Finanzen | Tests fuer Posting und Balance Regeln | Should | Done | Finance and Accounting | Inherited from source requirement/status evidence |
-| REQ-086 | Platform Configuration | Generic Positioning & White-Label Branding | Must | Backlog | Platform Configuration | Expanded in Platform Configuration Acceptance Criteria |
-| REQ-087 | Platform Configuration | Module Configuration & Access Enforcement | Must | Backlog | Platform Configuration | Expanded in Platform Configuration Acceptance Criteria |
+| REQ-086 | Platform Configuration | Generic Positioning & White-Label Branding | Must | Done | Platform Configuration | Expanded in Platform Configuration Acceptance Criteria |
+| REQ-087 | Platform Configuration | Module Configuration & Access Enforcement | Must | Done | Platform Configuration | Expanded in Platform Configuration Acceptance Criteria |
+| REQ-088 | Operations and Deployment | Beta Deployment Readiness | Must | Backlog | Operations and Deployment | Expanded in Beta and Open Source Acceptance Criteria |
+| REQ-089 | Operations and Deployment | Open Source License Surface | Must | Backlog | Operations and Deployment | Expanded in Beta and Open Source Acceptance Criteria |
 
 ## Acceptance Criteria for This PRD
 
@@ -659,4 +747,7 @@ Requirement content source: `docs/Anforderungen_WebApp_Indischer_Kulturverein.cs
 - The PRD is repositioned as a generic, configurable white-label organization management platform, with single-organization positioning removed from the Executive Summary, Product Goals, Business Outcomes, Users and Stakeholders, and Scope.
 - PRD-native requirements REQ-086 (Generic Positioning & White-Label Branding) and REQ-087 (Module Configuration & Access Enforcement) are defined, given acceptance criteria, and added to the traceability appendix.
 - OD-1 is recorded: REQ-086 and REQ-087 are PRD-native and not added to the organization-specific requirements CSV.
-- The document is ready for `bmad-validate-prd` and follow-on architecture or epic/story planning.
+- Sprint Change Proposal 2026-05-15 PRD-delta is merged: PRD-native requirements REQ-088 (Beta Deployment Readiness) and REQ-089 (Open Source License Surface) are defined with acceptance criteria; Product Principles 10 (Open Source by Default) and 11 (Deployment-Target Portability) are added; the Recommended Roadmap places Beta-on-Railway (E11–E20) as the active sprint focus and demotes E4–E8 to Deferred Backlog; the Out of Scope and Risks and Open Questions sections capture Beta-specific scope and risk decisions.
+- OD-6 is recorded as open: `docs/10_requirements_status.md` is out of sync with the closed Epics E1, E2, E3, E9, and E10; the status doc remains the source of truth for CSV-sourced REQs and must be updated as a separate task before the per-REQ statuses for REQ-009, REQ-010, REQ-018, REQ-023, REQ-024, and REQ-025 can be flipped to Done in the traceability appendix.
+- REQ-088 and REQ-089 trace to Product Principle 10 and Product Principle 11 (and to Business Outcome around portability and OSS transparency) rather than to a Critical User Journey, because Beta deployment and source-disclosure are maintainer-and-deployer operations rather than end-user journeys.
+- The document is ready for `bmad-validate-prd` and follow-on architecture (`bmad-create-architecture` for ADR-009 through ADR-021) and epic/story (`bmad-create-epics-and-stories` for E11–E20) planning per Sprint Change Proposal 2026-05-15 §10.
