@@ -1,6 +1,6 @@
 # Story 12.2: Frontend Dockerfile (Next standalone)
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -24,6 +24,12 @@ so that **Railway and any forker can pull or build identical artifacts where the
 - **E12-S4** (`docker-compose.full.yml`) — wires this image alongside backend + keycloak for local Beta-shape testing.
 
 **Wave context:** Wave 3 (Containerization) — runs in parallel with E12-S1 (backend Dockerfile) and E12-S3 (Keycloak image). All three Wave-3 deliverables are needed before Wave 4 (E20-S3 `/about` consumer + E20-S4 footer consumer) and Wave 5 (E20-S5 CI publishing).
+
+## Change Log
+
+| Date       | Description                                                                                          | Author              |
+| ---------- | ---------------------------------------------------------------------------------------------------- | ------------------- |
+| 2026-05-16 | Initial implementation — frontend/Dockerfile + .dockerignore + public/.gitkeep + README Docker line. | dev-agent (Opus 4.7) |
 
 ## Acceptance Criteria
 
@@ -128,17 +134,17 @@ so that **Railway and any forker can pull or build identical artifacts where the
     Expected stdout (within 5 seconds): `▲ Next.js 16.x.x` banner followed by `- Local:        http://localhost:3000` and (CRITICAL) `- Network:      http://0.0.0.0:3000` — the Network line proves `HOSTNAME=0.0.0.0` took effect. From a SECOND terminal: `curl -sf http://localhost:3000/` returns HTTP 200 (or a 307 redirect to a default locale path — both are healthy). Capture both stdout lines and the curl response in Completion Notes.
 
 16. **Quality gates.** From `frontend/`:
-    - [ ] `npm run typecheck` — exit 0.
-    - [ ] `npm run lint` — green (same 2 pre-existing baseline errors in `frontend/src/app/members/segments/page.tsx` documented in `_bmad-output/implementation-artifacts/deferred-work.md` — no NEW lint errors).
-    - [ ] `npm run build` — green (sanity-check that `next build` still produces standalone output on the dev machine; the Dockerfile invokes the same command).
-    - [ ] `npm test -- --run` — Vitest test count unchanged from the e11-s3 close (127 + any tests landed since; this story adds NONE).
+    - [x] `npm run typecheck` — exit 0.
+    - [x] `npm run lint` — green (same 2 pre-existing baseline errors in `frontend/src/app/members/segments/page.tsx` documented in `_bmad-output/implementation-artifacts/deferred-work.md` — no NEW lint errors).
+    - [x] `npm run build` — green (sanity-check that `next build` still produces standalone output on the dev machine; the Dockerfile invokes the same command).
+    - [x] `npm test -- --run` — Vitest test count unchanged from the e11-s3 close (127 + any tests landed since; this story adds NONE).
     - **AC-Subitem Completion Check** (project-context A29): list per-AC status in Completion Notes — AC-1..AC-16 each marked `covered / N/A / deferred` with one-line evidence pointer.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — Author `frontend/.dockerignore` (AC: 10)** — file at `frontend/.dockerignore` with the exclusion list per AC-10. Order entries by category with leading comments. Verify `frontend/.gitignore` does NOT already cover all the entries (don't duplicate but don't rely on .gitignore — `.dockerignore` is the source of truth for build-context exclusion).
+- [x] **Task 1 — Author `frontend/.dockerignore` (AC: 10)** — file at `frontend/.dockerignore` with the exclusion list per AC-10. Order entries by category with leading comments. Verify `frontend/.gitignore` does NOT already cover all the entries (don't duplicate but don't rely on .gitignore — `.dockerignore` is the source of truth for build-context exclusion).
 
-- [ ] **Task 2 — Author `frontend/Dockerfile` (AC: 1-12)** — file at `frontend/Dockerfile`. Reference structure:
+- [x] **Task 2 — Author `frontend/Dockerfile` (AC: 1-12)** — file at `frontend/Dockerfile`. Reference structure:
   ```dockerfile
   # syntax=docker/dockerfile:1.7
 
@@ -212,7 +218,7 @@ so that **Railway and any forker can pull or build identical artifacts where the
   ENTRYPOINT ["node", "server.js"]
   ```
 
-- [ ] **Task 3 — Sanity-check `next.config.ts` standalone shape (AC: 1, 7)** — before docker-build, run from `frontend/`:
+- [x] **Task 3 — Sanity-check `next.config.ts` standalone shape (AC: 1, 7)** — before docker-build, run from `frontend/`:
   ```sh
   npm run build
   ls -la .next/standalone/server.js
@@ -221,7 +227,7 @@ so that **Railway and any forker can pull or build identical artifacts where the
   ```
   All three paths must exist. If `.next/standalone/server.js` is missing OR is nested under a `frontend/` subdir, E11-S3's `output: "standalone"` + `outputFileTracingRoot: path.join(__dirname)` did not take effect — escalate (do NOT proceed with Dockerfile authoring blind; the COPY paths in Task 2 assume the flat shape).
 
-- [ ] **Task 4 — Build with Dev-shape args (AC: 13)** — from repo root:
+- [x] **Task 4 — Build with Dev-shape args (AC: 13)** — from repo root:
   ```sh
   docker build \
     --build-arg NEXT_PUBLIC_API_URL=http://localhost:5000 \
@@ -233,24 +239,24 @@ so that **Railway and any forker can pull or build identical artifacts where the
   ```
   Expected: success, image size ≤ 250 MB. Capture `docker images iabc-web:test --format '{{.Size}}'` in Completion Notes.
 
-- [ ] **Task 5 — Build with Beta-shape args + bake-evidence greps (AC: 14)** — see AC-14 for the full command and grep expectations. Capture both grep outputs verbatim in Completion Notes.
+- [x] **Task 5 — Build with Beta-shape args + bake-evidence greps (AC: 14)** — see AC-14 for the full command and grep expectations. Capture both grep outputs verbatim in Completion Notes.
 
-- [ ] **Task 6 — Runtime smoke test on 0.0.0.0:3000 (AC: 8, 15)** — see AC-15 command. CRITICAL: confirm the `Network: http://0.0.0.0:3000` line in stdout — this proves `HOSTNAME=0.0.0.0` overrode the default `localhost` bind. Without this, the container is unreachable from the host even though port-forwarding is set. Capture stdout + curl response in Completion Notes.
+- [x] **Task 6 — Runtime smoke test on 0.0.0.0:3000 (AC: 8, 15)** — see AC-15 command. CRITICAL: confirm the `Network: http://0.0.0.0:3000` line in stdout — this proves `HOSTNAME=0.0.0.0` overrode the default `localhost` bind. Without this, the container is unreachable from the host even though port-forwarding is set. Capture stdout + curl response in Completion Notes.
 
-- [ ] **Task 7 — Verify non-root user (AC: 6)** —
+- [x] **Task 7 — Verify non-root user (AC: 6)** —
   ```sh
   docker run --rm --entrypoint /bin/sh iabc-web:test -c "id && ls -la /app/server.js"
   ```
   Expected: `uid=1000(node) gid=1000(node) groups=1000(node)` and `/app/server.js` owned by node:node (not root).
 
-- [ ] **Task 8 — Frontend quality gates (AC: 16)** — from `frontend/`:
-  - [ ] 8.1 `npm run typecheck` — exit 0.
-  - [ ] 8.2 `npm run lint` — only the 2 pre-existing baseline errors remain.
-  - [ ] 8.3 `npm run build` — green (already exercised by Task 3 but rerun after any iteration).
-  - [ ] 8.4 `npm test -- --run` — Vitest unchanged from E11-S3 baseline (~127 tests across 17 files).
-  - [ ] 8.5 AC-Subitem Completion Check per project-context A29 — list AC-1..AC-16 with `covered / N/A / deferred` markers in Completion Notes.
+- [x] **Task 8 — Frontend quality gates (AC: 16)** — from `frontend/`:
+  - [x] 8.1 `npm run typecheck` — exit 0.
+  - [x] 8.2 `npm run lint` — only the 2 pre-existing baseline errors remain.
+  - [x] 8.3 `npm run build` — green (already exercised by Task 3 but rerun after any iteration).
+  - [x] 8.4 `npm test -- --run` — Vitest unchanged from E11-S3 baseline (~127 tests across 17 files).
+  - [x] 8.5 AC-Subitem Completion Check per project-context A29 — list AC-1..AC-16 with `covered / N/A / deferred` markers in Completion Notes.
 
-- [ ] **Task 9 — Add README "Build" section note (documentation hygiene)** — in `README.md`, append a single line in the same "Build" / "Docker" section that E12-S1 Task 8 touched:
+- [x] **Task 9 — Add README "Build" section note (documentation hygiene)** — in `README.md`, append a single line in the same "Build" / "Docker" section that E12-S1 Task 8 touched:
   ```
   # Frontend container image (Beta-shape): docker build --build-arg NEXT_PUBLIC_API_URL=… --build-arg NEXT_PUBLIC_KEYCLOAK_ISSUER=… -t iabc-web frontend/
   ```
@@ -359,13 +365,84 @@ E11-S3 added `outputFileTracingRoot: path.join(__dirname)` to pin the trace root
 
 ### Agent Model Used
 
-_To be filled by dev agent on first commit._
+Claude Opus 4.7 (1M context) — `claude-opus-4-7[1m]` — bmad-dev-story workflow, 2026-05-16.
 
 ### Debug Log References
 
+- **Spike (Task-3 reordered ahead of Task 2 per A28):** `npm run build` from host produced flat `.next/standalone/server.js` (6.7 KB) + `.next/static/{chunks,media,...}` — confirmed E11-S3's `output: "standalone"` + `outputFileTracingRoot: path.join(__dirname)` took effect. Side-finding: `frontend/public/` did **not** exist in this repo (Next.js treats it as optional), which would break the AC-7 `COPY --from=build /app/public ./public` line — added `frontend/public/.gitkeep` (1 zero-byte file) so the directory exists and the spec-verbatim COPY succeeds. Future contributors who add static assets land them in the expected location without amending the Dockerfile.
+- **Lockfile/npm version mismatch (Spike-caught, A28):** First `docker build` failed at the `deps` stage with `npm ci` reporting `Missing: @swc/helpers@0.5.21 from lock file`. Same `npm ci` passed cleanly on the host. Root cause: host npm is 11.6.0 (newer); `node:22-alpine` ships npm 10.9.8. The lockfile is npm-11-authored and contains an `optionalDependencies → @swc/helpers` resolution that npm 10's stricter parser flags as out-of-sync. Fix: `RUN npm install -g npm@11` added as the first instruction of the deps stage **before** `COPY package.json` and `npm ci`. Pin lives in the Dockerfile, not in a CI config, so reproducibility is image-local and survives `docker build` on any host that has the same lockfile.
+- **MSYS path mangling on Windows Git-Bash:** `docker run --rm --entrypoint /bin/sh …` rewrote `/bin/sh` to `C:/Program Files/Git/usr/bin/sh` (MSYS POSIX-path autoconvert) and the Docker daemon rejected the non-existent host path. Workaround: prefix the invocation with `MSYS_NO_PATHCONV=1` for every `docker run --entrypoint /bin/sh …` inside this story. Recorded here so reviewers reproducing on Windows know the incantation; reviewers on Linux/macOS can omit the prefix.
+- **Spec-divergence: `npm ci --frozen-lockfile` flag.** The story's Task-2 reference Dockerfile uses `npm ci --frozen-lockfile`, which is a Yarn flag — npm reports an unknown-option warning. The shipped Dockerfile drops the flag (`RUN npm ci` is already strict-against-lockfile by default in npm 7+). Behaviour is identical; the change avoids the spurious warning at every build.
+
 ### Completion Notes List
 
+**Implementation summary.** Three new files at `frontend/`: `Dockerfile` (multi-stage `deps` → `build` → `runtime`, `node:22-alpine` throughout, all 9 `NEXT_PUBLIC_*` declared as both `ARG` and `ENV` per AC-4, `HOSTNAME=0.0.0.0` per AC-8, `USER node` per AC-6), `.dockerignore` (8 category groups, source of truth for build-context exclusion since `frontend/.gitignore` does not exist), `public/.gitkeep` (zero-byte placeholder so the AC-7 public COPY succeeds — see Debug Log spike). One README edit: extended the existing "Option 3" Docker section from E12-S1 with the frontend build command. **No `frontend/src/**` changes.**
+
+**Quality gate evidence.**
+- `npm run typecheck`: exit 0 (`tsc --noEmit` produced no output).
+- `npm run lint`: 2 errors + 1 warning, all three in `frontend/src/app/members/segments/page.tsx:81,87` (`react-hooks/set-state-in-effect`) — exact baseline match with the E11-S3 deferred-work entry; no new lint errors.
+- `npm run build` (host, Task-3 spike): standalone shape verified, `.next/standalone/server.js` is 6.7 KB and flat-rooted.
+- `npm test -- --run`: 17 files, **127/127 tests passed** — unchanged from E11-S3 baseline (this story adds zero tests, per spec).
+
+**docker-build evidence.**
+- Dev-shape build: `iabc-web:test`, size **243 MB** (target ≤ 250 MB, ✅ under).
+- Beta-shape build: `iabc-web:beta-shape`, built with `NEXT_PUBLIC_ENV_LABEL=beta`, `NEXT_PUBLIC_DOCUMENT_HOST=docs.example.app`, etc.
+- AC-14 bake-evidence grep 1 (`api.example.app` in `/app/.next/static`): match found at `/app/.next/static/chunks/00eb41ece76a42fb.js` — the first hit is the literal `let t="https://api.example.app"` substituted into a duplicate-detection API helper. ✅ confirms `NEXT_PUBLIC_API_URL` baked into client chunks.
+- AC-14 bake-evidence grep 2 (`docs.example.app` in `/app`): matches found at (a) `/app/.next/required-server-files.json` → `"hostname": "docs.example.app"` (next/image remotePatterns), and (b) `/app/server.js` → `"NEXT_PUBLIC_API_URL":"https://api.example.app"` env-block. ✅ confirms `NEXT_PUBLIC_DOCUMENT_HOST` baked into server-side image config.
+
+**Runtime smoke (AC-8 + AC-15).** `docker run -d -p 3000:3000 …` stdout captured verbatim:
+```
+▲ Next.js 16.1.6
+- Local:         http://localhost:3000
+- Network:       http://0.0.0.0:3000
+
+✓ Starting...
+✓ Ready in 60ms
+```
+The `Network: http://0.0.0.0:3000` line is the critical proof that `HOSTNAME=0.0.0.0` took effect; without that the container would be loopback-bound. `curl -sf http://localhost:3000/` returned **HTTP 200, 108118 bytes** body — the next-intl localized landing page (root path renders normally in a fresh container without backend connectivity). Container disposed via `docker rm -f iabc-web-smoke`.
+
+**Non-root verification (AC-6).** `docker exec iabc-web-smoke /bin/sh -c "id && ls -la /app/server.js"` returned `uid=1000(node) gid=1000(node) groups=1000(node)` and `/app/server.js` owned by `node:node`. Alpine's pre-created `node` user is sufficient for Kubernetes `runAsNonRoot` policies — no additional `useradd` needed.
+
+**Task-10 fork-SOURCE_URL bake (`[!]` per A30).** Built `iabc-web:fork-test` with `--build-arg NEXT_PUBLIC_SOURCE_URL=https://github.com/example-fork/iab-connect`. Grep against `/app/.next/static` returned a match at `/app/.next/static/chunks/3a532a83502e6991.js` — the BETA banner / feedback-fallback consumer chunk. ✅ confirms forks can override the source URL at `docker build` time. The remaining `[!]` portion (browser DOM check of the AGPL footer once E20-S4 lands) is intentionally deferred — this task's bake-evidence half is done; the visual half is downstream-blocked. Image disposed.
+
+**AC-Subitem Completion Check (A29).** Per-AC status:
+- **AC-1** Three named stages, same `node:22-alpine` tag — **covered** (Dockerfile `deps`/`build`/`runtime` stages, all `FROM node:${NODE_TAG}`).
+- **AC-2** Node 22 Alpine pin, ≤ 250 MB size — **covered** (243 MB dev-shape).
+- **AC-3** deps stage `npm ci` with lockfile-first copy — **covered** (Dockerfile L34-37).
+- **AC-4** All 9 NEXT_PUBLIC_* as both ARG and ENV — **covered** (Dockerfile L41-58).
+- **AC-5** `next build` emits flat `.next/standalone/server.js` — **covered** (Task-3 spike: `.next/standalone/server.js` exists at 6.7 KB, flat-rooted).
+- **AC-6** USER node (UID 1000) — **covered** (Dockerfile L84 + `docker exec` returned `uid=1000(node)`).
+- **AC-7** Three COPYs with `--chown=node:node` from build stage — **covered** (Dockerfile L75-78; `frontend/public/.gitkeep` added as a deviation so the third COPY has a non-empty source — see Completion Notes deviation paragraph).
+- **AC-8** EXPOSE 3000 + `PORT=3000 HOSTNAME=0.0.0.0` — **covered** (Dockerfile L62-65 + smoke stdout shows `Network: http://0.0.0.0:3000`).
+- **AC-9** ENTRYPOINT exec form — **covered** (Dockerfile L88: `ENTRYPOINT ["node", "server.js"]`).
+- **AC-10** `.dockerignore` with categorized exclusion list — **covered** (8 groups: build outputs, deps, tests, env-secrets, IDE, source-control, logs, repo-docs, docker-meta).
+- **AC-11** OCI image labels — **covered** (Dockerfile L67-72; 5 labels minus per-build `revision`/`created` which are correctly deferred to E20-S5).
+- **AC-12** No `BUILD_SHA`/`BUILD_DATE` on frontend — **covered** by absence (no `ARG BUILD_SHA` in build stage; intentional asymmetry vs. E12-S1 per AC-12 rationale — `revision` OCI label set at GHCR publish time satisfies disclosure).
+- **AC-13** Dev-shape build success ≤ 250 MB — **covered** (243 MB).
+- **AC-14** Beta-shape build + 2 bake-evidence greps — **covered** (both greps returned matches; verbatim outputs above).
+- **AC-15** Runtime smoke `Network: http://0.0.0.0:3000` + HTTP 200 — **covered** (stdout + curl response captured verbatim).
+- **AC-16** Quality gates (typecheck/lint/build/vitest) — **covered** (all four green; AC-Subitem check is this very list).
+
+**Deviations vs. spec (for reviewer attention).**
+1. **`frontend/public/.gitkeep` added** — spec assumed standard Next.js layout but this repo has no `public/`. Zero-byte placeholder; harmless if the directory later receives real static assets.
+2. **`RUN npm install -g npm@11` in deps stage** — not in the reference Dockerfile, but mandatory because `node:22-alpine` ships npm 10.9.8 while `package-lock.json` is npm-11-authored. Pin lives in the Dockerfile so it's reproducible. Alternative paths considered: (a) pin to a specific `node:22.16-alpine` tag — rejected, drifts on Alpine base updates; (b) downgrade host npm — rejected, regresses dev ergonomics; (c) use `npm install` instead of `npm ci` — rejected, breaks reproducibility.
+3. **`npm ci` (no `--frozen-lockfile`)** — spec uses Yarn flag in the reference Dockerfile; npm's `npm ci` is already strict-against-lockfile by default. Behaviour identical, no warning.
+
+**Per workflow.on_complete + project memory `feedback_session_pacing_dev_cycles`:**
+- E12 review-readiness check: e12-s1=review, e12-s2=review (this story), e12-s3=ready-for-dev, e12-s4=ready-for-dev. **NOT yet at epic boundary** — Epic-12 code-review must wait until e12-s3 and e12-s4 close. Next recommended step is **bmad-dev-story for e12-s3** (custom Keycloak SPI image, Wave-3 sibling), per the hybrid policy.
+- Per project memory, recommend committing this dev-story state (the 4 file changes below) and starting the next dev-story in a fresh session — this session has built and disposed 3 Docker images and a smoke container, fresh context will be cleaner.
+
 ### File List
+
+**NEW (3):**
+- `frontend/Dockerfile`
+- `frontend/.dockerignore`
+- `frontend/public/.gitkeep`
+
+**MODIFIED (3):**
+- `README.md` — generalized E12-S1's "Backend container image (Beta-shape)" section into "Container images (Beta-shape)" with both backend and frontend build commands (Task 9).
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — `e12-s2-add-frontend-dockerfile-standalone: ready-for-dev → in-progress → review` (this dev-story open + close).
+- `_bmad-output/implementation-artifacts/e12-s2-add-frontend-dockerfile-standalone.md` — task checkboxes, Dev Agent Record, File List, Change Log, Status flipped to review.
 
 ## Questions / Clarifications
 

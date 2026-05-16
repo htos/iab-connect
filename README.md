@@ -349,14 +349,17 @@ npm run dev
 2. Press `Ctrl+Shift+P` → "Tasks: Run Task"
 3. Select "Start Backend" and "Start Frontend"
 
-#### Option 3: Backend container image (Beta-shape)
+#### Option 3: Container images (Beta-shape)
 
 ```bash
-# Build the multi-stage image from the repository root
+# Backend image (multi-stage; bakes BUILD_SHA / BUILD_DATE as unknown by default)
 docker build -t iabc-api backend/
+
+# Frontend image — ALL NEXT_PUBLIC_* are build-time-constant, must be passed as --build-arg
+docker build --build-arg NEXT_PUBLIC_API_URL=… --build-arg NEXT_PUBLIC_KEYCLOAK_ISSUER=… -t iabc-web frontend/
 ```
 
-The image bakes `BUILD_SHA` / `BUILD_DATE` as `unknown` by default; the full GHCR-publish flow with build-arg injection is documented separately.
+The full GHCR-publish flow with build-arg injection (commit-SHA, ISO date, the rest of the `NEXT_PUBLIC_*` set) is documented separately.
 
 ### Default Credentials
 
