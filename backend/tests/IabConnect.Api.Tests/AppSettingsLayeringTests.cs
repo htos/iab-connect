@@ -54,23 +54,29 @@ public sealed class AppSettingsLayeringTests
             .Build();
     }
 
-    // Two keys are INTENTIONALLY excluded from the cleanup theory:
-    //   - ConnectionStrings:DefaultConnection — Hangfire.UsePostgreSqlStorage eagerly opens
-    //     the connection at DI registration time, BEFORE TestWebApplicationFactory's
-    //     InMemoryCollection can override the empty base. Crashes ~57 existing API tests.
-    //   - DocumentStorage:* — Infrastructure/DependencyInjection.cs:259 calls
-    //     `.Get<DocumentStorageSettings>()` at DI registration time and bakes the value into
-    //     a Singleton IAmazonS3 factory closure. Same timing problem as Hangfire.
-    // Both cleanups are deferred to a follow-up that either makes init lazy or refactors
-    // the test infrastructure to provide config earlier. See deferred-work.md.
+    // ConnectionStrings:DefaultConnection is INTENTIONALLY excluded from the cleanup theory:
+    // Hangfire.UsePostgreSqlStorage eagerly opens the connection at DI registration time,
+    // BEFORE TestWebApplicationFactory's InMemoryCollection can override the empty base.
+    // Crashes ~57 existing API tests. Deferred until init is made lazy.
+    //
+    // DocumentStorage:* was previously deferred for the same reason — Infrastructure/
+    // DependencyInjection.cs:259 calls .Get<DocumentStorageSettings>() at DI registration
+    // time and bakes the value into a Singleton IAmazonS3 factory closure, and
+    // AmazonS3Client throws on empty AccessKey/SecretKey at first IDocumentStorage
+    // resolution. E12-S1 AC-7 resolves this by stripping the rustfsadmin literals from
+    // both appsettings.json AND DocumentStorageSettings.cs class initializers, and the
+    // test-infrastructure half of the fix lives in TestWebApplicationFactory.cs (provides
+    // DocumentStorage:* via InMemoryCollection so DI resolution succeeds in tests).
     [Theory]
     [InlineData("Keycloak:Authority")]
     [InlineData("Smtp:Host")]
+    [InlineData("DocumentStorage:ServiceUrl")]
+    [InlineData("DocumentStorage:AccessKey")]
+    [InlineData("DocumentStorage:SecretKey")]
     public void BaseConfig_DevDefaultsAreEmptied(string key)
     {
-        // E11-S2 AC-2 (partial): base appsettings.json must NOT carry localhost hosts for
-        // these non-eager-init keys. ConnectionStrings + DocumentStorage are exempted per
-        // the deferred-work note.
+        // E11-S2 AC-2 + E12-S1 AC-7: base appsettings.json must NOT carry localhost hosts
+        // or dev credentials. ConnectionStrings is exempted (see class comment above).
         var config = BuildBaseOnlyConfiguration();
         config[key].Should().BeNullOrEmpty(
             $"base appsettings.json must not contain a Dev default for '{key}' — the value belongs in appsettings.Development.json");
@@ -79,11 +85,14 @@ public sealed class AppSettingsLayeringTests
     [Theory]
     [InlineData("Keycloak:Authority")]
     [InlineData("Smtp:Host")]
+    [InlineData("DocumentStorage:ServiceUrl")]
+    [InlineData("DocumentStorage:AccessKey")]
+    [InlineData("DocumentStorage:SecretKey")]
     public void BetaLayered_DoesNotInheritDevDefaults(string key)
     {
-        // E11-S2 AC-2 (partial): when ASPNETCORE_ENVIRONMENT=Beta, the active config is
-        // appsettings.json + appsettings.Beta.json (NOT Development). For the non-eager-
-        // init keys, no Dev hostname must surface in that layered view.
+        // E11-S2 AC-2 + E12-S1 AC-7: when ASPNETCORE_ENVIRONMENT=Beta, the active config
+        // is appsettings.json + appsettings.Beta.json (NOT Development). No Dev hostname
+        // or RustFS credential must surface in that layered view.
         var config = BuildBetaLayeredConfiguration();
         config[key].Should().BeNullOrEmpty(
             $"Beta-layered configuration must not inherit '{key}' from base — supply it via the deployment environment");

@@ -1,0 +1,35 @@
+# .NET build outputs
+**/bin/
+**/obj/
+**/*.user
+**/*.lscache
+
+# Tests
+tests/
+**/*.Tests/
+*.Tests.csproj.lscache
+
+# Local config + secrets
+**/.env
+**/.env.*
+**/secrets/
+**/*.pfx
+**/*.key
+
+# IDE / editor
+**/.vs/
+**/.idea/
+**/.vscode/
+**/*.swp
+**/.DS_Store
+
+# Logs
+**/logs/
+**/*.log
+
+# Source-control + planning artifacts (paths relative to repo root if `..` context is ever used)
+.git/
+.github/
+_bmad-output/
+_bmad/
+docs/

@@ -25,6 +25,24 @@ namespace IabConnect.Api.Tests;
 /// </summary>
 public class TestWebApplicationFactory : WebApplicationFactory<Program>
 {
+    static TestWebApplicationFactory()
+    {
+        // REQ-088 (E12-S1 AC-7): base appsettings.json no longer carries dev RustFS
+        // credentials. The IAmazonS3 singleton factory at Infrastructure
+        // DependencyInjection.cs:259-270 reads storageSettings EAGERLY at DI registration
+        // time (Program.cs:32, before builder.Build() applies WebApplicationFactory's
+        // ConfigureAppConfiguration callbacks). The factory's closure then crashes
+        // AmazonS3Client construction when AccessKey/SecretKey are empty — failing the
+        // GetLogo endpoint test at parameter-binding time. Environment variables are part
+        // of the default configuration chain set up by WebApplication.CreateBuilder
+        // BEFORE that eager read, so they reliably propagate. Tests never touch real S3.
+        Environment.SetEnvironmentVariable("DocumentStorage__ServiceUrl", "http://localhost:9000");
+        Environment.SetEnvironmentVariable("DocumentStorage__AccessKey", "test-access-key");
+        Environment.SetEnvironmentVariable("DocumentStorage__SecretKey", "test-secret-key");
+        Environment.SetEnvironmentVariable("DocumentStorage__BucketName", "iabconnect-documents");
+        Environment.SetEnvironmentVariable("DocumentStorage__UseHttps", "false");
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
