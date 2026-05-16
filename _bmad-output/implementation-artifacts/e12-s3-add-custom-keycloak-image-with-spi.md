@@ -1,19 +1,311 @@
 # Story 12.3: Custom Keycloak image with SPI baked-in
 
-Status: draft
+Status: ready-for-dev
 
-<!-- Stub file. Acceptance criteria are authored in Sprint Change Proposal 2026-05-15 Section 5. Run bmad-create-story against this file when the story enters active sprint scope. -->
+<!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
 ## Story
 
-As **the deployment**, I want **Keycloak disable-new-users SPI to travel inside the container image**, so that **Railway does not need volume mounts for it**.
+As **the Beta deployment on Railway**,
+I want **a single, pre-built Keycloak image that includes the `disable-new-users` SPI provider AND a sanitized realm-import JSON (no committed client secrets, no dev seed user credentials)**,
+so that **Railway can run Keycloak with `kc.sh start --optimized` without volume-mounting external files, the realm bootstraps with the same 7 roles + 3 clients as local dev, and the published GHCR image is safe for any forker to pull**.
 
-**Requirement:** REQ-088 AC-1. Epic E12, Story 3. Detailed acceptance criteria authored in Sprint Change Proposal 2026-05-15 Section 5; this stub exists so bmad-create-story can be invoked against it.
+**Requirement:** REQ-088 AC-1 (deployable via published, versioned Docker images) + ADR-016 (Custom Keycloak Image with SPI Baked In). Epic E12 (Dockerization), Story 3 of 4. Wave-3 sibling of E12-S1 + E12-S2.
+
+**Upstream:**
+- Existing SPI source at [infra/keycloak/providers/disable-new-users/](infra/keycloak/providers/disable-new-users/) (Maven, Java 17, Keycloak 26.0.0 SPI). The provider ID is `disable-new-users` ([DisableNewUsersEventListenerFactory.java:14](infra/keycloak/providers/disable-new-users/src/main/java/ch/iabconnect/keycloak/DisableNewUsersEventListenerFactory.java#L14)).
+- Existing local-dev workflow uses a volume mount: [infra/docker-compose.yml:42-43](infra/docker-compose.yml#L42-L43) mounts `./keycloak/realms` and `./keycloak/providers/disable-new-users/target/disable-new-users-spi-1.0.0.jar` into the public `quay.io/keycloak/keycloak:26.5.2` image at runtime. ADR-016 supersedes this for Railway.
+- Existing SPI-builder Dockerfile at [infra/keycloak/providers/disable-new-users/Dockerfile](infra/keycloak/providers/disable-new-users/Dockerfile) — it compiles the JAR via maven and copies to a `scratch` export stage. This story REUSES that builder pattern but inlines it as the first stage of the new `infra/keycloak/Dockerfile`.
+- Existing realm at [infra/keycloak/realms/iabconnect-realm.json](infra/keycloak/realms/iabconnect-realm.json) — 375 lines, 7 realm roles, 3 clients (`iabconnect-admin`, `iabconnect-api`, `iabconnect-frontend`), 6 dev seed users with passwords. **THIS FILE CARRIES COMMITTED DEV SECRETS** at lines 228 (`admin-service-secret-2026`) and 252 (`frontend-dev-secret-2026`) plus dev seed user passwords at 6 locations. ADR-016 mandates sanitization before image inclusion.
+
+**Downstream:**
+- **E13-S2** (Railway env vars) — sets `KC_CLIENT_SECRET_ADMIN`, `KC_CLIENT_SECRET_FRONTEND`, `KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD` that this image reads at boot to replace the placeholders.
+- **E12-S4** (`docker-compose.full.yml`) — references this image (or builds it locally) instead of `quay.io/keycloak/keycloak:26.5.2` + volume mounts.
+- **E20-S5** (GHCR publishing) — publishes this image to `ghcr.io/htos/iabc-keycloak:beta` and `:sha-{commit}`.
+
+**Wave context:** Wave 3 (Containerization), parallel with E12-S1 + E12-S2.
 
 ## Acceptance Criteria
 
-To be fleshed out via bmad-create-story. The SCP Section 5 entry for E12-S3 is the source of truth pending that workflow run.
+1. **`infra/keycloak/Dockerfile` exists** with two stages: `spi-build` (Maven 3.9 + Eclipse Temurin 17, compiles the SPI JAR) and `kc-final` (`quay.io/keycloak/keycloak:26.5.2`, copies the JAR into `/opt/keycloak/providers/`, copies the sanitized realm into `/opt/keycloak/data/import/`, runs `kc.sh build` to pre-bake the provider so runtime start uses `--optimized` mode).
 
-## References
+2. **Build stage compiles the SPI from source.** The build stage's `WORKDIR` is `/build`. It COPYs `providers/disable-new-users/pom.xml` and `providers/disable-new-users/src/` (the build context for the image is `infra/keycloak/`, so these paths are relative to that), then runs `mvn -B clean package -DskipTests`. The output is `/build/target/disable-new-users-spi-1.0.0.jar` (filename derived from [pom.xml](infra/keycloak/providers/disable-new-users/pom.xml) `artifactId` + `version` at lines 8-9).
 
-- [Source: _bmad-output/planning-artifacts/sprint-change-proposal-2026-05-15.md — Epic E12 Story E12-S3]
+3. **Final stage uses the matching Keycloak version.** Base image `quay.io/keycloak/keycloak:26.5.2` (matches existing [infra/docker-compose.yml:26](infra/docker-compose.yml#L26)). The SPI's pom-declared compile-time Keycloak SPI version is 26.0.0 ([pom.xml:19](infra/keycloak/providers/disable-new-users/pom.xml#L19)) which is compatible with the 26.5.2 runtime (Keycloak's SPI API is backwards-stable within a major version). Do NOT bump the SPI's pom version unless explicitly requested — version drift here is a known stability surface.
+
+4. **Final stage copies the SPI JAR.** `COPY --from=spi-build /build/target/disable-new-users-spi-1.0.0.jar /opt/keycloak/providers/disable-new-users-spi.jar`. The filename in the image MUST be `disable-new-users-spi.jar` (without the version suffix) so subsequent SPI bumps don't accumulate orphaned JARs in the providers directory.
+
+5. **Sanitized realm-import JSON.** A NEW file at `infra/keycloak/realms-beta/iabconnect-realm.json` (separate from the existing dev file) is committed to disk, generated by this story from the dev realm with the following redactions and substitutions:
+   - **Remove all 6 dev seed users entirely.** The Beta image bootstraps an admin via Keycloak's standard `KEYCLOAK_ADMIN` + `KEYCLOAK_ADMIN_PASSWORD` env vars (read at first start of the Keycloak data dir). Additional Beta tester accounts are created via the Keycloak Admin Console or API after first boot — they are NOT part of the realm import.
+   - **Replace `iabconnect-admin` client secret** (line 228 in dev realm) with `"secret": "${IABCONNECT_ADMIN_CLIENT_SECRET}"`. Keycloak's realm-import system resolves `${VAR}` placeholders against environment variables at boot.
+   - **Replace `iabconnect-frontend` client secret** (line 252 in dev realm) with `"secret": "${IABCONNECT_FRONTEND_CLIENT_SECRET}"`.
+   - **Update `redirectUris` and `webOrigins`** of the `iabconnect-frontend` client from the dev list (`http://localhost:3000/*`, `https://iabconnect.ch/*`) to a Beta-friendly list that includes both `https://*.up.railway.app/*` (the Railway-assigned domain pattern) and the canonical Beta domain placeholder `${FRONTEND_PUBLIC_URL}/*`. Keep `https://iabconnect.ch/*` IF the project's domain decision is to keep that as a production target; otherwise drop it. Surface as a Question (#1) if unclear.
+   - **Preserve all 7 realm roles, the `iabconnect-api` bearerOnly client unchanged, all client scopes, all realm-level configuration (PKCE attribute, etc.).** The sanitization is surgical: only secrets + dev users + redirect URIs change.
+
+6. **Final stage copies the sanitized realm.** `COPY realms-beta/iabconnect-realm.json /opt/keycloak/data/import/iabconnect-realm.json`. NOT the dev realm at `realms/iabconnect-realm.json` — explicitly the `realms-beta/` directory. This separation is mandatory so a future maintainer doesn't accidentally swap the volume mount and ship dev creds.
+
+7. **Pre-build with `kc.sh build`.** After both COPYs, the final stage runs `RUN /opt/keycloak/bin/kc.sh build --features=disable-new-users` to pre-bake the provider. This is the single most important reason for a custom image versus runtime SPI loading — `kc.sh build` is a several-second operation; doing it at image-build time means container-start is fast (<10s on Railway versus 30-60s for runtime build).
+
+8. **Event listener registration.** The realm's `eventsListeners` array MUST include `"disable-new-users"` so Keycloak invokes the SPI on user-registration events. Verify by reading the dev realm — if it already lists `"disable-new-users"` in `eventsListeners`, the sanitized realm copies that as-is. If it does NOT, ADD the entry to the sanitized realm.
+
+9. **Image entrypoint and runtime command.** The base image's `ENTRYPOINT` is `["/opt/keycloak/bin/kc.sh"]`. This story sets `CMD ["start", "--optimized"]`. NOT `start-dev` (insecure: HTTPS-disabled, HTTP-only, hostname check off). NOT `start` without `--optimized` (re-runs `kc.sh build` on every container boot, costing 30-60s). `--optimized` is the correct mode because Task 7 pre-built the provider at image build time.
+
+10. **OCI image labels** mirroring E12-S1 + E12-S2 ADR-014 conventions. Final stage `LABEL`s:
+    - `org.opencontainers.image.source="https://github.com/htos/iab-connect"`
+    - `org.opencontainers.image.licenses="AGPL-3.0-or-later"` (the SPI itself is AGPL because IAB Connect is AGPL; the underlying Keycloak base remains Apache-2.0; the COMBINED image is effectively AGPL by aggregation, which is fine — the labels reflect the project license).
+    - `org.opencontainers.image.title="IAB Connect Keycloak"`
+    - `org.opencontainers.image.description="Keycloak with disable-new-users SPI + iabconnect realm pre-imported. AGPL-3.0-or-later."`
+    - `org.opencontainers.image.vendor="IAB Connect contributors"`
+
+11. **Build success.** From the repository root:
+    ```sh
+    docker build -t iabc-keycloak:test infra/keycloak/
+    ```
+    completes successfully in under 5 minutes (Maven download dominates first-build time; subsequent builds with cached `.m2/` are under 1 minute). Image size ≤ 800 MB (Keycloak 26 base is ~700 MB; the SPI JAR is < 20 KB; the realm JSON is < 20 KB).
+
+12. **Runtime smoke — boot under 30s with `--optimized`.**
+    ```sh
+    docker run --rm -p 8090:8080 \
+      -e KC_DB=dev-file \
+      -e KC_HOSTNAME=localhost \
+      -e KEYCLOAK_ADMIN=admin \
+      -e KEYCLOAK_ADMIN_PASSWORD=admin-test \
+      -e IABCONNECT_ADMIN_CLIENT_SECRET=test-admin-secret \
+      -e IABCONNECT_FRONTEND_CLIENT_SECRET=test-frontend-secret \
+      iabc-keycloak:test
+    ```
+    Expected: stdout shows `Keycloak 26.5.2 on JVM (powered by Quarkus …) started in <seconds>` within 30 seconds. Capture the start-time line in Completion Notes. From a second terminal: `curl -sf http://localhost:8090/realms/iabconnect/.well-known/openid-configuration` returns 200 with JSON. This proves the realm imported successfully AND the SPI loaded without crashing the realm.
+
+13. **SPI registration evidence.** From inside the running container:
+    ```sh
+    docker exec -it <container-id> /opt/keycloak/bin/kc.sh show-config 2>&1 | grep -i "disable-new-users" || echo "NOT FOUND"
+    ```
+    Expected: matches found. `NOT FOUND` means the SPI is not registered — escalate. (An alternative is to query the Keycloak Admin API for `events/config` and look for `disable-new-users` in `eventsListeners` — both prove registration.)
+
+14. **No committed dev secrets in the image.** From the host:
+    ```sh
+    docker run --rm --entrypoint /bin/sh iabc-keycloak:test -c "cat /opt/keycloak/data/import/iabconnect-realm.json" | grep -E '(admin-service-secret-2026|frontend-dev-secret-2026|Admin-Dev-2026)' || echo "CLEAN"
+    ```
+    Expected: prints `CLEAN`. Three substrings checked: the two committed client secrets and the dev-admin user password. The grep MUST find nothing — if it finds anything, the sanitization in AC-5 is incomplete.
+
+15. **Local dev workflow remains unaffected.** [infra/docker-compose.yml](infra/docker-compose.yml) continues to use the public `quay.io/keycloak/keycloak:26.5.2` + volume-mounted SPI JAR + volume-mounted dev realm. This story does NOT edit `docker-compose.yml` — that's E12-S4's scope. Local-dev developers do NOT need to rebuild the custom image for everyday work; they only need it when testing Beta-shape behavior via `docker-compose.full.yml` (E12-S4) or when validating a CI publish.
+
+16. **Quality gates.** From repo root:
+    - [ ] 16.1 `docker build -t iabc-keycloak:test infra/keycloak/` — green (AC-11).
+    - [ ] 16.2 Boot smoke + curl (AC-12) — green.
+    - [ ] 16.3 SPI registration evidence (AC-13) — green.
+    - [ ] 16.4 No-secrets verification (AC-14) — green.
+    - [ ] 16.5 Local-dev unaffected (AC-15) — `docker compose -f infra/docker-compose.yml up keycloak` boots and the existing dev realm with seed users + dev secrets is reachable (separate test surface from the custom image).
+    - [ ] 16.6 AC-Subitem Completion Check per project-context A29.
+
+## Tasks / Subtasks
+
+- [ ] **Task 0 — Spike: enumerate realm-JSON consumers and current SPI registration (AC: 5, 8; project-context A28)**:
+  - [ ] 0.1 Read [infra/keycloak/realms/iabconnect-realm.json](infra/keycloak/realms/iabconnect-realm.json) in full. Document the structure: realm name, roles array, clients array (count, IDs, which are confidential), users array (count), eventsListeners array (does it already contain `"disable-new-users"`?), client scopes, attributes block.
+  - [ ] 0.2 Search backend + frontend for any code that depends on the realm name, role names, or client IDs:
+    ```sh
+    grep -rn "iabconnect-admin\|iabconnect-api\|iabconnect-frontend" backend/src/ frontend/src/ | head -20
+    ```
+    Use this to confirm the sanitization in AC-5 doesn't break any code that pattern-matches on client IDs.
+  - [ ] 0.3 Confirm Keycloak realm-import `${VAR}` substitution works for `client.secret` fields specifically. The Keycloak documentation lists supported placeholder fields; if `client.secret` is NOT in the supported list for 26.5.2, escalate with a workaround proposal (e.g., bootstrap the secret via Keycloak Admin API post-start, or use the `KC_DB_VARS`-style env substitution).
+
+- [ ] **Task 1 — Generate sanitized realm `infra/keycloak/realms-beta/iabconnect-realm.json` (AC: 5, 8)**:
+  - [ ] 1.1 Create the directory: `mkdir -p infra/keycloak/realms-beta`.
+  - [ ] 1.2 Copy the dev realm to the new path as a baseline: `cp infra/keycloak/realms/iabconnect-realm.json infra/keycloak/realms-beta/iabconnect-realm.json`.
+  - [ ] 1.3 Edit the copy:
+    - Delete the entire `users` array (replace with `"users": []`).
+    - At the `iabconnect-admin` client: replace `"secret": "admin-service-secret-2026"` with `"secret": "${IABCONNECT_ADMIN_CLIENT_SECRET}"`.
+    - At the `iabconnect-frontend` client: replace `"secret": "frontend-dev-secret-2026"` with `"secret": "${IABCONNECT_FRONTEND_CLIENT_SECRET}"`.
+    - At the `iabconnect-frontend` client: update `redirectUris` to `["https://*.up.railway.app/*", "${FRONTEND_PUBLIC_URL}/*"]` and `webOrigins` to `["https://*.up.railway.app", "${FRONTEND_PUBLIC_URL}"]` (drop the local-dev `http://localhost:3000/*` — the dev realm keeps it; the Beta realm does not need it).
+    - If `eventsListeners` does NOT already contain `"disable-new-users"`, add it.
+  - [ ] 1.4 Validate the result is well-formed JSON: `python -c "import json; json.load(open('infra/keycloak/realms-beta/iabconnect-realm.json'))"` (Python is available per the global.json spike used in E12-S1).
+
+- [ ] **Task 2 — Author `infra/keycloak/Dockerfile` (AC: 1-4, 6, 7, 9, 10)** — file at `infra/keycloak/Dockerfile`. Reference structure:
+  ```dockerfile
+  # syntax=docker/dockerfile:1.7
+
+  # ---- spi-build stage --------------------------------------------------------
+  FROM maven:3.9-eclipse-temurin-17 AS spi-build
+  WORKDIR /build
+
+  # Layer caching: pom first for offline-go-deeper dependency resolution.
+  COPY providers/disable-new-users/pom.xml .
+  RUN mvn -B dependency:go-offline
+
+  COPY providers/disable-new-users/src ./src
+  RUN mvn -B clean package -DskipTests
+
+  # Sanity-check the JAR exists at the expected path (filename derived from pom).
+  RUN test -f /build/target/disable-new-users-spi-1.0.0.jar
+
+  # ---- kc-final stage ---------------------------------------------------------
+  FROM quay.io/keycloak/keycloak:26.5.2 AS kc-final
+
+  LABEL org.opencontainers.image.source="https://github.com/htos/iab-connect" \
+        org.opencontainers.image.licenses="AGPL-3.0-or-later" \
+        org.opencontainers.image.title="IAB Connect Keycloak" \
+        org.opencontainers.image.description="Keycloak with disable-new-users SPI + iabconnect realm pre-imported. AGPL-3.0-or-later." \
+        org.opencontainers.image.vendor="IAB Connect contributors"
+
+  # Copy the SPI JAR (filename-stripped for forward-compat with future version bumps).
+  COPY --from=spi-build /build/target/disable-new-users-spi-1.0.0.jar /opt/keycloak/providers/disable-new-users-spi.jar
+
+  # Copy the sanitized realm import (NOT the dev realm at realms/).
+  COPY realms-beta/iabconnect-realm.json /opt/keycloak/data/import/iabconnect-realm.json
+
+  # Pre-build with the SPI so runtime can use --optimized.
+  RUN /opt/keycloak/bin/kc.sh build --features=disable-new-users
+
+  CMD ["start", "--optimized"]
+  ```
+
+- [ ] **Task 3 — Build the image (AC: 11)** — from repo root:
+  ```sh
+  docker build -t iabc-keycloak:test infra/keycloak/
+  ```
+  Expected: success. Capture: total build time, `docker images iabc-keycloak:test --format '{{.Size}}'`, `docker history iabc-keycloak:test --no-trunc | head -20`.
+
+- [ ] **Task 4 — Runtime smoke + start-time evidence (AC: 12)** — see AC-12 command. Capture the `started in <seconds>` line + the curl response. The start time MUST be under 30 seconds — if it isn't, verify `--optimized` is actually in the CMD (Task 2) and that `kc.sh build` ran successfully at image-build time (Task 3 layer history should show the build step's exit code 0).
+
+- [ ] **Task 5 — SPI registration evidence (AC: 13)** — see AC-13 command. If `show-config` doesn't surface SPI info clearly, alternative evidence: open the Admin Console at `http://localhost:8090` (logged in as `admin`/`admin-test`), navigate to Realm Settings → Events → Config, and confirm `disable-new-users` appears in the "Event Listeners" list. Capture either the CLI output OR a screenshot reference in Completion Notes.
+
+- [ ] **Task 6 — No-secrets verification (AC: 14)** — see AC-14 command. MUST print `CLEAN`. If it fails, find the surviving substring(s) in the realm file and re-apply Task 1.3.
+
+- [ ] **Task 7 — Local-dev unaffected verification (AC: 15)** — confirm:
+  ```sh
+  docker compose -f infra/docker-compose.yml up -d keycloak
+  curl -sf http://localhost:8080/realms/iabconnect/.well-known/openid-configuration | head -1
+  docker compose -f infra/docker-compose.yml down
+  ```
+  Expected: existing dev workflow still boots cleanly with the volume-mounted dev realm + dev SPI. This story makes ZERO edits to [infra/docker-compose.yml](infra/docker-compose.yml) or [infra/keycloak/realms/iabconnect-realm.json](infra/keycloak/realms/iabconnect-realm.json).
+
+- [ ] **Task 8 — Quality gates (AC: 16)** — run Tasks 3-7 in order. Capture AC-Subitem Completion Check (project-context A29) listing AC-1..AC-16 with `covered / N/A / deferred` markers in Completion Notes.
+
+- [!] **Task 9 — Manual verification: full Beta-shape login round-trip via the custom image (AC: 12, downstream E13)** — `[!]` per project-context A30 because this requires an interactive browser session AND the frontend + backend images from E12-S1 + E12-S2 running alongside, which the dev agent cannot orchestrate non-interactively. Procedure (for human review or E12-S4 once it lands):
+  - Bring up the full stack via `docker-compose.full.yml` (E12-S4).
+  - Open `http://localhost:3000` → click Login → land on Keycloak login page served from the custom image's realm.
+  - Log in as a Beta tester account (manually created in the Admin Console post-boot).
+  - Confirm redirect back to `http://localhost:3000/...` with a valid session.
+  - Confirm the `disable-new-users` SPI fires on self-registration by attempting to register a NEW user via Keycloak — confirm the user is created in disabled state (the SPI's intended behavior).
+  - Mark `[x]` only after human review confirms all four sub-steps.
+
+## Dev Notes
+
+### Why a custom image (not volume mounts)
+
+[Source: ADR-016 at [architecture.md#L343-L351](_bmad-output/planning-artifacts/architecture.md#L343-L351); existing [infra/docker-compose.yml:42-43](infra/docker-compose.yml#L42-L43)]
+
+Local dev mounts the SPI JAR and realm JSON into the public Keycloak image at container-start time. Railway does NOT support per-service file mounts from a Git source path. Three escape-hatches considered:
+1. **Custom image with SPI + realm baked in** (this story). Reproducible, single GHCR pull, no runtime file dependencies.
+2. **Init container that downloads the JAR + realm at start.** Adds network surface, second-pass orchestration, and brittleness to GHCR or GitHub Releases availability.
+3. **Side-by-side service that synchronizes files into a Railway volume.** Volume management overhead, race conditions on first boot.
+
+ADR-016 chose option 1. This story implements it.
+
+### Why pre-build with `kc.sh build` at image-build time
+
+[Source: ADR-016 + Keycloak runtime docs]
+
+Keycloak 26.x supports an `--optimized` start mode that skips the build phase. Build does Quarkus class-path analysis, native compilation hints, and provider registration; it takes 30-60s. Doing it at image-build time means container-start time on Railway drops from "could-time-out" to "well under the 30s health-probe window" (ADR-017). This is the single largest performance win available for the Keycloak deployment.
+
+The trade-off: any change to env vars that Keycloak treats as build-time-frozen (e.g., the database driver type — `KC_DB=postgres` vs `KC_DB=dev-file`) requires an image rebuild. The Beta runbook (E13-S4) is the place to document this; E13-S2 sets `KC_DB=postgres` once and never changes it for Beta, so the constraint is invisible in practice.
+
+### Why sanitize the realm (not just override at runtime)
+
+[Source: ADR-016 + project-context.md "Do not commit secrets"]
+
+Keycloak supports `${VAR}` placeholder substitution in realm-import JSON, BUT:
+- Only certain fields are supported (verified in Task 0.3 spike). `client.secret` is supported in 26.x.
+- Even if all fields supported substitution, shipping the dev secrets in the image is a credential leak. `strings .../iabconnect-realm.json | grep secret` would reveal them.
+
+So the sanitization is both functional (placeholders work) AND defensive (no plaintext secrets in the GHCR image). The dev seed users are removed entirely — they exist for local dev convenience; in Beta, testers get accounts via the Admin Console or a one-shot bootstrap script (out-of-scope for this story).
+
+### Why a separate `realms-beta/` directory (not editing `realms/`)
+
+[Source: AC-6, AC-15]
+
+Keeping the dev realm at `realms/iabconnect-realm.json` (with seed users + working dev secrets) means local dev workflow is unaffected — devs continue running `docker compose up` against the public Keycloak image with the dev realm mounted. The custom image's COPY explicitly targets `realms-beta/iabconnect-realm.json` so swapping the two requires a deliberate code edit, not an accidental file rename. The cost is keeping two realm JSON files in sync going forward — Task 1.2 establishes the workflow ("Beta realm starts as a copy of the dev realm, then sanitization is applied"). Future realm edits (new roles, new clients) need to land in both files. Manageable with a per-PR checklist; cleaner than a sed-based generation pipeline (which would require its own test coverage).
+
+### SPI version pinning (AC: 3)
+
+[Source: [pom.xml:19](infra/keycloak/providers/disable-new-users/pom.xml#L19)]
+
+The SPI's pom declares Keycloak 26.0.0 as the compile-time dependency, but the runtime image is Keycloak 26.5.2. This works because Keycloak's `org.keycloak:keycloak-server-spi` API is backwards-stable within a major version (26.x). The `provided` scope ([pom.xml:27,33,39](infra/keycloak/providers/disable-new-users/pom.xml#L27)) means the SPI jar does not ship its own copy of the Keycloak SPI classes; the runtime provides them at the 26.5.2 version. This is the correct configuration. **Do NOT bump the pom Keycloak version to 26.5.2 in this story** — that's a separate concern, and the existing build is known-good against the existing dev workflow.
+
+### Realm `eventsListeners` registration (AC: 8)
+
+[Source: existing dev realm; existing local-dev docker-compose volume mount]
+
+For the SPI to actually fire on user-registration events, it must be registered in the realm's `eventsListeners` array. Task 0.1 confirms whether the dev realm already has this (likely yes, since the local-dev workflow has been working). Task 1.3's "if NOT, ADD" branch covers the gap-fill case.
+
+### Why `--optimized` and not `start-dev` or plain `start`
+
+[Source: AC-9 + Keycloak runtime docs]
+
+- `start-dev`: insecure — disables HTTPS, hostname check, and various production safeguards. Acceptable for local-dev (where `docker-compose.yml` does use `start-dev --import-realm`), NOT acceptable for the Beta image.
+- `start` (without `--optimized`): re-runs `kc.sh build` on every container boot. 30-60s startup. Railway's health-probe window can time out before the boot completes.
+- `start --optimized`: uses the pre-baked build artifacts. Sub-15s startup typical.
+
+### Image-base ICU / globalization concern
+
+[Source: parallel of E12-S1 Alpine concern]
+
+The Keycloak base image is `quay.io/keycloak/keycloak:26.5.2`, which is **already Java-based**. The .NET ICU / Alpine concern from E12-S1 does NOT apply — Keycloak's JVM ships its own ICU data. No timezone or globalization wiring is needed beyond Keycloak's default JVM-level locale support.
+
+### What this story does NOT do
+
+- Does NOT modify the SPI source code or pom.
+- Does NOT bump Keycloak versions (base image or SPI pom).
+- Does NOT publish to GHCR — that's E20-S5.
+- Does NOT modify [infra/docker-compose.yml](infra/docker-compose.yml) — that's E12-S4 (which adds a SEPARATE `docker-compose.full.yml`).
+- Does NOT add Beta tester users to the realm — those are created post-boot via Admin Console or a one-shot bootstrap script, out of scope here.
+- Does NOT change the dev realm at [infra/keycloak/realms/iabconnect-realm.json](infra/keycloak/realms/iabconnect-realm.json).
+- Does NOT validate the AGPL licence compatibility of the bundled Keycloak base (Apache-2.0) versus the SPI's AGPL inheritance — that's covered by ADR-009's "permissive deps are AGPL-compatible" conclusion.
+
+### Project Structure Notes
+
+**NEW files** (2):
+- `infra/keycloak/Dockerfile`
+- `infra/keycloak/realms-beta/iabconnect-realm.json`
+
+**EDIT files** (0 to existing repo code).
+
+**NO changes** to: SPI source, pom.xml, existing dev realm, infra/docker-compose.yml, backend, frontend.
+
+### References
+
+- [Source: _bmad-output/planning-artifacts/sprint-change-proposal-2026-05-15.md#Section 3 — REQ-088 AC-1]
+- [Source: _bmad-output/planning-artifacts/architecture.md#L343-L351 — ADR-016 Custom Keycloak Image with SPI Baked In]
+- [Source: _bmad-output/planning-artifacts/architecture.md#L317-L328 — ADR-014 Container Image Distribution — GHCR]
+- [Source: _bmad-output/planning-artifacts/epics-and-stories.md#L1314-L1333 — Epic E12 Story E12-S3 spec]
+- [Source: infra/keycloak/providers/disable-new-users/pom.xml — SPI pom (Keycloak 26.0.0 SPI compile-time)]
+- [Source: infra/keycloak/providers/disable-new-users/Dockerfile — existing SPI-only builder pattern (reused as Stage 1)]
+- [Source: infra/keycloak/providers/disable-new-users/src/main/java/ch/iabconnect/keycloak/DisableNewUsersEventListenerFactory.java#L14 — provider ID]
+- [Source: infra/keycloak/realms/iabconnect-realm.json — dev realm (375 lines); lines 228, 252 carry committed dev secrets to be sanitized]
+- [Source: infra/docker-compose.yml#L42-L43 — current local-dev SPI+realm volume mount, retained for local dev unchanged]
+- [Source: _bmad-output/implementation-artifacts/e12-s1-add-backend-dockerfile-multistage.md — pattern reused (multi-stage, OCI labels)]
+- [Source: project-context.md A28-A30 — Spike-First / AC-Subitem Check / Three-State Task Checkbox]
+- [Source: https://www.keycloak.org/server/containers — Keycloak container documentation, `--optimized` mode]
+- [Source: https://www.keycloak.org/server/configuration — Keycloak `${VAR}` placeholder substitution in realm imports]
+
+## Dev Agent Record
+
+### Agent Model Used
+
+_To be filled by dev agent on first commit._
+
+### Debug Log References
+
+### Completion Notes List
+
+### File List
+
+## Questions / Clarifications
+
+1. **`iabconnect-frontend` redirect URIs for Beta.** AC-5 says drop `http://localhost:3000/*` from the Beta realm's `redirectUris`. But should `https://iabconnect.ch/*` be kept (if production rolls forward to that domain), removed (if production domain is undecided), or replaced with a single `${FRONTEND_PUBLIC_URL}/*` placeholder? Surface this to the user OR pick the most conservative default: keep `${FRONTEND_PUBLIC_URL}/*` + `https://*.up.railway.app/*` and document in the runbook that production domains are added via Admin Console post-deploy.
+
+2. **`${VAR}` placeholder support for `client.secret` in Keycloak 26.5.2.** Task 0.3 verifies this. If unsupported, the workaround is to bootstrap the client secrets via the Admin API in a Railway-startup script — out-of-scope for this story but needs to be raised as an E13 follow-up.
+
+3. **Realm-import idempotency on restart.** Keycloak's default behavior with `--import-realm` is "import once, skip if realm exists." With `--optimized` and no `--import-realm` flag in CMD, the realm IS imported on first start (when the Postgres database is empty) and skipped thereafter. Confirm: the existing dev workflow's `start-dev --import-realm` shows this is the intended behavior. For Beta with persistent Postgres, the first deploy imports; subsequent deploys preserve all admin-console edits. Document in the E13 / E18 runbook.
+
+4. **SPI feature flag.** `kc.sh build --features=disable-new-users` enables the SPI as a Keycloak "feature." If 26.5.2 changed the feature-flag syntax (e.g., `--features-disabled=…` or `--features-include=…`), this command fails at build time. Task 3 catches it. The workaround if it fails: drop `--features=` and rely on Keycloak's auto-discovery of providers in `/opt/keycloak/providers/` (which is the documented default behavior).

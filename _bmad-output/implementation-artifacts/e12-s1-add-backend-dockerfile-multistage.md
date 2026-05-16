@@ -1,58 +1,209 @@
 # Story 12.1: Add Backend Dockerfile (Multi-Stage)
 
-Status: ready
+Status: ready-for-dev
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
 ## Story
 
 As **the CI pipeline (GitHub Actions) and self-hosters**,
-I want **a reproducible, multi-stage Docker image for the .NET backend**,
-so that **Railway and any forker can pull or build identical artifacts that boot reliably with the correct timezone, security posture, and `/about`-compatible build metadata**.
+I want **a reproducible, multi-stage Docker image for the .NET 10 backend, plus a one-pass cleanup of the rustfsadmin literals carried in `backend/src/IabConnect.Api/appsettings.json` that block a clean Beta deploy**,
+so that **Railway and any forker can pull or build identical artifacts that boot reliably with the correct timezone, security posture, build-metadata for `/about`, and a credential-free base config layer**.
 
-**Requirement:** REQ-088 AC-1 (deployable via published, versioned Docker images). Epic E12 (Dockerization), Story 1 of 4 — the **first deployable** of E12. E12-S2 (frontend Dockerfile), E12-S3 (Keycloak custom image), E12-S4 (full-stack local compose) build on the patterns established here. E20-S3 (`/about` endpoint) and E20-S5 (GHCR publishing) consume the `BUILD_SHA` / `BUILD_DATE` build-args this story introduces.
+**Requirement:** REQ-088 AC-1 (deployable via published, versioned Docker images). Epic E12 (Dockerization), Story 1 of 4 — the **first deployable** of E12 and **Wave-3 start** per SCP-2026-05-15 §6.
+
+**Upstream:** E11-S1 added `appsettings.Beta.json` and the env-layering test surface ([backend/tests/IabConnect.Api.Tests/Configuration/AppSettingsLayeringTests.cs](backend/tests/IabConnect.Api.Tests/Configuration/AppSettingsLayeringTests.cs)). E11-S2 introduced `ASPNETCORE_ENVIRONMENT=Beta` and locked Production-grade hardenings (HSTS, HTTPS-redirect, no Swagger, no Hangfire-Dashboard, strict CORS) to fire for Beta verbatim. E11-S3 enabled `output: 'standalone'` on the frontend so E12-S2 can land. The **Epic-11 retrospective (2026-05-16)** flagged the `rustfsadmin` literals at [appsettings.json:39-40](backend/src/IabConnect.Api/appsettings.json#L39-L40) as a Beta-blocker and explicitly deferred the resolution decision to **this story**.
+
+**Downstream:**
+- **E12-S2** (Frontend Dockerfile) — reuses the multi-stage + non-root + build-args + OCI-labels pattern established here.
+- **E12-S3** (Custom Keycloak image) — reuses the OCI-labels and CI build-arg conventions.
+- **E12-S4** (`docker-compose.full.yml`) — pulls or builds the image produced by this story.
+- **E20-S3** (`/about` endpoint) — reads `BUILD_SHA` / `BUILD_DATE` env vars that this story bakes via `ARG` / `ENV`.
+- **E20-S5** (GHCR publishing pipeline) — passes `--build-arg BUILD_SHA=${{github.sha}} --build-arg BUILD_DATE=$(date -u …)` and tags with the OCI labels declared here.
+- **E13-S1..S4** (Railway deploy) — pulls the image this story produces.
+
+**Wave context:** SCP-2026-05-15 §6 places this story in **Wave 3 (Containerization)**. Wave 2 (E11-S1/S2/S3) is fully done. After E12-S1/S2/S3 land, Wave 4 (E20-S3 + E20-S4 `/about` + footer) can begin because the build-args this story bakes exist on disk.
 
 ## Acceptance Criteria
 
-1. **`backend/Dockerfile` exists** with two clearly named stages: `build` (based on `mcr.microsoft.com/dotnet/sdk:9.0`) and `runtime` (based on `mcr.microsoft.com/dotnet/aspnet:9.0`). The build stage runs `dotnet restore` against `src/IabConnect.Api/IabConnect.Api.csproj` and its referenced projects, then `dotnet publish -c Release -o /app/publish /p:UseAppHost=false`.
-2. **Runtime stage TZ + ICU.** The runtime stage installs `tzdata` and sets `ENV TZ=Europe/Zurich`. This is mandatory: `backend/src/IabConnect.Api/DependencyInjection.cs:361` (`ResolveReminderJobTimeZone`) explicitly logs an error and falls back to UTC if `Europe/Zurich` is unresolvable, which corrupts the daily 09:00 volunteer-shift-reminder schedule (REQ-024). ICU comes pre-installed in the official `aspnet:9.0` Debian-based image; the story verifies but does not need to install.
-3. **Non-root user.** The runtime stage switches to `USER 1000` before `ENTRYPOINT`. The published files are owned by uid 1000 or are world-readable so they're loadable by the runtime user.
-4. **Port and ASPNETCORE_URLS.** The runtime stage `EXPOSE 8080` and `ENV ASPNETCORE_URLS=http://+:8080`. The image must NOT default to port 80 or to HTTPS — Railway terminates TLS at the edge and forwards HTTP internally.
-5. **`backend/.dockerignore`.** A new `.dockerignore` excludes at minimum: `bin/`, `obj/`, `logs/`, `tests/`, `**/*.user`, `**/.env`, `**/.env.local`, `**/.vs/`, `**/.idea/`, `**/IabConnect.Api.csproj.lscache`. This keeps the build context small and prevents tester-machine artifacts from leaking into images.
-6. **No secrets in the image.** The runtime stage contains `appsettings.json`, `appsettings.Development.json`, `appsettings.Beta.json` (the last two carry Dev/Beta non-sensitive defaults only). No `appsettings.Production.json` is copied (it does not exist by design — Production reads everything from environment). No `.env` files are copied.
-7. **Build-args `BUILD_SHA` and `BUILD_DATE`.** The Dockerfile declares `ARG BUILD_SHA=unknown` and `ARG BUILD_DATE=unknown` in the runtime stage, then `ENV BUILD_SHA=$BUILD_SHA` and `ENV BUILD_DATE=$BUILD_DATE` so the values are available at runtime for the `/about` endpoint (Story E20-S3). Both are optional (default `unknown` so a local `docker build` without args still produces a runnable image).
-8. **`ENTRYPOINT`.** The runtime stage ends with `ENTRYPOINT ["dotnet", "IabConnect.Api.dll"]`. No `CMD` is needed.
-9. **Build success.** `docker build -t iabc-api:test backend/` from the repo root completes successfully. The resulting image size is ≤ 350 MB (the aspnet:9.0 base is ~210 MB; the published .NET app is ~30 MB; with tzdata and the runtime cache, ≤ 350 MB is the realistic target).
-10. **Runtime smoke.** `docker run --rm iabc-api:test` (with no connection string supplied) logs the bootstrap Serilog "Starting IAB Connect API" line, attempts to apply migrations, and exits with an error message that mentions the missing connection string — but does NOT crash with a generic stack trace and does NOT enter a restart loop. (The exit is acceptable; the goal is to verify the image boots far enough to read configuration.)
+1. **`backend/Dockerfile` exists** with two clearly named stages — `build` (based on `mcr.microsoft.com/dotnet/sdk:10.0`) and `runtime` (based on `mcr.microsoft.com/dotnet/aspnet:10.0`). The build stage runs `dotnet restore` against `src/IabConnect.Api/IabConnect.Api.csproj` (which transitively restores `IabConnect.Application`, `IabConnect.Domain`, `IabConnect.Infrastructure` via project references), then `dotnet publish -c Release -o /app/publish /p:UseAppHost=false /p:PublishSingleFile=false`. The `PublishSingleFile=false` override is **mandatory** to neutralize the Release-config-default `<PublishSingleFile>true</PublishSingleFile>` set in [backend/Directory.Build.props:14](backend/Directory.Build.props#L14) — without the override, the publish emits a single-file `IabConnect.Api` host binary that the runtime stage's `ENTRYPOINT ["dotnet", "IabConnect.Api.dll"]` cannot launch.
+
+2. **SDK / runtime image tags MUST be `10.0`, not `9.0`.** [backend/global.json](backend/global.json) pins `"version": "10.0.102"` with `"rollForward": "latestMinor"`, and [backend/Directory.Build.props:3](backend/Directory.Build.props#L3) targets `net10.0`. The epic-file text and the prior planning stub both said `9.0` — that is incorrect and is corrected here. Use `mcr.microsoft.com/dotnet/sdk:10.0` for the build stage and `mcr.microsoft.com/dotnet/aspnet:10.0` for the runtime stage (Debian-12 "bookworm" variants).
+
+3. **Runtime stage: install `tzdata` and set `ENV TZ=Europe/Zurich`.** This is **mandatory**: `ResolveReminderJobTimeZone` at [backend/src/IabConnect.Api/DependencyInjection.cs:361](backend/src/IabConnect.Api/DependencyInjection.cs#L361) explicitly logs `LogError` and falls back to UTC when `Europe/Zurich` is unresolvable, which corrupts the daily 09:00 volunteer-shift-reminder schedule (REQ-024). The Debian-bookworm `aspnet:10.0` base does NOT ship tzdata. ICU ships pre-installed in the Debian base (verified in Task 3); do not install it explicitly. Set `/etc/timezone` and symlink `/etc/localtime` to `/usr/share/zoneinfo/$TZ` in the same RUN layer that installs tzdata.
+
+4. **Non-root user via numeric UID.** The runtime stage switches to `USER 1000` before `ENTRYPOINT`. Use the numeric UID (not `app` or a named user) so Kubernetes-style `runAsNonRoot: true` admission policies can evaluate the image without resolving `/etc/passwd`. The published files in `/app/` must be readable by uid 1000 — the COPY from `--from=build` runs as root, ownership stays root, but world-readable file perms (the default for `dotnet publish` output) suffice. Do NOT `chown` recursively (it adds a fat layer for no benefit).
+
+5. **Port + `ASPNETCORE_URLS`.** The runtime stage `EXPOSE 8080` and `ENV ASPNETCORE_URLS=http://+:8080`. The image MUST NOT default to port 80 or to HTTPS — Railway (ADR-011, ADR-012) terminates TLS at its edge load-balancer and forwards HTTP internally. The application's `UseHttpsRedirection()` at [backend/src/IabConnect.Api/DependencyInjection.cs:262-265](backend/src/IabConnect.Api/DependencyInjection.cs#L262-L265) honors `X-Forwarded-Proto: https` (Railway sets this), so binding to plain HTTP at the container is correct.
+
+6. **`backend/.dockerignore` exists.** Excludes at minimum, grouped by category:
+   - **.NET build outputs:** `**/bin/`, `**/obj/`, `**/*.user`, `**/*.lscache` (the `.lscache` files visible in the current `git status` are local-IDE artifacts that leaked once; the wildcard prevents future leaks).
+   - **Tests:** `tests/`, `**/*.Tests/`, `*.Tests.csproj.lscache` (test projects are not needed in the image and would inflate build context and image size).
+   - **Local config + secrets:** `**/.env`, `**/.env.*`, `**/secrets/`, `**/*.pfx`, `**/*.key`.
+   - **IDE / editor:** `**/.vs/`, `**/.idea/`, `**/.vscode/`, `**/*.swp`, `**/.DS_Store`.
+   - **Logs:** `**/logs/`, `**/*.log`.
+   - **Source-control + planning artifacts that shouldn't ride in the build context:** `.git/`, `.github/`, `_bmad-output/`, `_bmad/`, `docs/`.
+   - **Frontend tree** (the build context starts at `backend/`, but if a developer ever invokes `docker build` with a `..` context, frontend artifacts must not leak): the `.dockerignore` is scoped to `backend/`, so a `frontend/` entry is unnecessary AT this scope — confirm by not adding it (avoid false sense of cross-cutting protection).
+
+7. **Strip `rustfsadmin` credentials from base [appsettings.json](backend/src/IabConnect.Api/appsettings.json) AND from the C# class initializers (Beta-blocker resolution deferred to this story by the Epic-11 retrospective, 2026-05-16).** Two coordinated edits:
+
+   **7.1 — Edit [backend/src/IabConnect.Api/appsettings.json:37-43](backend/src/IabConnect.Api/appsettings.json#L37-L43):**
+   - **Before** (current):
+     ```json
+     "DocumentStorage": {
+       "ServiceUrl": "http://localhost:9000",
+       "AccessKey": "rustfsadmin",
+       "SecretKey": "rustfsadmin",
+       "BucketName": "iabconnect-documents",
+       "UseHttps": false
+     },
+     ```
+   - **After** (this story):
+     ```json
+     "DocumentStorage": {
+       "ServiceUrl": "",
+       "AccessKey": "",
+       "SecretKey": "",
+       "BucketName": "iabconnect-documents",
+       "UseHttps": true
+     },
+     ```
+
+   **7.2 — Edit [backend/src/IabConnect.Infrastructure/Storage/DocumentStorageSettings.cs:10-14](backend/src/IabConnect.Infrastructure/Storage/DocumentStorageSettings.cs#L10-L14):**
+   - **Before** (current):
+     ```csharp
+     public string ServiceUrl { get; set; } = "http://localhost:9000";
+     public string AccessKey { get; set; } = "rustfsadmin";
+     public string SecretKey { get; set; } = "rustfsadmin";
+     public string BucketName { get; set; } = "iabconnect-documents";
+     public bool UseHttps { get; set; } = false;
+     ```
+   - **After** (this story):
+     ```csharp
+     public string ServiceUrl { get; set; } = "";
+     public string AccessKey { get; set; } = "";
+     public string SecretKey { get; set; } = "";
+     public string BucketName { get; set; } = "iabconnect-documents";
+     public bool UseHttps { get; set; } = true;
+     ```
+
+   **Rationale.** The base `appsettings.json` is committed and shipped in the container image. Per project-context.md "Do not commit secrets… environment files", the literals `"rustfsadmin"` MUST NOT be the in-image default. The 7.2 C# edit eliminates the SAME strings from the compiled `IabConnect.Infrastructure.dll` IL (otherwise `strings .../IabConnect.Infrastructure.dll | grep rustfsadmin` still returns matches even after 7.1). The shape of both files stays (so config binding sees the section and the class compiles), `BucketName` keeps its non-secret default, `UseHttps` flips to `true` (cloud-safe — Dev overrides to `false` in [appsettings.Development.json:67](backend/src/IabConnect.Api/appsettings.Development.json#L67)).
+
+   The same literals already exist in [appsettings.Development.json:62-68](backend/src/IabConnect.Api/appsettings.Development.json#L62-L68), which only loads when `ASPNETCORE_ENVIRONMENT=Development` — so local dev is unaffected by either edit. The .NET config binder writes the Development-overlay values over both the base JSON and the class initializer at registration time ([DependencyInjection.cs:259-260](backend/src/IabConnect.Infrastructure/DependencyInjection.cs#L259-L260)).
+
+   **Failure mode after the edits.** The `IAmazonS3` singleton is **lazy-init via factory** at [DependencyInjection.cs:261-270](backend/src/IabConnect.Infrastructure/DependencyInjection.cs#L261-L270) — the factory runs on first `IDocumentStorage` resolution, not at app boot. With empty `ServiceUrl`, the factory's `new AmazonS3Config { ServiceURL = "" }` either throws `ArgumentException` immediately OR constructs an invalid client that fails on first S3 round-trip (AWS SDK behavior is version-dependent — Task 1.3 captures the actual symptom). Either way, the app **boots successfully**, then fails the first document-touching request with a clear error. This is the desired behavior: missing Railway env vars surface as a 500 on `/api/documents/...` instead of a startup crash that hides the cause.
+
+   **Beta wiring.** E13-S2 (Railway env vars) sets `DocumentStorage__ServiceUrl`, `DocumentStorage__AccessKey`, `DocumentStorage__SecretKey`, `DocumentStorage__UseHttps` per ADR-013. The Configuration system's environment-variable provider overlays these on top of the base empty strings.
+
+8. **No other secrets in the image.** The runtime stage's `/app/` contains exactly three `appsettings*.json` files: `appsettings.json` (with AC-7's redactions), `appsettings.Development.json` (carries the rustfsadmin Dev defaults — fine, only loads when ASPNETCORE_ENVIRONMENT=Development), and `appsettings.Beta.json` (Serilog Console-only + `RetentionEnforcement:Enabled=false` per [appsettings.Beta.json](backend/src/IabConnect.Api/appsettings.Beta.json)). NO `appsettings.Production.json` is copied (it does not exist by design — Production reads everything from environment per ADR-015). NO `.env`, `.env.local`, `.env.production`, or `secrets.json` files are copied (the `.dockerignore` from AC-6 enforces this).
+
+9. **Build-args `BUILD_SHA` and `BUILD_DATE` (default `unknown`).** The Dockerfile declares `ARG BUILD_SHA=unknown` and `ARG BUILD_DATE=unknown` in the **runtime stage** (not the build stage — build stage doesn't need them; runtime needs them visible at process boot), then `ENV BUILD_SHA=$BUILD_SHA` and `ENV BUILD_DATE=$BUILD_DATE`. Both default to the literal string `unknown` so a local `docker build -t iabc-api backend/` without args still produces a runnable image; `/about` returns `{ commitSha: "unknown", buildDate: "unknown" }` in that case, which is the documented local-dev contract for E20-S3.
+
+10. **OCI image labels** per ADR-014 (GHCR distribution) and ADR-009 (AGPL-3.0-or-later license metadata). The runtime stage emits these labels via `LABEL` instructions:
+    - `org.opencontainers.image.source="https://github.com/htos/iab-connect"` — points to the canonical OSS repo, NOT a fork URL. Forks rebuild the image with their own `--label org.opencontainers.image.source=…` override; the Dockerfile default is the canonical project.
+    - `org.opencontainers.image.licenses="AGPL-3.0-or-later"` — SPDX expression, matches the LICENSE file added in E20-S1.
+    - `org.opencontainers.image.title="IAB Connect API"`.
+    - `org.opencontainers.image.description="Backend API for IAB Connect — AGPL-3.0-or-later open-source membership platform."`.
+    - `org.opencontainers.image.vendor="IAB Connect contributors"`.
+    - E20-S5 augments these at CI-time via `docker buildx build --label org.opencontainers.image.revision=${{github.sha}} --label org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)` — those two are NOT baked into the Dockerfile because they vary per build and re-baking them would break the cache.
+
+11. **`ENTRYPOINT`.** The runtime stage ends with `ENTRYPOINT ["dotnet", "IabConnect.Api.dll"]`. No `CMD` is needed. The exec-form (JSON array) is mandatory so signals (SIGTERM from Railway's stop-the-container path) reach the dotnet process directly — shell-form `ENTRYPOINT dotnet IabConnect.Api.dll` would route signals to a wrapping `/bin/sh` and the .NET process would never see them, causing 30-second forced-kill on every redeploy.
+
+12. **Build success.** `docker build -t iabc-api:test backend/` from the **repository root** completes successfully. Resulting image size is ≤ 350 MB (aspnet:10.0 Debian-12 base is ~210 MB; published .NET app is ~30 MB; with tzdata + layer cache, ≤ 350 MB is the realistic target). Capture `docker history iabc-api:test --no-trunc` head in Completion Notes as evidence.
+
+13. **Runtime smoke — bootstrap reached.** `docker run --rm iabc-api:test` (no env vars supplied) emits the Serilog bootstrap line `Starting IAB Connect API` (from [backend/src/IabConnect.Api/Program.cs:15](backend/src/IabConnect.Api/Program.cs#L15) which uses the `CreateBootstrapLogger().WriteTo.Console()` sink) to stdout, then crashes when `MigrateAsync()` at [Program.cs:56,88](backend/src/IabConnect.Api/Program.cs#L56) tries to dial the localhost-default connection string and fails. Acceptance criterion is **the bootstrap log line appears in stdout BEFORE the container exits** (proving the image is launchable and the application code is reachable). The container exits non-zero — this is fine and expected. Capture the docker logs output in Completion Notes.
+
+14. **Quality gates.** `dotnet build backend/` from repo root — green (must remain green after the AC-7 appsettings edit). `dotnet test backend/` — 1957/1957 stays green (baseline established by E11-S2; the AC-7 edit reduces base-config schema but does not change runtime config in test scenarios where `ASPNETCORE_ENVIRONMENT=Testing` and connection strings come from Testcontainers). `docker build -t iabc-api:test backend/` — green. `docker run --rm iabc-api:test` — exits non-zero AFTER emitting the bootstrap Serilog line.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — Author `backend/.dockerignore` (AC: 5)** — file at `backend/.dockerignore` with the exclusion list per AC-5. Group entries by category with a leading `# .NET build outputs` / `# IDE` / `# Local config` / `# Tests` comment.
-- [ ] **Task 2 — Author `backend/Dockerfile` (AC: 1, 2, 3, 4, 6, 7, 8)** — file at `backend/Dockerfile`. Structure:
+- [ ] **Task 0 — Spike: enumerate `DocumentStorage:*` consumers (AC: 7, project-context A28)** — before editing appsettings.json, verify no boot-time eager-init path reads `DocumentStorage:AccessKey` synchronously before configuration overrides apply. Search:
+  - [ ] 0.1 `grep -r "DocumentStorage" backend/src/` — list all references.
+  - [ ] 0.2 Identify the DI registration site for the S3/RustFS client (likely in `IabConnect.Infrastructure/DependencyInjection.cs` or `IabConnect.Infrastructure/Storage/`).
+  - [ ] 0.3 Confirm the client is registered as **scoped or transient** (lazy-init on first use), not as **singleton with eager constructor read** of `IOptions<DocumentStorageOptions>`. If eager, escalate scope: emit a one-line note "Blocker found: eager DocumentStorage init reads AccessKey at boot → AC-7 edit will crash Dev startup unless ServiceUrl/AccessKey/SecretKey are kept" and ask user. If lazy (expected), emit "Confirmed lazy-init → AC-7 edit is safe" and proceed.
+  - [ ] 0.4 Confirm no test fixture reads the **base** appsettings.json `DocumentStorage:AccessKey` for assertions (the AC-7 redaction changes the base value to empty string; if any test asserts `"rustfsadmin"` against the base layer, update or escalate).
+
+- [ ] **Task 1 — Apply AC-7 edits (AC: 7)** — execute both edits per AC-7.1 and AC-7.2 "After" blocks. No other lines change in either file.
+  - [ ] 1.1 Edit [backend/src/IabConnect.Api/appsettings.json:37-43](backend/src/IabConnect.Api/appsettings.json#L37-L43) per AC-7.1.
+  - [ ] 1.2 Edit [backend/src/IabConnect.Infrastructure/Storage/DocumentStorageSettings.cs:10-14](backend/src/IabConnect.Infrastructure/Storage/DocumentStorageSettings.cs#L10-L14) per AC-7.2.
+  - [ ] 1.3 Run `dotnet build backend/IabConnect.sln` — green, 0 warnings.
+  - [ ] 1.4 Run `dotnet test backend/` — 1957/1957 green. If a test fails because it asserted against the base `rustfsadmin` literal, update the test to either (a) assert against the Development-overlay value, or (b) construct a `DocumentStorageSettings` instance directly via `new DocumentStorageSettings { AccessKey = "rustfsadmin", ... }` — whichever matches the test's intent. Do not weaken the assertion. Specifically check the E11-S1 `AppSettingsLayeringTests` for any base-layer `rustfsadmin` assertion.
+  - [ ] 1.5 Run `cd backend/src/IabConnect.Api && dotnet run` against the existing local `infra/docker-compose.yml` stack. Confirm: (a) bootstrap log "Starting IAB Connect API" fires; (b) the app reaches "Now listening on" or equivalent ready-state log; (c) the DocumentStorage S3 client resolves `rustfsadmin/rustfsadmin/http://localhost:9000` via the Development overlay (verify by triggering a document operation OR by reading the Configuration system's effective values at `/health/ready` if it surfaces them — check whether the health-check covers RustFS). Capture the relevant log lines in Completion Notes.
+  - [ ] 1.6 **Strings-leak verification.** After build, run from `backend/`:
+    ```sh
+    strings src/IabConnect.Infrastructure/bin/Debug/net10.0/IabConnect.Infrastructure.dll | grep -i rustfsadmin || echo "CLEAN"
+    ```
+    Expected: prints `CLEAN`. If `rustfsadmin` still appears, escalate — there is another source of the literal (likely a test fixture or a different settings class) that AC-7 missed.
+
+- [ ] **Task 2 — Author `backend/.dockerignore` (AC: 6)** — create file at `backend/.dockerignore` with the exclusion list per AC-6. Order entries by category with leading comments:
+  ```
+  # .NET build outputs
+  **/bin/
+  **/obj/
+  **/*.user
+  **/*.lscache
+
+  # Tests
+  tests/
+  **/*.Tests/
+  *.Tests.csproj.lscache
+
+  # Local config + secrets
+  **/.env
+  **/.env.*
+  **/secrets/
+  **/*.pfx
+  **/*.key
+
+  # IDE / editor
+  **/.vs/
+  **/.idea/
+  **/.vscode/
+  **/*.swp
+  **/.DS_Store
+
+  # Logs
+  **/logs/
+  **/*.log
+
+  # Source-control + planning artifacts (paths relative to repo root if `..` context is ever used)
+  .git/
+  .github/
+  _bmad-output/
+  _bmad/
+  docs/
+  ```
+
+- [ ] **Task 3 — Author `backend/Dockerfile` (AC: 1, 2, 3, 4, 5, 8, 9, 10, 11)** — file at `backend/Dockerfile`. Reference structure:
   ```dockerfile
   # syntax=docker/dockerfile:1.7
 
-  ARG DOTNET_SDK_TAG=9.0
-  ARG DOTNET_RUNTIME_TAG=9.0
+  ARG DOTNET_SDK_TAG=10.0
+  ARG DOTNET_RUNTIME_TAG=10.0
 
+  # ---- build stage ------------------------------------------------------------
   FROM mcr.microsoft.com/dotnet/sdk:${DOTNET_SDK_TAG} AS build
   WORKDIR /src
 
-  # Copy solution-level files for layer caching on dep restore
+  # Copy solution-level files first for layer caching on dep restore.
   COPY ["Directory.Build.props", "Directory.Packages.props", "global.json", "./"]
-  COPY ["src/IabConnect.Api/IabConnect.Api.csproj",          "src/IabConnect.Api/"]
-  COPY ["src/IabConnect.Application/IabConnect.Application.csproj", "src/IabConnect.Application/"]
-  COPY ["src/IabConnect.Domain/IabConnect.Domain.csproj",    "src/IabConnect.Domain/"]
+
+  # Copy .csproj files only (not source) so dotnet restore caches across source edits.
+  COPY ["src/IabConnect.Api/IabConnect.Api.csproj",                        "src/IabConnect.Api/"]
+  COPY ["src/IabConnect.Application/IabConnect.Application.csproj",       "src/IabConnect.Application/"]
+  COPY ["src/IabConnect.Domain/IabConnect.Domain.csproj",                 "src/IabConnect.Domain/"]
   COPY ["src/IabConnect.Infrastructure/IabConnect.Infrastructure.csproj", "src/IabConnect.Infrastructure/"]
   RUN dotnet restore "src/IabConnect.Api/IabConnect.Api.csproj"
 
-  # Copy source and publish
+  # Copy full source and publish.
   COPY src/ src/
   RUN dotnet publish "src/IabConnect.Api/IabConnect.Api.csproj" \
         -c Release \
         -o /app/publish \
-        /p:UseAppHost=false
+        /p:UseAppHost=false \
+        /p:PublishSingleFile=false
 
+  # ---- runtime stage ----------------------------------------------------------
   FROM mcr.microsoft.com/dotnet/aspnet:${DOTNET_RUNTIME_TAG} AS runtime
 
   ARG BUILD_SHA=unknown
@@ -60,15 +211,20 @@ so that **Railway and any forker can pull or build identical artifacts that boot
   ENV BUILD_SHA=$BUILD_SHA \
       BUILD_DATE=$BUILD_DATE \
       ASPNETCORE_URLS=http://+:8080 \
-      TZ=Europe/Zurich
+      TZ=Europe/Zurich \
+      DOTNET_RUNNING_IN_CONTAINER=true \
+      DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 
-  # OCI image labels (Story E20-S5 GHCR publishing also overrides these via --label)
+  # OCI labels for GHCR provenance (ADR-014, ADR-009). Per-build labels (revision, created)
+  # are injected at `docker buildx build --label …` time by E20-S5 CI.
   LABEL org.opencontainers.image.source="https://github.com/htos/iab-connect" \
         org.opencontainers.image.licenses="AGPL-3.0-or-later" \
         org.opencontainers.image.title="IAB Connect API" \
-        org.opencontainers.image.description="Backend API for IAB Connect, AGPL-3.0-or-later."
+        org.opencontainers.image.description="Backend API for IAB Connect — AGPL-3.0-or-later open-source membership platform." \
+        org.opencontainers.image.vendor="IAB Connect contributors"
 
-  # Install tzdata so Europe/Zurich resolves; aspnet:9.0 Debian base does not include it by default.
+  # Install tzdata so Europe/Zurich resolves; aspnet:10.0 Debian base does not include it.
+  # All in one RUN to minimize layers; cleanup apt lists.
   RUN apt-get update \
       && apt-get install -y --no-install-recommends tzdata \
       && rm -rf /var/lib/apt/lists/* \
@@ -78,68 +234,174 @@ so that **Railway and any forker can pull or build identical artifacts that boot
   WORKDIR /app
   COPY --from=build /app/publish ./
 
-  # Run as non-root
+  # Run as non-root (numeric UID for Kubernetes-style runAsNonRoot admission).
   USER 1000
 
   EXPOSE 8080
 
   ENTRYPOINT ["dotnet", "IabConnect.Api.dll"]
   ```
-- [ ] **Task 3 — Verify ICU presence (AC: 2)** — `docker run --rm --entrypoint /bin/sh mcr.microsoft.com/dotnet/aspnet:9.0 -c "dpkg -l | grep -i icu"` returns at least one `icu-libs` or `libicu*` row. (If a future .NET-Alpine base is adopted, ICU must be explicitly installed — out of scope here.)
-- [ ] **Task 4 — Verify timezone resolution at boot (AC: 2)** — build the image; `docker run --rm iabc-api:test sh -c 'date && cat /etc/timezone'` shows Europe/Zurich and a CET/CEST timestamp. (Note: the `sh` line uses the SDK image, not the runtime image which has no shell entrypoint — to test the runtime image's TZ specifically, attach to a running container with the connection string supplied so it stays up: `docker run -e ConnectionStrings__DefaultConnection=… iabc-api:test`, then `docker exec` for shell access.)
-- [ ] **Task 5 — Verify image size and contents (AC: 6, 9)** — `docker history iabc-api:test --no-trunc | head -20` shows the layer-wise size; the final image is ≤ 350 MB. `docker run --rm --entrypoint /bin/sh iabc-api:test -c "ls -la /app/appsettings*.json"` does not require shell, so use a debug variant: `docker image inspect iabc-api:test | jq '.[].RootFS.Layers | length'` to confirm layer count is reasonable (≤ 8 typical for this pattern).
-- [ ] **Task 6 — Runtime smoke test (AC: 10)** — `docker run --rm iabc-api:test` with no `ConnectionStrings__DefaultConnection` supplied. Expected log lines: `Starting IAB Connect API`, then either a configuration-missing error or an EF Core connection attempt failure. The container exits non-zero. Acceptance is that bootstrap Serilog fires and the configuration system reads at least once — not that the app fully starts (which requires DB).
-- [ ] **Task 7 — Add `backend/Dockerfile.dockerignore` note in README (AC: 5)** — a one-line mention in the existing README "Build" section: `# Backend container image: docker build -t iabc-api backend/`. Keep it minimal; the full build flow (with BUILD_SHA injection) is documented by Story E20-S5.
-- [ ] **Task 8 — Quality gate (AC: 9, 10)** — `docker build -t iabc-api:test backend/` succeeds locally; `docker run --rm iabc-api:test` exits with the expected non-crash behavior.
+  - **Note on `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false`**: this is the explicit-default for the Debian-based runtime (the env var is *true* on Alpine bases). Setting it explicitly to `false` is forward-compatibility insurance — if a future Dockerfile bump switches to Alpine, ICU breakage surfaces immediately as a "Globalization invariant mode is enabled" log line instead of silently corrupting Hangfire cron parsing.
+
+- [ ] **Task 4 — Verify ICU presence in the runtime base (AC: 3)** — confirm before build that ICU stays included by default:
+  ```sh
+  docker run --rm --entrypoint /bin/sh mcr.microsoft.com/dotnet/aspnet:10.0 -c "dpkg -l | grep -i icu"
+  ```
+  Expected: one or more rows showing `libicu72` (or similar `libicu*`). If absent, escalate — do not silently add `icu-libs` install (that would mask a base-image regression worth knowing about).
+
+- [ ] **Task 5 — Verify timezone resolution (AC: 3)** — build the image (Task 6), then:
+  ```sh
+  docker run --rm --entrypoint /bin/sh iabc-api:test -c 'date && cat /etc/timezone && ls -l /etc/localtime'
+  ```
+  Expected: `Europe/Zurich` in `/etc/timezone`; `/etc/localtime` symlinked to `/usr/share/zoneinfo/Europe/Zurich`; `date` outputs a CET or CEST timestamp (NOT UTC). Use `--entrypoint /bin/sh` because the default `ENTRYPOINT` runs `dotnet`.
+
+- [ ] **Task 6 — Build the image (AC: 12)** — from the repository root:
+  ```sh
+  docker build -t iabc-api:test backend/
+  ```
+  Expected: success in < 5 minutes on a warm Docker daemon (cold pull of sdk:10.0 + aspnet:10.0 layers takes longer). Capture in Completion Notes: total build time, `docker images iabc-api:test --format '{{.Size}}'` (≤ 350 MB), `docker history iabc-api:test --no-trunc | head -20` (layer breakdown).
+
+- [ ] **Task 7 — Runtime smoke (AC: 13)** — boot the container with no env vars:
+  ```sh
+  docker run --rm iabc-api:test 2>&1 | head -30
+  ```
+  Expected stdout (Serilog Console sink format from [Program.cs:8-11](backend/src/IabConnect.Api/Program.cs#L8-L11)):
+  ```
+  [HH:mm:ss INF] Starting IAB Connect API
+  …
+  [HH:mm:ss FTL] Application terminated unexpectedly
+  System.InvalidOperationException: … (or Npgsql connection failure)
+  ```
+  Acceptance: the line `Starting IAB Connect API` appears BEFORE the crash. Capture the full first 30 lines verbatim in Completion Notes.
+
+- [ ] **Task 8 — Add README "Build" section note (AC: 12, documentation hygiene)** — in `README.md`, add or update a single line in the existing "Build" / "Running locally" section:
+  ```
+  # Backend container image (Beta-shape): docker build -t iabc-api backend/
+  ```
+  Keep it minimal — the full GHCR-publish flow (with BUILD_SHA / BUILD_DATE injection) is documented by E20-S5. Do not add a multi-paragraph Docker section here.
+
+- [ ] **Task 9 — Quality gates (AC: 14)** — run from repo root:
+  - [ ] 9.1 `dotnet build backend/IabConnect.sln` — green, 0 warnings.
+  - [ ] 9.2 `dotnet test backend/` — 1957/1957 green (baseline unchanged).
+  - [ ] 9.3 `docker build -t iabc-api:test backend/` — green.
+  - [ ] 9.4 `docker run --rm iabc-api:test` — exits non-zero AFTER the bootstrap Serilog line. Confirmed in Task 7.
+  - [ ] 9.5 **AC-Subitem Completion Check** (project-context A29): list per-AC status in Completion Notes — AC-1..AC-14 each marked `covered / N/A / deferred` with one-line evidence pointer.
+
+- [!] **Task 10 — Manual verification: Beta-shape build-arg injection (AC: 9)** — `[!]` per project-context A30 because this requires either a Beta Railway deploy or a manual env-injected docker run that the dev agent cannot interactively launch:
+  ```sh
+  docker build \
+    --build-arg BUILD_SHA=test123abc \
+    --build-arg BUILD_DATE=2026-05-16T12:00:00Z \
+    -t iabc-api:buildargs backend/
+  docker inspect iabc-api:buildargs --format '{{.Config.Env}}' | tr ' ' '\n' | grep BUILD_
+  ```
+  Expected: `BUILD_SHA=test123abc` and `BUILD_DATE=2026-05-16T12:00:00Z` in the env list. Mark `[x]` only after human review confirms.
 
 ## Dev Notes
 
-### Stack version pinning
+### Stack version pinning (AC: 2)
 
-[Source: `backend/global.json`, `backend/Directory.Build.props`, `_bmad-output/planning-artifacts/architecture.md` System Context section]
+[Source: [backend/global.json](backend/global.json), [backend/Directory.Build.props](backend/Directory.Build.props), [backend/Directory.Packages.props](backend/Directory.Packages.props)]
 
-- Backend targets .NET 9 (confirmed by `mcr.microsoft.com/dotnet/sdk:9.0` and `aspnet:9.0`). Architecture.md mentions ASP.NET Core 10 — verify the actual target framework before pinning the SDK tag, and update the `ARG DOTNET_SDK_TAG` default if needed.
-- `Directory.Packages.props` centralizes NuGet versions (Central Package Management). The Dockerfile relies on this — `dotnet restore` reads it once for all referenced projects.
+- Backend targets **.NET 10** ([Directory.Build.props:3](backend/Directory.Build.props#L3) → `<TargetFramework>net10.0</TargetFramework>`).
+- SDK is pinned to `10.0.102` with `rollForward: latestMinor` ([global.json:3-5](backend/global.json#L3-L5)) — so `sdk:10.0` (which floats latest 10.x) is fine; SDK ≥10.0.102 inside the image will satisfy `global.json`.
+- All NuGet versions are centralized in [Directory.Packages.props](backend/Directory.Packages.props) (`<ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>`) — the Dockerfile relies on this so `dotnet restore "src/IabConnect.Api/IabConnect.Api.csproj"` transitively restores all referenced projects in one pass.
+- ASP.NET Core packages are version `10.0.2` (e.g., `Microsoft.AspNetCore.Authentication.JwtBearer 10.0.2`), Serilog.AspNetCore `10.0.0`, EF Core `10.0.2`, Npgsql.EntityFrameworkCore.PostgreSQL `10.0.0` — all aligned to the .NET-10 wave.
 
-### Why two stages, not one
+### Why `PublishSingleFile=false` is mandatory (AC: 1)
 
-Single-stage Docker builds with the SDK image ship the entire .NET SDK (~750 MB), the build cache, and possibly source code. Multi-stage with `aspnet:9.0` runtime cuts the published image to ~260 MB and excludes the SDK + source. This is standard .NET-on-Docker practice and matches Microsoft's "Containerize an app" docs.
+[Source: [backend/Directory.Build.props:12-16](backend/Directory.Build.props#L12-L16)]
 
-### Why `Europe/Zurich` and tzdata install
+The Release configuration in `Directory.Build.props` sets:
+```xml
+<PropertyGroup Condition="'$(Configuration)' == 'Release'">
+  <PublishTrimmed>false</PublishTrimmed>
+  <PublishSingleFile>true</PublishSingleFile>
+  <SelfContained>false</SelfContained>
+</PropertyGroup>
+```
+This is intentional for the "publish a portable single-file release binary" desktop / dev-shipping workflow. But in a Docker image with a framework-dependent runtime (`mcr.microsoft.com/dotnet/aspnet:10.0` already carries the framework), single-file publish:
+1. Produces a single executable `IabConnect.Api` (no `.dll`), incompatible with `ENTRYPOINT ["dotnet", "IabConnect.Api.dll"]`.
+2. Or, if combined with `/p:UseAppHost=false`, MSBuild emits warning `NETSDK1153` and the publish output shape is undefined.
 
-[Source: `backend/src/IabConnect.Api/DependencyInjection.cs:361–382`]
+Solution: explicitly override `PublishSingleFile=false` in the publish command line. This wins over the property-group default. `/p:UseAppHost=false` then cleanly produces `IabConnect.Api.dll` + its dependencies, runnable by the framework `dotnet` host.
 
-`ResolveReminderJobTimeZone` tries `Europe/Zurich`, then `W. Europe Standard Time`, then UTC. The fall-through behavior emits `LogError` (intentionally elevated from Warning per REQ-024 Round-3 review) because UTC is a 1–2-hour off the intended local-time semantic. Installing tzdata is mandatory to keep `Europe/Zurich` resolvable on the Debian-based aspnet:9.0 base, which does not pull tzdata by default.
+### Why two stages (not one)
 
-### Why `USER 1000` and not a named user
+Single-stage Docker builds with the SDK image ship the entire .NET SDK (~750 MB), the build cache, and possibly source code. Multi-stage with `aspnet:10.0` runtime cuts the published image to ~260 MB and excludes the SDK + source. Standard .NET-on-Docker practice and matches [Microsoft's "Containerize an app" docs](https://learn.microsoft.com/aspnet/core/host-and-deploy/docker).
 
-[Source: existing project conventions; OWASP container hardening guidance]
+### Why `Europe/Zurich` and tzdata install (AC: 3)
 
-Running as a non-root UID prevents most container-escape escalations. UID 1000 is a Linux convention for the first regular user. Numeric UID (not username) lets Kubernetes admission policies that require `runAsNonRoot: true` evaluate the image without resolving the passwd file.
+[Source: [backend/src/IabConnect.Api/DependencyInjection.cs:361-382](backend/src/IabConnect.Api/DependencyInjection.cs#L361-L382)]
 
-### Why HTTP-only on port 8080
+`ResolveReminderJobTimeZone` tries `Europe/Zurich` (IANA, Linux), then `W. Europe Standard Time` (Windows), then falls back to UTC. The fall-through behavior emits `LogError` (intentionally elevated from Warning per REQ-024 Round-3 review) because UTC is 1–2 hours off the intended local-time semantic, and Hangfire schedules the daily 09:00 volunteer-shift-reminder against the resolved zone. Installing tzdata on Debian-bookworm `aspnet:10.0` is mandatory because the base image (slim variant by default) does not ship tzdata.
 
-[Source: ADR-012 (planned)]
+### Why `USER 1000` (numeric, not named)
 
-Railway terminates TLS at its edge load-balancer; internal traffic between Railway services is HTTP. The application's own HTTPS-redirect (`backend/src/IabConnect.Api/DependencyInjection.cs:262–265`) only fires when the runtime detects HTTP and the env is not Development — Railway's `X-Forwarded-Proto: https` is honored by ASP.NET, so `UseHttpsRedirection()` is a no-op when reached via Railway's edge. Set `ASPNETCORE_URLS=http://+:8080` to bind explicitly to the Railway-routed port.
+[Source: existing project conventions; OWASP container hardening; Kubernetes `runAsNonRoot` PSP/PSA evaluation]
 
-### Build-args propagation to `/about`
+Running as a non-root UID prevents most container-escape escalations. UID 1000 is the Linux convention for the first regular user. Using the **numeric** UID (not a named user like `app`) lets Kubernetes admission policies that require `runAsNonRoot: true` evaluate the image without resolving `/etc/passwd`. The published files are world-readable by default; `chown -R 1000:1000 /app` would add a fat layer for no benefit, so it is deliberately omitted.
 
-[Source: ADR-021 (planned), Story E20-S3]
+### Why HTTP-only on port 8080 (AC: 5)
 
-The `BUILD_SHA` and `BUILD_DATE` build-args become `ENV` in the runtime stage. Story E20-S3's `/about` endpoint reads them via `Environment.GetEnvironmentVariable("BUILD_SHA")` / `BUILD_DATE`. CI (Story E20-S5) passes them as `docker buildx build --build-arg BUILD_SHA=${{github.sha}} --build-arg BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) …`. Local `docker build` without args produces an image that still runs — `/about` will return `commitSha: "unknown"`, which is the correct local-dev behavior.
+[Source: ADR-011, ADR-012; [backend/src/IabConnect.Api/DependencyInjection.cs:262-265](backend/src/IabConnect.Api/DependencyInjection.cs#L262-L265)]
+
+Railway terminates TLS at its edge load-balancer; internal traffic between Railway services is HTTP. The application's own `UseHttpsRedirection()` only fires when the runtime detects HTTP **and** the env is not Development — Railway's `X-Forwarded-Proto: https` is honored by ASP.NET ForwardedHeaders middleware, so `UseHttpsRedirection()` is a no-op when reached via Railway's edge. Setting `ASPNETCORE_URLS=http://+:8080` binds explicitly to the Railway-routed port. The same wiring works for `docker-compose.full.yml` (E12-S4) where TLS terminates at Caddy / Traefik.
+
+### Build-args propagation to `/about` (AC: 9)
+
+[Source: ADR-021; E20-S3 spec at [epics-and-stories.md#L396-L407](_bmad-output/planning-artifacts/architecture.md#L396-L407)]
+
+The `BUILD_SHA` and `BUILD_DATE` build-args become `ENV` in the runtime stage. Story E20-S3's `/about` endpoint reads them via `Environment.GetEnvironmentVariable("BUILD_SHA")` / `BUILD_DATE` and returns them in the JSON response per AGPL §13. CI (Story E20-S5) passes them as:
+```sh
+docker buildx build \
+  --build-arg BUILD_SHA=${{github.sha}} \
+  --build-arg BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
+  --label org.opencontainers.image.revision=${{github.sha}} \
+  --label org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
+  -t ghcr.io/htos/iabc-api:beta \
+  -t ghcr.io/htos/iabc-api:sha-${{github.sha}} \
+  backend/
+```
+Local `docker build` without args produces an image that still runs — `/about` returns `commitSha: "unknown", buildDate: "unknown"`, which is the correct local-dev contract.
 
 ### Why ICU stays in (do not switch to Alpine)
 
-[Source: `backend/src/IabConnect.Api/DependencyInjection.cs:367–368` reference to .NET ICU]
+[Source: [backend/src/IabConnect.Api/DependencyInjection.cs:367-368](backend/src/IabConnect.Api/DependencyInjection.cs#L367-L368)]
 
-Alpine-based .NET images use `dotnet:9.0-alpine` and `aspnet:9.0-alpine`. They do not ship ICU by default — `dotnet` runs in "globalization-invariant" mode unless `icu-libs` is installed. The application's timezone-resolution code falls back the wrong way without ICU, AND `Hangfire`'s string parsing for cron expressions is locale-sensitive. The Debian-based runtime is the safer default. A future Alpine port is possible but is an optimization story, not a Beta-blocker.
+Alpine-based .NET images (`dotnet:10.0-alpine`, `aspnet:10.0-alpine`) do not ship ICU by default — .NET runs in "globalization-invariant" mode (`DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true`). The application's timezone-resolution code, AND Hangfire's string parsing for cron expressions, are locale-sensitive. The Debian-based runtime is the safer default. A future Alpine port is possible but is an optimization story, not a Beta-blocker. The Dockerfile sets `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false` explicitly (Task 3) so that a future Alpine bump fails loudly via the `System.Globalization.CultureNotFoundException` log line instead of silently misparsing cron schedules.
 
-### `appsettings.Beta.json` carriage
+### `appsettings.Beta.json` carriage in the image
 
-[Source: Story E11-S1 Task 7]
+[Source: [appsettings.Beta.json](backend/src/IabConnect.Api/appsettings.Beta.json) (3 lines + structure), E11-S2 Task 7]
 
-The Beta appsettings file is committed in E11-S1; this story's `dotnet publish` step picks it up automatically (it's inside `src/IabConnect.Api/`). The Dockerfile does NOT need to handle Beta-specific layering — the runtime selects based on `ASPNETCORE_ENVIRONMENT`.
+The Beta appsettings file is committed by E11-S2 and `dotnet publish` automatically picks it up (it's an `appsettings.*.json` in the API project root). The Dockerfile does NOT need to handle Beta-specific layering — the runtime selects based on `ASPNETCORE_ENVIRONMENT`. Contents:
+```json
+{
+  "Serilog": { "Using": ["Serilog.Sinks.Console"], "WriteTo": [{ "Name": "Console" }] },
+  "Logging": { "LogLevel": { "Default": "Information" } },
+  "RetentionEnforcement": { "Enabled": false }
+}
+```
+This locks Beta to Console-only logging (ADR-017) and suppresses retention enforcement (ADR-020).
+
+### `rustfsadmin` disposition decision (AC: 7) — Beta-blocker resolution
+
+[Source: Epic-11 retrospective at `_bmad-output/implementation-artifacts/epic-11-retro-2026-05-16.md`; sprint-status.yaml `last_updated` field 2026-05-16; [appsettings.json:39-40](backend/src/IabConnect.Api/appsettings.json#L39-L40)]
+
+**Background.** Epic 11's code review surfaced that the committed [appsettings.json:39-40](backend/src/IabConnect.Api/appsettings.json#L39-L40) carries `"AccessKey": "rustfsadmin"` and `"SecretKey": "rustfsadmin"` — the local-dev RustFS credentials. While these are not real production secrets (they are the well-known RustFS default), they are credentials of a kind and they would travel inside the production image. The E11 retro deferred the resolution to E12-S1.
+
+**Two paths were considered:**
+1. **`IOptions<DocumentStorageOptions>` refactor** — formalize the configuration binding and rely on env-var overrides at deploy time. Pros: idiomatic .NET. Cons: app-code change, risk of regressing the Storage DI registration, out of scope for "first Dockerfile" story.
+2. **Image-side stripping via `.dockerignore`** — exclude `appsettings.json` from the build context, ship only `appsettings.{Development,Beta}.json`. Pros: zero code change. Cons: ASP.NET requires `appsettings.json` as the base config layer; missing-file behavior at runtime is "section not found", which would break ALL configuration consumers, not just `DocumentStorage`. **Rejected.**
+
+**Chosen path: paired JSON + class-initializer edit (a third option not initially considered).** Strip the credentials from BOTH the base `appsettings.json` (AC-7.1) AND the C# class initializers in [DocumentStorageSettings.cs:10-14](backend/src/IabConnect.Infrastructure/Storage/DocumentStorageSettings.cs#L10-L14) (AC-7.2). Replacing only the JSON values would leave the `"rustfsadmin"` strings in the compiled `IabConnect.Infrastructure.dll` IL — a `strings | grep rustfsadmin` against the published assembly would still hit. The paired edit takes the strings out at both source layers. Local-dev continues to work because [appsettings.Development.json:62-68](backend/src/IabConnect.Api/appsettings.Development.json#L62-L68) already carries the same `rustfsadmin/rustfsadmin/http://localhost:9000/iabconnect-documents/UseHttps:false` block, which the .NET binder overlays over both the (now-empty) base JSON and the (now-empty) class initializer at registration time ([DependencyInjection.cs:259-260](backend/src/IabConnect.Infrastructure/DependencyInjection.cs#L259-L260)).
+
+**Failure mode after the edits.** The `IAmazonS3` registration at [DependencyInjection.cs:261-270](backend/src/IabConnect.Infrastructure/DependencyInjection.cs#L261-L270) is a singleton with a **lazy factory** that runs on first resolution. So missing Railway env vars do NOT crash the container at boot — the app starts, accepts traffic on `/health/live` and any non-S3-touching endpoint, and only the first document-touching request fails. This is the desired behavior: it surfaces misconfiguration as a 500 on `/api/documents/...` with a clear stack trace, rather than a boot loop that hides the cause behind generic restart-loop log noise.
+
+**Why this is in scope for E12-S1 (not deferred to E13-S2 or post-Beta).** The story's title is "Backend Dockerfile" — and the rustfsadmin literals would ship inside that Dockerfile's published `/app/appsettings.json` AND in the published `IabConnect.Infrastructure.dll` IL. If we ship the image with the secret-shaped strings inside, E12-S1 is technically complete but materially fails AC-8 ("No other secrets in the image"). The paired edit is therefore part of the Dockerfile-completeness story, not a separate refactor. The fact that the source is AGPL-public anyway is acknowledged — but `strings *.dll | grep` is a routine container-supply-chain check that should come up empty.
+
+**Test surface.** The existing `AppSettingsLayeringTests` (E11-S1) covers the layering invariants; if any test asserts `"AccessKey":"rustfsadmin"` against the base layer specifically, update or escalate per Task 1.4. Task 1.6 adds a `strings`-based assertion as a defense-in-depth check that catches any other source of the literal (test fixtures, alternate settings classes, doc comments embedded as resources).
 
 ### What this story does NOT do
 
@@ -147,20 +409,65 @@ The Beta appsettings file is committed in E11-S1; this story's `dotnet publish` 
 - Does NOT add the frontend Dockerfile — that's E12-S2.
 - Does NOT build the custom Keycloak image — that's E12-S3.
 - Does NOT add a `docker-compose.full.yml` — that's E12-S4.
-- Does NOT modify any application source code — only `backend/Dockerfile` and `backend/.dockerignore` are new artifacts in this story.
+- Does NOT refactor `DocumentStorageOptions` into an `IOptions<>`-bound class — that's a deliberate non-scope decision (see "rustfsadmin disposition decision" above).
+- Does NOT add the `/about` endpoint — that's E20-S3. This story bakes the env vars `/about` will read.
+- Does NOT set up CI build/publish — that's E20-S5.
 
 ### Project Structure Notes
 
-NEW files: `backend/Dockerfile`, `backend/.dockerignore`.
-EDIT files: `README.md` (one-line build-command note).
-No code changes in `backend/src/`.
+**NEW files** (2):
+- `backend/Dockerfile`
+- `backend/.dockerignore`
+
+**EDIT files** (3):
+- `backend/src/IabConnect.Api/appsettings.json` — 5-line redaction per AC-7.1.
+- `backend/src/IabConnect.Infrastructure/Storage/DocumentStorageSettings.cs` — 5-line class-initializer redaction per AC-7.2 (the only C# edit in this story).
+- `README.md` — one-line build-command note per Task 8.
+
+**Source-code change scope.** The single C# file edit ([DocumentStorageSettings.cs](backend/src/IabConnect.Infrastructure/Storage/DocumentStorageSettings.cs)) is purely a property-initializer cleanup — no behavior change (the binder always overwrote the initializers from config). No new files, no DI registration changes, no API contract changes. The change is verified via the `strings`-leak check in Task 1.6.
 
 ### References
 
 - [Source: _bmad-output/planning-artifacts/sprint-change-proposal-2026-05-15.md#Section 3 — REQ-088 AC-1]
-- [Source: _bmad-output/planning-artifacts/sprint-change-proposal-2026-05-15.md#Section 4 — ADR-012 Service Topology]
-- [Source: _bmad-output/planning-artifacts/sprint-change-proposal-2026-05-15.md#Section 4 — ADR-021 Source-Disclosure Mechanism]
-- [Source: _bmad-output/planning-artifacts/sprint-change-proposal-2026-05-15.md#Section 5 — Epic E12 Story E12-S1]
-- [Source: backend/src/IabConnect.Api/DependencyInjection.cs:361–382 — ResolveReminderJobTimeZone Europe/Zurich requirement]
-- [Source: backend/src/IabConnect.Api/Program.cs — bootstrap sequence and migration behavior]
+- [Source: _bmad-output/planning-artifacts/architecture.md#L262-L271 — ADR-011 Beta Deployment Target — Railway]
+- [Source: _bmad-output/planning-artifacts/architecture.md#L272-L304 — ADR-012 Service Topology on Railway]
+- [Source: _bmad-output/planning-artifacts/architecture.md#L317-L328 — ADR-014 Container Image Distribution — GHCR]
+- [Source: _bmad-output/planning-artifacts/architecture.md#L329-L342 — ADR-015 Configuration and Environment Strategy]
+- [Source: _bmad-output/planning-artifacts/architecture.md#L353-L365 — ADR-017 Logging and Health for Container Runtimes]
+- [Source: _bmad-output/planning-artifacts/architecture.md#L396-L407 — ADR-021 Source-Disclosure Mechanism (AGPL §13)]
+- [Source: _bmad-output/planning-artifacts/epics-and-stories.md#L1269-L1292 — Epic E12 Story E12-S1 spec]
+- [Source: backend/global.json — SDK 10.0.102 pin]
+- [Source: backend/Directory.Build.props:3 — TargetFramework net10.0]
+- [Source: backend/Directory.Build.props:12-16 — Release config sets PublishSingleFile=true]
+- [Source: backend/src/IabConnect.Api/Program.cs:15 — bootstrap Serilog "Starting IAB Connect API" log line]
+- [Source: backend/src/IabConnect.Api/Program.cs:46-90 — MigrateAsync behavior on missing connection string (crash after bootstrap log)]
+- [Source: backend/src/IabConnect.Api/DependencyInjection.cs:361-382 — ResolveReminderJobTimeZone Europe/Zurich requirement]
+- [Source: backend/src/IabConnect.Api/DependencyInjection.cs:262-265 — UseHttpsRedirection behind ForwardedHeaders]
+- [Source: backend/src/IabConnect.Api/appsettings.json:37-43 — current DocumentStorage block to be edited per AC-7]
+- [Source: backend/src/IabConnect.Api/appsettings.Development.json:62-68 — Development overlay of DocumentStorage]
+- [Source: backend/src/IabConnect.Api/appsettings.Beta.json — Beta overlay (Console-only Serilog + RetentionEnforcement=false)]
+- [Source: project-context.md A28-A30 — Spike-First / AC-Subitem Check / Three-State Task Checkbox]
 - [Source: https://learn.microsoft.com/aspnet/core/host-and-deploy/docker — Microsoft .NET on Docker official guidance]
+- [Source: https://learn.microsoft.com/dotnet/core/deploying/single-file/overview — PublishSingleFile semantics]
+
+## Dev Agent Record
+
+### Agent Model Used
+
+_To be filled by dev agent on first commit._
+
+### Debug Log References
+
+### Completion Notes List
+
+### File List
+
+## Questions / Clarifications
+
+These surfaced during context engineering and are saved here for the dev agent (and human reviewer) to either resolve in-flight or escalate before commit:
+
+1. **Beta-shape S3 env-var verification (Task 0.2-0.3).** The DI registration site for the S3/RustFS client was not directly inspected during context engineering (would require reading `IabConnect.Infrastructure/Storage/*` and `IabConnect.Infrastructure/DependencyInjection.cs`). Task 0 covers this — if the spike turns up an eager-init pattern, the dev agent should escalate to the user with a one-liner like "Blocker found: …" rather than proceeding with the AC-7 edit blind.
+
+2. **README "Build" section location.** The README's exact section layout was not loaded during context engineering. Task 8 says "in the existing 'Build' / 'Running locally' section" — if no such section exists, the dev agent should append a minimal `### Docker (Beta-shape)` section under the closest existing "Local development" heading, keeping it ≤ 4 lines.
+
+3. **Image OCI source URL fork-friendliness.** The `org.opencontainers.image.source="https://github.com/htos/iab-connect"` literal is the canonical OSS repo. If at PR-review time the user prefers fork-friendly substitution (e.g., `ARG IMAGE_SOURCE=https://github.com/htos/iab-connect` + `LABEL org.opencontainers.image.source=$IMAGE_SOURCE`), it is a 3-line patch — surface this question in the PR description rather than guessing at build time.
