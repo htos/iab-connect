@@ -355,8 +355,15 @@ npm run dev
 # Backend image (multi-stage; bakes BUILD_SHA / BUILD_DATE as unknown by default)
 docker build -t iabc-api backend/
 
-# Frontend image — ALL NEXT_PUBLIC_* are build-time-constant, must be passed as --build-arg
-docker build --build-arg NEXT_PUBLIC_API_URL=… --build-arg NEXT_PUBLIC_KEYCLOAK_ISSUER=… -t iabc-web frontend/
+# Frontend image — ALL 5 required NEXT_PUBLIC_* must be passed as --build-arg.
+# The build now fails fast if any of these five are empty.
+docker build \
+  --build-arg NEXT_PUBLIC_API_URL=https://api.example.app \
+  --build-arg NEXT_PUBLIC_KEYCLOAK_URL=https://kc.example.app \
+  --build-arg NEXT_PUBLIC_KEYCLOAK_REALM=iabconnect \
+  --build-arg NEXT_PUBLIC_KEYCLOAK_CLIENT_ID=iabconnect-frontend \
+  --build-arg NEXT_PUBLIC_KEYCLOAK_ISSUER=https://kc.example.app/realms/iabconnect \
+  -t iabc-web frontend/
 ```
 
 The full GHCR-publish flow with build-arg injection (commit-SHA, ISO date, the rest of the `NEXT_PUBLIC_*` set) is documented separately.
@@ -371,11 +378,23 @@ docker compose -f infra/docker-compose.yml -f infra/docker-compose.full.yml up -
 
 - Web UI: <http://localhost:3000> (BETA banner visible — login via Keycloak)
 - Keycloak: <http://localhost:8080> (admin console at `/admin`, login `admin` / `admin-full`)
-- API: <http://localhost:5000/health/ready> (Swagger disabled in Beta — `/swagger` returns 404, expected)
+- API: <http://localhost:5000/health/ready>
 - Realm probe: <http://localhost:8080/realms/iabconnect/.well-known/openid-configuration>
 - MailHog: <http://localhost:8025> · RustFS console: <http://localhost:9001>
 
 The overlay adds three new services (`api`, `web`, `keycloak-full`) plus a one-shot `keycloak-full-realm-check` health gate. It disables the base `keycloak` service via the `disabled-by-full` profile to free host port 8080. Everyday local dev (Option 1) is unaffected — the base file still works standalone.
+
+**What this overlay does NOT simulate (vs real Beta on Railway):**
+
+The api service runs with `ASPNETCORE_ENVIRONMENT=Development` rather than `Beta` because the backend hardcodes `RequireHttpsMetadata = !(IsDevelopment || Testing)` and local Keycloak runs HTTP only. A surface-level consequence is that several Development-only features are active here that real Beta disables:
+
+- `/swagger` is mounted (real Beta returns 404)
+- CORS is permissive (real Beta uses strict CORS via `appsettings.Beta.json`)
+- HSTS + HTTPS-redirect are skipped (real Beta enables both)
+- Serilog uses Development sinks rather than Beta's Console-only configuration
+- Development data seeders + EF `AutoMigrate` run on first boot
+
+The "Beta-shape" intent of the overlay is preserved by (a) Railway-mirroring port mapping (5000/3000/8080), (b) frontend BETA banner via `NEXT_PUBLIC_ENV_LABEL=beta`, (c) container topology with sanitized realm + custom Keycloak image, (d) `RetentionEnforcement__Enabled=false` matching Beta's retention suppression. Real Beta on Railway runs `ASPNETCORE_ENVIRONMENT=Beta` once E14-S2 surfaces `Keycloak__RequireHttpsMetadata` as a config key.
 
 Teardown (drops named volumes — Postgres, RustFS, Seq):
 

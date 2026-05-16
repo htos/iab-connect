@@ -24,11 +24,13 @@ ARG NODE_TAG=22-alpine
 FROM node:${NODE_TAG} AS deps
 WORKDIR /app
 
-# Pin npm to the same major as the host that generated package-lock.json.
+# Pin npm to the same patch version as the host that generated package-lock.json.
 # node:22-alpine bundles npm 10.x while package-lock.json is authored with
 # npm 11.x; the mismatched lockfile parser otherwise reports "out of sync"
-# for optional peer-dep transitives (observed: @swc/helpers).
-RUN npm install -g npm@11
+# for optional peer-dep transitives (observed: @swc/helpers). Pin to a specific
+# patch (not just major) so a future npm@11 minor/patch release cannot regress
+# the build silently.
+RUN npm install -g npm@11.6.0
 
 # Lockfile-first copy maximizes layer-cache reuse: src/ edits do not invalidate
 # the (slow) npm install layer; only package.json or package-lock.json do.
@@ -66,6 +68,18 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Fail-fast if a required NEXT_PUBLIC_* build-arg is empty. Without this guard,
+# `next build` silently inlines empty strings into the static client bundle,
+# producing an image whose Keycloak deep-links collapse to relative URLs at
+# runtime — the symptom appears only on first browser login (404 on OIDC
+# discovery). Five vars are required for OIDC + API + Keycloak deep-links.
+RUN test -n "$NEXT_PUBLIC_API_URL" \
+     -a -n "$NEXT_PUBLIC_KEYCLOAK_URL" \
+     -a -n "$NEXT_PUBLIC_KEYCLOAK_REALM" \
+     -a -n "$NEXT_PUBLIC_KEYCLOAK_CLIENT_ID" \
+     -a -n "$NEXT_PUBLIC_KEYCLOAK_ISSUER" \
+     || (echo "ERROR: one or more required NEXT_PUBLIC_* build args are empty (API_URL, KEYCLOAK_URL, KEYCLOAK_REALM, KEYCLOAK_CLIENT_ID, KEYCLOAK_ISSUER). Pass them via --build-arg." >&2 && exit 1)
+
 # `next build` honours next.config.ts (`output: "standalone"`, `outputFileTracingRoot`)
 # and emits .next/standalone/server.js + a trimmed node_modules tree.
 RUN npm run build
@@ -101,6 +115,11 @@ COPY --from=build --chown=node:node /app/public ./public
 USER node
 
 EXPOSE 3000
+
+# HEALTHCHECK uses node-only HTTP (node:22-alpine doesn't ship curl/wget by
+# default). A 4xx/5xx response is unhealthy; network/parse errors are unhealthy.
+HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3000/',r=>process.exit(r.statusCode<400?0:1)).on('error',()=>process.exit(1))" || exit 1
 
 # Exec form ensures SIGTERM from Railway's redeploy reaches Node directly so
 # the standalone server can flush in-flight requests before exit.

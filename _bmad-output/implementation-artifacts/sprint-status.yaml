@@ -1,5 +1,58 @@
 # generated: 2026-05-12
-# last_updated: 2026-05-15 (Sprint re-planning post Beta-on-Railway and Open Source
+# last_updated: 2026-05-16 (bmad-retrospective for Epic-12: COMPLETE. Retro doc saved
+#   at epic-12-retro-2026-05-16.md. 3 new action items A31 (Cross-Story Orthogonal-AC
+#   Inventory) / A32 (Decision-Resolution with Manual-Verify Hand-off) / A33
+#   (Base-Image User Verification in Dockerfile Spikes) — all promoted to
+#   project-context.md as Rules under "Story Authoring & Dev-Story Execution Rules
+#   (from Epic-11 retro A28-A30, 2026-05-16; Epic-12 retro A31-A33, 2026-05-16)".
+#   A28/A29/A30 follow-through evaluated: A28 strongly applied (all 4 stories had
+#   Task 0 spikes catching non-obvious constraints); A29 partially applied (worked
+#   for explicit-numbered ACs, missed cross-story orthogonal dimensions like
+#   "no dev secrets in image" — drives A31); A30 strongly applied (4 [!] markers
+#   correctly queued, but D3 showed that [!]-deferred verification can also block
+#   Decision resolution — drives A32). A27 from E10 carries forward (still N/A in
+#   E12; will trigger when E13/E14 require a long-running stack mid-review). No
+#   Significant Discoveries invalidate Wave-4 plans. epic-12-retrospective status
+#   optional -> done. Sprint state: epic-11 done + epic-12 done + epic-20
+#   in-progress (5 ready-for-dev). Per workflow.on_complete: NEXT is
+#   bmad-create-story for the first Wave-4 story = e20-s3-add-backend-about-endpoint
+#   (already ready-for-dev, story file exists from the bmad-create-story pass on
+#   2026-05-15). Since the story file exists with full context, NEXT can also be
+#   bmad-dev-story for e20-s3 directly — choice surfaced to user. Per project
+#   memory feedback_session_pacing_dev_cycles, recommend committing this retro
+#   close + A31-A33 project-context update and starting the dev-story in a fresh
+#   session.) ## Previously: 2026-05-16 (bmad-code-review for Epic-12 boundary: COMPLETE. Adversarial
+#   review (Blind Hunter + Edge Case Hunter + Acceptance Auditor) over the full
+#   E12 diff (~924 lines code/config across 13 source files). Triage produced
+#   3 decision-needed, 7 patches, 28 defers, ~17 dismisses. All 3 decisions
+#   resolved: D1 → (A) accept ASPNETCORE_ENVIRONMENT=Development + README disclaimer
+#   expansion (P6); D2 → (B) replace `*.up.railway.app/*` wildcard with
+#   ${IABCONNECT_BETA_HOST}/* placeholder (new P8); D3 → (A) verify NEXTAUTH
+#   issuer divergence via browser smoke first (queued behind Task 8 [!]). All 8
+#   patches applied in this session: P1 backend USER 1000→$APP_UID + chown app:app;
+#   P2 **/appsettings.Development.json added to backend/.dockerignore (literals no
+#   longer ship in published OCI image); P3 NEXT_PUBLIC_* fail-fast guard before
+#   `npm run build`; P4 `npm install -g npm@11.6.0` patch pin; P5 HEALTHCHECK on
+#   both Dockerfiles + overlay depends_on flipped to service_healthy + api gated on
+#   keycloak-full-realm-check.service_completed_successfully; P6 README Option 4
+#   "What this overlay does NOT simulate" disclaimer; P7 README Option 3 ellipsis
+#   replaced with concrete example values for all 5 required NEXT_PUBLIC_* args;
+#   P8 sanitized realm `iabconnect-frontend` redirectUris + webOrigins use
+#   ${IABCONNECT_BETA_HOST}/* placeholder (overlay supplies BETA_HOST=localhost:3000
+#   for local smoke; E13-S2 sets it to the actual Railway frontend URL). 28 defers
+#   logged in deferred-work.md under "Deferred from: code review of Epic-12
+#   boundary (2026-05-16)" — partitioned per source story (e12-s1: 8 entries D1'-D8',
+#   e12-s2: 3 entries D9'-D11', e12-s3: 7 entries D12'-D18', e12-s4: 12 entries
+#   D19'-D30'). Quality gates: dotnet build 0 warnings/0 errors; docker compose
+#   config -f base -f full green; JSON+YAML syntax valid post-patches. Status
+#   transitions: e12-s1/s2/s3/s4 review → done; epic-12 in-progress → done. NEXT:
+#   per workflow.on_complete + project memory `feedback_bmad_workflow` (hybrid:
+#   CR+ER at epic boundary), bmad-retrospective for Epic-12 close. Then Wave-4
+#   per SCP-2026-05-15 §6 starts: E20-S3 backend /about endpoint + E20-S4 frontend
+#   license footer (both consume the BUILD_SHA/BUILD_DATE + NEXT_PUBLIC_SOURCE_URL
+#   build-args that Wave-3 just baked into the images). Per project memory
+#   `feedback_session_pacing_dev_cycles`, recommend committing this review state
+#   and starting bmad-retrospective in a fresh session.) ## Previously: 2026-05-15 (Sprint re-planning post Beta-on-Railway and Open Source
 #   Foundation pivot: bmad-sprint-planning re-run against the SCP-2026-05-15-aligned
 #   epics-and-stories.md. 10 new epics (E11-E20) and 40 new stories added.
 #   Status assignment uses the project's established wave-aware convention: file
@@ -243,12 +296,12 @@ development_status:
   e11-s3-make-next-config-environment-driven: done
   epic-11-retrospective: done
 
-  epic-12: in-progress
-  e12-s1-add-backend-dockerfile-multistage: review
-  e12-s2-add-frontend-dockerfile-standalone: review
-  e12-s3-add-custom-keycloak-image-with-spi: review
-  e12-s4-add-optional-docker-compose-full: review
-  epic-12-retrospective: optional
+  epic-12: done
+  e12-s1-add-backend-dockerfile-multistage: done
+  e12-s2-add-frontend-dockerfile-standalone: done
+  e12-s3-add-custom-keycloak-image-with-spi: done
+  e12-s4-add-optional-docker-compose-full: done
+  epic-12-retrospective: done
 
   epic-13: backlog
   e13-s1-create-railway-project-and-services: backlog

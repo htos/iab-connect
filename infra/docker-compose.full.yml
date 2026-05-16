@@ -41,6 +41,12 @@ services:
       IABCONNECT_ADMIN_CLIENT_SECRET: "admin-service-secret-2026"
       IABCONNECT_FRONTEND_CLIENT_SECRET: "frontend-dev-secret-2026"
       FRONTEND_PUBLIC_URL: "http://localhost:3000"
+      # E12-S3 D2 resolution (Epic-12 boundary review): wildcard
+      # `https://*.up.railway.app/*` was replaced by `${IABCONNECT_BETA_HOST}/*`
+      # in sanitized realm. Local overlay sets BETA_HOST to the same value as
+      # FRONTEND_PUBLIC_URL for self-contained smoke. Real Beta gets this from
+      # Railway env (E13-S2).
+      IABCONNECT_BETA_HOST: "http://localhost:3000"
     ports:
       - "8080:8080"
     depends_on:
@@ -120,7 +126,9 @@ services:
       postgres:
         condition: service_healthy
       keycloak-full:
-        condition: service_started
+        condition: service_healthy
+      keycloak-full-realm-check:
+        condition: service_completed_successfully
       rustfs-init:
         condition: service_completed_successfully
 
@@ -154,6 +162,6 @@ services:
       - "3000:3000"
     depends_on:
       api:
-        condition: service_started
+        condition: service_healthy
       keycloak-full:
-        condition: service_started
+        condition: service_healthy

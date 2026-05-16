@@ -48,20 +48,29 @@ LABEL org.opencontainers.image.source="https://github.com/htos/iab-connect" \
       org.opencontainers.image.description="Backend API for IAB Connect — AGPL-3.0-or-later open-source membership platform." \
       org.opencontainers.image.vendor="IAB Connect contributors"
 
-# Install tzdata so Europe/Zurich resolves; aspnet:10.0 Debian base does not include it.
-# All in one RUN to minimize layers; cleanup apt lists.
+# Install tzdata + curl so Europe/Zurich resolves and HEALTHCHECK can run.
+# aspnet:10.0 Ubuntu Noble base ships tzdata + ICU pre-bundled (~14B no-op);
+# curl is needed for the HEALTHCHECK declared below. All in one RUN to
+# minimize layers; cleanup apt lists.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends tzdata \
+    && apt-get install -y --no-install-recommends tzdata curl \
     && rm -rf /var/lib/apt/lists/* \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
     && echo $TZ > /etc/timezone
 
 WORKDIR /app
-COPY --from=build /app/publish ./
+# Use the pre-created `app` user shipped by mcr.microsoft.com/dotnet/aspnet:10.0
+# (UID = $APP_UID = 1654 on Ubuntu Noble base). The base creates the user with
+# /home/app, /etc/passwd entry, and a usable login shell — required by ASP.NET
+# DataProtection (writes keyring to /home/$USER) and any feature that opens a
+# temp file under /tmp or writes logs.
+COPY --from=build --chown=app:app /app/publish ./
 
-# Run as non-root (numeric UID for Kubernetes-style runAsNonRoot admission).
-USER 1000
+USER $APP_UID
 
 EXPOSE 8080
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=3 \
+  CMD curl -fsS http://localhost:8080/health/ready || exit 1
 
 ENTRYPOINT ["dotnet", "IabConnect.Api.dll"]

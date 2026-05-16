@@ -1,6 +1,6 @@
 # Story 12.2: Frontend Dockerfile (Next standalone)
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -451,3 +451,23 @@ The `Network: http://0.0.0.0:3000` line is the critical proof that `HOSTNAME=0.0
 2. **`package-lock.json` presence.** The Dockerfile's `npm ci --frozen-lockfile` requires `frontend/package-lock.json` to exist. If absent (e.g., `pnpm-lock.yaml` or `yarn.lock` is the lockfile instead), the deps stage will fail. Sanity-check before authoring: `ls frontend/package-lock.json`. If absent, escalate to the user before adapting the Dockerfile to a different package manager.
 
 3. **License footer / fork SOURCE_URL bake (Task 10).** Until E20-S4 lands the footer that visually surfaces `NEXT_PUBLIC_SOURCE_URL`, the only way to verify the bake is via `grep` against the static bundle. Once E20-S4 closes, the manual verification becomes a browser DOM check — re-evaluate the `[!]` marker then.
+
+## Review Findings (Epic-12 boundary review — 2026-05-16)
+
+Adversarial review over the full Epic-12 diff (Blind Hunter + Edge Case Hunter + Acceptance Auditor). E12-S2-scoped slice below.
+
+### Patches (pending dev-story re-entry)
+
+- [x] [Review][Patch] **P3 (applied 2026-05-16) — 5 required `NEXT_PUBLIC_*` ARGs have no default + no fail-fast guard; following README "Option 3" literally produces a broken image with empty strings inlined** [frontend/Dockerfile:47-51, README.md:357] — Of the 9 `NEXT_PUBLIC_*` declared, 5 (`API_URL`, `KEYCLOAK_URL`, `KEYCLOAK_REALM`, `KEYCLOAK_CLIENT_ID`, `KEYCLOAK_ISSUER`) carry no defaults. `next build` silently inlines empty strings → client-side OIDC discovery 404s at runtime. README "Option 3" example only passes 2 of 5 `--build-arg`s and uses Unicode ellipses `…` as placeholders (copy-paste hazard). Fix: insert a one-line guard before `npm run build`:
+  ```dockerfile
+  RUN test -n "$NEXT_PUBLIC_API_URL" -a -n "$NEXT_PUBLIC_KEYCLOAK_URL" -a -n "$NEXT_PUBLIC_KEYCLOAK_REALM" -a -n "$NEXT_PUBLIC_KEYCLOAK_CLIENT_ID" -a -n "$NEXT_PUBLIC_KEYCLOAK_ISSUER" || (echo "ERROR: required NEXT_PUBLIC_* build args missing" >&2 && exit 1)
+  ```
+  Also fix README Option 3 to enumerate all 5 args with concrete example values (no `…`).
+
+- [x] [Review][Patch] **P4 (applied 2026-05-16) — `RUN npm install -g npm@11` floats to latest npm-11 minor/patch on every cold build (reproducibility loss)** [frontend/Dockerfile:31] — Pin to a specific patch matching the host that authored the lockfile: `RUN npm install -g npm@11.6.0` (adjust to current). The story Debug Log mentions npm 11.6.0 was the host version when the lockfile was regenerated.
+
+### Deferred (logged to deferred-work.md)
+
+- [x] [Review][Defer] **D9' — `HOSTNAME=0.0.0.0` collides with POSIX hostname convention; operator-supplied `HOSTNAME` env (Railway, K8s downward-API, `docker run --hostname`) silently overrides the standalone-server bind** [frontend/Dockerfile:82] — surfaces as "Empty reply from server" on first request. Runbook item; mitigation is a wrapper script that forces `HOSTNAME=0.0.0.0 exec node server.js`.
+- [x] [Review][Defer] **D10' — `frontend/.dockerignore` excludes test source but not test configs (`playwright.config.ts`, `vitest.config.ts`)** [frontend/.dockerignore:26-32] — minor build-context bloat; configs don't reach the runtime image because the runtime stage only `COPY`s `.next/standalone`, `.next/static`, `public/`.
+- [x] [Review][Defer] **D11' — `frontend/public/.gitkeep` is fetchable at `/.gitkeep` on the standalone server (Next.js standalone exposes the `public/` tree at the URL root)** [frontend/public/.gitkeep] — zero-byte; flagged by some CSP/security scanners as exposed dotfile. Cosmetic.

@@ -1,6 +1,6 @@
 # Story 12.3: Custom Keycloak image with SPI baked-in
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -396,3 +396,40 @@ Added `-e KC_HTTP_ENABLED=true -e KC_HOSTNAME_STRICT=false` to the smoke `docker
 3. **Realm-import idempotency on restart.** Keycloak's default behavior with `--import-realm` is "import once, skip if realm exists." With `--optimized` and no `--import-realm` flag in CMD, the realm IS imported on first start (when the Postgres database is empty) and skipped thereafter. Confirm: the existing dev workflow's `start-dev --import-realm` shows this is the intended behavior. For Beta with persistent Postgres, the first deploy imports; subsequent deploys preserve all admin-console edits. Document in the E13 / E18 runbook.
 
 4. **SPI feature flag.** `kc.sh build --features=disable-new-users` enables the SPI as a Keycloak "feature." If 26.5.2 changed the feature-flag syntax (e.g., `--features-disabled=…` or `--features-include=…`), this command fails at build time. Task 3 catches it. The workaround if it fails: drop `--features=` and rely on Keycloak's auto-discovery of providers in `/opt/keycloak/providers/` (which is the documented default behavior).
+
+## Review Findings (Epic-12 boundary review — 2026-05-16)
+
+Adversarial review over the full Epic-12 diff (Blind Hunter + Edge Case Hunter + Acceptance Auditor). E12-S3-scoped slice below.
+
+### Decision-Needed (RESOLVED 2026-05-16)
+
+- [x] [Review][Decision] **D2 — RESOLVED via option (B): replace wildcard `https://*.up.railway.app/*` with `${IABCONNECT_BETA_HOST}/*` placeholder in both `redirectUris` and `webOrigins`.** Routes to new Patch P8 below. E13-S2 owns setting `IABCONNECT_BETA_HOST` in Railway env. New defer added: "If `IABCONNECT_BETA_HOST` is unset at first Railway deploy, OIDC redirect-loop on login — file as E13-S2 acceptance criterion."
+
+### Patches (pending dev-story re-entry)
+
+- [x] [Review][Patch] **P8 (applied 2026-05-16) — Replace wildcard `https://*.up.railway.app/*` with `${IABCONNECT_BETA_HOST}/*` placeholder** [infra/keycloak/realms-beta/iabconnect-realm.json:251,255] — Edit both `redirectUris` and `webOrigins` for the `iabconnect-frontend` client. Result:
+  ```json
+  "redirectUris": [
+    "${IABCONNECT_BETA_HOST}/*",
+    "${FRONTEND_PUBLIC_URL}/*"
+  ],
+  "webOrigins": [
+    "${IABCONNECT_BETA_HOST}",
+    "${FRONTEND_PUBLIC_URL}"
+  ]
+  ```
+  Local overlay sets `${FRONTEND_PUBLIC_URL}=http://localhost:3000` (already wired); `${IABCONNECT_BETA_HOST}` is set in [docker-compose.full.yml:42-43] to the same value for local-overlay smoke. E13-S2 sets `${IABCONNECT_BETA_HOST}` to the actual Railway-deployed frontend URL.
+
+#### Original decision text retained for traceability
+
+- ~~[ ] [Review][Decision]~~ **D2 (resolved) — Wildcard `https://*.up.railway.app/*` in `iabconnect-frontend.redirectUris` and `webOrigins` is an open-redirect class vulnerability** [infra/keycloak/realms-beta/iabconnect-realm.json:251,255] — Any Railway tenant can register `attacker.up.railway.app` and use it as a valid OAuth-2 callback for the iabconnect-frontend client. PKCE mitigates code-extraction in the standard flow but the wildcard still enables phishing flows (user sees legitimate Keycloak login, attacker pockets the code). The story authored the wildcard as a conservative default pending Railway project naming. Options: (a) replace wildcard with `${IABCONNECT_BETA_HOST}/*` env-substituted at import (requires the Beta host to be decided in E13-S1); (b) drop wildcard, require `${FRONTEND_PUBLIC_URL}` always set (overlay already supplies it); (c) defer to E13-S1 with a Beta-blocker note (cannot push image to GHCR until the wildcard is removed); (d) keep wildcard with an E14-S2 hardening follow-up to narrow once Railway naming is locked.
+
+### Deferred (logged to deferred-work.md)
+
+- [x] [Review][Defer] **D12' — `${IABCONNECT_*_CLIENT_SECRET}` / `${FRONTEND_PUBLIC_URL}` placeholders have no fail-fast guard if the env var is unset at container start** [realms-beta/iabconnect-realm.json:228,252,256,261] — Keycloak imports the literal string `${IABCONNECT_ADMIN_CLIENT_SECRET}` as the client secret, then the backend's real secret-based auth gets HTTP 401 silently on every token exchange. Operational fix is a startup-script validator; for now the overlay always sets them (local-dev secrets) and E13-S2 will own the Railway-env validation.
+- [x] [Review][Defer] **D13' — `KC_DB` is build-time-frozen under `--optimized`; `:smoke` companion tag exists for local non-postgres smoke but must NOT be published to GHCR** [infra/keycloak/Dockerfile:32-37, story Debug Log #2] — E20-S5 publish workflow needs explicit instructions: only the `KC_DB=postgres`-baked image goes to GHCR; the `KC_DB=dev-file` `:smoke` tag is local-only. Runbook entry.
+- [x] [Review][Defer] **D14' — Realm-check probe (`/.well-known/openid-configuration` HTTP 200) does NOT verify the `disable-new-users` eventsListener actually registered and runs** [docker-compose.full.yml:64-72] — If `kc.sh build` silently dropped the SPI (classloader error), realm-check exits 0, stack looks green, but the security control is dark. Proper probe queries `/admin/realms/iabconnect/events/config` (requires admin token) or asserts on the build-time `KC-SERVICES0047` log line. Operational hardening, defer to E18-S1 runbook.
+- [x] [Review][Defer] **D15' — `service-account-iabconnect-admin` user retains `realm-management:realm-admin` role (full realm-admin scope)** [realms-beta/iabconnect-realm.json:267-278] — has no credentials block (clean), BUT if the `iabconnect-admin` client secret leaks, the attacker gets full realm-admin. The `KeycloakAdminService` likely uses only a narrow subset of admin scopes (create-user, reset-password). Least-privilege refactor: replace `realm-admin` with a custom role aggregating only the admin scopes the backend actually needs. E18-S1 runbook + future hardening story.
+- [x] [Review][Defer] **D16' — Realm `sslRequired: "external"` permits HTTP for "internal" callers (Docker bridge IP, Railway proxy IP)** [realms-beta/iabconnect-realm.json:6] — combined with `KC_HOSTNAME_STRICT: "false"` this means Beta is effectively HTTP-everywhere from Keycloak's perspective. Should be `"all"` once Railway terminates TLS edge-side. E14-S2 security-headers/HTTPS story.
+- [x] [Review][Defer] **D17' — Keycloak Dockerfile pulls SPI jar by literal filename `disable-new-users-spi-1.0.0.jar`; SPI `pom.xml` version bump silently breaks the build** [infra/keycloak/Dockerfile:15,24] — minor robustness; change to `cp /build/target/disable-new-users-spi-*.jar /opt/keycloak/providers/` + a count-equals-1 guard.
+- [x] [Review][Defer] **D18' — Epic-12 parent AC for S3 (epics-and-stories.md:1324) enumerates an `EventStaff` realm role that does not exist in either dev or sanitized realm** — sanitized realm correctly preserves dev (7 roles: mfa-required, admin, vorstand, member, kassier, auditor, event-manager). Parent-epic AC is the defect. Retrospective fix.

@@ -1,6 +1,6 @@
 # Story 12.1: Add Backend Dockerfile (Multi-Stage)
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -539,3 +539,28 @@ These surfaced during context engineering and are saved here for the dev agent (
 2. **README "Build" section location.** The README's exact section layout was not loaded during context engineering. Task 8 says "in the existing 'Build' / 'Running locally' section" — if no such section exists, the dev agent should append a minimal `### Docker (Beta-shape)` section under the closest existing "Local development" heading, keeping it ≤ 4 lines.
 
 3. **Image OCI source URL fork-friendliness.** The `org.opencontainers.image.source="https://github.com/htos/iab-connect"` literal is the canonical OSS repo. If at PR-review time the user prefers fork-friendly substitution (e.g., `ARG IMAGE_SOURCE=https://github.com/htos/iab-connect` + `LABEL org.opencontainers.image.source=$IMAGE_SOURCE`), it is a 3-line patch — surface this question in the PR description rather than guessing at build time.
+
+## Review Findings (Epic-12 boundary review — 2026-05-16)
+
+Adversarial review over the full Epic-12 diff (Blind Hunter + Edge Case Hunter + Acceptance Auditor). E12-S1-scoped slice below; cross-cutting findings shared with E12-S4 are listed there.
+
+### Decision-Needed
+
+- [ ] [Review][Decision] **D1 — `ASPNETCORE_ENVIRONMENT=Development` workaround root-cause lives here** [Infrastructure/DependencyInjection.cs:134] — The hardcoded `RequireHttpsMetadata = !(IsDevelopment || Testing)` forces E12-S4's overlay to use `Development` instead of `Beta`, which (a) skips `appsettings.Beta.json` (Console-only Serilog contract broken), (b) re-mounts `/swagger`, (c) loosens CORS, (d) skips HSTS. Hangfire dashboard is also re-mounted but is mitigated by Hangfire's default `LocalRequestsOnlyAuthorizationFilter` (host-bridge IP gets 403). Decision lives at E12-S4 D1; fix venue is here. Options: (a) accept + add E14-S2 follow-up to surface `Keycloak__RequireHttpsMetadata` as a config key; (b) flip the gate to `IsDevelopment || Testing || (config.GetValue<bool>("Keycloak:RequireHttpsMetadata") == false)` in this PR; (c) defer fully to E14-S2.
+
+### Patches (pending dev-story re-entry)
+
+- [x] [Review][Patch] **P1 (applied 2026-05-16) — Backend Dockerfile uses raw `USER 1000` instead of the base image's pre-created `app` user** [backend/Dockerfile:60-63] — `mcr.microsoft.com/dotnet/aspnet:10.0` ships with `USER $APP_UID` (defaulted to 1654) and a `chown`-ed `/app`. The current `USER 1000` runs as a UID with no `/home`, no entry in `/etc/passwd`, and `/app` is owned by `root:root` (COPY without `--chown`). ASP.NET DataProtection then falls back to ephemeral in-memory keys (cookies/antiforgery invalidate on restart), and anything that writes under `/app` (logging, temp files, QuestPDF cache) gets `EACCES`. Fix: `COPY --from=build --chown=app:app /app/publish ./` + `USER app` (or `USER $APP_UID`).
+
+- [x] [Review][Patch] **P2 (applied 2026-05-16) — `appsettings.Development.json` ships into the published OCI image with `dev-secret-change-me`, `admin-service-secret-2026`, `rustfsadmin/rustfsadmin`, `Password=postgres` literals** [backend/.dockerignore — entry to add] — `COPY src/ src/` in the build stage copies `appsettings.Development.json` to `/app/publish/`, which lands at `/app/appsettings.Development.json` in the runtime image. At runtime (`ASPNETCORE_ENVIRONMENT=Beta`) the file is not loaded, but the literals are readable by anyone who pulls the GHCR image (public per AGPL §13). The strings-grep invariant from AC-7 only covered base `appsettings.json` + compiled IL; it missed the on-disk env-overlay file. AC-14 of E12-S3 set a "no committed secrets in image" precedent. Fix: add `**/appsettings.Development.json` to `backend/.dockerignore`. Local-dev workflow uses `dotnet run` (not the Docker image), so no developer ergonomic impact.
+
+### Deferred (logged to deferred-work.md)
+
+- [x] [Review][Defer] **D1' — `PublishSingleFile=false` override in Dockerfile is fragile against `Directory.Build.props` drift** [backend/Dockerfile:25-29] — works today; refactor would move the property gate to a `<DockerBuild>` MSBuild condition or to `IabConnect.Api.csproj` only.
+- [x] [Review][Defer] **D2' — DocumentStorage empty defaults silently surface as runtime 500 on first document call (no boot-time fail-fast)** [Infrastructure/DependencyInjection.cs:259-270] — intended fail-mode per E12-S1 AC-8 (Railway env vars are expected). Boot guard via `IValidateOptions<DocumentStorageSettings>.ValidateOnStart()` is the obvious fix; pairs with the existing E11-S2 eager-init refactor entry in deferred-work.md.
+- [x] [Review][Defer] **D3' — Dockerfile bakes no default for `ASPNETCORE_ENVIRONMENT`; missing var defaults to `Production` → HSTS + HttpsRedirection break Railway TLS-termination unless `UseForwardedHeaders` is wired** [backend/Dockerfile ENV block, line 36-41] — E13-S2 will set the env var explicitly; ForwardedHeaders is E14-S2 territory.
+- [x] [Review][Defer] **D4' — `TestWebApplicationFactory` static-ctor `Environment.SetEnvironmentVariable` is process-global** [TestWebApplicationFactory.cs:27-43] — works today within the xUnit AppDomain model; a future `IAsyncLifetime`-scoped fixture (`SetVar`/`UnsetVar` in dispose) would be cleaner. Cross-test leak risk if another test class reads these keys via raw `Environment.GetEnvironmentVariable`.
+- [x] [Review][Defer] **D5' — `dotnet restore` lacks BuildKit cache mount (`--mount=type=cache,target=/root/.nuget/packages`)** [backend/Dockerfile:18] — CI-speed concern; `# syntax=docker/dockerfile:1.7` is already declared so the change is one-line.
+- [x] [Review][Defer] **D6' — New `DocumentStorage:*` theory rows in `AppSettingsLayeringTests` are change-detector tests, not behavioral invariants** [AppSettingsLayeringTests.cs:73-98] — they pass tautologically because the literals were just stripped. A complementary behavioral test ("loading base+Beta into a real DI container fails fast if `DocumentStorage:AccessKey` is empty") would close the invariant — gated on the `IValidateOptions` refactor above.
+- [x] [Review][Defer] **D7' — Image size 384 MB vs AC-12 target ≤ 350 MB** [story AC-12, build evidence in Completion Notes] — justified deviation (`PublishTrimmed=false` is project-wide; wide package profile). Reviewer explicit accept-or-fix needed; recommend accept-with-followup to evaluate trimming/AOT in a dedicated story.
+- [x] [Review][Defer] **D8' — AC-2 spec says Debian-bookworm base; Microsoft moved `aspnet:10.0` to Ubuntu Noble** [story AC-2, backend/Dockerfile:7,32] — outside dev-agent control; AC-3 timezone-resolution outcome is preserved. Spec text fix in retrospective.

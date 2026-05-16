@@ -254,11 +254,11 @@
       "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": false,
       "redirectUris": [
-        "https://*.up.railway.app/*",
+        "${IABCONNECT_BETA_HOST}/*",
         "${FRONTEND_PUBLIC_URL}/*"
       ],
       "webOrigins": [
-        "https://*.up.railway.app",
+        "${IABCONNECT_BETA_HOST}",
         "${FRONTEND_PUBLIC_URL}"
       ],
       "attributes": {
