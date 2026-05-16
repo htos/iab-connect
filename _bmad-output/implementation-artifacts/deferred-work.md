@@ -303,3 +303,63 @@ The configuration-surface foundation story (`e11-s1-add-env-examples-and-documen
 
 **Note:** Listing the variable in `.env.example` ahead of consumption is intentional so deployers can configure it before E20-S3 ships. No code currently reads `Branding:SourceUrl`. This is not a defect; just a forward-reference.
 
+
+---
+
+## Deferred from: code review of Epic E11 boundary (2026-05-16)
+
+Adversarial review of Epic E11 (Environment and Configuration Management for Beta) across S1+S2+S3 produced 7 defers. Full per-story findings in [e11-s2-introduce-aspnetcore-environment-beta.md → Review Findings](e11-s2-introduce-aspnetcore-environment-beta.md) and [e11-s3-make-next-config-environment-driven.md → Review Findings](e11-s3-make-next-config-environment-driven.md).
+
+### E11-S2 follow-up: BetaBanner test mutates `process.env` at runtime to test build-time-inlined var
+
+[Source: BetaBanner.test.tsx:30-50, story R2 risk]
+
+Tests pass under Vitest (Node sees the env-var write) but do NOT prove the Next.js production-build inlining of `NEXT_PUBLIC_ENV_LABEL`. A real fix needs a Next.js build-output integration test (grep `.next/static/chunks/` for the dismissed-key string and the inlined-label string). Repo lacks this test infrastructure today. **Action when picked up:** add a build-output integration smoke test (Playwright after `npm run build`, or a Vitest test that shells out to `npm run build` once per CI run).
+
+### E11-S2 follow-up: `appsettings.Beta.json` `Logging.LogLevel.Default` may duplicate Serilog config
+
+[Source: appsettings.Beta.json:7-12, appsettings.json:6]
+
+Beta adds `Logging.LogLevel.Default = "Information"` while base has `Serilog.MinimumLevel.Default = "Information"`. When Serilog hosting is wired (it is — base file uses `Serilog.Using` for AspNetCore), `Logging:LogLevel` is typically non-load-bearing. **Action when picked up:** 30-minute runtime check; if redundant, remove the Beta section.
+
+### E11-S2 follow-up: Empty `Keycloak.Authority` / `Smtp.Host` in base produce slow runtime failures
+
+[Source: DependencyInjection.cs:132, SmtpEmailSender.cs:31; ties into existing `E11-S2 follow-up: eager-init keys block cleanup`]
+
+After E11-S2 AC-2 emptied `Keycloak.Authority` and `Smtp.Host` in base, a Beta deployment without env-var overrides produces (a) `IDX20803: Unable to obtain configuration from: ''` on first authed request (JwtBearer lazy OIDC-discovery), and (b) `SocketException: No such host is known` after ~100s on first outbound mail. Fast-fail at startup would be better. **Action when picked up:** add `IValidateOptions<KeycloakOptions>` + `IValidateOptions<SmtpOptions>` with `Required` attributes on Authority/Host, wire via `services.AddOptions<T>().ValidateOnStart()`. Same change set as the existing eager-init refactor entry — bundle.
+
+### E11-S2 follow-up: `AppSettingsLayeringTests` excludes the 5 deferred eager-init keys
+
+[Source: AppSettingsLayeringTests.cs Theory InlineData]
+
+Theory only asserts `Keycloak:Authority` and `Smtp:Host` are empty in the base+Beta layering. The 5 deferred keys (`ConnectionStrings:DefaultConnection`, `DocumentStorage:ServiceUrl`/`AccessKey`/`SecretKey`/`BucketName`) are NOT regression-tested. **Action when picked up:** after the eager-init refactor lands, extend the Theory data to assert all 7 keys empty in the base+Beta layer. Tied to D1 / E11-S2 AC-2 resolution.
+
+### E11-S2 follow-up: Task 11 (manual smoke tests) marked `[x]` despite unverified
+
+[Source: e11-s2 story file Task 11 + Completion Notes]
+
+Dev-agent disclosed it could not run `dotnet run` / `npm run dev` interactively; documented expected outcomes instead of observed evidence. Process pattern, not E11-S2-specific. **Action when picked up:** address in the Epic-11 retrospective as a process-improvement (e.g., add a "Manual smoke not run by dev agent — needs human verification" status to the Tasks/Subtasks state machine, so reviewers don't confuse a green checkbox with empirical evidence).
+
+### E11-S3 follow-up: `outputFileTracingRoot` scope-add disclosed in Completion Notes
+
+[Source: next.config.ts:22]
+
+Not a defect; flagged for transparency in the epic-boundary review record. The disclosure is in [e11-s3 Completion Notes](e11-s3-make-next-config-environment-driven.md) — sound justification + bounded change. No follow-up action needed; this entry exists only so the review trail is complete.
+
+### Repo-wide follow-up: `.env.example` line-number references rot
+
+[Source: backend/.env.example:103-107, frontend/.env.example similar patterns]
+
+Many env-example comments cite specific `appsettings.json:NN` line numbers. These rot when the configuration file changes. Repo-wide pattern, not E11-specific. **Action when picked up:** replace line-number anchors with section anchors (e.g., "appsettings.json `Hangfire:DashboardPath` section") in a focused documentation-hygiene pass.
+
+### E11-S2 follow-up: `BetaEnvironmentHardeningTests` HTTP-pipeline coverage (D2 resolution)
+
+[Source: BetaEnvironmentHardeningTests.cs; E11-S2 AC-9; epic-boundary review decision D2 2026-05-16]
+
+Spec listed 5 Beta-vs-Production hardenings to assert (Swagger 404, Hangfire 404, HSTS, HTTPS-redirect, strict CORS). Implementation covers only `JwtBearerOptions.RequireHttpsMetadata` (3 DI-level tests) — the other 4 are gated by `Program.cs:88 MigrateAsync()` which blocks a real `WebApplicationFactory<Program>.UseEnvironment("Beta")` because in-memory EF Core can't run the production-migration branch. **Action when picked up:** when E15-S2 adds the `Database__AutoMigrate` toggle, extend `BetaEnvironmentHardeningTests` to use a real Beta-WAF with `Database:AutoMigrate=false`, then HTTP-assert the 4 remaining hardenings against the live pipeline. Closes E11-S2 AC-9 fully.
+
+### E11-S2 follow-up: rustfsadmin dev credentials in base appsettings.json (D1 resolution)
+
+[Source: backend/src/IabConnect.Api/appsettings.json:38-41; E11-S2 AC-2 partial; epic-boundary review decision D1 2026-05-16]
+
+The eager-init blocker (Hangfire `PostgreSqlStorage..ctor` + `Get<DocumentStorageSettings>()` singleton-closure baking at DI registration time) prevents emptying the 5 keys (`ConnectionStrings:DefaultConnection`, 4 `DocumentStorage:*`) without breaking the TestWebApplicationFactory InMemory override path. **Action when picked up (BEFORE any actual Beta deployment):** refactor DocumentStorage from singleton-eager-init to `IOptions<DocumentStorageSettings>` (the spec's documented Fix-path #1, "low risk, mechanical"); refactor Hangfire to use `IPostgreSqlStorageOptions` factory that reads connection-string lazily; then empty all 5 keys in base. Closes E11-S2 AC-2 fully and removes the last live `rustfsadmin` literal from base config. **Ties together with the existing "eager-init keys block cleanup" entry** — these are aspects of the same refactor, do as one PR.

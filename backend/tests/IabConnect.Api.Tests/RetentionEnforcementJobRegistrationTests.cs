@@ -58,8 +58,12 @@ public sealed class RetentionEnforcementJobRegistrationTests
     }
 
     [Fact]
-    public void Register_DoesNothing_WhenFlagIsFalse()
+    public void Register_RemovesJob_WhenFlagIsFalse()
     {
+        // E11-S2 review D4: when the flag flips from true → false on an existing
+        // deployment, the previously-registered Hangfire schedule must be removed.
+        // Without the explicit RemoveIfExists call, the orphaned weekly schedule
+        // continues to fire and silently deletes Beta tester data — defeating ADR-020.
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -67,12 +71,16 @@ public sealed class RetentionEnforcementJobRegistrationTests
             })
             .Build();
         var jobManager = new Mock<IRecurringJobManager>(MockBehavior.Strict);
+        jobManager.Setup(m => m.RemoveIfExists(DependencyInjection.RetentionJobId));
 
         DependencyInjection.RegisterRetentionEnforcementJob(configuration, jobManager.Object);
 
-        // Strict mock with no setups → any AddOrUpdate call would throw. Verify no
-        // interactions touched the manager when the flag is false.
-        jobManager.VerifyNoOtherCalls();
+        jobManager.Verify(m => m.RemoveIfExists(DependencyInjection.RetentionJobId), Times.Once);
+        jobManager.Verify(m => m.AddOrUpdate(
+            It.IsAny<string>(),
+            It.IsAny<Job>(),
+            It.IsAny<string>(),
+            It.IsAny<RecurringJobOptions>()), Times.Never);
     }
 
     [Fact]

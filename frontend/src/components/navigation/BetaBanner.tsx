@@ -1,26 +1,51 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
 
 const DISMISSED_KEY = "iabc:beta-banner-dismissed";
 
+function readDismissed(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  try {
+    return window.sessionStorage.getItem(DISMISSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeDismissed(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    window.sessionStorage.setItem(DISMISSED_KEY, "1");
+  } catch {
+    // sessionStorage unavailable (Safari Private Browsing, blocked-by-policy) —
+    // dismiss state lives in component state for the current page only. Acceptable.
+  }
+}
+
 /**
  * REQ-088 (E11-S2 / ADR-015 + ux-design.md "BETA Banner"): persistent orange Beta-
- * environment banner. Renders only when `NEXT_PUBLIC_ENV_LABEL === "beta"`. Dismissable
- * per session via `sessionStorage` so testers can hide the banner without losing the
- * signal on a fresh tab. Feedback link uses `NEXT_PUBLIC_FEEDBACK_URL` with a
- * GitHub-issue-template default (the template itself is the deliverable of E18-S4 —
- * the link still works without a template, GitHub falls back to the standard issue form).
+ * environment banner. Renders only when `NEXT_PUBLIC_ENV_LABEL` (case-insensitive,
+ * trimmed) equals `"beta"` — accepts `Beta` / `BETA` / `beta` so deployers can mirror
+ * `ASPNETCORE_ENVIRONMENT=Beta` without surprise. Dismissable per session via
+ * `sessionStorage` so testers can hide the banner without losing the signal on a fresh
+ * tab. Feedback link uses `NEXT_PUBLIC_FEEDBACK_URL`; when unset, falls back to the
+ * upstream `NEXT_PUBLIC_SOURCE_URL` issue tracker so forks redirect to their own repo
+ * with no extra config (E18-S4 will land a dedicated feedback channel later).
  *
  * Mounted in the root layout above `<MainLayout>` so it appears on every route,
  * including unauthenticated screens. Coordinates with E20-S4 `<LicenseFooter />` which
  * mounts as sibling AFTER `<MainLayout>`.
  */
 export function BetaBanner() {
-  const envLabel = process.env.NEXT_PUBLIC_ENV_LABEL;
+  const envLabel = process.env.NEXT_PUBLIC_ENV_LABEL?.trim().toLowerCase();
 
   // Early return BEFORE hooks for non-Beta builds. `NEXT_PUBLIC_*` is build-time-baked
   // by Next.js, so the gate is consistent across renders — React allows the early return.
@@ -33,36 +58,27 @@ export function BetaBanner() {
 
 function BetaBannerActive() {
   const t = useTranslations("beta");
-  const [visible, setVisible] = useState(true);
-
-  useEffect(() => {
-    // Sync with sessionStorage on mount. SSR cannot read sessionStorage, so we
-    // initialise visible=true (safe default) and reconcile on the client. Lint
-    // disable: react-hooks/set-state-in-effect doesn't have a non-mismatch-prone
-    // alternative for Next.js SSR — useState lazy init would read undefined on
-    // server and the dismissed-flag on client, causing a hydration mismatch.
-    if (
-      typeof window !== "undefined" &&
-      window.sessionStorage.getItem(DISMISSED_KEY) === "1"
-    ) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing with sessionStorage on mount (no SSR-safe alternative)
-      setVisible(false);
-    }
-  }, []);
+  // Lazy initializer reads sessionStorage once on first render — avoids the
+  // useEffect-then-setState flicker where dismissed users saw a one-frame orange
+  // flash. Component is `"use client"` so it never SSRs; window is always defined
+  // when this runs, but readDismissed() guards anyway.
+  const [visible, setVisible] = useState(() => !readDismissed());
 
   if (!visible) {
     return null;
   }
 
+  // `||` (not `??`) so empty strings and accidentally-stringified `"undefined"`
+  // values from `process.env` reassignment in tests / build also trigger fallback.
+  const sourceUrl =
+    process.env.NEXT_PUBLIC_SOURCE_URL || "https://github.com/htos/iab-connect";
   const feedbackUrl =
-    process.env.NEXT_PUBLIC_FEEDBACK_URL ??
-    "https://github.com/htos/iab-connect/issues/new?template=beta-feedback.md";
+    process.env.NEXT_PUBLIC_FEEDBACK_URL ||
+    `${sourceUrl}/issues/new?template=beta-feedback.md`;
 
   const handleDismiss = () => {
     setVisible(false);
-    if (typeof window !== "undefined") {
-      window.sessionStorage.setItem(DISMISSED_KEY, "1");
-    }
+    writeDismissed();
   };
 
   return (
@@ -85,7 +101,7 @@ function BetaBannerActive() {
           type="button"
           onClick={handleDismiss}
           aria-label={t("dismissAriaLabel")}
-          className="rounded p-1 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-white"
+          className="rounded p-1 hover:bg-orange-600 focus:ring-2 focus:ring-white focus:outline-none"
         >
           <X className="h-4 w-4" aria-hidden="true" />
         </button>

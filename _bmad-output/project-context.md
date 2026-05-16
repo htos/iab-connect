@@ -4,7 +4,7 @@ user_name: 'Harry'
 date: '2026-05-11'
 sections_completed: ['technology_stack', 'language_rules', 'framework_rules', 'testing_rules', 'quality_rules', 'workflow_rules', 'anti_patterns']
 status: 'complete'
-rule_count: 73
+rule_count: 76
 optimized_for_llm: true
 ---
 
@@ -95,6 +95,12 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - Use Conventional Commits style from the README when making commits: `<type>(<scope>): <description>`.
 - BMAD artifacts belong under `_bmad-output`; do not mix planning/implementation artifacts into source folders unless they are intended project documentation.
 
+### Story Authoring & Dev-Story Execution Rules (from Epic-11 retro A28-A30, 2026-05-16)
+
+- **Spike-First for "low-risk mechanical" cleanup specs.** When a story AC describes a refactor as "low-risk mechanical", "trivial cleanup", or similar low-friction language (such as E11-S2 AC-2's appsettings.json base cleanup that hit a Hangfire eager-init blocker), the dev-agent MUST execute a `Task 0: Spike` that reads all consumers and identifies init-timing constraints BEFORE the cleanup subtasks begin. Spike output is one line: either "Confirmed low-risk → proceed" OR "Blocker found: <description> → escalate scope".
+- **AC-Subitem Completion Check at Story Close.** When an AC enumerates "N items" (for example "tests assert 5 hardenings: Swagger 404, Hangfire 404, HSTS, HTTPS redirect, strict CORS"), the Quality-Gates closing Task MUST explicitly list each sub-item's status (covered / deferred / N/A). Aggregate claims like "all 5 verified" without per-item evidence are insufficient — they hide partial completion until epic-boundary review.
+- **Three-State Task Checkbox for Manual-Verify ACs.** Use the explicit convention: `[x]` = dev-agent verified · `[!]` = needs human verify (manual smoke, browser interaction, infrastructure stand-up, dev-API not interactively launchable) · `[ ]` = pending. Manual-verification tasks bound by dev-agent non-interactivity get `[!]` (not `[x]`) so review-tracking sees the human-verification queue. The convention also lives in `docs/07_dos_donts.md`.
+
 ### Critical Don't-Miss Rules
 
 - Do not treat UI role checks as security. Every protected backend operation needs policy/permission enforcement and sensitive failures should be audit logged.
@@ -128,4 +134,4 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - Review periodically for outdated rules.
 - Remove rules that become obvious or no longer prevent mistakes.
 
-Last Updated: 2026-05-11
+Last Updated: 2026-05-16 (Epic-11 retro added A28-A30: Spike-First / AC-Subitem-Check / Three-State-Task-Checkbox)

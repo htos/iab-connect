@@ -379,6 +379,17 @@ public static class DependencyInjection
                 Cron.Weekly,
                 new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
         }
+        else
+        {
+            // ADR-020 / E11-S2 review D4: when the flag flips from true → false on an
+            // existing deployment, Hangfire's recurringjob table still holds the
+            // previously-registered schedule. AddOrUpdate is idempotent for the on-state
+            // but does NOT clean up on the off-state — RemoveIfExists does. Without this,
+            // a Beta deployment that ran under the E11-S1 baseline (defaults to true)
+            // and then deploys E11-S2 with the flag set to false would still run the
+            // retention job weekly, silently deleting tester data — defeating ADR-020.
+            jobManager.RemoveIfExists(RetentionJobId);
+        }
     }
 
     /// <summary>
