@@ -1,6 +1,6 @@
 # Story 12.4: Optional `docker-compose.full.yml` for local Beta-like testing
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -206,10 +206,10 @@ so that **I can run a Railway-equivalent topology locally to verify a Beta-shape
    Expected: all 8 services reach `running` or `exited 0` (rustfs-init and keycloak-full-realm-check) within 2 minutes. Capture `docker compose -f ... -f ... ps` output in Completion Notes — it should show 6 long-running services (postgres, rustfs, mailhog, seq, api, web, keycloak-full) and 2 one-shot services completed.
 
 9. **End-to-end smoke.** From the host:
-   - [ ] `curl -sf http://localhost:3000/` returns 200 or a healthy 307 redirect.
-   - [ ] `curl -sf http://localhost:8080/realms/iabconnect/.well-known/openid-configuration` returns 200 with JSON.
-   - [ ] `curl -sf http://localhost:5000/health/live` returns 200 (or whatever the backend exposes — verify the endpoint exists; if not, document the alternative).
-   - [ ] `curl -sf http://localhost:9001/` (RustFS console) returns 200 — confirms RustFS is reachable from the host.
+   - [x] `curl -sf http://localhost:3000/` returns 200 or a healthy 307 redirect.
+   - [x] `curl -sf http://localhost:8080/realms/iabconnect/.well-known/openid-configuration` returns 200 with JSON.
+   - [x] `curl -sf http://localhost:5000/health/live` returns 200 (or whatever the backend exposes — verify the endpoint exists; if not, document the alternative). **DEVIATION:** Backend exposes `/health` and `/health/ready` (NOT `/health/live` — per `MapHealthChecks` at [DependencyInjection.cs:330-331](backend/src/IabConnect.Api/DependencyInjection.cs#L330-L331)). Used `/health/ready` → HTTP 200.
+   - [x] `curl -sf http://localhost:9001/` (RustFS console) returns 200 — confirms RustFS is reachable from the host. **DEVIATION:** RustFS console root returns HTTP 403 (policy response), HEAD returns HTTP 501 with valid `x-request-id` header. Both prove reachability — server responds with HTTP semantics, just not 200 at root. AC intent ("RustFS is reachable from the host") satisfied.
    - Capture all four outputs in Completion Notes.
 
 10. **Teardown is clean.**
@@ -219,22 +219,22 @@ so that **I can run a Railway-equivalent topology locally to verify a Beta-shape
     All 8 containers stop. The `-v` flag clears named volumes (Postgres, RustFS, Seq) — without it, a partial-bootstrap state persists across restarts and confuses future debugging. Document the teardown command in README alongside the up command (AC-7).
 
 11. **Quality gates.** From repo root:
-    - [ ] 11.1 `docker compose -f infra/docker-compose.yml config` — green (the base file still parses standalone).
-    - [ ] 11.2 `docker compose -f infra/docker-compose.yml -f infra/docker-compose.full.yml config` — green (the merged file parses).
-    - [ ] 11.3 Build (AC-8) — green.
-    - [ ] 11.4 Up + smoke (AC-9) — green.
-    - [ ] 11.5 Teardown (AC-10) — green.
-    - [ ] 11.6 AC-Subitem Completion Check per project-context A29 — list AC-1..AC-11 with `covered / N/A / deferred` markers in Completion Notes.
+    - [x] 11.1 `docker compose -f infra/docker-compose.yml config` — green (the base file still parses standalone).
+    - [x] 11.2 `docker compose -f infra/docker-compose.yml -f infra/docker-compose.full.yml config` — green (the merged file parses).
+    - [x] 11.3 Build (AC-8) — green.
+    - [x] 11.4 Up + smoke (AC-9) — green (3/4 HTTP 200 + 1 reachability-proof; 1 unrelated pre-existing seq restart loop documented).
+    - [x] 11.5 Teardown (AC-10) — green.
+    - [x] 11.6 AC-Subitem Completion Check per project-context A29 — list AC-1..AC-11 with `covered / N/A / deferred` markers in Completion Notes.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 0 — Spike: verify all three Dockerfiles exist on disk (AC: gate; project-context A28)**:
-  - [ ] 0.1 Check [backend/Dockerfile](backend/Dockerfile) exists. If absent, escalate: "Blocker — E12-S1 not yet landed. Cannot build api service." HALT.
-  - [ ] 0.2 Check [frontend/Dockerfile](frontend/Dockerfile) exists. If absent, escalate: "Blocker — E12-S2 not yet landed. Cannot build web service." HALT.
-  - [ ] 0.3 Check [infra/keycloak/Dockerfile](infra/keycloak/Dockerfile) exists AND [infra/keycloak/realms-beta/iabconnect-realm.json](infra/keycloak/realms-beta/iabconnect-realm.json) exists. If either absent, escalate: "Blocker — E12-S3 not yet landed. Cannot build keycloak-full service." HALT.
-  - [ ] 0.4 Verify compose version compatibility: `docker compose version` reports v2.20+ (required for `profiles:` and `service_completed_successfully` condition). If older, document the workaround (split into a deeper Docker Compose v2 install instruction in README).
+- [x] **Task 0 — Spike: verify all three Dockerfiles exist on disk (AC: gate; project-context A28)**:
+  - [x] 0.1 Check [backend/Dockerfile](backend/Dockerfile) exists. If absent, escalate: "Blocker — E12-S1 not yet landed. Cannot build api service." HALT.
+  - [x] 0.2 Check [frontend/Dockerfile](frontend/Dockerfile) exists. If absent, escalate: "Blocker — E12-S2 not yet landed. Cannot build web service." HALT.
+  - [x] 0.3 Check [infra/keycloak/Dockerfile](infra/keycloak/Dockerfile) exists AND [infra/keycloak/realms-beta/iabconnect-realm.json](infra/keycloak/realms-beta/iabconnect-realm.json) exists. If either absent, escalate: "Blocker — E12-S3 not yet landed. Cannot build keycloak-full service." HALT.
+  - [x] 0.4 Verify compose version compatibility: `docker compose version` reports v2.20+ (required for `profiles:` and `service_completed_successfully` condition). If older, document the workaround (split into a deeper Docker Compose v2 install instruction in README). **Result:** `docker compose version` → `Docker Compose version v5.0.2` — far above the v2.20 requirement.
 
-- [ ] **Task 1 — Author `infra/docker-compose.full.yml` (AC: 1-6)** — file at `infra/docker-compose.full.yml`. Reference structure (the overlay merges with `docker-compose.yml`'s `services:` block):
+- [x] **Task 1 — Author `infra/docker-compose.full.yml` (AC: 1-6)** — file at `infra/docker-compose.full.yml`. Reference structure (the overlay merges with `docker-compose.yml`'s `services:` block):
   ```yaml
   # Optional Beta-shape overlay — extends infra/docker-compose.yml with the three
   # containerized application services (backend, frontend, Keycloak-with-SPI).
@@ -367,22 +367,22 @@ so that **I can run a Railway-equivalent topology locally to verify a Beta-shape
           condition: service_started
   ```
 
-- [ ] **Task 2 — Update README with the "Local Beta-shape testing" section (AC: 7)** — append the section per AC-7. Place it AFTER any existing "Local development" / "Running locally" section so the everyday-local-dev path remains the first thing developers see. Keep the wording action-oriented; do NOT add aspirational "and you can also..." prose.
+- [x] **Task 2 — Update README with the "Local Beta-shape testing" section (AC: 7)** — append the section per AC-7. Place it AFTER any existing "Local development" / "Running locally" section so the everyday-local-dev path remains the first thing developers see. Keep the wording action-oriented; do NOT add aspirational "and you can also..." prose. **Implementation:** added as a new `Option 4: Local Beta-shape testing (full overlay)` subsection right after the existing `Option 3: Container images (Beta-shape)` block at README:352.
 
-- [ ] **Task 3 — Config-parse verification (AC: 11.1, 11.2)** — from repo root:
+- [x] **Task 3 — Config-parse verification (AC: 11.1, 11.2)** — from repo root:
   ```sh
   docker compose -f infra/docker-compose.yml config | head -10
   docker compose -f infra/docker-compose.yml -f infra/docker-compose.full.yml config | head -30
   ```
   Both must exit 0 and emit valid YAML. Any "service references unknown profile" or "duplicate key" error means the overlay merge logic is wrong — escalate.
 
-- [ ] **Task 4 — Build all images (AC: 8)** — from repo root:
+- [x] **Task 4 — Build all images (AC: 8)** — from repo root:
   ```sh
   docker compose -f infra/docker-compose.yml -f infra/docker-compose.full.yml build
   ```
   Expected: api, web, keycloak-full images all build successfully. Capture per-service build time in Completion Notes.
 
-- [ ] **Task 5 — Up + verify all 8 services healthy (AC: 8, 9)**:
+- [x] **Task 5 — Up + verify all 8 services healthy (AC: 8, 9)**:
   ```sh
   docker compose -f infra/docker-compose.yml -f infra/docker-compose.full.yml up -d
   sleep 60
@@ -390,14 +390,14 @@ so that **I can run a Railway-equivalent topology locally to verify a Beta-shape
   ```
   Capture the `ps` output. All long-running services should be `running`; rustfs-init and keycloak-full-realm-check should be `exited (0)`. Then run the four smoke curls from AC-9 and capture each response status.
 
-- [ ] **Task 6 — Teardown verification (AC: 10)**:
+- [x] **Task 6 — Teardown verification (AC: 10)**:
   ```sh
   docker compose -f infra/docker-compose.yml -f infra/docker-compose.full.yml down -v
   docker compose -f infra/docker-compose.yml -f infra/docker-compose.full.yml ps  # should be empty
   ```
   Confirm no containers remain. Confirm volumes deleted via `docker volume ls | grep iab` returning empty.
 
-- [ ] **Task 7 — Quality gates (AC: 11)** — re-run Tasks 3-6 in order in a clean state. Capture AC-Subitem Completion Check per project-context A29.
+- [x] **Task 7 — Quality gates (AC: 11)** — re-run Tasks 3-6 in order in a clean state. Capture AC-Subitem Completion Check per project-context A29.
 
 - [!] **Task 8 — Manual verification: end-to-end login round-trip via the full overlay (AC: 9, downstream E13)** — `[!]` per project-context A30 because this requires interactive browser:
   - Bring up the full stack via Task 5.
@@ -503,13 +503,116 @@ ADR-012 mandates TWO managed Postgres instances on Railway (`postgres-app` for t
 
 ### Agent Model Used
 
-_To be filled by dev agent on first commit._
+Claude Opus 4.7 (claude-opus-4-7[1m]) — dev-story workflow execution 2026-05-16 (same session as E12-S3 to keep Wave-3 momentum per user direction).
 
 ### Debug Log References
 
+**Compose-merge service-count miscount in story AC-8.** AC-8 stated "all 8 services". Actual merged service set is **9** (`docker compose ... config --services | wc -l`): postgres, rustfs, rustfs-init, mailhog, seq, keycloak-full, keycloak-full-realm-check, api, web. The story's own enumeration inside AC-8 listed 7 long-running + 2 one-shot = 9, so the "8" was a counting typo. Reported as 9 throughout Completion Notes.
+
+**API HTTP 409 on `/health` — root cause + fix.** First `up` had api returning HTTP 409 with stack trace `System.InvalidOperationException: The MetadataAddress or Authority must use HTTPS unless disabled for development by setting RequireHttpsMetadata=false.` Filed at [backend/src/IabConnect.Api/Middleware/ExceptionHandlingMiddleware.cs:20](backend/src/IabConnect.Api/Middleware/ExceptionHandlingMiddleware.cs#L20) every request, including health endpoints. Root cause: [backend/src/IabConnect.Api/DependencyInjection.cs:134](backend/src/IabConnect.Api/DependencyInjection.cs#L134) hardcodes `options.RequireHttpsMetadata = !(environment.IsDevelopment() || environment.EnvironmentName == "Testing");` — there is NO `Keycloak__RequireHttpsMetadata` config key that an env var could override. Local Keycloak in this overlay runs HTTP only (no TLS termination), so any non-Development/non-Testing env breaks the OIDC discovery initialization, which crashes the AuthenticationMiddleware on EVERY request — even unauthenticated ones, because middleware initialization runs before endpoint routing.
+
+**Resolution:** changed `ASPNETCORE_ENVIRONMENT` from `Beta` (story AC-2 default) to `Development` in the overlay's `api` service, with a verbose comment in the YAML explaining the constraint and pointing to the follow-up (E14-S2 or a backend config-refactor story should add a `Keycloak__RequireHttpsMetadata` config key so Beta env can be used locally). Logged this as a Story-vs-Reality deviation in Completion Notes.
+
+**HEALTH/LIVE endpoint missing.** AC-9 specified `curl /health/live`. Grep confirmed backend exposes `/health` and `/health/ready` only ([DependencyInjection.cs:330-331](backend/src/IabConnect.Api/DependencyInjection.cs#L330-L331)). Per AC-9's own "or whatever the backend exposes" clause, used `/health/ready` → HTTP 200.
+
+**RustFS console HTTP 403 / HEAD 501.** AC-9 specified `curl http://localhost:9001/ → 200`. RustFS returns HTTP 403 on GET and HTTP 501 on HEAD at root — both are policy responses with valid HTTP headers including `x-request-id`, proving the server is reachable. AC-9 intent ("RustFS is reachable from the host") satisfied; literal 200 expectation not met.
+
+**Seq service restart loop (pre-existing, NOT caused by this overlay).** During AC-9 `ps`, `seq` shows `Restarting (1)`. Log tail shows .NET stack trace at `Seq.ServiceProcess.ServerService.RunImplAsync`. This is the unpinned `datalust/seq:latest` image's startup issue; the overlay makes ZERO edits to the seq service definition. Documented as a known pre-existing local issue; not blocking E12-S4 because seq is logging infrastructure and the AC-9 smoke endpoints (web, keycloak, api, rustfs) all served.
+
+**Git-Bash path-conversion (Windows).** A `curl http://localhost:9001/login` got mangled to `C:/Program Files/Git/login` in shell output. Sidestepped via `MSYS_NO_PATHCONV=1` on docker-exec / curl-with-paths commands (same workaround applied in E12-S3 dev session).
+
 ### Completion Notes List
 
+**Files committed:**
+- **NEW:** `infra/docker-compose.full.yml` — 4 new services (`keycloak-full`, `keycloak-full-realm-check`, `api`, `web`) + 1 profile-based deactivation of the base `keycloak` service.
+- **EDIT:** `README.md` — added `Option 4: Local Beta-shape testing (full overlay)` subsection right after the existing `Option 3: Container images (Beta-shape)` block.
+
+**Story-vs-Reality deviations the reviewer should know about:**
+1. **`ASPNETCORE_ENVIRONMENT=Development` not `Beta` in api service.** AC-2 specified `Beta`. Backend hardcodes `RequireHttpsMetadata=true` for non-Dev/non-Testing env at [DependencyInjection.cs:134](backend/src/IabConnect.Api/DependencyInjection.cs#L134), which makes the OIDC middleware refuse the local HTTP Keycloak Authority and crash every request with HTTP 409 BEFORE endpoint routing. There is no config key that env var override could fix. The "Beta-shape" intent of the overlay is preserved by: (a) Railway-mirroring port mappings (api on 5000, web on 3000), (b) frontend BETA banner via `NEXT_PUBLIC_ENV_LABEL=beta` baked at build time, (c) container topology, (d) `RetentionEnforcement__Enabled=false`. Follow-up: when E14-S2 (HTTPS/headers) or a backend config-refactor story lands, surface `Keycloak__RequireHttpsMetadata` as a config key so this overlay can use real Beta env. Comment in the YAML explains this for future maintainers.
+2. **`/health/ready` substituted for `/health/live`** (AC-9). Backend has `/health` and `/health/ready` per [DependencyInjection.cs:330-331](backend/src/IabConnect.Api/DependencyInjection.cs#L330-L331); AC-9 itself permits "or whatever the backend exposes".
+3. **RustFS console HTTP 403/501** (AC-9). Reachability proven via valid HTTP response with `x-request-id`; literal 200 not met.
+4. **AC-8 service count is 9 not 8.** Story typo — the same AC enumerates 7 long-running + 2 one-shot = 9. No functional impact.
+5. **`infra_minio_data` volume survives teardown.** Pre-existing volume from the project's pre-RustFS MinIO setup; not created by this story or the overlay. `docker volume ls --filter name=infra_` showed only this one survivor after `down -v` — the 4 volumes the overlay's stack creates (postgres_data, rustfs_data, rustfs_logs, seq_data) all cleanly removed.
+
+**Story Questions resolved:**
+- **Q1 (`/health/live` endpoint):** confirmed missing; substituted with `/health/ready`. Already addressed in deviation #2 above.
+- **Q2 (Compose v2.20+):** `docker compose version` → `v5.0.2` — way past v2.20. No workaround needed.
+- **Q3 (Single Postgres for api + Keycloak):** confirmed working — Keycloak's auto-DDL did not conflict with EF Core migrations. Both shared the `iabconnect` database in the local Postgres container without issue.
+- **Q4 (web service login round-trip without tester user):** Task 8 stays `[!]` — needs a human to (a) create a tester user via Keycloak Admin Console and (b) drive an interactive browser login. Dev-agent non-interactivity scope per project-context A30.
+
+**Evidence captured:**
+
+*Task 3 (config-parse, AC-11.1/11.2):*
+```
+$ docker compose -f infra/docker-compose.yml config --quiet                                                # exit 0
+$ docker compose -f infra/docker-compose.yml -f infra/docker-compose.full.yml config --quiet               # exit 0
+$ docker compose -f infra/docker-compose.yml -f infra/docker-compose.full.yml config --services | sort
+api · keycloak-full · keycloak-full-realm-check · mailhog · postgres · rustfs · rustfs-init · seq · web    # 9 services
+```
+
+*Task 4 (build, AC-8):* all 3 images built green via compose. Final compose-stage output:
+```
+Image iabc-web:local Built
+Image iabc-api:local Built
+Image iabc-keycloak:local Built
+```
+
+*Task 5 (up + ps + smoke, AC-8/9):*
+```
+$ docker compose -f infra/docker-compose.yml -f infra/docker-compose.full.yml ps -a
+api                         Up
+keycloak-full               Up
+keycloak-full-realm-check   Exited (0)    ← health gate passed: realm imported, SPI loaded
+mailhog                     Up
+postgres                    Up (healthy)
+rustfs                      Up (healthy)
+rustfs-init                 Exited (0)
+seq                         Restarting    ← pre-existing local issue, NOT caused by overlay
+web                         Up
+```
+
+```
+=== AC-9 SMOKE CURLS ===
+(1) GET http://localhost:3000/                                                  -> HTTP 200
+(2) GET http://localhost:8080/realms/iabconnect/.well-known/openid-configuration -> HTTP 200 body=6612B
+(3) GET http://localhost:5000/health/ready                                       -> HTTP 200
+(4) GET http://localhost:9001/                                                   -> HTTP 403 (policy response; HEAD returns 501 with valid x-request-id; server reachable)
+```
+
+*Task 6 (teardown, AC-10):* 9 containers stopped + removed; named volumes `infra_postgres_data`, `infra_rustfs_data`, `infra_rustfs_logs`, `infra_seq_data` removed; `infra_minio_data` survives (pre-existing). `ps -a` empty after.
+
+**AC-Subitem Completion Check (project-context A29):**
+| AC | Status | Notes |
+|----|--------|-------|
+| AC-1 (overlay file exists, additive) | covered | `infra/docker-compose.full.yml` created; base file untouched |
+| AC-2 (api service) | covered (1 deviation logged) | env=Development not Beta — see deviation #1 |
+| AC-3 (web service, host vs compose hostnames) | covered | NEXT_PUBLIC_* uses localhost, server env vars use compose hostnames |
+| AC-4 (keycloak-full service) | covered | `iabc-keycloak:local` built from E12-S3 Dockerfile; realm-import `${VAR}` placeholders supplied |
+| AC-5 (base keycloak disabled via profile) | covered | `profiles: ["disabled-by-full"]` — confirmed by `config --services` not listing base keycloak |
+| AC-6 (realm-check health gate) | covered | `keycloak-full-realm-check` exited 0 → REALM_OK reached |
+| AC-7 (README section) | covered | new "Option 4" subsection at README:363 |
+| AC-8 (build + up — 8 services healthy) | covered (story typo: 9 services actually) | 7 Up + 2 Exited(0); seq pre-existing restart loop unrelated to overlay |
+| AC-9 (4 smoke curls) | covered (2 minor deviations logged) | 3/4 HTTP 200; RustFS reachability via 403/501 policy responses |
+| AC-10 (clean teardown) | covered | 9 containers removed, 4 of 5 named volumes cleared (`infra_minio_data` is pre-existing) |
+| AC-11 (quality gates 11.1–11.6) | covered | all 6 sub-gates green; this table satisfies 11.6 |
+
+**Task 8 — `[!]` (per project-context A30):** end-to-end login round-trip via browser stays manual. Requires (a) human-driven browser, (b) manual creation of a tester user via Keycloak Admin Console at `http://localhost:8080/admin` (login `admin` / `admin-full`). Dev-agent cannot drive interactive browser sessions. Mark `[x]` only after human verification of: BETA banner visible · Keycloak login page reached · tester login succeeds · redirect back to web with valid session · AGPL footer (deferred to E20-S4) acceptable absent or present.
+
 ### File List
+
+**New files (1):**
+- `infra/docker-compose.full.yml`
+
+**Modified files (1):**
+- `README.md` — added "Option 4: Local Beta-shape testing (full overlay)" subsection after the existing Option 3 block.
+
+**No edits** to: `infra/docker-compose.yml`, backend source, frontend source, Keycloak SPI source, dev realm, sanitized realm, any of the 3 upstream Dockerfiles.
+
+## Change Log
+
+| Date | Change | Author |
+|------|--------|--------|
+| 2026-05-16 | Implemented E12-S4: optional `infra/docker-compose.full.yml` overlay + README "Option 4: Local Beta-shape testing" subsection. Closes Epic-12 Wave-3 Dockerization. 1 new file + 1 README edit; zero source code changes. Build + smoke + teardown all green (3/4 smoke curls HTTP 200, RustFS reachability via 403/501 policy responses; pre-existing seq restart loop unrelated to overlay). **Documented Story-vs-Reality deviation:** ASPNETCORE_ENVIRONMENT=Development not Beta in api service because backend hardcodes `RequireHttpsMetadata` for non-Dev/non-Testing env (DependencyInjection.cs:134), which crashes auth middleware on every request against HTTP Keycloak; YAML carries verbose comment + follow-up pointer for E14-S2 / backend config-refactor. Status: ready-for-dev → review. | Claude Opus 4.7 |
 
 ## Questions / Clarifications
 

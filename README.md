@@ -361,6 +361,30 @@ docker build --build-arg NEXT_PUBLIC_API_URL=… --build-arg NEXT_PUBLIC_KEYCLOA
 
 The full GHCR-publish flow with build-arg injection (commit-SHA, ISO date, the rest of the `NEXT_PUBLIC_*` set) is documented separately.
 
+#### Option 4: Local Beta-shape testing (full overlay)
+
+To run the same container topology Railway uses (backend image + frontend image + custom Keycloak image with SPI baked in, all built locally) without burning Railway minutes:
+
+```bash
+docker compose -f infra/docker-compose.yml -f infra/docker-compose.full.yml up --build -d
+```
+
+- Web UI: <http://localhost:3000> (BETA banner visible — login via Keycloak)
+- Keycloak: <http://localhost:8080> (admin console at `/admin`, login `admin` / `admin-full`)
+- API: <http://localhost:5000/health/ready> (Swagger disabled in Beta — `/swagger` returns 404, expected)
+- Realm probe: <http://localhost:8080/realms/iabconnect/.well-known/openid-configuration>
+- MailHog: <http://localhost:8025> · RustFS console: <http://localhost:9001>
+
+The overlay adds three new services (`api`, `web`, `keycloak-full`) plus a one-shot `keycloak-full-realm-check` health gate. It disables the base `keycloak` service via the `disabled-by-full` profile to free host port 8080. Everyday local dev (Option 1) is unaffected — the base file still works standalone.
+
+Teardown (drops named volumes — Postgres, RustFS, Seq):
+
+```bash
+docker compose -f infra/docker-compose.yml -f infra/docker-compose.full.yml down -v
+```
+
+Requires Docker Compose v2.20+ (for `profiles:` and `service_completed_successfully`).
+
 ### Default Credentials
 
 | Service            | URL                   | Username            | Password        |
