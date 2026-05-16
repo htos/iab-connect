@@ -1,0 +1,279 @@
+{
+  "realm": "iabconnect",
+  "enabled": true,
+  "displayName": "IAB Connect",
+  "loginTheme": "keycloak",
+  "sslRequired": "external",
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": true,
+  "rememberMe": true,
+  "verifyEmail": true,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 5,
+  "eventsListeners": ["jboss-logging", "disable-new-users"],
+  "eventsEnabled": true,
+  "adminEventsEnabled": true,
+  "adminEventsDetailsEnabled": true,
+  "enabledEventTypes": [
+    "LOGIN",
+    "LOGIN_ERROR",
+    "REGISTER",
+    "REGISTER_ERROR",
+    "UPDATE_CREDENTIAL",
+    "UPDATE_CREDENTIAL_ERROR",
+    "REMOVE_CREDENTIAL",
+    "REMOVE_CREDENTIAL_ERROR",
+    "UPDATE_TOTP",
+    "UPDATE_TOTP_ERROR",
+    "REMOVE_TOTP",
+    "REMOVE_TOTP_ERROR",
+    "EXECUTE_ACTIONS",
+    "EXECUTE_ACTIONS_ERROR",
+    "EXECUTE_ACTION_TOKEN",
+    "EXECUTE_ACTION_TOKEN_ERROR",
+    "CUSTOM_REQUIRED_ACTION",
+    "CUSTOM_REQUIRED_ACTION_ERROR",
+    "RESET_PASSWORD",
+    "RESET_PASSWORD_ERROR",
+    "SEND_RESET_PASSWORD",
+    "SEND_RESET_PASSWORD_ERROR"
+  ],
+  "browserFlow": "iabconnect browser role mfa",
+  "defaultRoles": ["member"],
+  "otpPolicyType": "totp",
+  "otpPolicyAlgorithm": "HmacSHA1",
+  "otpPolicyInitialCounter": 0,
+  "otpPolicyDigits": 6,
+  "otpPolicyLookAheadWindow": 1,
+  "otpPolicyPeriod": 30,
+  "otpSupportedApplications": ["FreeOTP", "Google Authenticator", "Microsoft Authenticator"],
+  "requiredActions": [
+    {
+      "alias": "CONFIGURE_TOTP",
+      "name": "Configure OTP",
+      "providerId": "CONFIGURE_TOTP",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 10
+    },
+    {
+      "alias": "CONFIGURE_RECOVERY_AUTHN_CODES",
+      "name": "Configure Recovery Authentication Codes",
+      "providerId": "CONFIGURE_RECOVERY_AUTHN_CODES",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 20
+    }
+  ],
+  "authenticatorConfig": [
+    {
+      "alias": "iabconnect-role-based-mfa",
+      "config": {
+        "forceOtpRole": "mfa-required",
+        "defaultOtpOutcome": "skip"
+      }
+    }
+  ],
+  "authenticationFlows": [
+    {
+      "alias": "iabconnect browser role mfa",
+      "description": "Browser login with role-based MFA for high-risk IAB Connect roles.",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-cookie",
+          "authenticatorFlow": false,
+          "requirement": "ALTERNATIVE",
+          "priority": 10,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "auth-spnego",
+          "authenticatorFlow": false,
+          "requirement": "DISABLED",
+          "priority": 20,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "flowAlias": "iabconnect browser forms role mfa",
+          "authenticatorFlow": true,
+          "requirement": "ALTERNATIVE",
+          "priority": 30,
+          "autheticatorFlow": true,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "iabconnect browser forms role mfa",
+      "description": "Username/password form followed by conditional OTP enforcement.",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-username-password-form",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "auth-conditional-otp-form",
+          "authenticatorConfig": "iabconnect-role-based-mfa",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        }
+      ]
+    }
+  ],
+  "smtpServer": {
+    "replyToDisplayName": "IAB Connect",
+    "starttls": "false",
+    "auth": "false",
+    "envelopeFrom": "",
+    "ssl": "false",
+    "password": "",
+    "port": "1025",
+    "host": "mailhog",
+    "replyTo": "noreply@iabconnect.ch",
+    "from": "noreply@iabconnect.ch",
+    "fromDisplayName": "IAB Connect",
+    "user": ""
+  },
+  "roles": {
+    "realm": [
+      {
+        "name": "mfa-required",
+        "description": "Composite marker role for accounts that must complete MFA during browser login"
+      },
+      {
+        "name": "admin",
+        "description": "Administrator mit vollen Rechten",
+        "composite": true,
+        "composites": {
+          "realm": ["mfa-required"]
+        }
+      },
+      {
+        "name": "vorstand",
+        "description": "Vorstandsmitglied"
+      },
+      {
+        "name": "member",
+        "description": "Reguläres Mitglied"
+      },
+      {
+        "name": "kassier",
+        "description": "Kassier/Treasurer - Finanzverantwortung",
+        "composite": true,
+        "composites": {
+          "realm": ["mfa-required"]
+        }
+      },
+      {
+        "name": "auditor",
+        "description": "Revisor - Finanzeinsicht (read-only)"
+      },
+      {
+        "name": "event-manager",
+        "description": "Event-Manager - Eventverantwortung"
+      }
+    ]
+  },
+  "groups": [
+    {
+      "name": "Vorstand",
+      "realmRoles": ["vorstand", "member"]
+    },
+    {
+      "name": "Mitglieder",
+      "realmRoles": ["member"]
+    },
+    {
+      "name": "Kassier",
+      "realmRoles": ["kassier", "member"]
+    },
+    {
+      "name": "Revisoren",
+      "realmRoles": ["auditor", "member"]
+    },
+    {
+      "name": "Event-Manager",
+      "realmRoles": ["event-manager", "member"]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "iabconnect-admin",
+      "name": "IAB Connect Admin Service",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "${IABCONNECT_ADMIN_CLIENT_SECRET}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "fullScopeAllowed": true,
+      "defaultClientScopes": ["web-origins", "acr", "roles", "profile", "email"],
+      "optionalClientScopes": ["address", "phone", "offline_access", "microprofile-jwt"]
+    },
+    {
+      "clientId": "iabconnect-api",
+      "name": "IAB Connect API",
+      "enabled": true,
+      "publicClient": false,
+      "bearerOnly": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false
+    },
+    {
+      "clientId": "iabconnect-frontend",
+      "name": "IAB Connect Frontend",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "${IABCONNECT_FRONTEND_CLIENT_SECRET}",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "https://*.up.railway.app/*",
+        "${FRONTEND_PUBLIC_URL}/*"
+      ],
+      "webOrigins": [
+        "https://*.up.railway.app",
+        "${FRONTEND_PUBLIC_URL}"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-iabconnect-admin",
+      "enabled": true,
+      "serviceAccountClientId": "iabconnect-admin",
+      "clientRoles": {
+        "realm-management": ["realm-admin"]
+      }
+    }
+  ]
+}
