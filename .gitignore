@@ -57,6 +57,11 @@ coverage/
 .env.*
 !.env.example
 
+# ───────────────────────────────────────────────
+#  .NET local-override files (never commit)
+# ───────────────────────────────────────────────
+**/appsettings.*.Local.json
+
 # yarn v3+
 .pnp.*
 .yarn/*

@@ -256,46 +256,72 @@ Ensure you have the following installed on your development machine:
 
 ### Configuration
 
-#### Backend Configuration
+Configuration is environment-variable-driven. The canonical lists of variables consumed by the
+application are [`backend/.env.example`](backend/.env.example) and
+[`frontend/.env.example`](frontend/.env.example) — copy each to its sibling `.env` /
+`.env.local` (both gitignored) and fill in values for local development, or set the variables on
+your deployment target (Railway, Docker, systemd, etc.). Real secrets never live in committed
+files.
 
-The backend uses environment-specific configuration files:
+#### Backend precedence
 
-- `appsettings.json` - Base configuration
-- `appsettings.Development.json` - Development overrides
+The .NET configuration system layers sources; later layers override earlier ones:
 
-Key configuration sections:
-
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Port=5433;Database=iabconnect;Username=postgres;Password=postgres"
-  },
-  "Keycloak": {
-    "ServerUrl": "http://localhost:8080",
-    "Realm": "iabconnect",
-    "Audience": "iab-connect-api",
-    "AdminClient": "admin-service",
-    "AdminClientSecret": "admin-service-secret-2026"
-  },
-  "Email": {
-    "SmtpHost": "localhost",
-    "SmtpPort": 1025,
-    "FromEmail": "noreply@iabconnect.ch",
-    "FromName": "IAB Connect"
-  }
-}
+```
+appsettings.json
+  ↓ (base; committed; non-sensitive defaults)
+appsettings.{ASPNETCORE_ENVIRONMENT}.json
+  ↓ (committed; per-environment non-sensitive overrides — Development / Beta / Production)
+Environment variables
+  ↓ (uncommitted; source of all secrets)
+Command-line arguments
+  ↓ (rare; mostly for ad-hoc overrides)
 ```
 
-#### Frontend Configuration
+Nested configuration keys use `:` inside JSON (`"Keycloak": { "ClientSecret": "..." }`) and
+`__` (two underscores) inside environment variables (POSIX shells and Windows env vars do not
+allow `:` in variable names). .NET aliases `__` to `:` automatically:
 
-Environment variables in `.env.local`:
+```bash
+# This env var:
+export Keycloak__ClientSecret="..."
 
-```env
-NEXT_PUBLIC_API_URL=http://localhost:5000
-NEXT_PUBLIC_KEYCLOAK_URL=http://localhost:8080
-NEXT_PUBLIC_KEYCLOAK_REALM=iabconnect
-NEXT_PUBLIC_KEYCLOAK_CLIENT_ID=iab-connect-frontend
+# overrides this appsettings.json entry:
+"Keycloak": { "ClientSecret": "..." }
 ```
+
+The currently active environment file is `appsettings.Development.json` (when
+`ASPNETCORE_ENVIRONMENT=Development`, the default). Beta deployments load
+`appsettings.Beta.json`; Production deployments load `appsettings.Production.json` (or omit it).
+
+#### Frontend precedence
+
+Next.js layers `.env*` files in this order; later layers override earlier ones:
+
+```
+.env                              (committed defaults — not used in this repo)
+  ↓
+.env.development | .env.production (committed per-mode non-secrets — not used in this repo)
+  ↓
+.env.local                        (uncommitted; local overrides incl. dev secrets)
+  ↓
+Runtime environment (Railway / CI)
+```
+
+For local development, `frontend/.env.local` is the file you actually edit.
+
+#### Build-time vs. runtime variables (Next.js)
+
+Variables prefixed with `NEXT_PUBLIC_` are **substituted into the static client bundle at
+`next build` time**. They are visible to any browser and CANNOT be changed at runtime —
+changing `NEXT_PUBLIC_API_URL` requires a `next build` rebuild for the new value to take effect.
+Non-`NEXT_PUBLIC_*` vars (`NEXTAUTH_SECRET`, `KEYCLOAK_CLIENT_SECRET`, …) are runtime-only and
+readable only from server components, API routes, and middleware.
+
+Sensitive secrets MUST NOT carry the `NEXT_PUBLIC_` prefix.
+
+See [ADR-015 — Configuration and Environment Strategy](_bmad-output/planning-artifacts/architecture.md#adr-015-configuration-and-environment-strategy)
+for rationale.
 
 ### Running the Application
 

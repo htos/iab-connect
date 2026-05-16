@@ -52,7 +52,7 @@
 #   parks a story behind unmet dependencies.
 
 generated: "2026-05-12"
-last_updated: "2026-05-15 (bmad-sprint-planning post Beta-on-Railway and OSS Foundation pivot: added E11-E20 with 40 stories. Wave-aware status: only Wave 1 (E20-S1, E20-S2) promoted to ready-for-dev; remaining 38 E11-E20 stubs stay backlog held by wave order per SCP-2026-05-15 §6. Block reordered to execution priority: done (E1-E3, E9, E10) -> ACTIVE FOCUS Beta pivot (E20 with Wave 1 ready, then E11..E19) -> DEFERRED backlog (E4-E8). Readiness READY per implementation-readiness-report-2026-05-15.md. NEXT: bmad-create-story for e20-s1-add-license-dco-and-contributing.)"
+last_updated: "2026-05-16 (bmad-create-story for e11-s2-introduce-aspnetcore-environment-beta: re-contextualized the 20-line stub to a comprehensive 400+ line story with 12 ACs and 13 Task blocks. CRITICALLY integrates the two E11-S1 deferred-work entries as in-scope ACs: AC-2 closes 'appsettings.json base cleanup' (move 6 dev-host/credential values + literal rustfsadmin credentials from base to Development overlay), AC-3 closes 'Beta Serilog.WriteTo array-merge fix' (move File sink from base to Development overlay so Beta inherits Console-only per ADR-017). AC-4 wires RetentionEnforcement__Enabled flag at DependencyInjection.cs:298 per ADR-020 (the only backend .cs code change in the story). AC-5 codifies the audit that the 7 IsDevelopment() sites must NOT be relaxed to include Beta. AC-6/7/8 implement the BETA banner per ux-design.md spec (orange, dismissable, sessionStorage, mounted in root layout above MainLayout). Per UX-design, banner mounting coordinates with E20-S4 LicenseFooter (sibling above vs below MainLayout). Open Question surfaced for PM: E18-S3 (original Beta banner story) reduces to polish/feedback-channel-integration after this story implements the banner. e11-s2 backlog -> ready-for-dev. NEXT: bmad-dev-story for e11-s2.)"
 # --- history ---------------------------------------------------------------
 # 2026-05-13: Epic-Close-Gate after clearing all 11 [Review][Patch] findings per
 # sprint-change-proposal-2026-05-13.md. E1.S1-S4 flipped review -> done.
@@ -135,6 +135,22 @@ last_updated: "2026-05-15 (bmad-sprint-planning post Beta-on-Railway and OSS Fou
 # stories, 10 new retrospectives. Wave-aware status: E20-S1 and E20-S2 promoted
 # to ready-for-dev (Wave 1 of SCP-2026-05-15 §6); all other E11-E20 stubs stay
 # backlog held by wave order. Block reordered to execution priority.
+# 2026-05-15 (bmad-create-story for ALL of Epic-20): re-created comprehensive
+# context for e20-s1 (was 112-line draft; now 175+ lines with explicit
+# task/AC/file-list/test-evidence cross-references) and filled out the four
+# stubs e20-s2..e20-s5 to full dev-ready context (180-240 lines each). User
+# explicitly overrode the SCP-2026-05-15 §6 wave gate — all five E20 stories
+# are now ready-for-dev so dev work can run in parallel with the E11/E12
+# upstreams. epic-20 status backlog -> in-progress. CAVEATS the dev-story
+# workflow must surface: E20-S3 needs BUILD_SHA/BUILD_DATE env vars that
+# arrive via E12-S1's backend Dockerfile (story degrades to 'unknown'
+# strings until E12 lands — verified by the AC-9 in-memory config test);
+# E20-S4 references NEXT_PUBLIC_SOURCE_URL that E12-S2 also propagates as
+# a build-arg; E20-S5 has HARD deps on E12-S1/S2/S3 Dockerfiles existing
+# on disk and will block at Task 1 if any are missing. The dev agent must
+# escalate Dockerfile absence rather than fabricate a workaround. NEXT:
+# bmad-dev-story for e20-s1 (LICENSE/NOTICE/CONTRIBUTING/DCO — zero
+# upstream deps, fully unblocked).
 # ---------------------------------------------------------------------------
 project: iab-connect
 project_key: NOKEY
@@ -213,17 +229,17 @@ development_status:
   # E20 first because Wave 1 is here. E11..E18 in their first-wave order.
   # E19 last because it is Production prep and not on the Beta-Go-Live path.
 
-  epic-20: backlog
+  epic-20: in-progress
   e20-s1-add-license-dco-and-contributing: ready-for-dev
   e20-s2-add-spdx-headers-policy-for-new-files: ready-for-dev
-  e20-s3-add-backend-about-endpoint: backlog
-  e20-s4-add-frontend-license-footer: backlog
-  e20-s5-add-ghcr-image-publishing-pipeline: backlog
+  e20-s3-add-backend-about-endpoint: ready-for-dev
+  e20-s4-add-frontend-license-footer: ready-for-dev
+  e20-s5-add-ghcr-image-publishing-pipeline: ready-for-dev
   epic-20-retrospective: optional
 
-  epic-11: backlog
-  e11-s1-add-env-examples-and-document-config-precedence: backlog
-  e11-s2-introduce-aspnetcore-environment-beta: backlog
+  epic-11: in-progress
+  e11-s1-add-env-examples-and-document-config-precedence: done
+  e11-s2-introduce-aspnetcore-environment-beta: ready-for-dev
   e11-s3-make-next-config-environment-driven: backlog
   epic-11-retrospective: optional
 

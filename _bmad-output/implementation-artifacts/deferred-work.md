@@ -224,3 +224,60 @@ Round 2 of the Epic-10 epic-boundary review, run over the full E10 diff (`7a07d7
 - **[Cross-cutting] Audit actor identity uses username, not stable `sub` claim** — `Member.UpdatedBy`, `SystemSettings.UpdatedBy`, `ModuleSetting.UpdatedBy`, and audit-row actor fields throughout the codebase store `HttpContext.GetUserName()`. A Keycloak user rename breaks forensic traceability of any historical action by that user. Pre-existing project-wide pattern; cross-cutting audit-identity hardening track. (Surfaced again by E10's `UpdateModuleSettingCommand` + `ModuleAuthorizationHandler` audit writes.)
 - **[Cross-cutting] `ModuleAuthorizationHandler` writes one audit row per denied request with no rate-limit / coalescing** — a misconfigured polling client (e.g. once-per-second to `/api/v1/finance/transactions` while `Module:finance` is off) produces ~86k audit rows/day in the "System Security" category. Same pattern applies to other audit-write-on-deny endpoints across the codebase. Cross-cutting audit-volume control track.
 
+---
+
+## Deferred from: E11-S1 implementation (2026-05-16)
+
+The configuration-surface foundation story (`e11-s1-add-env-examples-and-document-config-precedence`) intentionally limits its scope to documentation, `.env.example` files, `.gitignore` tightening, README precedence, and the `appsettings.Beta.json` skeleton. The findings below were surfaced by the AC-5 hardcoded-host audit but deferred per story scope so that no code paths change in E11-S1.
+
+### E11-S1 follow-up: `appsettings.json` base cleanup
+
+**Trigger story:** E11-S2 (`ASPNETCORE_ENVIRONMENT=Beta`) — first story where Beta loads base `appsettings.json` then `appsettings.Beta.json` without dev overlays and would inherit `localhost:5433` until env-var overrides resolve.
+
+**Keys to move from `backend/src/IabConnect.Api/appsettings.json` to `backend/src/IabConnect.Api/appsettings.Development.json`:**
+
+- `ConnectionStrings.DefaultConnection` (currently `Host=localhost;Port=5433;…` in both files — base should be empty or a non-host placeholder)
+- `Keycloak.Authority` (currently `http://localhost:8080/realms/iabconnect` in both — base should be empty)
+- `DocumentStorage.ServiceUrl` (currently `http://localhost:9000` in both — base should be empty)
+- `DocumentStorage.AccessKey` / `SecretKey` (currently `rustfsadmin` literal credentials in BOTH files — must NEVER appear in base; dev-only credential)
+- `DocumentStorage.BucketName` (currently `iabconnect-documents` in both — base should be empty)
+- `Smtp.Host` (currently `localhost` in both — base should be empty)
+
+**Rationale:** The base `appsettings.json` should contain production-safe non-sensitive defaults so Beta/Production cleanly layer overrides without inheriting dev hosts. Today the duplication between base and Development is harmless because the Development overlay re-sets every key — but Beta will not.
+
+**Why deferred:** A single-file move could introduce a regression if any code path reads `appsettings.json` without `appsettings.Development.json` overlay (test hosts, isolated unit tests). E11-S2 is the natural trigger because it adds the Beta-load path and would otherwise hit this issue first.
+
+### E11-S1 follow-up: Beta `Serilog.WriteTo` array-merge silently surfaces base File sink
+
+**File:** `backend/src/IabConnect.Api/appsettings.Beta.json`
+
+**Discovered by:** code-review-2026-05-16 (Blind Hunter F1, re-classified to defer after verifying .NET config array semantics).
+
+**Problem:** .NET Configuration merges JSON arrays **by index**, not wholesale-replace. Beta's `"Serilog": { "WriteTo": [{ "Name": "Console" }] }` overrides base's `WriteTo[0]` (Console — fine) but base's `WriteTo[1]` (File sink at `appsettings.json:21-30`) survives the merge → Beta would still write File logs, contradicting ADR-017's "Console-only in Beta" decision.
+
+**Fix:** Structural, tied to the `appsettings.json base cleanup` entry below. Move the File sink from base `appsettings.json` into `appsettings.Development.json`, leaving base with Console-only. After that move, Beta inherits the Console-only configuration correctly without needing any change to `appsettings.Beta.json`.
+
+**Why deferred:** Same trigger as the base cleanup (E11-S2 wires `ASPNETCORE_ENVIRONMENT=Beta` and is the first place this matters). The Beta skeleton committed by E11-S1 expresses the right INTENT; the execution depends on the base cleanup landing first.
+
+**E11-S2 acceptance criterion to add:** "After moving the File sink to `appsettings.Development.json`, verify with `dotnet run --launch-profile=https` and `ASPNETCORE_ENVIRONMENT=Beta` that `logs/` is empty (only Console sink active)."
+
+### E11-S1 follow-up: `KeycloakHealthCheck.cs` configuration-key typo
+
+**File:** `backend/src/IabConnect.Api/HealthChecks/KeycloakHealthCheck.cs:16`
+
+**Current:** `var authority = configuration["Authentication:Authority"];`
+
+**Should be:** `var authority = configuration["Keycloak:Authority"];`
+
+**Impact:** `Authentication:Authority` is not a defined section anywhere in the codebase, so the read returns `null`. The health-check then either no-ops or follows a default-URL code path. The `Keycloak:Authority` value IS the intended source (matches the OIDC binding at `Api/DependencyInjection.cs:121-122`).
+
+**Why deferred:** Fixing the typo changes runtime behavior — the health check would start actually validating Keycloak reachability and might return 503 in environments where the Keycloak URL is wrong or unreachable. That is a real correctness improvement but a behavior change worth its own story with proper before/after smoke-tests in Dev and Beta.
+
+### E11-S1 follow-up: `Branding__SourceUrl` consumed-after-documented
+
+**Variable:** `Branding__SourceUrl` (added to `backend/.env.example` by E11-S1)
+
+**Consumer:** E20-S3 (`/about` endpoint) — not yet implemented.
+
+**Note:** Listing the variable in `.env.example` ahead of consumption is intentional so deployers can configure it before E20-S3 ships. No code currently reads `Branding:SourceUrl`. This is not a defect; just a forward-reference.
+
