@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { MainLayout } from "@/components/navigation";
+import { BetaBanner } from "@/components/navigation/BetaBanner";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 
@@ -58,6 +59,8 @@ export default async function RootLayout({
       <body className="bg-background min-h-screen font-sans antialiased">
         <Providers>
           <NextIntlClientProvider messages={messages}>
+            {/* BetaBanner mounted above MainLayout; LicenseFooter (E20-S4) lands as sibling AFTER MainLayout. */}
+            <BetaBanner />
             <MainLayout>{children}</MainLayout>
           </NextIntlClientProvider>
         </Providers>

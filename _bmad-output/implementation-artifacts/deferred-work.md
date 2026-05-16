@@ -273,6 +273,28 @@ The configuration-surface foundation story (`e11-s1-add-env-examples-and-documen
 
 **Why deferred:** Fixing the typo changes runtime behavior — the health check would start actually validating Keycloak reachability and might return 503 in environments where the Keycloak URL is wrong or unreachable. That is a real correctness improvement but a behavior change worth its own story with proper before/after smoke-tests in Dev and Beta.
 
+### E11-S2 follow-up: eager-init keys block cleanup of `ConnectionStrings:DefaultConnection` + `DocumentStorage:*`
+
+**Discovered by:** E11-S2 implementation (2026-05-16). Partial-revert applied.
+
+**Problem:** The E11-S2 base cleanup (AC-2) successfully moved `Keycloak:Authority` and `Smtp:Host` from `appsettings.json` to `appsettings.Development.json`. The five originally-planned keys `ConnectionStrings:DefaultConnection` + `DocumentStorage:ServiceUrl`/`AccessKey`/`SecretKey`/`BucketName` were REVERTED to their dev defaults because emptying them broke existing `WebApplicationFactory`-based API tests:
+
+1. **`ConnectionStrings:DefaultConnection`** — Hangfire's `UsePostgreSqlStorage` (`Infrastructure/DependencyInjection.cs:181-193`) eagerly calls `PostgreSqlStorage..ctor → CreateAndOpenConnection` at DI registration. Empty string → `Npgsql.InvalidOperationException: The ConnectionString property has not been initialized` → 57 API tests crash at `WebApplicationFactory.CreateClient()`.
+2. **`DocumentStorage:*`** — `Infrastructure/DependencyInjection.cs:259` calls `configuration.GetSection(...).Get<DocumentStorageSettings>()` at DI registration and captures the value in an `AddSingleton<IAmazonS3>` factory closure. Empty values → S3 client init or first call fails → `SettingsEndpointTests.GetLogo_NoLogoConfigured_Returns404` returns 500 instead of 404.
+
+**Common root cause:** both registrations read configuration EAGERLY (not via IOptions). The `TestWebApplicationFactory`'s `ConfigureAppConfiguration` InMemoryCollection override is applied during `builder.Build()` — AFTER `AddInfrastructureServices` has already captured the empty base values into singleton closures.
+
+**Contrast with the SUCCESSFUL cleanups:** `Keycloak:Authority` (`Api/DependencyInjection.cs:122`) reads inside the `AddJwtBearer(options => { ... })` post-configure callback, which fires lazily when `JwtBearerOptions` is resolved per request — by then the InMemory override is effective. `Smtp:Host` is bound via `services.Configure<SmtpSettings>(configuration.GetSection(...))` (`Infrastructure/DependencyInjection.cs:196`), also lazy. These two cleanups landed cleanly.
+
+**Fix path (recommend in order):**
+1. **Refactor Infrastructure DI to use IOptions for DocumentStorage** — change line 259 to `services.AddSingleton<IAmazonS3>(sp => { var opts = sp.GetRequiredService<IOptions<DocumentStorageSettings>>().Value; ... })`. This makes the binding lazy. Low risk, mechanical change.
+2. **Make Hangfire init lazy** — wrap `UsePostgreSqlStorage(...)` in `services.AddSingleton<JobStorage>(sp => new PostgreSqlStorage(...))` or use `IHostedService` initialization. Higher risk because Hangfire's registration patterns are fixed by the library.
+3. **Or change `TestWebApplicationFactory` to inject configuration via env-vars BEFORE host construction.** Most invasive (changes shared test infra).
+
+**Why deferred:** All three fixes are structural and orthogonal to E11-S2's Beta-environment-label goal. The leak (committed `rustfsadmin` credentials in base) is real but limited-impact: Production sets env vars; Beta sets env vars; only Dev inherits the literal credentials from base, which is the intended Dev experience. Recommend tackling as a focused refactor story (or fold into E15-S2 if `Database__AutoMigrate` work touches the same DI registration patterns).
+
+**Workaround in E11-S2:** `AppSettingsLayeringTests.BaseConfig_DevDefaultsAreEmptied` and `BetaLayered_DoesNotInheritDevDefaults` Theory excludes the eager-init keys from the InlineData with a code comment explaining the deferral. The two non-eager keys (`Keycloak:Authority`, `Smtp:Host`) remain cleanly emptied and asserted.
+
 ### E11-S1 follow-up: `Branding__SourceUrl` consumed-after-documented
 
 **Variable:** `Branding__SourceUrl` (added to `backend/.env.example` by E11-S1)

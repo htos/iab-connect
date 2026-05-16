@@ -2601,5 +2601,11 @@
     "revokeError": "Sitzung konnte nicht beendet werden. Bitte später erneut versuchen.",
     "ipPrivacyNote": "Diese Information ist nur für dich sichtbar.",
     "ipPrivacyNoteAdmin": "Diese IP-Adresse wird nur für Administrations- und Sicherheitszwecke angezeigt."
+  },
+  "beta": {
+    "bannerMessage": "Beta — Daten können jederzeit zurückgesetzt werden",
+    "feedbackLink": "Feedback geben",
+    "dismissAriaLabel": "Banner ausblenden",
+    "ariaLabel": "Beta-Hinweis"
   }
 }

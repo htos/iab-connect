@@ -2600,5 +2600,11 @@
     "revokeError": "Could not end session. Please try again later.",
     "ipPrivacyNote": "This information is only visible to you.",
     "ipPrivacyNoteAdmin": "This IP address is shown only for administrative and security purposes."
+  },
+  "beta": {
+    "bannerMessage": "Beta — data may be reset at any time",
+    "feedbackLink": "Give feedback",
+    "dismissAriaLabel": "Dismiss banner",
+    "ariaLabel": "Beta notice"
   }
 }

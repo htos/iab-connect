@@ -32,6 +32,16 @@ public static class DependencyInjection
     /// <summary>Cron expression for the volunteer-reminder job — daily at 09:00 (job timezone).</summary>
     internal const string VolunteerReminderCron = "0 9 * * *";
 
+    /// <summary>
+    /// REQ-088 (E11-S2 / ADR-020): recurring-job id for the weekly retention-enforcement pass.
+    /// Extracted so <c>RetentionEnforcementJobRegistrationTests</c> can assert
+    /// presence/absence by id without standing up Hangfire storage. The job registration is
+    /// gated by <c>RetentionEnforcement:Enabled</c> (default true) so Beta deployments
+    /// (which set the flag to false in <c>appsettings.Beta.json</c>) do not retention-delete
+    /// tester data while retention defaults are still being validated.
+    /// </summary>
+    internal const string RetentionJobId = "enforce-retention-policies";
+
     public static IServiceCollection AddApiServices(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -295,11 +305,11 @@ public static class DependencyInjection
                 Cron.Weekly,
                 new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
-            jobManager.AddOrUpdate<RetentionEnforcementJob>(
-                "enforce-retention-policies",
-                job => job.ExecuteAsync(CancellationToken.None),
-                Cron.Weekly,
-                new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+            // REQ-088 (E11-S2): retention enforcement is suppressed in Beta per ADR-020 so
+            // tester data is not deleted by default-policy retention rules during the
+            // validation window. Extracted as a static helper so the flag-conditional
+            // registration is unit-testable without standing up Hangfire storage.
+            RegisterRetentionEnforcementJob(app.Configuration, jobManager);
 
             // REQ-024 (E3.S4): Daily 09:00 Europe/Zurich (first non-UTC schedule in the project).
             // Local timezone matches the operations expectation that recipients see the reminder
@@ -349,6 +359,26 @@ public static class DependencyInjection
         app.MapApiEndpoints();
 
         return app;
+    }
+
+    /// <summary>
+    /// REQ-088 (E11-S2 / ADR-020): registers the weekly retention-enforcement recurring job
+    /// IFF <c>RetentionEnforcement:Enabled</c> is true (default). Beta deployments set the
+    /// flag to false in <c>appsettings.Beta.json</c> so tester data is not deleted by
+    /// default-policy retention rules during the validation window. Extracted as
+    /// <c>internal static</c> so <c>RetentionEnforcementJobRegistrationTests</c> can verify
+    /// both flag states with a stubbed <see cref="IRecurringJobManager"/>.
+    /// </summary>
+    internal static void RegisterRetentionEnforcementJob(IConfiguration configuration, IRecurringJobManager jobManager)
+    {
+        if (configuration.GetValue<bool>("RetentionEnforcement:Enabled", defaultValue: true))
+        {
+            jobManager.AddOrUpdate<RetentionEnforcementJob>(
+                RetentionJobId,
+                job => job.ExecuteAsync(CancellationToken.None),
+                Cron.Weekly,
+                new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+        }
     }
 
     /// <summary>
