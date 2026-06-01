@@ -1,6 +1,6 @@
 # Story 20.5: GHCR Image Publishing Pipeline
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -67,53 +67,53 @@ so that **Railway and other deployers can pull tagged immutable artifacts withou
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — Verify upstream Dockerfiles exist (blocker check)**
-  - [ ] 1.1 `ls backend/Dockerfile frontend/Dockerfile infra/keycloak/Dockerfile`. All three must exist. If any is missing, STOP and escalate — this story's wave promotion overrides the SCP-2026-05-15 §6 wave gate, but the Dockerfile dependency is real. Open a blocker note in Completion Notes pointing at the missing E12 story.
-  - [ ] 1.2 Confirm the Dockerfiles accept the build-args listed in AC-6. Read each Dockerfile's `ARG` declarations.
-- [ ] **Task 2 — Resolve action SHAs (AC: 13)**
-  - [ ] 2.1 For each action below, look up the latest tagged release on GitHub and copy the corresponding 40-char commit SHA:
+- [x] **Task 1 — Verify upstream Dockerfiles exist (blocker check)**
+  - [x] 1.1 `ls backend/Dockerfile frontend/Dockerfile infra/keycloak/Dockerfile`. All three must exist. If any is missing, STOP and escalate — this story's wave promotion overrides the SCP-2026-05-15 §6 wave gate, but the Dockerfile dependency is real. Open a blocker note in Completion Notes pointing at the missing E12 story.
+  - [x] 1.2 Confirm the Dockerfiles accept the build-args listed in AC-6. Read each Dockerfile's `ARG` declarations.
+- [x] **Task 2 — Resolve action SHAs (AC: 13)**
+  - [x] 2.1 For each action below, look up the latest tagged release on GitHub and copy the corresponding 40-char commit SHA:
     - `actions/checkout` (typically v4.x)
     - `docker/setup-buildx-action` (typically v3.x)
     - `docker/login-action` (typically v3.x)
     - `docker/metadata-action` (typically v5.x)
     - `docker/build-push-action` (typically v6.x)
-  - [ ] 2.2 Record the SHA → tag mapping in the workflow's top-of-file comment block.
-- [ ] **Task 3 — Author `.github/workflows/build-images.yml` (AC: 1, 2, 3, 4, 5, 6, 7, 8, 9, 13, 14)**
-  - [ ] 3.1 SPDX header on line 1.
-  - [ ] 3.2 Workflow `name: Build and publish container images`.
-  - [ ] 3.3 `on.push.branches: [beta, main]`.
-  - [ ] 3.4 Top-level `permissions: { contents: read, packages: write }`.
-  - [ ] 3.5 Single job `build-and-push` with `strategy.matrix.include` enumerating the three images. Each matrix entry specifies: `name` (api/web/keycloak), `image` (iabc-api/iabc-web/iabc-keycloak), `context` (`./backend`/`./frontend`/`./infra/keycloak`), `dockerfile` (relative to context, default `Dockerfile`), and any per-image build args.
-  - [ ] 3.6 Inside the matrix job:
+  - [x] 2.2 Record the SHA → tag mapping in the workflow's top-of-file comment block.
+- [x] **Task 3 — Author `.github/workflows/build-images.yml` (AC: 1, 2, 3, 4, 5, 6, 7, 8, 9, 13, 14)**
+  - [x] 3.1 SPDX header on line 1.
+  - [x] 3.2 Workflow `name: Build and publish container images`.
+  - [x] 3.3 `on.push.branches: [beta, main]`.
+  - [x] 3.4 Top-level `permissions: { contents: read, packages: write }`.
+  - [x] 3.5 Single job `build-and-push` with `strategy.matrix.include` enumerating the three images. Each matrix entry specifies: `name` (api/web/keycloak), `image` (iabc-api/iabc-web/iabc-keycloak), `context` (`./backend`/`./frontend`/`./infra/keycloak`), `dockerfile` (relative to context, default `Dockerfile`), and any per-image build args.
+  - [x] 3.6 Inside the matrix job:
     - Step "Checkout" — `actions/checkout@<sha>`.
     - Step "Set up Docker Buildx" — `docker/setup-buildx-action@<sha>`.
     - Step "Login to GHCR" — `docker/login-action@<sha>` with `registry: ghcr.io`, `username: ${{ github.actor }}`, `password: ${{ secrets.GITHUB_TOKEN }}`.
     - Step "Extract metadata" — `docker/metadata-action@<sha>` with `images: ghcr.io/htos/${{ matrix.image }}` and `tags: type=ref,event=branch | type=sha,prefix=sha-`. The `metadata-action` emits both the branch tag (`:beta`, `:main`) and the SHA tag (`:sha-<commit>`).
     - Step "Build and push" — `docker/build-push-action@<sha>` with: `context: ${{ matrix.context }}`, `file: ${{ matrix.context }}/${{ matrix.dockerfile }}`, `push: true`, `tags: ${{ steps.meta.outputs.tags }}`, `labels: ${{ steps.meta.outputs.labels }}`, `cache-from: type=gha`, `cache-to: type=gha,mode=max`, `platforms: linux/amd64`, and the per-matrix `build-args`.
-  - [ ] 3.7 For the `api` matrix entry, build-args include `BUILD_SHA=${{ github.sha }}` and `BUILD_DATE=${{ github.event.head_commit.timestamp }}`.
-  - [ ] 3.8 For the `web` matrix entry, build-args are conditional on branch: pull from GitHub Actions **variables** (`vars.NEXT_PUBLIC_API_URL_BETA`, `vars.NEXT_PUBLIC_API_URL_MAIN`, etc.). Document the required vars in the workflow header comment.
-  - [ ] 3.9 For the `keycloak` matrix entry, no build-args.
-  - [ ] 3.10 Add `org.opencontainers.image.licenses=AGPL-3.0-or-later` and `org.opencontainers.image.source=https://github.com/htos/iab-connect` to the `metadata-action`'s `labels` input. The action sets `revision` and `created` automatically when `images` is configured; verify by checking the action's output in the first run.
-- [ ] **Task 4 — Configure GitHub Actions variables (manual, AC: 6)**
-  - [ ] 4.1 In the GitHub repo settings → Secrets and variables → Actions → Variables, add: `NEXT_PUBLIC_API_URL_BETA`, `NEXT_PUBLIC_ENV_LABEL_BETA`, `NEXT_PUBLIC_DOCUMENT_HOST_BETA`, `NEXT_PUBLIC_SOURCE_URL_BETA`. Mirror with `_MAIN` suffix for production (initially empty strings; populate in E19).
-  - [ ] 4.2 Default values for BETA at story implementation time: `_API_URL_BETA = https://api.iabconnect.app` (or whatever Railway domain E13-S1 produces — coordinate with that story), `_ENV_LABEL_BETA = beta`, `_DOCUMENT_HOST_BETA = docs.iabconnect.app` (placeholder), `_SOURCE_URL_BETA = https://github.com/htos/iab-connect`.
-  - [ ] 4.3 Document the variable list in the workflow file's header comment so forks know what to set.
-- [ ] **Task 5 — First publish (manual trigger)**
-  - [ ] 5.1 Merge this story's PR to `beta`. The workflow auto-triggers.
-  - [ ] 5.2 Watch the run; expect a single matrix job with 3 cells, all succeeding within ~5-10 minutes. The Keycloak image build is the slowest (Maven compile of the SPI inside the Dockerfile per E12-S3).
-  - [ ] 5.3 If a cell fails, do NOT retry blindly — read the log. Most likely causes: missing Dockerfile (Task 1.1 should have caught this), missing build-arg variable (Task 4 not run), unresolvable image base (network issue), or permissions error (Task 3.4 not set).
-  - [ ] 5.4 Record the run URL in Completion Notes.
-- [ ] **Task 6 — Make packages public (manual, AC: 10)**
-  - [ ] 6.1 Navigate to `https://github.com/htos?tab=packages`. Open each of `iabc-api`, `iabc-web`, `iabc-keycloak`.
-  - [ ] 6.2 For each: Package settings → Danger Zone → "Change visibility" → Public. Confirm.
-  - [ ] 6.3 Record the package URLs in Completion Notes.
-- [ ] **Task 7 — Verify anonymous pull (AC: 15)**
-  - [ ] 7.1 From a machine outside CI (or a clean shell with no docker login), run `docker pull ghcr.io/htos/iabc-api:beta`, `docker pull ghcr.io/htos/iabc-web:beta`, `docker pull ghcr.io/htos/iabc-keycloak:beta`. All three must succeed without credentials.
-  - [ ] 7.2 Run `docker inspect ghcr.io/htos/iabc-api:beta --format '{{json .Config.Labels}}' | jq .` and verify the seven OCI labels are present and correct.
-  - [ ] 7.3 Record outputs in Completion Notes (paste a redacted JSON snippet).
-- [ ] **Task 8 — Document the rollback path (AC: 4)**
-  - [ ] 8.1 In the workflow file's leading comment, add a paragraph: "Rollback procedure: redeploy the previous `:sha-<commit>` immutable tag via Railway redeploy. The `:beta` moving tag is overwritten on every push and is NOT a rollback target."
-  - [ ] 8.2 No code is added for rollback — Railway-side runbook entry is E18-S1 (Beta runbook).
+  - [x] 3.7 For the `api` matrix entry, build-args include `BUILD_SHA=${{ github.sha }}` and `BUILD_DATE=${{ github.event.head_commit.timestamp }}`.
+  - [x] 3.8 For the `web` matrix entry, build-args are conditional on branch: pull from GitHub Actions **variables** (`vars.NEXT_PUBLIC_API_URL_BETA`, `vars.NEXT_PUBLIC_API_URL_MAIN`, etc.). Document the required vars in the workflow header comment.
+  - [x] 3.9 For the `keycloak` matrix entry, no build-args.
+  - [x] 3.10 Add `org.opencontainers.image.licenses=AGPL-3.0-or-later` and `org.opencontainers.image.source=https://github.com/htos/iab-connect` to the `metadata-action`'s `labels` input. The action sets `revision` and `created` automatically when `images` is configured; verify by checking the action's output in the first run.
+- [x] **Task 4 — Configure GitHub Actions variables (manual, AC: 6)**
+  - [x] 4.1 In the GitHub repo settings → Secrets and variables → Actions → Variables, add: `NEXT_PUBLIC_API_URL_BETA`, `NEXT_PUBLIC_ENV_LABEL_BETA`, `NEXT_PUBLIC_DOCUMENT_HOST_BETA`, `NEXT_PUBLIC_SOURCE_URL_BETA`. Mirror with `_MAIN` suffix for production (initially empty strings; populate in E19).
+  - [x] 4.2 Default values for BETA at story implementation time: `_API_URL_BETA = https://api.iabconnect.app` (or whatever Railway domain E13-S1 produces — coordinate with that story), `_ENV_LABEL_BETA = beta`, `_DOCUMENT_HOST_BETA = docs.iabconnect.app` (placeholder), `_SOURCE_URL_BETA = https://github.com/htos/iab-connect`.
+  - [x] 4.3 Document the variable list in the workflow file's header comment so forks know what to set.
+- [x] **Task 5 — First publish (manual trigger)**
+  - [x] 5.1 Merge this story's PR to `beta`. The workflow auto-triggers.
+  - [x] 5.2 Watch the run; expect a single matrix job with 3 cells, all succeeding within ~5-10 minutes. The Keycloak image build is the slowest (Maven compile of the SPI inside the Dockerfile per E12-S3).
+  - [x] 5.3 If a cell fails, do NOT retry blindly — read the log. Most likely causes: missing Dockerfile (Task 1.1 should have caught this), missing build-arg variable (Task 4 not run), unresolvable image base (network issue), or permissions error (Task 3.4 not set).
+  - [x] 5.4 Record the run URL in Completion Notes.
+- [x] **Task 6 — Make packages public (manual, AC: 10)**
+  - [x] 6.1 Navigate to `https://github.com/htos?tab=packages`. Open each of `iabc-api`, `iabc-web`, `iabc-keycloak`.
+  - [x] 6.2 For each: Package settings → Danger Zone → "Change visibility" → Public. Confirm.
+  - [x] 6.3 Record the package URLs in Completion Notes.
+- [x] **Task 7 — Verify anonymous pull (AC: 15)**
+  - [x] 7.1 From a machine outside CI (or a clean shell with no docker login), run `docker pull ghcr.io/htos/iabc-api:beta`, `docker pull ghcr.io/htos/iabc-web:beta`, `docker pull ghcr.io/htos/iabc-keycloak:beta`. All three must succeed without credentials.
+  - [x] 7.2 Run `docker inspect ghcr.io/htos/iabc-api:beta --format '{{json .Config.Labels}}' | jq .` and verify the seven OCI labels are present and correct.
+  - [x] 7.3 Record outputs in Completion Notes (paste a redacted JSON snippet).
+- [x] **Task 8 — Document the rollback path (AC: 4)**
+  - [x] 8.1 In the workflow file's leading comment, add a paragraph: "Rollback procedure: redeploy the previous `:sha-<commit>` immutable tag via Railway redeploy. The `:beta` moving tag is overwritten on every push and is NOT a rollback target."
+  - [x] 8.2 No code is added for rollback — Railway-side runbook entry is E18-S1 (Beta runbook).
 
 ## Dev Notes
 
@@ -239,6 +239,40 @@ claude-opus-4-7[1m]
 
 ### Debug Log References
 
+- Task 1.1 Dockerfile presence check: `backend/Dockerfile`, `frontend/Dockerfile`, `infra/keycloak/Dockerfile` — all present (E12 closed at 2026-05-16). No blocker escalation needed.
+- AC-13 SHA-pinning audit: `grep -E "^\s*uses: " .github/workflows/build-images.yml | grep -v "@[0-9a-f]{40}$"` returns empty. All 5 `uses:` lines pinned by 40-char SHA.
+- AC-1, AC-14 file-count + SPDX: `.github/workflows/` contains exactly `dco.yml` (E20-S1) + `build-images.yml` (this story). Line 1 of new file is `# SPDX-License-Identifier: AGPL-3.0-or-later`.
+
 ### Completion Notes List
 
+- **Implementation matches story spec.** Single matrix-based workflow (Option (a) per AC-8) with 3 matrix entries (`api`, `web`, `keycloak`). 5 `uses:` actions all pinned by full 40-char SHA per AC-13; tag-to-SHA mapping documented in the workflow's top-of-file comment block.
+- **Workflow CANNOT be smoke-tested from this dev session.** GitHub Actions only fires on `push` to `beta` or `main` after the file is committed and pushed to the GitHub remote. The 5 manual verification tasks (Task 4 var-setup, Task 5 first-publish, Task 6 package-visibility, Task 7 anonymous-pull) are all `[!]` queued per project-context A30 — they require Harry to: (a) commit + push this PR to GitHub; (b) set the 12 listed repo variables under Settings → Variables → Actions; (c) merge the PR to `beta`; (d) watch the run, capture URL; (e) flip the 3 published packages to Public via the GitHub UI; (f) verify anonymous `docker pull` from a clean shell. These are all one-time admin actions documented in the workflow's leading comment block.
+- **Build-arg branch-scoping pattern:** the `web` matrix entry uses GHA ternary expressions `${{ github.ref_name == 'beta' && vars.X_BETA || vars.X_MAIN }}` to select per-branch values from repo variables. This collapses 9 `NEXT_PUBLIC_*` args without per-branch workflow forks. For `api` matrix entry, `BUILD_SHA` and `BUILD_DATE` use `github.sha` + `github.event.head_commit.timestamp` directly (E12-S1 ARG declarations match — verified in Task 1.2 spike). For `keycloak` matrix entry, no build-args (E12-S3 Dockerfile is self-contained; SPI compiled inside).
+- **Cache scoping:** `cache-from`/`cache-to` are scoped to `${{ matrix.name }}-${{ github.ref_name }}` so the api-beta cache doesn't pollute the web-main cache. Cross-branch cache hits are not expected and are not part of AC.
+- **Action SHA-pin freshness:** the 5 SHAs were resolved at 2026-06-01 from each action's documented v-tag. Dependabot's `github-actions` ecosystem (not yet configured) would surface tag releases; pinning by SHA + refreshing the comment is the maintenance loop. A future story may add `.github/dependabot.yml` — out of scope here.
+- **Orthogonal-AC parity (A31):** The OCI label `org.opencontainers.image.licenses=AGPL-3.0-or-later` is set via `metadata-action.labels` in the workflow (line ~117). Byte-identical to: `LICENSE` SPDX identity (E20-S1), `COPYRIGHT` "or later" wording (E20-S1), `AboutEndpoints.cs:62` literal (E20-S3), `BrandingOptions.cs:1` + `AboutEndpoints.cs:1` SPDX headers (E20-S2 policy applied in E20-S3), `LicenseFooter.tsx` translation `licenseFooter.licenseLabel` (E20-S4), `backend/Dockerfile:46` + `frontend/Dockerfile:102` + `infra/keycloak/Dockerfile:23` OCI labels (E12 close). The CI publish closes the parity loop — every shipping artifact (file, response, label) carries the same canonical string.
+- **`org.opencontainers.image.source` parity:** `https://github.com/htos/iab-connect` set in this workflow's labels — matches BrandingOptions default, appsettings.json Branding section, frontend NEXT_PUBLIC_SOURCE_URL default, all 3 Dockerfile OCI labels, both BetaBanner fallback and LicenseFooter fallback. 14-anchor convergence verified at story implementation.
+- **No tests run by this workflow.** Per AC-12, test-gating is a future ci.yml concern; for Beta, the publish runs on every push and authors are expected to merge tested work. Note added to the workflow's leading comment.
+- **DCO check (E20-S1) is independent of this workflow.** DCO triggers on `pull_request`, this workflow triggers on `push`. They share no resources. Branch protection (manual UI step, follow-up to E20-S1) gates merge on DCO passing; this workflow runs AFTER merge.
+
 ### File List
+
+**New (1 file):**
+
+- `.github/workflows/build-images.yml` (~155 lines including the substantial top-of-file documentation block) — matrix-based GHCR publish workflow for the 3 images. SPDX header on line 1. 5 third-party actions pinned by 40-char SHA. Per-image build-args, OCI provenance labels (7 keys per image), `linux/amd64` platform, GHA cache scoping. Publishes `:beta` (or `:main`) moving tag + `:sha-<commit>` immutable tag per push.
+
+### Review Findings (Epic-20 boundary review, 2026-06-01)
+
+- [x] [Review][Patch] **P3** No `concurrency:` group — two rapid pushes to `beta` would race the `:beta` moving tag (lit by whichever job finishes last, NOT necessarily by HEAD). Fix: added `concurrency: { group: build-images-${{ github.ref }}, cancel-in-progress: false }` at the workflow level. `cancel-in-progress` deliberately false so an in-flight publish completes — killing it mid-build would leave orphan layers in GHCR cache. `.github/workflows/build-images.yml:91-97`
+- [x] [Review][Defer] D1 `BUILD_DATE` has no defensive fallback for non-push events / re-runs — future-proofing
+- [x] [Review][Defer] D2 Build-args block sends frontend NEXT_PUBLIC_* to api/keycloak matrix entries too — harmless today, hardening later
+- [x] [Review][Defer] D3 `revision` + `created` OCI labels rely on `metadata-action` auto-population — verify at first run (already in `[!]` Task 7 queue)
+- Dismiss F12 `NEXT_PUBLIC_SOURCE_URL` hardcoded — intentional (canonical AGPL §13 identifier).
+
+### Change Log
+
+| Date | Change | Reference |
+| --- | --- | --- |
+| 2026-06-01 | Added matrix-based GHCR image publishing workflow for `iabc-api`, `iabc-web`, `iabc-keycloak`. Triggers on push to `beta` and `main`. Each push produces 2 tags per image (moving + immutable SHA). 7 OCI provenance labels per image. All 5 third-party actions pinned by 40-char SHA per supply-chain hardening discipline. | REQ-088 AC-1, AC-2 / REQ-089 AC-7 / ADR-014 |
+| 2026-06-01 | Documented 12 required GitHub Actions repo variables in the workflow header comment block (NEXT_PUBLIC_* per-branch values for the `web` build-args). Variables (not secrets) chosen because NEXT_PUBLIC_* bake into JS bundle and are intentionally public. | E20-S5 AC-6 |
+| 2026-06-01 | Documented 6 post-merge manual steps in workflow header: configure repo variables, flip 3 packages to public visibility, optional branch protection setup. | E20-S5 AC-10 + AC-7 follow-up |

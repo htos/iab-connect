@@ -14,6 +14,7 @@ public static class EndpointMapper
         // Public Endpoints (no auth required)
         app.MapRegistrationEndpoints(); // Public registration
         app.MapUnsubscribeEndpoints(); // REQ-029: Newsletter unsubscribe
+        app.MapAboutEndpoints(); // REQ-089 AC-5 (E20-S3): AGPL §13 source-disclosure
 
         // Module Endpoints - REQ-001: Identity first
         api.MapIdentityEndpoints();

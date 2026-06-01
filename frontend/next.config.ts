@@ -30,6 +30,11 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_API_URL:
       process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000",
+    // REQ-089 AC-4 (E20-S4): default source URL for the license footer; override at
+    // deploy time for forks. Mirrored as ARG default at `frontend/Dockerfile:56` and as
+    // documentation in `frontend/.env.example:64`.
+    NEXT_PUBLIC_SOURCE_URL:
+      process.env.NEXT_PUBLIC_SOURCE_URL || "https://github.com/htos/iab-connect",
   },
 
   // Image host allowlist for next/image. Computed from NEXT_PUBLIC_DOCUMENT_HOST at

@@ -1,0 +1,61 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# REQ-089 AC-3 (E20-S1) / ADR-010: enforces the Developer Certificate of Origin (DCO) v1.1
+# sign-off policy documented in CONTRIBUTING.md Section 2. Every commit in a PR targeting
+# `main` or `beta` must carry a `Signed-off-by:` trailer whose email matches the commit
+# author email. Branch protection on those branches requires the `DCO` status check.
+#
+# Implementation note (E20-S1 dev-story deviation from spec): the story spec called for
+# pinning the third-party `dcoapp/action` by 40-char commit SHA. That action's repository
+# was not reachable at implementation time (HTTP 404 from
+# https://github.com/dcoapp/action and from the API), so this workflow uses an inline
+# bash script over `git rev-list` + grep instead. Advantages: (a) zero third-party
+# action dependency = zero supply-chain risk to pin; (b) the validation logic is fully
+# auditable in this YAML; (c) no SaaS App installation required. The published status
+# check name remains `DCO` (job name) — branch protection pins to this name verbatim.
+
+name: DCO
+
+on:
+  pull_request:
+    branches:
+      - main
+      - beta
+
+permissions:
+  pull-requests: read
+  contents: read
+
+jobs:
+  DCO:
+    name: DCO
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository with full history
+        # actions/checkout v4.2.2 — pinned by 40-char SHA per supply-chain hardening.
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Validate DCO sign-off on every PR commit
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          missing=0
+          # rev-list from base..head walks every commit introduced by the PR (excluding
+          # the base commit itself). --reverse keeps chronological order in the error log.
+          # --no-merges skips merge commits (E20-boundary review P2 fix): a contributor
+          # syncing main into a long-lived PR branch produces a merge commit without a
+          # Signed-off-by trailer; that's not a DCO violation, just a sync artifact.
+          for sha in $(git rev-list --reverse --no-merges "${BASE_SHA}".."${HEAD_SHA}"); do
+            msg=$(git show -s --format=%B "${sha}")
+            if printf '%s\n' "${msg}" | grep -qE '^Signed-off-by: .+ <.+@.+>$'; then
+              echo "  OK   ${sha}  $(git show -s --format=%s "${sha}")"
+            else
+              echo "::error title=Missing DCO sign-off::Commit ${sha} has no valid 'Signed-off-by: Name <email>' trailer. Run 'git commit --amend -s' (or 'git rebase --signoff ${BASE_SHA}') and force-push."
+              missing=1
+            fi
+          done
+          exit "${missing}"

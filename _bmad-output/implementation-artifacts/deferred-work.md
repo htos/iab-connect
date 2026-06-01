@@ -4,6 +4,42 @@ Items deferred during code reviews — not caused by the reviewed change, but wo
 
 ---
 
+## Deferred from: code review of Epic-20 boundary (2026-06-01)
+
+Triage: 3 review layers (Blind Hunter + Edge Case Hunter + Acceptance Auditor) over the full E20 close diff (e20-s1 through e20-s5, ~1207 lines covering 4 markdown files, 2 GitHub workflows, 5 backend source + 2 tests, 4 frontend source + 2 tests). 19 findings → 4 patches applied in this session (P1 NOTICE.md QuestPDF license correction, P2 DCO `--no-merges`, P3 build-images.yml concurrency group, P4 TestWebApplicationFactory clears BUILD_SHA/BUILD_DATE for CI-host independence) + 11 defers (below) + 4 dismisses.
+
+### Per-story defers
+
+#### e20-s1 — LICENSE/DCO/CONTRIBUTING/NOTICE
+
+- **E20-S1-D1: DCO `git rev-list base..head` may fail for cross-fork PRs.** `actions/checkout` with `ref: ${{ github.event.pull_request.head.sha }}` + `fetch-depth: 0` fetches all branches of the BASE repo, so PRs from forks targeting our `main`/`beta` are fine (base lives in our repo). Risk remains for cross-fork PRs (the workflow being run by a fork against another fork). **Action when picked up:** add `git fetch --no-tags --depth=1 origin "$BASE_SHA"` fallback step before rev-list, OR switch to `gh api repos/.../pulls/.../commits` for robust base-resolution.
+- **E20-S1-D2: DCO regex misses CRLF-terminated trailers.** `^Signed-off-by: .+ <.+@.+>$` with bash `grep -E` against `git show -s --format=%B` — `git show` normalizes most cases, but a commit message authored on Windows with literal `\r\n` line endings (uncommon but possible) bypasses the `$` anchor. **Action when picked up:** sed-strip CR before grep, OR add `[[:space:]]*$` tolerance to the regex.
+- **E20-S1-D3: DCO does not enforce trailer-email-matches-author-email.** CONTRIBUTING.md says "The email in the trailer must match the email on the commit author", but the workflow doesn't verify — any email shaped `<x@y>` passes. **Action when picked up:** capture both `git show -s --format=%ae` and the trailer email via `grep -oE`, compare case-insensitively.
+- **E20-S1-D4: `actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683` (v4.2.2) is 18+ months old at 2026-06-01.** Pinned SHA is immutable so functionally safe, but Dependabot for `github-actions` ecosystem would surface refresh PRs. **Action when picked up:** add `.github/dependabot.yml` configuring weekly checks; refresh SHA + comment as Dependabot proposes.
+
+#### e20-s4 — frontend license footer
+
+- **E20-S4-D1: LicensePage `fs.readFileSync` runs per-request, not at build time.** Comment claims build-time semantics, but the async server component is invoked per request unless wrapped in `unstable_cache` or marked `force-static`. In Next.js standalone Docker (E12-S2 build context = `./frontend`), `process.cwd()` is `/app` and `path.join(cwd, "..", "LICENSE")` resolves to `/LICENSE` which is never present — every request falls through to the gnu.org-link branch. AGPL §13 disclosure still holds via the fallback. **Action when picked up:** decide between (a) extend GHCR workflow build context to repo root + COPY LICENSE into frontend image; (b) inline a stripped LICENSE as a `.ts` module; (c) commit to the gnu.org-link UX and simplify the page. Recommended (a) for AGPL §13 self-hosted-tarball intent.
+- **E20-S4-D2: LicenseFooter renders on `/public/license` itself — self-referential link.** The footer's `Link href="/public/license"` is rendered ON `/public/license`, producing a no-op self-nav. Screen readers announce a link to the current page. **Action when picked up:** in LicenseFooter, use `usePathname` to suppress the `Link` (render as plain `<span>`) when pathname starts with `/public/license`.
+- **E20-S4-D3: `_comment_licenseFooter` JSON pseudo-key leaks into next-intl namespace.** A typo `t("_comment_licenseFooter")` would render the policy comment as UI text. **Action when picked up:** establish an i18n JSON convention (strip keys starting with `_` at build time via a next-intl plugin, OR move comments to a sibling `.policy.md` file).
+- **E20-S4-D4: AGPL §13 disclosure does not surface running-version to the user.** `LicenseFooter` shows license + source link but not the commitSha/buildDate from `/about`. AGPL §13 requires offering the **corresponding source for the running version** — without a visible version pin, a user offered a tarball can't tell which commit it should match. **Action when picked up:** add an optional `<span className="text-gray-400">build {commitSha.slice(0,7)}</span>` to LicenseFooter, fetched from `/about` on mount (client-side, after hydration to avoid SSR latency).
+- **E20-S4-D5: Real `npm run build` against on-disk LICENSE was not verified.** The Vitest mock proves the projection logic; an actual `next build` after E20-S1's LICENSE landed wasn't executed. **Action when picked up:** during human-verify pass (E20-S4 Task 8.5), confirm `/public/license` shows the embedded LICENSE block, not the gnu.org fallback. If fallback appears, D1 is the real fix.
+
+#### e20-s5 — GHCR pipeline
+
+- **E20-S5-D1: BUILD_DATE has no defensive fallback for non-push events.** `${{ github.event.head_commit.timestamp }}` is empty on workflow re-runs that lose context or future `workflow_dispatch` trigger additions. **Action when picked up:** change to `${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}` or add a `date -u +%FT%TZ` shell step before build.
+- **E20-S5-D2: Build-args block sends frontend NEXT_PUBLIC_* values to api/keycloak matrix entries too.** Currently harmless because `backend/Dockerfile` and `infra/keycloak/Dockerfile` don't declare those ARG names. Risk: a future Dockerfile change silently consumes frontend config. **Action when picked up:** restructure matrix to declare `build-args` per matrix entry (via `matrix.include.build_args` multi-line YAML string).
+- **E20-S5-D3: `revision` + `created` OCI labels rely on `metadata-action` auto-population.** Spec called them out explicitly. Auto-population is correct behavior of `docker/metadata-action` v5.7.0, but should be verified at first publish via `docker inspect`. **Action when picked up:** during E20-S5 Task 7 human-verify, capture the JSON of `Config.Labels` and confirm 7 keys present (incl. `revision` matching `github.sha` and `created` matching `head_commit.timestamp`).
+
+### Dismisses (recorded for completeness)
+
+- F4 `frontend/next-env.d.ts:3` modified (Blind Hunter HIGH) — DISMISS: file is auto-regenerated by `npm run build`/`dev`; the diff reflects a transient regen by my test run, not an intentional hand-edit. Next.js will overwrite as needed.
+- F12 `NEXT_PUBLIC_SOURCE_URL` hardcoded in build-images.yml (Blind Hunter LOW) — DISMISS: intentional. The canonical value is also the upstream identifier under AGPL §13; a fork wanting to disclose its fork URL edits the workflow file as a one-line change. Documented in the workflow header comment block.
+- F13 `AboutEndpoints.cs` comment cites `InternalsVisibleTo` at `DependencyInjection.cs:16` (Blind Hunter LOW) — DISMISS: Blind Hunter false positive. The `[assembly:]` attribute does live at `DependencyInjection.cs:16` (verified by grep at story implementation). C# permits assembly-level attributes at the top of any file in the assembly.
+- F16 German `Quellcode` vs English `Source` width asymmetry (Edge Case LOW) — DISMISS: intentional translation per next-intl policy. Width tolerance is a visual-polish concern, not a correctness defect; the existing Tailwind `flex-wrap` handles it.
+
+---
+
 ## Epic-3-retro §9 Cleanup Sprint — Triage & Resolutions (2026-05-14)
 
 The Epic-3 retrospective (`epic-3-retro-2026-05-14.md` §9) scheduled a dedicated cleanup sprint before Epic 4. This section records its outcome; the per-review sections below are left as the historical record.

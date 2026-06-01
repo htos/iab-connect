@@ -59,6 +59,15 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
                 // App:PublicBaseUrl is unset — provide a value so feed endpoints return 200/404
                 // rather than a 500 in runtime endpoint tests.
                 ["App:PublicBaseUrl"] = "https://test.iab-connect.example",
+                // REQ-089 AC-5 (E20-S3) + E20-boundary review P4: AboutEndpoint reads BUILD_SHA
+                // and BUILD_DATE from IConfiguration, which by default includes the host env
+                // vars. CI runners (or any shell that exported BUILD_SHA) would leak the host
+                // value into the test, flaking About_UnknownWhenEnvVarsMissing. InMemory
+                // sources added in ConfigureAppConfiguration have higher precedence than the
+                // env-var provider, so binding empty strings forces the projection helper's
+                // `IsNullOrWhiteSpace(...)` guard to return "unknown" deterministically.
+                ["BUILD_SHA"] = string.Empty,
+                ["BUILD_DATE"] = string.Empty,
             });
         });
 

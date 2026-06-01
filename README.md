@@ -22,7 +22,7 @@
   <img src="https://img.shields.io/badge/PostgreSQL-17-336791?style=flat-square&logo=postgresql" alt="PostgreSQL" />
   <img src="https://img.shields.io/badge/Keycloak-26.5-4D4D4D?style=flat-square&logo=keycloak" alt="Keycloak" />
   <img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker" alt="Docker" />
-  <img src="https://img.shields.io/badge/License-Private-red?style=flat-square" alt="License" />
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL--3.0--or--later-blue?style=flat-square" alt="License: AGPL-3.0-or-later" /></a>
 </p>
 
 ---
@@ -900,13 +900,13 @@ dotnet ef database update \
 
 ## 🤝 Contributing
 
-We welcome contributions from the community! Please follow these guidelines:
+We welcome contributions from the community! See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contribution flow, including the DCO sign-off requirement (`git commit -s`). New source files require an SPDX header — see [CONTRIBUTING.md](CONTRIBUTING.md#spdx-license-headers).
 
 ### Development Workflow
 
 1. **Fork** the repository
 2. **Create** a feature branch: `git checkout -b feature/amazing-feature`
-3. **Commit** your changes: `git commit -m 'feat: add amazing feature'`
+3. **Commit** your changes with sign-off: `git commit -s -m 'feat: add amazing feature'`
 4. **Push** to the branch: `git push origin feature/amazing-feature`
 5. **Open** a Pull Request
 
@@ -936,11 +936,9 @@ Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
 
 ## 📄 License
 
-This project is **proprietary software** developed exclusively for private uses.
+IAB Connect is licensed under the **GNU Affero General Public License v3.0 or later** (`AGPL-3.0-or-later`). See [LICENSE](LICENSE) for the full text and [COPYRIGHT](COPYRIGHT) for the project copyright statement. Direct production-dependency licenses are listed in [NOTICE.md](NOTICE.md).
 
-**© 2026 Harwinder Singh. All Rights Reserved.**
-
-Unauthorized copying, modification, distribution, or use of this software is strictly prohibited without explicit written permission from Hawinder Singh.
+Copyright (C) 2026  IAB Connect contributors.
 
 ---
 
