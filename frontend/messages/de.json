@@ -2607,5 +2607,17 @@
     "feedbackLink": "Feedback geben",
     "dismissAriaLabel": "Banner ausblenden",
     "ariaLabel": "Beta-Hinweis"
+  },
+  "licenseFooter": {
+    "_comment_licenseFooter": "REQ-089 AC-4 (E20-S4) / ADR-021: projectName MUST stay the literal upstream identifier 'IAB Connect' in all locales — never translate. licenseLabel MUST stay the SPDX identifier 'AGPL-3.0-or-later' in all locales.",
+    "projectName": "IAB Connect",
+    "licenseLabel": "AGPL-3.0-or-later",
+    "sourceLabel": "Quellcode",
+    "ariaLabel": "Lizenz- und Quellcode-Offenlegung"
+  },
+  "publicLicense": {
+    "title": "Lizenz",
+    "body": "IAB Connect ist unter der GNU Affero General Public License Version 3.0 oder neuer lizenziert. Den vollständigen Lizenztext finden Sie unten oder auf der offiziellen FSF-Website.",
+    "viewExternal": "AGPL-3.0 Lizenztext auf gnu.org ansehen"
   }
 }

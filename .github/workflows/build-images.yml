@@ -1,0 +1,185 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# REQ-088 AC-1, AC-2 (Beta Deployment Readiness) / REQ-089 AC-7 (Open Source License Surface)
+# E20-S5 / ADR-014: builds and publishes three container images to GHCR on every push to
+# `beta` and `main` so Railway and self-hosters can pull tagged immutable artifacts without
+# building from source. Closes the Wave-5 publish gate of the Open Source Foundation epic.
+#
+# Images (namespace `ghcr.io/htos/iabc-{api,web,keycloak}`):
+#   - iabc-api      ← backend/Dockerfile        (E12-S1, .NET 10 ASP.NET Core, ARG BUILD_SHA/BUILD_DATE)
+#   - iabc-web      ← frontend/Dockerfile       (E12-S2, Next.js 16 standalone, 9 NEXT_PUBLIC_* ARG)
+#   - iabc-keycloak ← infra/keycloak/Dockerfile (E12-S3, Keycloak 26.5.2 + SPI baked, KC_DB=postgres)
+#
+# Per push, each image gets exactly two tags:
+#   - `:beta` (on push to beta) OR `:main` (on push to main)  — moving tag, overwritten each build
+#   - `:sha-<40-char-commit>`                                  — immutable rollback artifact
+# No `:latest` tag — Beta has two channels and `:latest` would ambiguate them.
+#
+# Rollback procedure (E18-S1 Beta runbook): redeploy the previous `:sha-<commit>` immutable
+# tag via Railway redeploy. The `:beta` moving tag is overwritten on every push and is NOT
+# a rollback target. The matching commit SHA is recorded in the API's `/about` endpoint
+# (E20-S3) so operators can cross-reference what is actually running.
+#
+# Build target: linux/amd64 only (Railway runtime). Multi-arch (linux/arm64 for M-series Macs
+# and Raspberry Pi self-hosters) is deferred to E19 (Production-Sovereignty) — adding QEMU
+# emulation triples runtime and doubles storage; cost not justified at Beta scope.
+#
+# Test gating: this workflow does NOT run dotnet test / npm test / lint / typecheck. Test
+# gating belongs in a future ci.yml (out of scope). For Beta, the publishing pipeline runs
+# unconditionally on push — authors are expected to merge tested, reviewed work. See
+# CONTRIBUTING.md "Running tests" for the pre-PR local checklist.
+#
+# Image-runtime smoke: deferred to E13-S4 (health probes + first deploy). This workflow only
+# publishes; the runtime contract was verified locally during E12-S1/S2/S3 dev-stories.
+#
+# ── Required GitHub Actions Repository Variables (Settings → Variables → Actions) ────────
+# For the `web` image, the build needs branch-scoped public-facing config values. They are
+# **variables** (not secrets) because NEXT_PUBLIC_* values bake into the JS bundle and are
+# visible to any browser — encrypting them would obscure their intentionally-public nature.
+#
+#   NEXT_PUBLIC_API_URL_BETA       e.g. https://api.iabconnect.app  (Railway-assigned, set in E13-S1)
+#   NEXT_PUBLIC_API_URL_MAIN       e.g. (empty until E19 production cut)
+#   NEXT_PUBLIC_KEYCLOAK_URL_BETA  e.g. https://auth.iabconnect.app
+#   NEXT_PUBLIC_KEYCLOAK_URL_MAIN
+#   NEXT_PUBLIC_KEYCLOAK_REALM     e.g. iabconnect (same on beta + main)
+#   NEXT_PUBLIC_KEYCLOAK_CLIENT_ID e.g. iabconnect-frontend
+#   NEXT_PUBLIC_KEYCLOAK_ISSUER_BETA e.g. https://auth.iabconnect.app/realms/iabconnect
+#   NEXT_PUBLIC_KEYCLOAK_ISSUER_MAIN
+#   NEXT_PUBLIC_DOCUMENT_HOST_BETA e.g. docs.iabconnect.app
+#   NEXT_PUBLIC_DOCUMENT_HOST_MAIN
+#   NEXT_PUBLIC_ENV_LABEL_BETA     "beta" — surfaces the orange BETA banner (E11-S2)
+#   NEXT_PUBLIC_ENV_LABEL_MAIN     "" — no banner on production
+#
+# Default value for NEXT_PUBLIC_SOURCE_URL is `https://github.com/htos/iab-connect` and is
+# the same on both branches (no separate variable). Forks override the workflow file or
+# repo `_SOURCE_URL` variable at fork time.
+#
+# ── Post-merge manual steps (one-time admin actions, NOT code artifacts) ─────────────────
+# 1. Configure the variables above in repo Settings → Secrets and variables → Actions.
+# 2. After the first successful workflow run, navigate to https://github.com/htos?tab=packages.
+#    For each of `iabc-api`, `iabc-web`, `iabc-keycloak`: Package settings → Danger Zone →
+#    Change visibility → Public. Without this, anonymous `docker pull` fails for self-hosters.
+# 3. (Optional) Configure branch protection for `main` and `beta` to require the `DCO` check
+#    from .github/workflows/dco.yml (E20-S1).
+#
+# ── Third-party action pinning ──────────────────────────────────────────────────────────
+# All `uses:` lines pinned by 40-char commit SHA per supply-chain hardening (matches the
+# discipline established in .github/workflows/dco.yml, E20-S1). SHA → human-readable tag
+# mapping resolved at story implementation time (2026-06-01):
+#
+#   actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683          ← v4.2.2
+#   docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 ← v3.10.0
+#   docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772         ← v3.4.0
+#   docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804      ← v5.7.0
+#   docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c1c    ← v6.18.0
+#
+# Dependabot will surface upstream tag releases (pin by SHA, refresh comment) — opening
+# Dependabot ecosystem `github-actions` is a future task.
+
+name: Build and publish container images
+
+on:
+  push:
+    branches:
+      - beta
+      - main
+
+permissions:
+  contents: read
+  packages: write
+
+# E20-boundary review P3: serialize runs per ref so two rapid pushes to `beta` don't race
+# the `:beta` moving tag (lit by whichever job finishes last, not by HEAD). cancel-in-progress
+# is `false` so an in-flight image build completes — killing a partial publish would leave
+# orphan layers in GHCR cache.
+concurrency:
+  group: build-images-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAMESPACE: htos
+
+jobs:
+  build-and-push:
+    name: build-${{ matrix.name }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: api
+            image: iabc-api
+            context: ./backend
+            dockerfile: Dockerfile
+            description: "IAB Connect API — AGPL-3.0-or-later open-source membership platform (E12-S1 backend)."
+          - name: web
+            image: iabc-web
+            context: ./frontend
+            dockerfile: Dockerfile
+            description: "IAB Connect web — AGPL-3.0-or-later open-source membership platform (E12-S2 frontend, Next.js standalone)."
+          - name: keycloak
+            image: iabc-keycloak
+            context: ./infra/keycloak
+            dockerfile: Dockerfile
+            description: "IAB Connect Keycloak — AGPL-3.0-or-later open-source membership platform (E12-S3 custom image with disable-new-users SPI + sanitized realm)."
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2
+
+      - name: Login to GHCR
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract image metadata (tags + OCI labels)
+        id: meta
+        uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ matrix.image }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=sha-,format=long
+          labels: |
+            org.opencontainers.image.source=https://github.com/htos/iab-connect
+            org.opencontainers.image.licenses=AGPL-3.0-or-later
+            org.opencontainers.image.url=https://github.com/htos/iab-connect
+            org.opencontainers.image.title=${{ matrix.image }}
+            org.opencontainers.image.description=${{ matrix.description }}
+            org.opencontainers.image.vendor=IAB Connect contributors
+
+      # Branch-scoped public-facing config for the web image. The build-args block below
+      # selects between `_BETA` and `_MAIN` repo variables based on github.ref_name. Each
+      # condition is a one-line ternary expression evaluated by GHA. Empty strings on the
+      # not-selected branch path are harmless — Next.js bakes them as empty constants.
+      - name: Build and push ${{ matrix.image }}
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c1c
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.context }}/${{ matrix.dockerfile }}
+          push: true
+          platforms: linux/amd64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.name }}-${{ github.ref_name }}
+          cache-to: type=gha,scope=${{ matrix.name }}-${{ github.ref_name }},mode=max
+          # Per-image build-args. For non-applicable matrix entries the unused values are
+          # ignored by Docker (the Dockerfile's ARG declarations gate which ones are read).
+          build-args: |
+            BUILD_SHA=${{ github.sha }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            NEXT_PUBLIC_API_URL=${{ github.ref_name == 'beta' && vars.NEXT_PUBLIC_API_URL_BETA || vars.NEXT_PUBLIC_API_URL_MAIN }}
+            NEXT_PUBLIC_KEYCLOAK_URL=${{ github.ref_name == 'beta' && vars.NEXT_PUBLIC_KEYCLOAK_URL_BETA || vars.NEXT_PUBLIC_KEYCLOAK_URL_MAIN }}
+            NEXT_PUBLIC_KEYCLOAK_REALM=${{ vars.NEXT_PUBLIC_KEYCLOAK_REALM }}
+            NEXT_PUBLIC_KEYCLOAK_CLIENT_ID=${{ vars.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID }}
+            NEXT_PUBLIC_KEYCLOAK_ISSUER=${{ github.ref_name == 'beta' && vars.NEXT_PUBLIC_KEYCLOAK_ISSUER_BETA || vars.NEXT_PUBLIC_KEYCLOAK_ISSUER_MAIN }}
+            NEXT_PUBLIC_DOCUMENT_HOST=${{ github.ref_name == 'beta' && vars.NEXT_PUBLIC_DOCUMENT_HOST_BETA || vars.NEXT_PUBLIC_DOCUMENT_HOST_MAIN }}
+            NEXT_PUBLIC_ENV_LABEL=${{ github.ref_name == 'beta' && vars.NEXT_PUBLIC_ENV_LABEL_BETA || vars.NEXT_PUBLIC_ENV_LABEL_MAIN }}
+            NEXT_PUBLIC_SOURCE_URL=https://github.com/htos/iab-connect
