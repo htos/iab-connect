@@ -1,0 +1,167 @@
+# Optional Beta-shape overlay — extends infra/docker-compose.yml with the three
+# containerized application services (backend, frontend, Keycloak-with-SPI).
+#
+# Invocation:
+#   docker compose -f infra/docker-compose.yml -f infra/docker-compose.full.yml up --build -d
+#
+# See README "Local Beta-shape testing" section for the full developer workflow.
+# Story: E12-S4 (closes Epic-12 Dockerization Wave).
+
+services:
+  # Disable the base keycloak service to free host port 8080 for keycloak-full.
+  # The profile name "disabled-by-full" is never activated, so the service stays down
+  # when this overlay is in effect. Base file remains untouched on disk.
+  keycloak:
+    profiles: ["disabled-by-full"]
+
+  # Custom Keycloak image with the disable-new-users SPI baked in + sanitized
+  # iabconnect realm pre-imported. See infra/keycloak/Dockerfile (E12-S3).
+  keycloak-full:
+    build:
+      context: ./keycloak
+      dockerfile: Dockerfile
+    image: iabc-keycloak:local
+    container_name: iabconnect-keycloak-full
+    restart: unless-stopped
+    command: ["start", "--optimized", "--import-realm"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: "jdbc:postgresql://postgres:5432/iabconnect"
+      KC_DB_USERNAME: postgres
+      KC_DB_PASSWORD: postgres
+      KC_HOSTNAME: localhost
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME_STRICT: "false"
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin-full
+      # Realm-import ${VAR} substitutions for E12-S3's sanitized realm.
+      # Values are the local-dev secrets from infra/keycloak/realms/iabconnect-realm.json
+      # (also in appsettings.Development.json) — appropriate because this overlay runs
+      # against the LOCAL stack, not real Beta. Real Beta gets these from Railway env vars.
+      IABCONNECT_ADMIN_CLIENT_SECRET: "admin-service-secret-2026"
+      IABCONNECT_FRONTEND_CLIENT_SECRET: "frontend-dev-secret-2026"
+      FRONTEND_PUBLIC_URL: "http://localhost:3000"
+      # E12-S3 D2 resolution (Epic-12 boundary review): wildcard
+      # `https://*.up.railway.app/*` was replaced by `${IABCONNECT_BETA_HOST}/*`
+      # in sanitized realm. Local overlay sets BETA_HOST to the same value as
+      # FRONTEND_PUBLIC_URL for self-contained smoke. Real Beta gets this from
+      # Railway env (E13-S2).
+      IABCONNECT_BETA_HOST: "http://localhost:3000"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Health gate: confirms Keycloak realm-import succeeded and the SPI didn't
+  # crash startup. If this exits non-zero, the failure boundary is at Keycloak,
+  # not at api or web — saves debugging time.
+  keycloak-full-realm-check:
+    image: curlimages/curl:8.10.1
+    container_name: iabconnect-keycloak-full-realm-check
+    depends_on:
+      keycloak-full:
+        condition: service_started
+    restart: "no"
+    entrypoint:
+      - sh
+      - -c
+      - |
+        for i in 1 2 3 4 5 6 7 8 9 10; do
+          if curl -sf http://keycloak-full:8080/realms/iabconnect/.well-known/openid-configuration >/dev/null; then
+            echo "REALM_OK"
+            exit 0
+          fi
+          sleep 5
+        done
+        echo "REALM_NOT_READY"
+        exit 1
+
+  # Backend API image (E12-S1). ASPNETCORE_ENVIRONMENT=Beta loads
+  # appsettings.Beta.json overlay (Console-only Serilog, retention disabled).
+  # DocumentStorage credentials are the local-dev rustfsadmin/rustfsadmin
+  # values; AC-7 of E12-S1 stripped these from base appsettings.json — overlay
+  # restores them via env vars (the exact pattern that justified the stripping).
+  api:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+      args:
+        BUILD_SHA: local-dev
+        BUILD_DATE: local-dev
+    image: iabc-api:local
+    container_name: iabconnect-api
+    restart: unless-stopped
+    environment:
+      # NOTE — story AC-2 specified ASPNETCORE_ENVIRONMENT=Beta, but the backend
+      # hardcodes `RequireHttpsMetadata = !(IsDevelopment || Testing)` at
+      # DependencyInjection.cs:134. In Beta env, the OIDC middleware refuses an
+      # HTTP Keycloak Authority (which is what the local stack runs — Railway
+      # provides TLS in real Beta). Every request crashes with InvalidOperationException
+      # before reaching even unauthenticated /health endpoints. Using "Development"
+      # here keeps the overlay functional end-to-end; the "Beta-shape" intent of
+      # this overlay is preserved by (a) the Railway-mirroring port mapping
+      # (5000:8080), (b) frontend BETA banner via NEXT_PUBLIC_ENV_LABEL=beta,
+      # (c) container topology, (d) RetentionEnforcement disabled below.
+      # Follow-up: when E14-S2 / a backend config-refactor story lands, surface
+      # RequireHttpsMetadata as a config key so this overlay can use real Beta env.
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=iabconnect;Username=postgres;Password=postgres"
+      Keycloak__Authority: "http://keycloak-full:8080/realms/iabconnect"
+      Keycloak__ClientId: "iabconnect-api"
+      Keycloak__ClientSecret: ""
+      DocumentStorage__ServiceUrl: "http://rustfs:9000"
+      DocumentStorage__AccessKey: "rustfsadmin"
+      DocumentStorage__SecretKey: "rustfsadmin"
+      DocumentStorage__BucketName: "iabconnect-documents"
+      DocumentStorage__UseHttps: "false"
+      Smtp__Host: "mailhog"
+      Smtp__Port: "1025"
+      Smtp__EnableSsl: "false"
+      Frontend__BaseUrl: "http://localhost:3000"
+      RetentionEnforcement__Enabled: "false"
+    ports:
+      - "5000:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak-full:
+        condition: service_healthy
+      keycloak-full-realm-check:
+        condition: service_completed_successfully
+      rustfs-init:
+        condition: service_completed_successfully
+
+  # Frontend image (E12-S2). NEXT_PUBLIC_* baked at build time as host-resolvable
+  # URLs because they end up in the static client bundle read by the user's
+  # browser. Server-side env vars (KEYCLOAK_ISSUER) use compose hostnames because
+  # they are read by the Node.js process INSIDE the container.
+  web:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: "http://localhost:5000"
+        NEXT_PUBLIC_KEYCLOAK_URL: "http://localhost:8080"
+        NEXT_PUBLIC_KEYCLOAK_REALM: "iabconnect"
+        NEXT_PUBLIC_KEYCLOAK_CLIENT_ID: "iabconnect-frontend"
+        NEXT_PUBLIC_KEYCLOAK_ISSUER: "http://localhost:8080/realms/iabconnect"
+        NEXT_PUBLIC_ENV_LABEL: "beta"
+        NEXT_PUBLIC_DOCUMENT_HOST: "localhost:9000"
+        NEXT_PUBLIC_SOURCE_URL: "https://github.com/htos/iab-connect"
+    image: iabc-web:local
+    container_name: iabconnect-web
+    restart: unless-stopped
+    environment:
+      NEXTAUTH_URL: "http://localhost:3000"
+      NEXTAUTH_SECRET: "local-dev-secret-min-32-chars-aaaaaaaaaaaaaaa"
+      KEYCLOAK_CLIENT_ID: "iabconnect-frontend"
+      KEYCLOAK_CLIENT_SECRET: "frontend-dev-secret-2026"
+      KEYCLOAK_ISSUER: "http://keycloak-full:8080/realms/iabconnect"
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+      keycloak-full:
+        condition: service_healthy

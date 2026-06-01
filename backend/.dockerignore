@@ -1,0 +1,42 @@
+# .NET build outputs
+**/bin/
+**/obj/
+**/*.user
+**/*.lscache
+
+# Tests
+tests/
+**/*.Tests/
+*.Tests.csproj.lscache
+
+# Local config + secrets
+**/.env
+**/.env.*
+**/secrets/
+**/*.pfx
+**/*.key
+# appsettings.Development.json carries dev-only literal secrets
+# (Keycloak/KeycloakAdmin client secrets, rustfsadmin DocumentStorage keys,
+# postgres password). The runtime image runs with ASPNETCORE_ENVIRONMENT=Beta
+# so the file is never loaded — exclude from the OCI image filesystem to
+# avoid shipping the literals into the published GHCR image. Local dev uses
+# `dotnet run` (not the Docker image) so no developer ergonomic impact.
+**/appsettings.Development.json
+
+# IDE / editor
+**/.vs/
+**/.idea/
+**/.vscode/
+**/*.swp
+**/.DS_Store
+
+# Logs
+**/logs/
+**/*.log
+
+# Source-control + planning artifacts (paths relative to repo root if `..` context is ever used)
+.git/
+.github/
+_bmad-output/
+_bmad/
+docs/

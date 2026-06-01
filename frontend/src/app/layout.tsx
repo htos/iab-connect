@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 import { MainLayout } from "@/components/navigation";
 import { BetaBanner } from "@/components/navigation/BetaBanner";
+import { LicenseFooter } from "@/components/navigation/LicenseFooter";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 
@@ -62,6 +63,7 @@ export default async function RootLayout({
             {/* BetaBanner mounted above MainLayout; LicenseFooter (E20-S4) lands as sibling AFTER MainLayout. */}
             <BetaBanner />
             <MainLayout>{children}</MainLayout>
+            <LicenseFooter />
           </NextIntlClientProvider>
         </Providers>
       </body>

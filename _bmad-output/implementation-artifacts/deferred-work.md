@@ -4,6 +4,42 @@ Items deferred during code reviews — not caused by the reviewed change, but wo
 
 ---
 
+## Deferred from: code review of Epic-20 boundary (2026-06-01)
+
+Triage: 3 review layers (Blind Hunter + Edge Case Hunter + Acceptance Auditor) over the full E20 close diff (e20-s1 through e20-s5, ~1207 lines covering 4 markdown files, 2 GitHub workflows, 5 backend source + 2 tests, 4 frontend source + 2 tests). 19 findings → 4 patches applied in this session (P1 NOTICE.md QuestPDF license correction, P2 DCO `--no-merges`, P3 build-images.yml concurrency group, P4 TestWebApplicationFactory clears BUILD_SHA/BUILD_DATE for CI-host independence) + 11 defers (below) + 4 dismisses.
+
+### Per-story defers
+
+#### e20-s1 — LICENSE/DCO/CONTRIBUTING/NOTICE
+
+- **E20-S1-D1: DCO `git rev-list base..head` may fail for cross-fork PRs.** `actions/checkout` with `ref: ${{ github.event.pull_request.head.sha }}` + `fetch-depth: 0` fetches all branches of the BASE repo, so PRs from forks targeting our `main`/`beta` are fine (base lives in our repo). Risk remains for cross-fork PRs (the workflow being run by a fork against another fork). **Action when picked up:** add `git fetch --no-tags --depth=1 origin "$BASE_SHA"` fallback step before rev-list, OR switch to `gh api repos/.../pulls/.../commits` for robust base-resolution.
+- **E20-S1-D2: DCO regex misses CRLF-terminated trailers.** `^Signed-off-by: .+ <.+@.+>$` with bash `grep -E` against `git show -s --format=%B` — `git show` normalizes most cases, but a commit message authored on Windows with literal `\r\n` line endings (uncommon but possible) bypasses the `$` anchor. **Action when picked up:** sed-strip CR before grep, OR add `[[:space:]]*$` tolerance to the regex.
+- **E20-S1-D3: DCO does not enforce trailer-email-matches-author-email.** CONTRIBUTING.md says "The email in the trailer must match the email on the commit author", but the workflow doesn't verify — any email shaped `<x@y>` passes. **Action when picked up:** capture both `git show -s --format=%ae` and the trailer email via `grep -oE`, compare case-insensitively.
+- **E20-S1-D4: `actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683` (v4.2.2) is 18+ months old at 2026-06-01.** Pinned SHA is immutable so functionally safe, but Dependabot for `github-actions` ecosystem would surface refresh PRs. **Action when picked up:** add `.github/dependabot.yml` configuring weekly checks; refresh SHA + comment as Dependabot proposes.
+
+#### e20-s4 — frontend license footer
+
+- **E20-S4-D1: LicensePage `fs.readFileSync` runs per-request, not at build time.** Comment claims build-time semantics, but the async server component is invoked per request unless wrapped in `unstable_cache` or marked `force-static`. In Next.js standalone Docker (E12-S2 build context = `./frontend`), `process.cwd()` is `/app` and `path.join(cwd, "..", "LICENSE")` resolves to `/LICENSE` which is never present — every request falls through to the gnu.org-link branch. AGPL §13 disclosure still holds via the fallback. **Action when picked up:** decide between (a) extend GHCR workflow build context to repo root + COPY LICENSE into frontend image; (b) inline a stripped LICENSE as a `.ts` module; (c) commit to the gnu.org-link UX and simplify the page. Recommended (a) for AGPL §13 self-hosted-tarball intent.
+- **E20-S4-D2: LicenseFooter renders on `/public/license` itself — self-referential link.** The footer's `Link href="/public/license"` is rendered ON `/public/license`, producing a no-op self-nav. Screen readers announce a link to the current page. **Action when picked up:** in LicenseFooter, use `usePathname` to suppress the `Link` (render as plain `<span>`) when pathname starts with `/public/license`.
+- **E20-S4-D3: `_comment_licenseFooter` JSON pseudo-key leaks into next-intl namespace.** A typo `t("_comment_licenseFooter")` would render the policy comment as UI text. **Action when picked up:** establish an i18n JSON convention (strip keys starting with `_` at build time via a next-intl plugin, OR move comments to a sibling `.policy.md` file).
+- **E20-S4-D4: AGPL §13 disclosure does not surface running-version to the user.** `LicenseFooter` shows license + source link but not the commitSha/buildDate from `/about`. AGPL §13 requires offering the **corresponding source for the running version** — without a visible version pin, a user offered a tarball can't tell which commit it should match. **Action when picked up:** add an optional `<span className="text-gray-400">build {commitSha.slice(0,7)}</span>` to LicenseFooter, fetched from `/about` on mount (client-side, after hydration to avoid SSR latency).
+- **E20-S4-D5: Real `npm run build` against on-disk LICENSE was not verified.** The Vitest mock proves the projection logic; an actual `next build` after E20-S1's LICENSE landed wasn't executed. **Action when picked up:** during human-verify pass (E20-S4 Task 8.5), confirm `/public/license` shows the embedded LICENSE block, not the gnu.org fallback. If fallback appears, D1 is the real fix.
+
+#### e20-s5 — GHCR pipeline
+
+- **E20-S5-D1: BUILD_DATE has no defensive fallback for non-push events.** `${{ github.event.head_commit.timestamp }}` is empty on workflow re-runs that lose context or future `workflow_dispatch` trigger additions. **Action when picked up:** change to `${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}` or add a `date -u +%FT%TZ` shell step before build.
+- **E20-S5-D2: Build-args block sends frontend NEXT_PUBLIC_* values to api/keycloak matrix entries too.** Currently harmless because `backend/Dockerfile` and `infra/keycloak/Dockerfile` don't declare those ARG names. Risk: a future Dockerfile change silently consumes frontend config. **Action when picked up:** restructure matrix to declare `build-args` per matrix entry (via `matrix.include.build_args` multi-line YAML string).
+- **E20-S5-D3: `revision` + `created` OCI labels rely on `metadata-action` auto-population.** Spec called them out explicitly. Auto-population is correct behavior of `docker/metadata-action` v5.7.0, but should be verified at first publish via `docker inspect`. **Action when picked up:** during E20-S5 Task 7 human-verify, capture the JSON of `Config.Labels` and confirm 7 keys present (incl. `revision` matching `github.sha` and `created` matching `head_commit.timestamp`).
+
+### Dismisses (recorded for completeness)
+
+- F4 `frontend/next-env.d.ts:3` modified (Blind Hunter HIGH) — DISMISS: file is auto-regenerated by `npm run build`/`dev`; the diff reflects a transient regen by my test run, not an intentional hand-edit. Next.js will overwrite as needed.
+- F12 `NEXT_PUBLIC_SOURCE_URL` hardcoded in build-images.yml (Blind Hunter LOW) — DISMISS: intentional. The canonical value is also the upstream identifier under AGPL §13; a fork wanting to disclose its fork URL edits the workflow file as a one-line change. Documented in the workflow header comment block.
+- F13 `AboutEndpoints.cs` comment cites `InternalsVisibleTo` at `DependencyInjection.cs:16` (Blind Hunter LOW) — DISMISS: Blind Hunter false positive. The `[assembly:]` attribute does live at `DependencyInjection.cs:16` (verified by grep at story implementation). C# permits assembly-level attributes at the top of any file in the assembly.
+- F16 German `Quellcode` vs English `Source` width asymmetry (Edge Case LOW) — DISMISS: intentional translation per next-intl policy. Width tolerance is a visual-polish concern, not a correctness defect; the existing Tailwind `flex-wrap` handles it.
+
+---
+
 ## Epic-3-retro §9 Cleanup Sprint — Triage & Resolutions (2026-05-14)
 
 The Epic-3 retrospective (`epic-3-retro-2026-05-14.md` §9) scheduled a dedicated cleanup sprint before Epic 4. This section records its outcome; the per-review sections below are left as the historical record.
@@ -363,3 +399,188 @@ Spec listed 5 Beta-vs-Production hardenings to assert (Swagger 404, Hangfire 404
 [Source: backend/src/IabConnect.Api/appsettings.json:38-41; E11-S2 AC-2 partial; epic-boundary review decision D1 2026-05-16]
 
 The eager-init blocker (Hangfire `PostgreSqlStorage..ctor` + `Get<DocumentStorageSettings>()` singleton-closure baking at DI registration time) prevents emptying the 5 keys (`ConnectionStrings:DefaultConnection`, 4 `DocumentStorage:*`) without breaking the TestWebApplicationFactory InMemory override path. **Action when picked up (BEFORE any actual Beta deployment):** refactor DocumentStorage from singleton-eager-init to `IOptions<DocumentStorageSettings>` (the spec's documented Fix-path #1, "low risk, mechanical"); refactor Hangfire to use `IPostgreSqlStorageOptions` factory that reads connection-string lazily; then empty all 5 keys in base. Closes E11-S2 AC-2 fully and removes the last live `rustfsadmin` literal from base config. **Ties together with the existing "eager-init keys block cleanup" entry** — these are aspects of the same refactor, do as one PR.
+
+## Deferred from: code review of Epic-12 boundary (2026-05-16)
+
+Epic-12 (Dockerization) boundary review: full diff across e12-s1..e12-s4 (~924 lines code/config + ~1,945 lines story docs). Adversarial review (Blind Hunter + Edge Case Hunter + Acceptance Auditor) produced 3 decision-needed, 7 patches, 28 defers, ~17 dismisses. The defers are listed below per source story for traceability.
+
+### E12-S1 follow-up: PublishSingleFile override fragility (D1')
+
+[Source: backend/Dockerfile:25-29; e12-s1 Review Findings 2026-05-16]
+
+`/p:PublishSingleFile=false /p:UseAppHost=false` is a Dockerfile-level override of `Directory.Build.props:14`. If a maintainer adds another Release-conditioned single-file emitter later, the override list silently drifts and the runtime `ENTRYPOINT ["dotnet", "IabConnect.Api.dll"]` can't launch the resulting binary. **Action when picked up:** move the `PublishSingleFile=true` property to `IabConnect.Api.csproj` only, OR gate it behind `<DockerBuild>true</DockerBuild>` so the Dockerfile sets the gate explicitly. ~30 min.
+
+### E12-S1 follow-up: DocumentStorage empty-default late-500 fail-mode (D2')
+
+[Source: Infrastructure/DependencyInjection.cs:259-270; e12-s1 Review Findings 2026-05-16]
+
+AC-8 of E12-S1 documents this fail mode: missing Railway env vars surface as a runtime 500 on first `IDocumentStorage` resolution rather than a boot crash. Bundles with the existing E11-S2 entry "Empty `Keycloak.Authority` / `Smtp.Host` in base produce slow runtime failures". **Action when picked up:** add `services.AddOptions<DocumentStorageSettings>().Bind(...).Validate(...).ValidateOnStart()` once the singleton-eager-closure is refactored to `IOptions<T>` (the D1 resolution of the earlier rustfsadmin entry).
+
+### E12-S1 follow-up: `ASPNETCORE_ENVIRONMENT` no Dockerfile default (D3')
+
+[Source: backend/Dockerfile ENV block:36-41; e12-s1 Review Findings 2026-05-16]
+
+Missing the env var on Railway makes ASP.NET default to `Production`, activating HSTS + `UseHttpsRedirection`. Railway terminates TLS edge-side and forwards plain HTTP, so HttpsRedirection emits 307 that breaks non-browser clients. No `UseForwardedHeaders` is wired to recognize `X-Forwarded-Proto`. **Action when picked up:** E13-S2 sets the env var explicitly; E14-S2 owns the ForwardedHeaders middleware. Confirm both land before the first Railway deploy.
+
+### E12-S1 follow-up: TestWebApplicationFactory static-ctor process-global env mutation (D4')
+
+[Source: backend/tests/IabConnect.Api.Tests/TestWebApplicationFactory.cs:27-43; e12-s1 Review Findings 2026-05-16]
+
+Static ctor calls `Environment.SetEnvironmentVariable` for `DocumentStorage__*`. Persists for the lifetime of the xUnit AppDomain. Any future test that reads these keys via raw `Environment.GetEnvironmentVariable` (or asserts their absence) sees leaked values. **Action when picked up:** convert to `IAsyncLifetime` fixture (`InitializeAsync` sets, `DisposeAsync` clears); replace static ctor with instance ctor.
+
+### E12-S1 follow-up: NuGet cache mount missing (D5')
+
+[Source: backend/Dockerfile:18; e12-s1 Review Findings 2026-05-16]
+
+`RUN dotnet restore` is not wrapped in `--mount=type=cache,target=/root/.nuget/packages`. With `# syntax=docker/dockerfile:1.7` already declared, the change is one-line. CI-speed improvement. **Action when picked up:** add cache mount + verify with `time docker build --no-cache` baseline vs cached build.
+
+### E12-S1 follow-up: AppSettingsLayeringTests new theory rows are change-detector tests (D6')
+
+[Source: backend/tests/IabConnect.Api.Tests/AppSettingsLayeringTests.cs:73-98; e12-s1 Review Findings 2026-05-16]
+
+The 6 new `DocumentStorage:*` rows pass tautologically — they assert `BeNullOrEmpty()` for keys that were just stripped from the JSON. A behavioral invariant test would be stronger. **Action when picked up:** after the `IValidateOptions<DocumentStorageSettings>.ValidateOnStart()` refactor lands (D2'), add a behavioral test that constructs `WebApplicationFactory<Program>` with `Database:AutoMigrate=false` + missing DocumentStorage env vars and asserts `OptionsValidationException` at startup.
+
+### E12-S1 follow-up: Image size 384 MB vs AC-12 target ≤ 350 MB (D7')
+
+[Source: e12-s1 AC-12, story Completion Notes; e12-s1 Review Findings 2026-05-16]
+
+Root cause: `Directory.Build.props:14` `PublishTrimmed=false` + framework-dependent publish + wide package profile (EF Core, Hangfire, Serilog, QuestPDF, MediatR, AWS S3) producing a 154 MB published-app payload. **Action when picked up:** dedicated trimming/AOT story to evaluate `PublishTrimmed=true` + `PublishReadyToRun=true` + `TrimMode=partial`; expected outcome ≥ 80 MB reduction. Validate that QuestPDF + Hangfire + Npgsql trim safely.
+
+### E12-S1 follow-up: AC-2 base-image text drift (D8')
+
+[Source: e12-s1 AC-2, backend/Dockerfile:7,32; e12-s1 Review Findings 2026-05-16]
+
+Microsoft moved `mcr.microsoft.com/dotnet/aspnet:10.0` to Ubuntu Noble; AC-2 text says Debian-bookworm. AC-3 timezone-resolution outcome preserved (ICU + tzdata pre-bundled). **Action when picked up:** spec-text fix in Epic-12 retrospective; no implementation change.
+
+### E12-S2 follow-up: `HOSTNAME=0.0.0.0` collides with POSIX hostname convention (D9')
+
+[Source: frontend/Dockerfile:82; e12-s2 Review Findings 2026-05-16]
+
+`HOSTNAME` is both the Next.js standalone server's bind directive AND the conventional POSIX hostname env. Railway, K8s downward-API, `docker run --hostname` can silently override. **Action when picked up:** add wrapper script `docker-entrypoint.sh` that forces `HOSTNAME=0.0.0.0 exec node server.js`; runbook entry for E18-S1.
+
+### E12-S2 follow-up: `.dockerignore` excludes test source but not test configs (D10')
+
+[Source: frontend/.dockerignore:26-32; e12-s2 Review Findings 2026-05-16]
+
+`playwright.config.ts`, `vitest.config.ts`, `eslint.config.mjs` reach the build stage. Cosmetic build-context bloat; runtime image unaffected. **Action when picked up:** one-line `.dockerignore` extension.
+
+### E12-S2 follow-up: `public/.gitkeep` exposed at root URL (D11')
+
+[Source: frontend/public/.gitkeep; e12-s2 Review Findings 2026-05-16]
+
+Next.js standalone exposes `public/` at URL root; `https://web/.gitkeep` returns HTTP 200 0 bytes. Security scanners flag exposed dotfiles. **Action when picked up:** add a runtime-stage `RUN rm -f /app/public/.gitkeep` once `public/` has at least one other file.
+
+### E12-S3 follow-up: Keycloak `${VAR}` placeholder fail-fast guard missing (D12')
+
+[Source: realms-beta/iabconnect-realm.json:228,252,256,261; e12-s3 Review Findings 2026-05-16]
+
+Unsubstituted `${IABCONNECT_ADMIN_CLIENT_SECRET}` / `${IABCONNECT_FRONTEND_CLIENT_SECRET}` / `${FRONTEND_PUBLIC_URL}` import as LITERAL strings. Backend's real-secret auth gets 401 silently on every token exchange. **Action when picked up:** add a bash wrapper around `kc.sh start --optimized` that fails fast if any of the three env vars is empty or unsubstituted. E13-S2 / E18-S1 runbook addition.
+
+### E12-S3 follow-up: KC_DB build-time-frozen + `:smoke` companion tag must NOT publish (D13')
+
+[Source: infra/keycloak/Dockerfile:32-37; e12-s3 Review Findings 2026-05-16]
+
+Quarkus augments per-driver classes at `kc.sh build` time, so `KC_DB` must match runtime. Production image bakes `KC_DB=postgres`; local non-postgres smoke uses a separate `:smoke` tag baked with `KC_DB=dev-file`. **Action when picked up:** E20-S5 GHCR-publish workflow must explicitly exclude the `:smoke` tag; runbook entry that only the `postgres`-baked image goes to the registry.
+
+### E12-S3 follow-up: Realm-check probe doesn't verify SPI registration (D14')
+
+[Source: docker-compose.full.yml:64-72; e12-s3 Review Findings 2026-05-16]
+
+`/.well-known/openid-configuration` 200 only proves realm metadata is in the DB. If `kc.sh build` silently dropped `disable-new-users-spi-1.0.0.jar`, realm-check passes but the eventsListener is dark. **Action when picked up:** extend the probe to authenticate against admin REST API and query `/admin/realms/iabconnect/events/config` to assert `eventsListeners` contains `disable-new-users`. Pairs with realm-check budget extension (D29').
+
+### E12-S3 follow-up: `service-account-iabconnect-admin` retains full `realm-admin` role (D15')
+
+[Source: realms-beta/iabconnect-realm.json:267-278; e12-s3 Review Findings 2026-05-16]
+
+No credentials block (clean) but the role mapping is maximum-scope. If the `iabconnect-admin` client secret leaks, full realm-admin. `KeycloakAdminService.cs:403` likely uses only a narrow subset (create-user, reset-password, query-users). **Action when picked up:** least-privilege refactor — define a custom role aggregating only the scopes the backend actually calls; audit `KeycloakAdminService` for the actual scope footprint first. E14-S5 audit story is a natural pair.
+
+### E12-S3 follow-up: Realm `sslRequired: "external"` permits HTTP for internal callers (D16')
+
+[Source: realms-beta/iabconnect-realm.json:6; e12-s3 Review Findings 2026-05-16]
+
+Combined with `KC_HOSTNAME_STRICT: "false"` this means Beta is effectively HTTP-everywhere from Keycloak's perspective (Docker bridge IP, Railway proxy IP all count as "internal"). **Action when picked up:** flip to `"all"` once Railway TLS edge-termination is confirmed (E14-S2 security headers + HTTPS story).
+
+### E12-S3 follow-up: SPI jar pulled by literal filename — version-bump tripwire (D17')
+
+[Source: infra/keycloak/Dockerfile:15,24; e12-s3 Review Findings 2026-05-16]
+
+`disable-new-users-spi-1.0.0.jar` literal; SPI `pom.xml` version bump silently breaks the build. **Action when picked up:** change to glob `cp /build/target/disable-new-users-spi-*.jar /opt/keycloak/providers/` + a count-equals-1 guard.
+
+### E12-S3 follow-up: Epic-12 parent AC for S3 enumerates non-existent `EventStaff` role (D18')
+
+[Source: epics-and-stories.md:1324; e12-s3 Review Findings 2026-05-16]
+
+Sanitized realm correctly preserves dev (7 roles: mfa-required, admin, vorstand, member, kassier, auditor, event-manager). Parent-epic AC is the defect. **Action when picked up:** Epic-12 retrospective fixes the parent AC text OR adds `event-staff` to both dev and sanitized realms (decision: is EventStaff a real role on the roadmap or AC drafting noise?).
+
+### E12-S4 follow-up: `--import-realm` re-import on every restart (D19')
+
+[Source: docker-compose.full.yml:26, infra/docker-compose.yml:28; e12-s4 Review Findings 2026-05-16]
+
+Pre-existing pattern in base; overlay propagates. Keycloak 26.5.2 default with `--import-realm` is "import once, skip if realm exists" — for Beta with persistent Postgres, subsequent deploys preserve admin-console edits. **Action when picked up:** verify the actual `KC_IMPORT_REALM_STRATEGY` default in 26.5.2 against this assumption; if "overwrite", file as Beta-blocker and add `KC_IMPORT_REALM_STRATEGY=IGNORE_EXISTING` to the overlay.
+
+### E12-S4 follow-up: Hardcoded local-dev secrets in overlay YAML (D20')
+
+[Source: docker-compose.full.yml:41-43,121,142,149; e12-s4 Review Findings 2026-05-16]
+
+`admin-service-secret-2026`, `frontend-dev-secret-2026`, `local-dev-secret-min-32-chars-aaaaaaaaaaaaaaa` are committed in the overlay. They match values in `infra/keycloak/realms/iabconnect-realm.json` + `appsettings.Development.json` (also committed). Local-dev convenience values, not real Beta secrets. **Action when picked up:** externalize to `infra/.env.full.example` with `${VAR}` references; marginal defense-in-depth; ergonomic trade-off.
+
+### E12-S4 follow-up: No `init: true` / tini for PID-1 (D21')
+
+[Source: backend/Dockerfile:67, frontend/Dockerfile:107, compose overlay; e12-s4 Review Findings 2026-05-16]
+
+Relevant once features `Process.Start` shell out (PDF export, ImageMagick, future SPI tooling). **Action when picked up:** add `init: true` per-service in compose overlay (compose-level tini); for standalone Dockerfile use, `apk add tini` + `ENTRYPOINT ["tini", "--", ...]` in runtime stages.
+
+### E12-S4 follow-up: `curlimages/curl:8.10.1` tag-pinned not digest-pinned (D22')
+
+[Source: docker-compose.full.yml:54; e12-s4 Review Findings 2026-05-16]
+
+Supply-chain hygiene. **Action when picked up:** pin via `@sha256:...` once the Beta image inventory is locked in E20-S5.
+
+### E12-S4 follow-up: AC-8 service-count typo (D23')
+
+[Source: e12-s4 AC-8, story line 206; e12-s4 Review Findings 2026-05-16]
+
+AC-8 says "8 services" but the enumeration miscounted "6 long-running" then listed 7. Implementation correctly delivers 9 services (7 long-running + 2 one-shot). **Action when picked up:** retrospective AC text fix.
+
+### E12-S4 follow-up: A29 sub-item completion table for AC-9 not granular (D24')
+
+[Source: e12-s4 Completion Notes AC-Subitem table; e12-s4 Review Findings 2026-05-16]
+
+AC-9 contains 4 smoke targets; A29 requires per-sub-item status. Evidence IS captured elsewhere (Completion Notes lines 575-579). **Action when picked up:** retrospective doc-format fix; consider sub-item-table template in story-context skill.
+
+### E12-S4 follow-up: Pre-existing seq restart loop (D25')
+
+[Source: e12-s4 story line 520; e12-s4 Review Findings 2026-05-16]
+
+`datalust/seq:latest` tag drift; overlay made zero edits to seq. **Action when picked up:** pin seq to a stable tag in `infra/docker-compose.yml` (separate work item, not Epic-12 scope).
+
+### E12-S4 follow-up: Smtp asymmetry undocumented (D26')
+
+[Source: docker-compose.full.yml:112-114, README Option 4; e12-s4 Review Findings 2026-05-16]
+
+Overlay uses Mailhog (accepts anything, no TLS); real Beta uses Mailtrap with `Smtp__EnableSsl=true`. Tester who exports `.env` with `EnableSsl=true` to mirror Beta gets connection failures against Mailhog. **Action when picked up:** README Option 4 operational note "Smtp differences between local Beta-shape and real Beta".
+
+### E12-S4 follow-up: `NEXT_PUBLIC_FEEDBACK_URL` not in overlay (D27')
+
+[Source: docker-compose.full.yml:140-148; e12-s4 Review Findings 2026-05-16]
+
+Defaults to empty per `frontend/Dockerfile:55`; BETA banner falls back to `${NEXT_PUBLIC_SOURCE_URL}/issues/new`. Overlay can't smoke-test the explicit-FEEDBACK_URL branch. **Action when picked up:** add `NEXT_PUBLIC_FEEDBACK_URL: "https://github.com/htos/iab-connect/issues/new"` to overlay args.
+
+### E12-S4 follow-up: `disabled-by-full` profile back-and-forth on shared Postgres (D28')
+
+[Source: docker-compose.full.yml:14-15, infra/docker-compose.yml:13; e12-s4 Review Findings 2026-05-16]
+
+Switching between base `docker compose up` (volume-mounted SPI path, dev realm) and overlay `up -f -f` (custom image, sanitized realm) leaves hybrid realm state in shared Postgres. **Action when picked up:** README Option 4 operational note about `docker compose down -v` between modes; or scope a separate `postgres-kc` for the overlay.
+
+### E12-S4 follow-up: Realm-check 50s budget is non-gating (D29')
+
+[Source: docker-compose.full.yml:64-72; e12-s4 Review Findings 2026-05-16]
+
+`api` depends on `keycloak-full` (`service_started`) but NOT on `keycloak-full-realm-check` (`service_completed_successfully`). Cold Quarkus + Postgres schema bootstrap can take 60-90s. **Action when picked up:** ties into Patch P5 (HEALTHCHECK + service_healthy) — extend budget to 120s (24×5s) AND make api boot wait on `keycloak-full-realm-check.condition: service_completed_successfully`.
+
+### E12-S4 follow-up: AC-9 RustFS console smoke 403/501 not 200 (D30')
+
+[Source: e12-s4 AC-9, story line 212; e12-s4 Review Findings 2026-05-16]
+
+`curl -sf` treats non-2xx as failure → AC-9 command's literal exit code would be non-zero. 403/501 with valid `x-request-id` does prove reachability (AC-9 closing sentence's intent). **Action when picked up:** change AC-9 smoke target to a S3-API endpoint that returns 200 (e.g., MinIO-compatible `/minio/health/live` if RustFS exposes one); retrospective AC update.
+

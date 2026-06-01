@@ -22,7 +22,7 @@
   <img src="https://img.shields.io/badge/PostgreSQL-17-336791?style=flat-square&logo=postgresql" alt="PostgreSQL" />
   <img src="https://img.shields.io/badge/Keycloak-26.5-4D4D4D?style=flat-square&logo=keycloak" alt="Keycloak" />
   <img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker" alt="Docker" />
-  <img src="https://img.shields.io/badge/License-Private-red?style=flat-square" alt="License" />
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL--3.0--or--later-blue?style=flat-square" alt="License: AGPL-3.0-or-later" /></a>
 </p>
 
 ---
@@ -348,6 +348,61 @@ npm run dev
 1. Open the project in VS Code
 2. Press `Ctrl+Shift+P` → "Tasks: Run Task"
 3. Select "Start Backend" and "Start Frontend"
+
+#### Option 3: Container images (Beta-shape)
+
+```bash
+# Backend image (multi-stage; bakes BUILD_SHA / BUILD_DATE as unknown by default)
+docker build -t iabc-api backend/
+
+# Frontend image — ALL 5 required NEXT_PUBLIC_* must be passed as --build-arg.
+# The build now fails fast if any of these five are empty.
+docker build \
+  --build-arg NEXT_PUBLIC_API_URL=https://api.example.app \
+  --build-arg NEXT_PUBLIC_KEYCLOAK_URL=https://kc.example.app \
+  --build-arg NEXT_PUBLIC_KEYCLOAK_REALM=iabconnect \
+  --build-arg NEXT_PUBLIC_KEYCLOAK_CLIENT_ID=iabconnect-frontend \
+  --build-arg NEXT_PUBLIC_KEYCLOAK_ISSUER=https://kc.example.app/realms/iabconnect \
+  -t iabc-web frontend/
+```
+
+The full GHCR-publish flow with build-arg injection (commit-SHA, ISO date, the rest of the `NEXT_PUBLIC_*` set) is documented separately.
+
+#### Option 4: Local Beta-shape testing (full overlay)
+
+To run the same container topology Railway uses (backend image + frontend image + custom Keycloak image with SPI baked in, all built locally) without burning Railway minutes:
+
+```bash
+docker compose -f infra/docker-compose.yml -f infra/docker-compose.full.yml up --build -d
+```
+
+- Web UI: <http://localhost:3000> (BETA banner visible — login via Keycloak)
+- Keycloak: <http://localhost:8080> (admin console at `/admin`, login `admin` / `admin-full`)
+- API: <http://localhost:5000/health/ready>
+- Realm probe: <http://localhost:8080/realms/iabconnect/.well-known/openid-configuration>
+- MailHog: <http://localhost:8025> · RustFS console: <http://localhost:9001>
+
+The overlay adds three new services (`api`, `web`, `keycloak-full`) plus a one-shot `keycloak-full-realm-check` health gate. It disables the base `keycloak` service via the `disabled-by-full` profile to free host port 8080. Everyday local dev (Option 1) is unaffected — the base file still works standalone.
+
+**What this overlay does NOT simulate (vs real Beta on Railway):**
+
+The api service runs with `ASPNETCORE_ENVIRONMENT=Development` rather than `Beta` because the backend hardcodes `RequireHttpsMetadata = !(IsDevelopment || Testing)` and local Keycloak runs HTTP only. A surface-level consequence is that several Development-only features are active here that real Beta disables:
+
+- `/swagger` is mounted (real Beta returns 404)
+- CORS is permissive (real Beta uses strict CORS via `appsettings.Beta.json`)
+- HSTS + HTTPS-redirect are skipped (real Beta enables both)
+- Serilog uses Development sinks rather than Beta's Console-only configuration
+- Development data seeders + EF `AutoMigrate` run on first boot
+
+The "Beta-shape" intent of the overlay is preserved by (a) Railway-mirroring port mapping (5000/3000/8080), (b) frontend BETA banner via `NEXT_PUBLIC_ENV_LABEL=beta`, (c) container topology with sanitized realm + custom Keycloak image, (d) `RetentionEnforcement__Enabled=false` matching Beta's retention suppression. Real Beta on Railway runs `ASPNETCORE_ENVIRONMENT=Beta` once E14-S2 surfaces `Keycloak__RequireHttpsMetadata` as a config key.
+
+Teardown (drops named volumes — Postgres, RustFS, Seq):
+
+```bash
+docker compose -f infra/docker-compose.yml -f infra/docker-compose.full.yml down -v
+```
+
+Requires Docker Compose v2.20+ (for `profiles:` and `service_completed_successfully`).
 
 ### Default Credentials
 
@@ -845,13 +900,13 @@ dotnet ef database update \
 
 ## 🤝 Contributing
 
-We welcome contributions from the community! Please follow these guidelines:
+We welcome contributions from the community! See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contribution flow, including the DCO sign-off requirement (`git commit -s`). New source files require an SPDX header — see [CONTRIBUTING.md](CONTRIBUTING.md#spdx-license-headers).
 
 ### Development Workflow
 
 1. **Fork** the repository
 2. **Create** a feature branch: `git checkout -b feature/amazing-feature`
-3. **Commit** your changes: `git commit -m 'feat: add amazing feature'`
+3. **Commit** your changes with sign-off: `git commit -s -m 'feat: add amazing feature'`
 4. **Push** to the branch: `git push origin feature/amazing-feature`
 5. **Open** a Pull Request
 
@@ -881,11 +936,9 @@ Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
 
 ## 📄 License
 
-This project is **proprietary software** developed exclusively for private uses.
+IAB Connect is licensed under the **GNU Affero General Public License v3.0 or later** (`AGPL-3.0-or-later`). See [LICENSE](LICENSE) for the full text and [COPYRIGHT](COPYRIGHT) for the project copyright statement. Direct production-dependency licenses are listed in [NOTICE.md](NOTICE.md).
 
-**© 2026 Harwinder Singh. All Rights Reserved.**
-
-Unauthorized copying, modification, distribution, or use of this software is strictly prohibited without explicit written permission from Hawinder Singh.
+Copyright (C) 2026  IAB Connect contributors.
 
 ---
 

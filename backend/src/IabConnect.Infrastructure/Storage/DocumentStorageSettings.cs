@@ -7,9 +7,9 @@ public class DocumentStorageSettings
 {
     public const string SectionName = "DocumentStorage";
 
-    public string ServiceUrl { get; set; } = "http://localhost:9000";
-    public string AccessKey { get; set; } = "rustfsadmin";
-    public string SecretKey { get; set; } = "rustfsadmin";
+    public string ServiceUrl { get; set; } = "";
+    public string AccessKey { get; set; } = "";
+    public string SecretKey { get; set; } = "";
     public string BucketName { get; set; } = "iabconnect-documents";
-    public bool UseHttps { get; set; } = false;
+    public bool UseHttps { get; set; } = true;
 }

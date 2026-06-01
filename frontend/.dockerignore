@@ -1,0 +1,83 @@
+# .dockerignore — frontend build-context exclusions for the multi-stage
+# Dockerfile in this directory. Paths are relative to the build context
+# (frontend/). The build context is the source of truth for what reaches
+# the Docker daemon; .gitignore is not consulted.
+#
+# Keep grouped by category so a future reader can audit at a glance which
+# exclusions are size-driven vs. correctness-driven vs. security-driven.
+
+# ───────────────────────────────────────────────
+#  Build outputs (size — never want host build artefacts in image)
+# ───────────────────────────────────────────────
+.next/
+out/
+dist/
+build/
+
+# ───────────────────────────────────────────────
+#  Dependencies (correctness — force a clean `npm ci` in the deps stage)
+# ───────────────────────────────────────────────
+node_modules/
+
+# ───────────────────────────────────────────────
+#  Test artefacts and test sources (size — runtime image does not run tests)
+# ───────────────────────────────────────────────
+coverage/
+playwright-report/
+test-results/
+e2e/
+tests/
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+
+# ───────────────────────────────────────────────
+#  Local config + secrets (security — env files MUST NOT enter the image;
+#  NEXT_PUBLIC_* values arrive via --build-arg, server-side secrets via
+#  Railway env vars at runtime)
+# ───────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pfx
+*.key
+
+# ───────────────────────────────────────────────
+#  IDE / editor
+# ───────────────────────────────────────────────
+.vs/
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# ───────────────────────────────────────────────
+#  Source-control (defence-in-depth — build context is frontend/, but
+#  protect against accidental context-root expansion)
+# ───────────────────────────────────────────────
+.git/
+
+# ───────────────────────────────────────────────
+#  Logs and runtime junk
+# ───────────────────────────────────────────────
+*.log
+npm-debug.log*
+.npm
+*.tsbuildinfo
+
+# ───────────────────────────────────────────────
+#  Repo documentation (size — README/CHANGELOG/LICENSE are surfaced via
+#  GHCR labels + E20-S4 footer + backend /about, not via the image FS)
+# ───────────────────────────────────────────────
+README.md
+CHANGELOG.md
+LICENSE
+
+# ───────────────────────────────────────────────
+#  Docker / compose overrides (correctness — the image should not contain
+#  the Dockerfile that builds it or compose overlays that compose it)
+# ───────────────────────────────────────────────
+Dockerfile
+.dockerignore
+docker-compose*.yml

@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using Hangfire;
 using IabConnect.Api.Authorization;
 using IabConnect.Api.Middleware;
+using IabConnect.Infrastructure.Common;
 using IabConnect.Infrastructure.Finance.Jobs;
 using IabConnect.Infrastructure.Events.Jobs;
 using IabConnect.Infrastructure.Retention;
@@ -53,6 +54,12 @@ public static class DependencyInjection
             options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
             options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
         });
+
+        // REQ-089 AC-5 (E20-S3) / ADR-021: Branding options carry the AGPL §13
+        // source-disclosure URL projected by the `/about` endpoint. Bound here so
+        // the IOptions<BrandingOptions> handler dependency in AboutEndpoints.cs
+        // resolves out of DI without any per-endpoint configuration plumbing.
+        services.Configure<BrandingOptions>(configuration.GetSection("Branding"));
 
         // OpenAPI / Swagger
         // REQ-086 (E9-S3): title/description are config-driven (Branding:*) with literal
