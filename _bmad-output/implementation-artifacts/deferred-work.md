@@ -597,3 +597,41 @@ Switching between base `docker compose up` (volume-mounted SPI path, dev realm) 
 
 `curl -sf` treats non-2xx as failure → AC-9 command's literal exit code would be non-zero. 403/501 with valid `x-request-id` does prove reachability (AC-9 closing sentence's intent). **Action when picked up:** change AC-9 smoke target to a S3-API endpoint that returns 200 (e.g., MinIO-compatible `/minio/health/live` if RustFS exposes one); retrospective AC update.
 
+
+## Deferred from: code review of Epic-13 boundary (2026-06-01)
+
+Five entries logged at Epic-13 boundary review. All are forward-looking concerns surfaced by the
+adversarial review (Blind Hunter + Edge Case Hunter + Acceptance Auditor) that don't block
+E13's `done` flip but should be addressed in their target stories.
+
+### E13-FT-6: PostgresBackupService uses `docker exec` — incompatible with Railway runtime
+
+[Source: backend/src/IabConnect.Infrastructure/Backup/PostgresBackupService.cs:34-59; E13 boundary review Edge Case Hunter finding E5, 2026-06-01]
+
+`PostgresBackupService` defaults `_dockerContainer = "iabconnect-postgres"` and shells out via `Process.Start("docker", "exec ... pg_dump ...")`. On Railway the `api` container has no Docker daemon, no `docker` CLI, and no host-side container to exec into. **Action when picked up:** refactor to a process-direct `pg_dump` against `${{postgres-app.RAILWAY_PRIVATE_DOMAIN}}:${{postgres-app.PGPORT}}` using `Npgsql.NpgsqlConnection` or a `pg_dump` binary baked into the api image. Targets **E15-S3** (daily encrypted Postgres backup to RustFS) — should not be flipped to ready-for-dev until this refactor is scoped.
+
+### E13-FT-7: Frontend in-image HEALTHCHECK `/` traverses middleware module-gating
+
+[Source: frontend/Dockerfile:121-122, frontend/src/middleware.ts:97-122; E13 boundary review Edge Case Hunter finding E7, 2026-06-01]
+
+The frontend Docker `HEALTHCHECK` probes `/` (root path). The middleware rewrites `/` to `/site-unavailable` when `public_view` module is disabled OR caches an empty module-map fallback on api-unavailability. Both paths return 200, so the healthcheck "passes" even when the real landing page is broken. **Action when picked up:** either point the in-image HEALTHCHECK at `/api/health` (same as Railway-platform probe — but loses the belt-and-suspenders intent) OR add a dedicated `/api/health/full` route that probes the module map + landing-page render. Targets **E14-S3** (observability hardening) or **E17-S4** (external uptime monitoring).
+
+### E13-FT-8: `KC_PROXY=edge` deprecated in Keycloak 27.x in favor of `KC_PROXY_HEADERS`
+
+[Source: docs/14_beta_railway_setup.md Section 5.3 row 2; E13 boundary review Edge Case Hunter finding E12, 2026-06-01]
+
+Keycloak 26 still supports `KC_PROXY=edge` (with deprecation warning); Keycloak 27+ removes it in favor of `KC_PROXY_HEADERS=xforwarded` and `KC_HOSTNAME_STRICT_HTTPS=true`. Beta runs 26.5.2 (`infra/keycloak/Dockerfile:20`) so this is not blocking. **Action when picked up:** at the next Keycloak major-version upgrade, update Section 5.3 to drop `KC_PROXY` in favor of `KC_PROXY_HEADERS=xforwarded` + `KC_HOSTNAME_STRICT_HTTPS=true`. Targets a future Keycloak-bump story (no concrete owner yet — flag during Keycloak 27 evaluation).
+
+### E13-FT-9: Vitest cleanup convention (A35) for non-React tests
+
+[Source: frontend/src/app/api/health/route.test.ts:5,12; E13 boundary review Blind Hunter H13 + Edge Case Hunter E9, 2026-06-01]
+
+A35 mandates `afterEach(cleanup)` on every Testing-Library-using test. The `/api/health` route.test.ts imports `@testing-library/react`'s `cleanup` even though no React tree is rendered — the convention applies but contributes nothing in this case + costs JSDOM startup. **Action when picked up:** revisit A35 to scope it to tests that actually call `render()`. Until then the noop import is the safer-default per convention parity. Targets **next E14/E17 retro** as a process refinement; no story-level action.
+
+### E13-FT-10: DEC-1 was auto-resolved without AskUserQuestion (A32 procedural soft-flag) — **CLOSED 2026-06-01 by A41 Path B**
+
+[Source: e13-s4 Dev Agent Record Debug Log; E13 boundary review Acceptance Auditor A32 flag, 2026-06-01]
+
+A32 specifies "Decision-Resolution with Manual-Verify Hand-off" — Decision-Needed findings should surface via `AskUserQuestion` once before proceeding. DEC-1 (frontend `/api/health` Option A vs B vs C) was auto-resolved Option A in the same session per user "no stopping just straight forwards, implement them full" directive + the story file's own Option A recommendation.
+
+**Resolution (2026-06-01, Epic-13 retro):** A41 Path B chosen — A32 now has an explicit autonomous-mode escape clause documented in `project-context.md` requiring all three preconditions (pre-declared autonomous-mode + story-recommended option + dev-agent records (a)/(b)/(c) in Debug Log). DEC-1 resolution stands; no rework. Future sessions know the rule.

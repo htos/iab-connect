@@ -404,6 +404,17 @@ docker compose -f infra/docker-compose.yml -f infra/docker-compose.full.yml down
 
 Requires Docker Compose v2.20+ (for `profiles:` and `service_completed_successfully`).
 
+#### Beta deployment (Railway)
+
+The Beta environment runs on [Railway](https://railway.com) in the Europe-West region with six
+services (`web`, `api`, `keycloak`, `rustfs`, `postgres-app`, `postgres-kc`) pulling container
+images from GHCR. Pushes to `beta` rebuild images via GitHub Actions; Railway auto-redeploys
+the moving `:beta` tag, and rollback redeploys an immutable `:sha-<commit>` tag. The end-to-end
+provisioning checklist — prerequisites, project creation, service-by-service walkthrough,
+Railway variables per service, networking topology, health probes, first deploy, and recovery
+procedures — lives at [docs/14_beta_railway_setup.md](docs/14_beta_railway_setup.md).
+Self-hosters and forks reproduce the deployment from that document.
+
 ### Default Credentials
 
 | Service            | URL                   | Username            | Password        |

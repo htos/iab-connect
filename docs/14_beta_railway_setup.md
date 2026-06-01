@@ -1,0 +1,1053 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+
+# 14 · Beta Deployment on Railway — Setup Checklist
+
+> **Audience.** Maintainers and self-hosters provisioning the IAB Connect Beta deployment on
+> [Railway](https://railway.com) from a clean account. The checklist is **reproducible end-to-end** — every
+> step in this document is something a human (Harry, a co-maintainer, a fork's first deployer)
+> can re-execute against an empty Railway account and reach a working Beta in a documented
+> amount of time.
+>
+> **Scope (Epic 13).** Wave-6 of the Beta-on-Railway pivot (SCP-2026-05-15). Closes
+> **REQ-088 AC-3/AC-4/AC-5** (Railway provisioning, environment-variable surface, health probes,
+> networking topology, first end-to-end deploy). Source-of-truth ADRs: ADR-011 (Beta runs on
+> Railway), ADR-012 (six-service topology), ADR-013 (GitHub-driven deploy), ADR-014 (digest-pinned
+> images), ADR-015 (configuration and environment), ADR-016 (custom Keycloak image), ADR-017
+> (logging and health), ADR-018 (Mailtrap sandbox), ADR-020 (Beta-mode job suppression),
+> ADR-021 (AGPL §13 source disclosure).
+>
+> **Not covered here.** Runbook for incident response (E18-S1), backup-restore drill (E19-S2),
+> custom-domain wiring (E19-S1), production gate checklist (E19-S3). The checklist below
+> assumes Beta runs on `*.up.railway.app` hostnames.
+
+---
+
+## Table of Contents
+
+1. [Prerequisites — Harry-only manual actions before any dev-story runs](#1-prerequisites)
+2. [Project creation](#2-project-creation)
+3. [Service-by-service provisioning](#3-service-by-service-provisioning)
+4. [GHA repo-variable population (chicken-and-egg resolution)](#4-gha-repo-variable-population)
+5. [Railway variables per service](#5-railway-variables-per-service)
+6. [Build-time vs runtime variables](#6-build-time-vs-runtime-variables)
+7. [Secret rotation](#7-secret-rotation)
+8. [Networking topology](#8-networking-topology)
+9. [Health probes](#9-health-probes)
+10. [First end-to-end deploy](#10-first-end-to-end-deploy)
+11. [Recovery procedures](#11-recovery-procedures)
+12. [Fork-replacement guidance](#12-fork-replacement-guidance)
+13. [Reference: canonical service-name + image-name + hostname tables](#13-reference-tables)
+
+---
+
+## 1. Prerequisites
+
+> Four **BLOCKING** manual actions Harry (or the fork's first deployer) must complete **before**
+> the `bmad-dev-story` for E13-S1 starts. The dev-agent cannot execute any of these — they
+> require GitHub UI access, an admin account, and human judgment on package visibility.
+
+### 1.1 DCO branch protection on `main` and `beta`
+
+GitHub → repo → Settings → Branches → Branch protection rules. For both `main` and `beta`:
+
+- Require status checks to pass before merging
+- Required check: **`DCO`** (the workflow defined in [.github/workflows/dco.yml](../.github/workflows/dco.yml), E20-S1)
+- Recommended: also require pull request reviews + dismiss stale reviews
+
+Status (deployer to fill in): `[ ]` not configured · `[ ]` configured for `beta` only · `[ ]` configured for both.
+
+### 1.2 Twelve GHA repository variables populated
+
+GitHub → repo → Settings → Secrets and variables → Actions → **Variables** tab (not Secrets — these are intentionally public per [build-images.yml#L35-L51](../.github/workflows/build-images.yml#L35-L51)).
+
+| Variable | First-deploy value | Final value (after section 4) |
+|---|---|---|
+| `NEXT_PUBLIC_API_URL_BETA` | `https://placeholder.up.railway.app` (or empty) | Real `api-<random>.up.railway.app` |
+| `NEXT_PUBLIC_API_URL_MAIN` | empty (no production yet) | (E19) |
+| `NEXT_PUBLIC_KEYCLOAK_URL_BETA` | placeholder | Real `keycloak-<random>.up.railway.app` |
+| `NEXT_PUBLIC_KEYCLOAK_URL_MAIN` | empty | (E19) |
+| `NEXT_PUBLIC_KEYCLOAK_REALM` | `iabconnect` | `iabconnect` (no change) |
+| `NEXT_PUBLIC_KEYCLOAK_CLIENT_ID` | `iabconnect-frontend` | `iabconnect-frontend` (no change) |
+| `NEXT_PUBLIC_KEYCLOAK_ISSUER_BETA` | placeholder | `https://<keycloak-public-domain>/realms/iabconnect` |
+| `NEXT_PUBLIC_KEYCLOAK_ISSUER_MAIN` | empty | (E19) |
+| `NEXT_PUBLIC_DOCUMENT_HOST_BETA` | placeholder | RustFS proxy host (often `<rustfs-pub>.up.railway.app` only if exposed publicly; for Beta this is **n/a** because `rustfs` stays private — leave as placeholder unless a CDN proxy is wired) |
+| `NEXT_PUBLIC_DOCUMENT_HOST_MAIN` | empty | (E19) |
+| `NEXT_PUBLIC_ENV_LABEL_BETA` | `beta` | `beta` (no change) |
+| `NEXT_PUBLIC_ENV_LABEL_MAIN` | empty | empty |
+
+**Not on this list — `NEXT_PUBLIC_FEEDBACK_URL`.** The frontend Dockerfile declares
+`ARG NEXT_PUBLIC_FEEDBACK_URL=` ([frontend/Dockerfile#L57](../frontend/Dockerfile#L57)) but
+[.github/workflows/build-images.yml#L183-L193](../.github/workflows/build-images.yml#L183-L193)
+does **not** pass it as a build-arg. The bake therefore always carries the empty default, and
+the BETA banner falls back to `${NEXT_PUBLIC_SOURCE_URL}/issues/new?template=beta-feedback.md`
+per [frontend/.env.example#L65-L70](../frontend/.env.example#L65-L70). Wiring a real feedback
+channel (Discord webhook, Mailtrap address, support form) is the scope of **E18-S4**;
+adding `NEXT_PUBLIC_FEEDBACK_URL_BETA` and the matching build-args line is part of that story,
+not E13-S1.
+
+**Chicken-and-egg.** The `_BETA` URLs need the Railway-assigned hostnames that are the output of
+Section 3 (service creation). The resolution flow is documented in [Section 4](#4-gha-repo-variable-population).
+
+Status: `[ ]` 0/12 set · `[ ]` 12/12 set with placeholders · `[ ]` 12/12 set with final Railway hostnames.
+
+Quick verification via gh CLI:
+
+```sh
+# Works against any repo owned by the authenticated user / an org you're a member of:
+gh api /repos/<owner>/iab-connect/actions/variables --jq '.variables[].name' | sort
+# Expect 12 NEXT_PUBLIC_* names; the dedicated SOURCE_URL var is intentionally NOT in this list
+# (the GHA workflow hard-codes `https://github.com/htos/iab-connect` per build-images.yml:193).
+```
+
+### 1.3 First GHCR publish on `beta` is green
+
+`.github/workflows/build-images.yml` must have run successfully against `beta` at least once
+and produced three images in GHCR. Trigger by pushing any commit to `beta` (an `--allow-empty`
+commit is fine):
+
+```sh
+git checkout beta
+git pull --rebase
+git commit --allow-empty -s -m "chore(e13-s1): trigger first GHCR publish"
+git push origin beta
+```
+
+Watch the workflow in the Actions tab; expect ~5–10 minutes. After completion the three images
+appear at <https://github.com/htos?tab=packages>.
+
+Status: `[ ]` workflow has not run · `[ ]` run failed · `[ ]` workflow run green, three packages visible.
+
+### 1.4 GHCR package visibility = Public
+
+For each of `iabc-api`, `iabc-web`, `iabc-keycloak`: Package settings → Danger Zone →
+Change visibility → **Public**. Without this Railway's image pull fails with
+`unauthorized: authentication required` because Railway does not present GHCR credentials by
+default. Documented at [.github/workflows/build-images.yml#L57-L63](../.github/workflows/build-images.yml#L57-L63).
+
+Quick verification:
+
+```sh
+# Determine first whether the owner is a user account or an organization:
+gh api /users/htos --jq '.type'      # returns "User" or "Organization"
+
+# Then query packages on the matching endpoint:
+gh api /users/htos/packages?package_type=container --jq '.[] | {name, visibility}'   # for User
+# OR
+gh api /orgs/htos/packages?package_type=container  --jq '.[] | {name, visibility}'   # for Organization
+
+# Either way: expect three entries with visibility: "public".
+# The endpoint requires `read:packages` scope on the gh CLI token for private packages;
+# public packages are also visible via https://github.com/<owner>?tab=packages without a token.
+```
+
+Status: `[ ]` 0/3 public · `[ ]` partial · `[ ]` 3/3 public.
+
+> **All four checks must be green before Section 2 begins.** If any are red the dev-agent
+> for E13-S1 will HALT at the Task 0.1 spike and surface the gap.
+
+---
+
+## 2. Project creation
+
+> Story alignment: **E13-S1 AC-1** + Task 1.
+
+### 2.1 Sign in and create the project
+
+1. Open <https://railway.com>; sign in with the maintainer account.
+2. Click **New Project** → **Empty Project** (do **not** pick a template — the topology this doc
+   describes intentionally diverges from any boilerplate).
+3. Name: `iab-connect-beta`. Description (copy verbatim):
+   `Beta deployment of IAB Connect (AGPL-3.0-or-later, https://github.com/htos/iab-connect)`.
+
+### 2.2 Region
+
+Settings → Region → **Europe-West** (`europe-west4` Amsterdam). Region matters because:
+
+- Latency to Switzerland (the testers' country) is < 25 ms vs > 100 ms for US-East.
+- Data residency stays inside EU/EEA (soft DSGVO consideration; processor agreement under
+  Art. 28 is the hard one — handled separately by E18-S1 / the runbook).
+- The `Europe/Zurich` timezone baked into [backend/Dockerfile#L39](../backend/Dockerfile#L39)
+  + the Hangfire reminder schedule (Europe/Zurich, see backend DI) aligns naturally.
+
+### 2.3 Plan
+
+**Recommended: Pro ($20/month)** for a real deployment serving testers. Reasoning:
+
+- Hobby ($5/month credit) pauses services when the credit runs out — tester-visible downtime.
+- Pro flips overrun into metered overage rather than pause behavior.
+- Expected first-month spend at low Beta load: $10–25 (six services + 20 GB volume).
+
+Document the actual plan choice in Section 13 below.
+
+### 2.4 Record the project ID
+
+After creation the dashboard URL is `https://railway.com/project/<UUID>`. Record the UUID in
+[Section 13](#13-reference-tables); it is non-secret operational data.
+
+---
+
+## 3. Service-by-service provisioning
+
+> Story alignment: **E13-S1 AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8** + Tasks 2–5.
+
+The Beta topology is six services across three roles:
+
+```
+                       Public Internet
+                       │           │
+              ┌────────┘           └──────────┐
+              ▼                                ▼
+       web (Next.js)                    keycloak
+       Image, port 3000                 Image, port 8080
+              │                                │
+              └───────────► api ◄──────────────┘
+                            (.NET, port 8080)
+                            │
+                ┌───────────┼────────────────────┐
+                ▼           ▼                    ▼
+        postgres-app   postgres-kc            rustfs
+        (managed PG)   (managed PG)           (volume-backed)
+```
+
+Public services: `web`, `api`, `keycloak`. Private services: `postgres-app`, `postgres-kc`, `rustfs`.
+Section 8 (Networking topology) enforces this split; this section creates services in
+their default state (private until Public Domain is toggled in Section 8).
+
+### 3.1 The three image-deploy services (`web`, `api`, `keycloak`)
+
+For each service in the order `api`, `keycloak`, `web` (lowest-to-highest user-facing dependency):
+
+1. **New Service** → **Deploy from Image**.
+2. Image (paste exact string — capitalization and namespace matter):
+   - `api` → `ghcr.io/htos/iabc-api:beta`
+   - `keycloak` → `ghcr.io/htos/iabc-keycloak:beta`
+   - `web` → `ghcr.io/htos/iabc-web:beta`
+3. Authentication: **Public** (no credentials — GHCR images are public per Section 1.4).
+4. **Service name is case-sensitive.** Set exactly to `api`, `keycloak`, `web` — these are used
+   by `${{<service>.<VAR>}}` Railway reference syntax in Section 5; a mistype breaks downstream
+   wiring silently.
+5. Settings → Deploy → enable **"Automatically deploy when new images are pushed"** on the
+   `:beta` tag. This is the per-tag image-watch toggle; it defaults to OFF for image-source
+   services. With it ON, Railway polls GHCR roughly every minute for new digests on the
+   `:beta` tag and redeploys when the digest changes — this **is** the GitHub-driven-deploy
+   mechanism for image-source services (ADR-013), because Railway cannot subscribe to
+   `git push` events directly when source is "Image".
+6. Replicas: **1**. Restart policy: **ON_FAILURE**, max 10 retries (the default — leave it).
+7. Do **not** set any environment variables yet — Section 5 (E13-S2) covers that. The first
+   deploy will crash-loop with empty env vars; that is the documented expected state until
+   Section 5 is complete.
+
+After all three are created Railway assigns each a `<service>-<random>.up.railway.app`
+hostname (visible in Settings → Networking). Record these in [Section 13](#13-reference-tables) —
+they are the input to Section 4.
+
+### 3.2 The two managed Postgres services (`postgres-app`, `postgres-kc`)
+
+For each of `postgres-app` and `postgres-kc`:
+
+1. **New Service** → **Database** → **PostgreSQL**.
+2. Name (exact case): `postgres-app` resp. `postgres-kc`.
+3. Major version selector (if shown): **PostgreSQL 17** to match
+   [infra/docker-compose.yml](../infra/docker-compose.yml). Railway as of 2026-06 defaults to 17;
+   verify in Settings and record the actual version in [Section 13](#13-reference-tables).
+4. Settings → Networking → verify **NO Public TCP Proxy** and **NO Public Domain** (Railway
+   defaults to private-only for managed databases; verify nothing was changed). Section 8
+   re-asserts this and verifies it.
+5. Open the Variables tab; Railway auto-generates `PGUSER`, `PGPASSWORD`, `PGDATABASE`,
+   `PGHOST`, `PGPORT`, `RAILWAY_PRIVATE_DOMAIN`. These will be referenced from `api` and
+   `keycloak` in Section 5 (e.g. `${{postgres-app.PGUSER}}`).
+
+**Why two Postgres instances and not one?** ADR-012 mandates migration-blast-radius isolation.
+Application schema and Keycloak schema live in separate databases so a misbehaving migration
+in one cannot affect the other. The two-Postgres split is verified by E15-S1; it is
+non-negotiable.
+
+**Why Railway managed Postgres and not `postgres:17` deployed as an image?** Railway managed
+Postgres gives daily snapshots (layered with the application-level encrypted backups from
+E15-S3 — both run), automatic credential generation that we don't have to handle,
+the `PGHOST`/`PGPORT`/etc. reference variables, and zero maintenance.
+
+### 3.3 The RustFS service (`rustfs`) — volume + admin credentials + digest pin
+
+1. **New Service** → **Deploy from Image** → `rustfs/rustfs:latest` (upstream, first time only).
+2. Service name: `rustfs`.
+3. Volumes → **Add Volume** → name `rustfs-data`, mount path `/data`, size **20 GB**.
+   - Sized for member documents (10–50 MB per active member at typical retention) + 30 daily
+     encrypted Postgres dumps (~5–50 MB per dump per database, two databases) + headroom.
+   - Hobby plan supports 5 GB free; 20 GB exceeds Hobby and bills at $0.25/GB-month ≈ $5/month
+     for the volume.
+   - **Volume re-size requires a redeploy** — over-provisioning at provision time is cheaper
+     than re-sizing later.
+4. Variables tab — set the four envs below. `RUSTFS_ROOT_PASSWORD` must be Sealed (Railway's
+   encrypted-at-rest variable type); the others can be plain.
+
+   | Variable | Value | Sealed |
+   |---|---|---|
+   | `RUSTFS_ROOT_USER` | strong random alphanumeric, ≥ 12 chars | No |
+   | `RUSTFS_ROOT_PASSWORD` | strong random, ≥ 16 chars | **Yes** |
+   | `RUSTFS_ADDRESS` | `:9000` | No |
+   | `RUSTFS_CONSOLE_ADDRESS` | `:9001` (optional — skip if not exposed) | No |
+
+   Generate with `openssl rand -base64 24` (one per value), or `pwgen -s 24 1`.
+
+5. Networking: confirm **no Public Domain** and **no Public TCP Proxy** — Section 8
+   re-asserts this. RustFS is reachable only from within the private network at
+   `rustfs.railway.internal:9000`.
+6. Restart policy: ON_FAILURE.
+7. **Digest pin (ADR-014).** After the first successful pull:
+   - Railway dashboard → service `rustfs` → Deploys → click the deployment → image manifest
+     shows `sha256:<digest>`. Copy the digest.
+   - Settings → Source → change source from `rustfs/rustfs:latest` to
+     `rustfs/rustfs@sha256:<captured-digest>` and **Redeploy** to confirm the digest-pinned
+     image still works.
+   - Record the captured digest in [Section 13](#13-reference-tables).
+   - Re-pinning after an intentional RustFS upgrade is a 30-second Railway edit.
+
+**Bucket creation** (`iabconnect-documents`, `backups`) is NOT this story's scope — RustFS
+auto-creates buckets via the `RUSTFS_DEFAULT_BUCKETS` env var on first boot, OR they are
+created by the existing `rustfs-init` pattern reinterpreted as a Railway one-shot service
+in E15-S3. For first deploy the application will create the documents bucket on demand.
+
+### 3.4 Seed the Keycloak service with the JDBC env block
+
+> Story alignment: **E13-S1 AC-7** + Task 5. The JDBC seed lives in **E13-S1** (not E13-S2)
+> because Keycloak crash-loops without it and an empty env-var surface is hard to diagnose.
+
+The custom Keycloak image bakes `KC_DB=postgres` at build time per
+[infra/keycloak/Dockerfile](../infra/keycloak/Dockerfile) (E12-S3), but the JDBC URL is
+runtime. Add these three to the `keycloak` service Variables tab now:
+
+| Variable | Value | Sealed |
+|---|---|---|
+| `KC_DB_URL` | `jdbc:postgresql://${{postgres-kc.RAILWAY_PRIVATE_DOMAIN}}:${{postgres-kc.PGPORT}}/${{postgres-kc.PGDATABASE}}` | No |
+| `KC_DB_USERNAME` | `${{postgres-kc.PGUSER}}` | No |
+| `KC_DB_PASSWORD` | `${{postgres-kc.PGPASSWORD}}` | **Yes** |
+
+The rest of the Keycloak env block (`KC_HOSTNAME`, `KC_PROXY`, `KC_HTTP_ENABLED`,
+`KC_HEALTH_ENABLED`, `KEYCLOAK_ADMIN*`, realm-secret placeholders) is set in [Section 5](#5-railway-variables-per-service) (E13-S2).
+
+### 3.5 Verification — six services in place
+
+After 3.1–3.4 the project dashboard shows six services in their default state:
+
+| # | Service | Source | First-deploy expected state |
+|---|---|---|---|
+| 1 | `api` | image `ghcr.io/htos/iabc-api:beta` | crash-loop (no env vars) |
+| 2 | `web` | image `ghcr.io/htos/iabc-web:beta` | crash-loop (no env vars) |
+| 3 | `keycloak` | image `ghcr.io/htos/iabc-keycloak:beta` | crash-loop — only the JDBC seed is in Section 3.4; `KC_HOSTNAME`, `KC_PROXY`, `KEYCLOAK_ADMIN*`, realm-import placeholders are not set until Section 5.3 |
+| 4 | `postgres-app` | Railway managed | healthy |
+| 5 | `postgres-kc` | Railway managed | healthy |
+| 6 | `rustfs` | image `rustfs/rustfs@sha256:<digest>` | healthy (volume + admin creds set) |
+
+Capture one screenshot of the crash logs of `api`/`web` as evidence that the GitHub-driven
+auto-deploy was **triggered** (E13-S1 AC-9), and stop debugging — Section 5 + Section 9 take
+the crash-loops to healthy.
+
+---
+
+## 4. GHA repo-variable population
+
+> Resolves the chicken-and-egg between Section 1.2 (GHA vars need final hostnames) and
+> Section 3 (Railway assigns hostnames at service creation). Story alignment:
+> **E13-S1 Task 0.2** + AC-10.
+
+After Section 3 completes, Railway has assigned each public-eligible service a hostname.
+Update the 12 GHA repo variables with the real values, then trigger a fresh image build so
+the `web` image bakes the correct `NEXT_PUBLIC_*_BETA` values.
+
+### 4.1 Capture the assigned hostnames
+
+For each of `web`, `api`, `keycloak`: Settings → Networking. Railway shows the assigned
+hostname even before Public Domain is enabled (the hostname exists at service-create time;
+the toggle controls whether traffic is routed). Record them:
+
+| Service | Assigned hostname |
+|---|---|
+| `web` | `<web-random>.up.railway.app` |
+| `api` | `<api-random>.up.railway.app` |
+| `keycloak` | `<keycloak-random>.up.railway.app` |
+
+Update [Section 13](#13-reference-tables).
+
+### 4.2 Update the 12 GHA repo variables
+
+| Variable | Value |
+|---|---|
+| `NEXT_PUBLIC_API_URL_BETA` | `https://<api-public-domain>` |
+| `NEXT_PUBLIC_API_URL_MAIN` | (empty until E19 production cut) |
+| `NEXT_PUBLIC_KEYCLOAK_URL_BETA` | `https://<keycloak-public-domain>` |
+| `NEXT_PUBLIC_KEYCLOAK_URL_MAIN` | empty |
+| `NEXT_PUBLIC_KEYCLOAK_REALM` | `iabconnect` |
+| `NEXT_PUBLIC_KEYCLOAK_CLIENT_ID` | `iabconnect-frontend` |
+| `NEXT_PUBLIC_KEYCLOAK_ISSUER_BETA` | `https://<keycloak-public-domain>/realms/iabconnect` |
+| `NEXT_PUBLIC_KEYCLOAK_ISSUER_MAIN` | empty |
+| `NEXT_PUBLIC_DOCUMENT_HOST_BETA` | leave as placeholder (rustfs stays private — see ADR-014) |
+| `NEXT_PUBLIC_DOCUMENT_HOST_MAIN` | empty |
+| `NEXT_PUBLIC_ENV_LABEL_BETA` | `beta` |
+| `NEXT_PUBLIC_ENV_LABEL_MAIN` | empty |
+
+### 4.3 Trigger the next image build
+
+```sh
+git checkout beta && git pull --rebase
+git commit --allow-empty -s -m "chore(e13-s1): bake real Beta hostnames into web image"
+git push origin beta
+```
+
+The GHA workflow rebuilds `iabc-web:beta` with the correct `NEXT_PUBLIC_*_BETA` bakes. Railway
+detects the new digest within ~1 minute and redeploys the `web` service. Sections 5–9
+configure everything else; only after Section 5 does the `web` deploy reach a healthy state.
+
+---
+
+## 5. Railway variables per service
+
+> Story alignment: **E13-S2 AC-1..AC-11** + Tasks 1–6. **Every Sealed value listed below is a
+> strong random generated at provisioning time.** None of these values lives in the repository;
+> they exist only in the Railway dashboard + the maintainer's password manager.
+
+### 5.1 `api` service
+
+| Variable | Value or reference | Sealed | Rationale (consumer file:line) |
+|---|---|---|---|
+| `ASPNETCORE_ENVIRONMENT` | `Beta` | No | Activates [appsettings.Beta.json](../backend/src/IabConnect.Api/appsettings.Beta.json) overlay per ADR-015 — Console-only Serilog, retention-disabled. |
+| `ASPNETCORE_URLS` | `http://+:8080` | No | Kestrel binds to container port 8080 ([backend/Dockerfile#L71](../backend/Dockerfile#L71)). |
+| `ConnectionStrings__DefaultConnection` | `Host=${{postgres-app.RAILWAY_PRIVATE_DOMAIN}};Port=${{postgres-app.PGPORT}};Database=${{postgres-app.PGDATABASE}};Username=${{postgres-app.PGUSER}};Password=${{postgres-app.PGPASSWORD}}` | **Yes** | Npgsql connection string consumed at Infrastructure/DependencyInjection.cs:53. |
+| `Database__AutoMigrate` | `true` | No | Beta auto-migrates per ADR-015. |
+| `Keycloak__Authority` | `https://${{keycloak.RAILWAY_PUBLIC_DOMAIN}}/realms/iabconnect` | No | JWT bearer authority (Api/DependencyInjection.cs:139). |
+| `Keycloak__ClientId` | `iabconnect-api` | No | OIDC client id / Audience (Api/DependencyInjection.cs:140). |
+| `KeycloakAdmin__BaseUrl` | `https://${{keycloak.RAILWAY_PUBLIC_DOMAIN}}` | No | Admin API base URL (KeycloakAdminService.cs:58). |
+| `KeycloakAdmin__Realm` | `iabconnect` | No | |
+| `KeycloakAdmin__ClientId` | `iabconnect-admin` | No | |
+| `KeycloakAdmin__ClientSecret` | `${{keycloak.IABCONNECT_ADMIN_CLIENT_SECRET}}` | **Yes** | |
+| `Auth__CalendarTokenPepper` | strong random ≥ 32 chars | **Yes** | HMAC pepper for calendar-subscription-token hashing (appsettings.json:42 comment). |
+| `Frontend__BaseUrl` | `https://${{web.RAILWAY_PUBLIC_DOMAIN}}` | No | **CRITICAL** — strict CORS allowlist in Beta admits exactly this one origin (Api/DependencyInjection.cs:106–132). Drift = browser CORS rejection. |
+| `DocumentStorage__ServiceUrl` | `http://${{rustfs.RAILWAY_PRIVATE_DOMAIN}}:9000` | No | Private network, plain HTTP (Infrastructure/DependencyInjection.cs:258–259). |
+| `DocumentStorage__AccessKey` | `${{rustfs.RUSTFS_ROOT_USER}}` | No | Reference, not literal — propagates RustFS username from Section 3.3. |
+| `DocumentStorage__SecretKey` | `${{rustfs.RUSTFS_ROOT_PASSWORD}}` | **Yes** | Reference; source is already Sealed in `rustfs` so the reference inherits sealed semantics. |
+| `DocumentStorage__BucketName` | `iabconnect-documents` | No | |
+| `DocumentStorage__UseHttps` | `false` | No | Private network — no TLS overhead. |
+| `Smtp__Host` | `sandbox.smtp.mailtrap.io` | No | ADR-018 Mailtrap sandbox for initial Beta — flip to real provider before non-Harry testers per deferred-work.md E13-FT-1. |
+| `Smtp__Port` | `587` | No | STARTTLS. |
+| `Smtp__EnableSsl` | `true` | No | |
+| `Smtp__Username` | Mailtrap sandbox inbox username | **Yes** | |
+| `Smtp__Password` | Mailtrap sandbox inbox password | **Yes** | |
+| `Smtp__FromEmail` | `noreply@iabconnect.app` (or your verified sender domain) | No | |
+| `Smtp__FromName` | `IAB Connect` | No | |
+| `Email__UnsubscribeSecret` | strong random ≥ 32 chars | **Yes** | HMAC for unsubscribe-token signing (Infrastructure/Email/UnsubscribeTokenService.cs:18–19). |
+| `Branding__SourceUrl` | `https://github.com/htos/iab-connect` | No | AGPL §13 disclosure consumed by `/about` (E20-S3). Forks override. |
+| `InvoiceSettings__OrganizationName` | **REAL** organization name | No | Appears on every invoice PDF + Swiss QR-bill. **No placeholders.** |
+| `InvoiceSettings__OrganizationAddress` | **REAL** postal address | No | Same constraint as above. |
+| `InvoiceSettings__OrganizationEmail` | `info@iabconnect.app` (or real org address) | No | |
+| `InvoiceSettings__PaymentInstructions` | **REAL** payment instructions paragraph | No | Same constraint as above. |
+| `InvoiceSettings__Currency` | `CHF` | No | |
+| `InvoiceSettings__DefaultPaymentTermDays` | `30` | No | |
+| `RetentionEnforcement__Enabled` | `false` | No | ADR-020 / REQ-088 — Beta suppresses retention deletions. Belt-and-suspenders with appsettings.Beta.json. |
+| `Backup__Directory` | `/tmp/backups` | No | Ephemeral landing path; backup is gzipped + uploaded to RustFS immediately (E15-S3). |
+| `Backup__EncryptionKey` | base64-encoded 32-byte random | **Yes** | Symmetric encryption key for pg_dump output (ADR-019). |
+| `Logging__LogLevel__Default` | `Information` | No | Matches [appsettings.Beta.json](../backend/src/IabConnect.Api/appsettings.Beta.json) line 8. |
+
+**Not set on `api` (intentional):**
+
+- `Branding__ApiTitle` / `Branding__ApiDescription` — defaults from
+  [appsettings.json](../backend/src/IabConnect.Api/appsettings.json) carry "IAB Connect API" /
+  "Member management and communication platform." which work for the canonical project; only
+  forks override.
+- `Hangfire__DashboardPath` — dashboard is mounted only when `IsDevelopment()` per
+  backend DI (line ~293). Irrelevant on Beta.
+- `Features__EInvoiceExport` — defaults to `true` from base appsettings; flip to `false` only
+  if Swiss QR e-bill should be hidden.
+
+### 5.2 `web` service
+
+| Variable | Value or reference | Sealed | Rationale |
+|---|---|---|---|
+| `NEXTAUTH_URL` | `https://${{web.RAILWAY_PUBLIC_DOMAIN}}` | No | NextAuth callback canonical URL ([frontend/.env.example#L22–L23](../frontend/.env.example#L22)). |
+| `NEXTAUTH_SECRET` | strong random ≥ 32 chars | **Yes** | NextAuth JWT signing HMAC (middleware.ts:88). Rotating invalidates all sessions. |
+| `KEYCLOAK_CLIENT_ID` | `iabconnect-frontend` | No | Server-side OIDC client id ([frontend/src/app/api/auth/[...nextauth]/route.ts:62, :96]). |
+| `KEYCLOAK_CLIENT_SECRET` | `${{keycloak.IABCONNECT_FRONTEND_CLIENT_SECRET}}` | **Yes** | Server-side OIDC client secret. Three-way shared (Keycloak realm + Keycloak env + this var). |
+| `KEYCLOAK_ISSUER` | `https://${{keycloak.RAILWAY_PUBLIC_DOMAIN}}/realms/iabconnect` | No | Server-side issuer. **MUST be byte-identical to `NEXT_PUBLIC_KEYCLOAK_ISSUER_BETA`** baked at GHA build time — see Section 6 parity check. |
+
+`NEXT_PUBLIC_*` variables are **not** set on Railway — they are baked at GHA build time
+(see [Section 6](#6-build-time-vs-runtime-variables)). Setting them on Railway is harmless but
+misleading; the frontend bundle ignores runtime overrides on `NEXT_PUBLIC_*`.
+
+`NODE_ENV=production` is already baked at [frontend/Dockerfile#L94](../frontend/Dockerfile#L94);
+no Railway override needed. `PORT` is Railway-auto-injected and read by Next.js standalone.
+
+### 5.3 `keycloak` service (in addition to the JDBC seed from Section 3.4)
+
+| Variable | Value | Sealed | Rationale |
+|---|---|---|---|
+| `KC_HOSTNAME` | `${{keycloak.RAILWAY_PUBLIC_DOMAIN}}` | No | Canonical hostname Keycloak emits in token issuers + OIDC discovery; mismatch breaks JWT validation. |
+| `KC_PROXY` | `edge` | No | Railway terminates TLS at the edge; Keycloak trusts `X-Forwarded-*` headers. |
+| `KC_HTTP_ENABLED` | `true` | No | Container speaks HTTP behind Railway's TLS terminator (refuses to start otherwise). |
+| `KC_HEALTH_ENABLED` | `true` | No | Exposes `/health/ready` consumed by Section 9. |
+| `KC_METRICS_ENABLED` | `false` | No | No Prometheus scrape in Beta (defer to E17). |
+| `KEYCLOAK_ADMIN` | `admin` | No | Initial master-realm admin username (Keycloak 26 env-var convention). |
+| `KEYCLOAK_ADMIN_PASSWORD` | strong random ≥ 16 chars | **Yes** | Initial master-realm admin password. Store in password manager **immediately**. Personal-admin migration documented in Section 11. |
+| `IABCONNECT_ADMIN_CLIENT_SECRET` | strong random ≥ 32 chars | **Yes** | Resolves `${IABCONNECT_ADMIN_CLIENT_SECRET}` placeholder in [infra/keycloak/realms-beta/iabconnect-realm.json](../infra/keycloak/realms-beta/iabconnect-realm.json) at import time. Mirrors `api.KeycloakAdmin__ClientSecret`. |
+| `IABCONNECT_FRONTEND_CLIENT_SECRET` | strong random ≥ 32 chars | **Yes** | Resolves the same-named placeholder in the realm import; mirrors `web.KEYCLOAK_CLIENT_SECRET`. |
+| `IABCONNECT_BETA_HOST` | `https://${{web.RAILWAY_PUBLIC_DOMAIN}}` (with `https://` scheme — **mandatory**) | No | Resolves `${IABCONNECT_BETA_HOST}` placeholder in the realm import → becomes the `iabconnect-frontend` client's `redirectUris[0]` (`<host>/*`) and `webOrigins[0]`. Without this set OR with a bare-hostname value (no scheme), Keycloak rejects the OIDC callback with `Invalid parameter: redirect_uri` and the first browser smoke at Section 10.4 step 4 fails. |
+| `FRONTEND_PUBLIC_URL` | `https://${{web.RAILWAY_PUBLIC_DOMAIN}}` (same value as `IABCONNECT_BETA_HOST` in Beta — the canonical custom domain only diverges in Production via E19-S1) | No | Resolves `${FRONTEND_PUBLIC_URL}` → becomes `redirectUris[1]` / `webOrigins[1]`. Same scheme constraint as above. |
+| `JAVA_OPTS_KC_HEAP` | `-Xms256m -Xmx512m` (optional) | No | JVM tuning if Keycloak OOMs on first realm import. |
+
+**Why `iabconnect-api` does NOT appear in this section.** The `iabconnect-api` Keycloak client
+is declared `"bearerOnly": true` in [infra/keycloak/realms-beta/iabconnect-realm.json](../infra/keycloak/realms-beta/iabconnect-realm.json)
+(line 242) — bearer-only clients do not authenticate to Keycloak; they only validate inbound
+JWTs. There is no `${IABCONNECT_API_CLIENT_SECRET}` placeholder in the realm JSON, no consumer
+in the backend ([grep returns 0 hits](../backend/src) for any code that reads `Keycloak__ClientSecret`),
+and therefore no need for an `IABCONNECT_API_CLIENT_SECRET` on the `keycloak` service. If a
+future story flips the client to non-bearer-only (e.g., to call `/connect/token` from the API),
+add the secret + placeholder + consumer in lockstep.
+
+**Three-way client-secret sharing** (applies to `iabconnect-admin` and `iabconnect-frontend`
+only). Each non-bearer-only client secret lives in three places:
+
+1. `${IABCONNECT_ADMIN_CLIENT_SECRET}` / `${IABCONNECT_FRONTEND_CLIENT_SECRET}` placeholder in
+   the imported realm JSON → Keycloak substitutes at realm-import time and stores the resolved
+   value in its DB.
+2. `IABCONNECT_ADMIN_CLIENT_SECRET` / `IABCONNECT_FRONTEND_CLIENT_SECRET` on the `keycloak`
+   service Variables tab (this section).
+3. The consuming service's variable (`api.KeycloakAdmin__ClientSecret`,
+   `web.KEYCLOAK_CLIENT_SECRET`) is set as a **reference** `${{keycloak.IABCONNECT_*_CLIENT_SECRET}}`
+   so a single source-of-truth change in Keycloak propagates to consumers.
+
+If a consumer's variable is set as a **literal** (paste) instead of a reference, drift becomes
+possible and a future rotation will silently break consumer authentication with `401 Unauthorized`
+on the token endpoint. Use references, not literals.
+
+### 5.4 `rustfs` service
+
+Section 3.3 already sets `RUSTFS_ROOT_USER` / `RUSTFS_ROOT_PASSWORD` / `RUSTFS_ADDRESS`
+/ `RUSTFS_CONSOLE_ADDRESS`. No further variables are required in Section 5.
+
+### 5.5 `postgres-app` and `postgres-kc`
+
+Railway-managed; the auto-generated `PGUSER` / `PGPASSWORD` / `PGDATABASE` / `PGHOST` /
+`PGPORT` / `RAILWAY_PRIVATE_DOMAIN` are referenced by `api` (resp. `keycloak`) and are not
+overridden manually.
+
+---
+
+## 6. Build-time vs runtime variables
+
+> Story alignment: **E13-S2 Task 0.3**. Frequent operator-confusion source: setting a
+> `NEXT_PUBLIC_*` on Railway expecting it to take effect at runtime. It does not.
+
+### 6.1 Build-time (baked into the image at GHA `docker build`)
+
+| Variable | Image | Source | Producer story |
+|---|---|---|---|
+| `BUILD_SHA` | `iabc-api` | `${{ github.sha }}` | E20-S5 |
+| `BUILD_DATE` | `iabc-api` | `${{ github.event.head_commit.timestamp }}` | E20-S5 |
+| `NEXT_PUBLIC_API_URL` | `iabc-web` | `vars.NEXT_PUBLIC_API_URL_BETA` | E13-S1 + E20-S5 |
+| `NEXT_PUBLIC_KEYCLOAK_URL` | `iabc-web` | `vars.NEXT_PUBLIC_KEYCLOAK_URL_BETA` | E13-S1 + E20-S5 |
+| `NEXT_PUBLIC_KEYCLOAK_REALM` | `iabc-web` | `vars.NEXT_PUBLIC_KEYCLOAK_REALM` | E20-S5 |
+| `NEXT_PUBLIC_KEYCLOAK_CLIENT_ID` | `iabc-web` | `vars.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID` | E20-S5 |
+| `NEXT_PUBLIC_KEYCLOAK_ISSUER` | `iabc-web` | `vars.NEXT_PUBLIC_KEYCLOAK_ISSUER_BETA` | E13-S1 + E20-S5 |
+| `NEXT_PUBLIC_DOCUMENT_HOST` | `iabc-web` | `vars.NEXT_PUBLIC_DOCUMENT_HOST_BETA` | E20-S5 |
+| `NEXT_PUBLIC_ENV_LABEL` | `iabc-web` | `vars.NEXT_PUBLIC_ENV_LABEL_BETA` | E11-S2 + E20-S5 |
+| `NEXT_PUBLIC_SOURCE_URL` | `iabc-web` | hard-coded `https://github.com/htos/iab-connect` | E20-S4 |
+| `KC_DB` (=`postgres`) | `iabc-keycloak` | Dockerfile `ARG KC_DB=postgres` baked via `kc.sh build --optimized` | E12-S3 |
+
+Note: the build-images.yml `build-args` block also passes `BUILD_SHA` / `BUILD_DATE` to the
+`iabc-web` matrix entry, but [frontend/Dockerfile](../frontend/Dockerfile) does not declare
+matching `ARG` directives, so Docker silently drops them — the web image carries no commit
+stamp. The backend's `/about` endpoint (E20-S3) is the canonical commit-SHA cross-reference
+per Section 11.4. A frontend equivalent would require declaring `ARG BUILD_SHA` / `ARG BUILD_DATE`
+in the frontend Dockerfile and projecting them through a small surface (deferred to E17-era
+observability work, not E13).
+
+Changing any build-time variable requires a fresh `docker build` and a new push to `:beta`.
+
+### 6.2 Runtime (read by the container at startup or per-request)
+
+All `__`-syntax `.NET` variables on `api` (Section 5.1). All `NEXTAUTH_*` + server-side
+`KEYCLOAK_*` variables on `web` (Section 5.2). All `KC_*` variables on `keycloak`
+(Section 5.3) **except `KC_DB`** which is build-time-frozen under `start --optimized`.
+`RUSTFS_*` variables on `rustfs`.
+
+Runtime variable changes apply on the next deploy of that service (Railway redeploys
+automatically when a variable is edited).
+
+### 6.3 The `KEYCLOAK_ISSUER` parity invariant
+
+A frequent silent-failure mode in OIDC deployments: the build-time-baked
+`NEXT_PUBLIC_KEYCLOAK_ISSUER` and the runtime-set `KEYCLOAK_ISSUER` (on `web`) and the
+runtime-set `Keycloak__Authority` (on `api`) MUST be **byte-identical strings**. They are
+also tightly coupled to two other anchors that drift in the same family of failures:
+`keycloak.KC_HOSTNAME` (Section 5.3 — what Keycloak emits as the `iss` claim) and
+`api.KeycloakAdmin__BaseUrl` (Section 5.1 — what the backend's admin SPI calls). All five
+must point at the same canonical Keycloak public domain.
+
+Run the full 5-anchor diff after Section 5 is complete:
+
+```sh
+# Capture the canonical value once (Railway-assigned hostname of the keycloak service):
+KC_HOST="<your-keycloak-public-domain>"   # no scheme — e.g. keycloak-abc123.up.railway.app
+EXPECTED_ISSUER="https://${KC_HOST}/realms/iabconnect"
+EXPECTED_ADMIN_BASE="https://${KC_HOST}"
+
+# 1. Build-time bake (GHA repo var):
+gh api /repos/htos/iab-connect/actions/variables/NEXT_PUBLIC_KEYCLOAK_ISSUER_BETA --jq .value
+
+# 2-5: Copy the following Railway Variable values into a shell var, then `echo "$ISSUER_2"` etc.
+#      Railway does not expose env-var values via CLI without `railway run`, so the diff is
+#      copy-paste-then-shell. Compare each against $EXPECTED_ISSUER / $EXPECTED_ADMIN_BASE:
+#
+#   - web.KEYCLOAK_ISSUER                 → must equal $EXPECTED_ISSUER
+#   - api.Keycloak__Authority             → must equal $EXPECTED_ISSUER
+#   - keycloak.KC_HOSTNAME                → must equal $KC_HOST (bare hostname, no scheme)
+#   - api.KeycloakAdmin__BaseUrl          → must equal $EXPECTED_ADMIN_BASE
+```
+
+Drift between any two of these causes the browser-initiated login to start at issuer A and
+end at issuer B → token validation rejects the result silently (the user sees a 404 or
+redirect-loop with no clear log line on the api side). `KC_HOSTNAME` carrying a scheme
+prefix (`https://...`) instead of a bare hostname is a particularly common authoring mistake
+— Keycloak treats the literal as a host string and the resulting issuer URL becomes
+`https://https://...` which fails validation everywhere downstream.
+
+---
+
+## 7. Secret rotation
+
+> Story alignment: **E13-S2 Task 6.4**. A separate-from-provisioning runbook section so
+> "rotate this thing" is a 60-second action with known blast radius.
+
+| Sealed value | What rotation does | What breaks during the gap |
+|---|---|---|
+| `Auth__CalendarTokenPepper` | Invalidates existing `.ics` calendar-subscription tokens; users must re-fetch their feed URL from the app. | Calendar feed URLs in external subscribers (Google Cal / Outlook) return 401 until users re-fetch. |
+| `Email__UnsubscribeSecret` | Invalidates existing unsubscribe links in already-sent emails. | Already-sent emails' unsubscribe links break; new emails fine. |
+| `Backup__EncryptionKey` | New backups encrypt with new key; old backups remain decryptable only with old key — **archive the old key** before rotation. | None for live system; restore from old backup needs the old key. |
+| `NEXTAUTH_SECRET` | All NextAuth JWT sessions are invalidated. | All signed-in users are kicked out and must re-login. |
+| `RUSTFS_ROOT_PASSWORD` | Document upload + backup write breaks until `api`'s `DocumentStorage__SecretKey` reference is reseated (Railway auto-resolves the reference on next deploy). | ~30s during `api` redeploy. |
+| `KEYCLOAK_ADMIN_PASSWORD` | Master-realm admin login uses new password. | None — the env-var-seeded admin is rarely used; rotate freely. After personal admin works (Section 11) the env-var admin is removed entirely. |
+| `IABCONNECT_API_CLIENT_SECRET` | OIDC handshake between `api` and `keycloak` breaks until **all three** anchors are updated: realm DB (re-import or Admin Console edit), Keycloak service env var, and `api.Keycloak__ClientSecret` reference (auto-resolves on `api` redeploy). | If realm DB and env var drift: `api` returns 401 on every `/connect/token` exchange → users can authenticate to Keycloak but `api` rejects their tokens. |
+| `IABCONNECT_ADMIN_CLIENT_SECRET` | Same as above for the admin SPI client. | Backend user-provisioning ops break. |
+| `IABCONNECT_FRONTEND_CLIENT_SECRET` | Same as above for the frontend client. | Login flow breaks at Keycloak token-exchange step. |
+| `Smtp__Password` | Outbound mail (password-reset, invoice, dunning, volunteer-reminder) fails. | All outbound mail queues up; verify Hangfire job state recovers when password is fixed. |
+
+**Rotation procedure (generic):**
+
+1. Generate new value (`openssl rand -base64 24` or `pwgen -s 32 1`).
+2. Update the Sealed variable in Railway → service auto-redeploys.
+3. For Keycloak client secrets: also edit the realm DB via Admin Console → Clients → secret → Regenerate, OR re-import the realm with the new env-var.
+4. Verify with a smoke flow (see Section 10 browser smoke).
+
+---
+
+## 8. Networking topology
+
+> Story alignment: **E13-S3 AC-1..AC-10** + Tasks 1–8.
+
+### 8.1 Public services (Public Domain ON)
+
+| Service | Public hostname | Exposed port | TLS source |
+|---|---|---|---|
+| `web` | `<web-public-domain>` | 3000 ([frontend/Dockerfile#L117](../frontend/Dockerfile#L117)) | Railway-managed Let's Encrypt |
+| `api` | `<api-public-domain>` | 8080 ([backend/Dockerfile#L71](../backend/Dockerfile#L71)) | Railway-managed Let's Encrypt |
+| `keycloak` | `<keycloak-public-domain>` | 8080 (Keycloak default) | Railway-managed Let's Encrypt |
+
+To enable: each service → Settings → Networking → **Generate Public Domain**. TLS cert
+issuance typically completes within ~30 seconds; the domain is globally resolvable within
+a few minutes.
+
+### 8.2 Private services (Public Domain OFF, TCP Proxy OFF)
+
+| Service | Private hostname | Port | Public toggle state |
+|---|---|---|---|
+| `postgres-app` | `postgres-app.railway.internal` | 5432 | Public Domain **OFF**, TCP Proxy **OFF** |
+| `postgres-kc` | `postgres-kc.railway.internal` | 5432 | Public Domain **OFF**, TCP Proxy **OFF** |
+| `rustfs` | `rustfs.railway.internal` | 9000 (and console 9001) | Public Domain **OFF**, TCP Proxy **OFF** |
+
+These services are reachable **only** from within the project private network. Verify in
+each service's Settings → Networking that neither toggle is on.
+
+### 8.3 External reachability verification (run from outside Railway)
+
+Run from a developer workstation NOT inside Railway (Harry's laptop). Public services
+should respond; private services should time out / fail DNS:
+
+```sh
+# --- PUBLIC services — should respond ---
+curl -fIv https://<web-public-domain>/                                                       # expect 200 or 30x→200
+curl -fIv https://<api-public-domain>/health/ready                                           # expect 200 (or 503-acceptable until Section 9)
+curl -fIv https://<keycloak-public-domain>/realms/iabconnect/.well-known/openid-configuration  # expect 200, JSON body
+
+# --- PRIVATE services — should fail at DNS resolution ---
+# First, prove DNS itself fails (no host found). `dig +short` returns empty AND non-zero,
+# distinguishing "this host doesn't exist" from "this host exists but the network is slow":
+dig +short postgres-app.railway.internal     # expect: empty output AND exit code != 0
+dig +short postgres-kc.railway.internal      # expect: empty output AND exit code != 0
+dig +short rustfs.railway.internal           # expect: empty output AND exit code != 0
+
+# Then, sanity-check the network actually tries to reach them (these should fail fast).
+# `-w` on psql disables the interactive password prompt so `timeout 10` measures network,
+# not stdin. Without -w, psql hangs on the password prompt for the full timeout budget and
+# the output looks identical to a successful timeout — false PASS.
+PGPASSWORD=irrelevant timeout 10 psql -h postgres-app.railway.internal -U postgres -p 5432 -w -c 'select 1'
+PGPASSWORD=irrelevant timeout 10 psql -h postgres-kc.railway.internal -U postgres -p 5432 -w -c 'select 1'
+timeout 10 curl http://rustfs.railway.internal:9000/
+# All three: expect "could not translate host name" / "Could not resolve host" / "name resolution failure".
+```
+
+`*.railway.internal` is not in the public DNS, so the negative tests rely on **DNS resolution
+failure** rather than connection timeout. A captive-portal or split-tunnel resolver that
+returns a synthetic NXDOMAIN with delay can otherwise stall the timeout budget and mask a
+real DNS success — running `dig` first catches that. Document the actual output (the
+`dig +short` empty results + the error strings from the network attempts) in the
+Quality-Gates evidence column of the story.
+
+### 8.4 Internal reachability verification (deploy-log inspection)
+
+Inside Railway, `api` and `keycloak` resolve datastore dependencies via `*.railway.internal`.
+Verify by redeploying each service and inspecting the Logs tab:
+
+- `api` boot log must include a successful Npgsql connection to
+  `postgres-app.railway.internal:5432` within ~5 seconds.
+- `keycloak` boot log must include `KC-SERVICES0009` ("Added user 'admin' to realm 'master'")
+  and `Keycloak ... started in N.NNs`.
+- `api` first request that touches RustFS shows the AWS S3 client targeting
+  `http://rustfs.railway.internal:9000/...`.
+
+### 8.5 CORS allowlist verification (Beta strict-allowlist branch)
+
+Beta runs the production-hardening branch per ADR-015 — strict CORS via
+[backend DI](../backend/src/IabConnect.Api/DependencyInjection.cs) admits exactly one origin
+(`Frontend__BaseUrl`). Verify:
+
+```sh
+# Sanity — canonical origin should be allowed
+curl -i -X OPTIONS \
+  -H 'Origin: https://<web-public-domain>' \
+  -H 'Access-Control-Request-Method: GET' \
+  -H 'Access-Control-Request-Headers: authorization, content-type' \
+  https://<api-public-domain>/api/members
+# Expect: Access-Control-Allow-Origin: https://<web-public-domain>
+
+# Hostile preflight — random origin must NOT be echoed back
+curl -i -X OPTIONS \
+  -H 'Origin: https://evil.example.com' \
+  -H 'Access-Control-Request-Method: GET' \
+  https://<api-public-domain>/api/members
+# Expect: NO Access-Control-Allow-Origin header (or one set to <web-public-domain>, NOT evil.example.com)
+```
+
+### 8.6 HTTPS redirect + HSTS verification
+
+```sh
+# HTTPS redirect (Railway edge may handle this transparently; either path acceptable)
+curl -i http://<web-public-domain>/                  # expect 301/308 to https
+curl -i http://<api-public-domain>/health/ready      # expect 301/308 to https
+
+# HSTS header on HTTPS responses
+curl -sI https://<api-public-domain>/health/ready | grep -i strict-transport-security
+# Expect: Strict-Transport-Security: max-age=2592000 (30 days, ASP.NET default)
+```
+
+The 30-day HSTS default is the **initial** state. E14-S2 bumps to ≥ 6 months +
+`includeSubDomains` before non-Harry testers are onboarded. Tracked at
+deferred-work.md E13-FT-3.
+
+### 8.7 Why TCP Proxy is explicitly NOT enabled for Postgres
+
+Even with the Postgres user/password Sealed, exposing port 5432 publicly is a defense-in-depth
+loss with no ergonomic benefit:
+
+- Maintainers can reach `postgres-app` via Railway CLI tunnel for ad-hoc queries:
+  `railway run --service postgres-app psql`.
+- A future requirement for public Postgres access (e.g. an analytics workload) becomes its own
+  story with its own threat-model review — not a side effect of E13-S3.
+
+If a future maintainer wonders "should I enable TCP Proxy for ad-hoc psql?" the answer is
+**no**; use Railway CLI tunneling.
+
+---
+
+## 9. Health probes
+
+> Story alignment: **E13-S4 AC-1..AC-3** + Task 2. **AC-9 cross-story orthogonal-AC verification** + Task 6.1.
+
+### 9.1 Per-service healthcheckPath
+
+For each service, Settings → Deploy → Healthcheck Path. Save.
+
+| Service | healthcheckPath | Timeout | Producer file (in-image HEALTHCHECK) |
+|---|---|---|---|
+| `api` | `/health/ready` | **60 seconds** (absorbs first-startup EF migrations per ADR-015 + Keycloak cold-start) | [backend/Dockerfile#L73–L74](../backend/Dockerfile#L73) (`curl -fsS /health/ready`) |
+| `web` | `/api/health` | **60 seconds** (Next.js standalone cold-start + JIT compile of `/api/health` on first request can take 20–30 s on a small Hobby plan; 60 s absorbs that without false-failing the first deploy) | [frontend/Dockerfile#L121–L122](../frontend/Dockerfile#L121) probes `/` separately — both probes must pass for the container to be marked healthy |
+| `keycloak` | `/health/ready` | **30 seconds** (requires `KC_HEALTH_ENABLED=true` set in Section 5.3) | Keycloak built-in |
+
+The `web` healthcheckPath `/api/health` is implemented by
+[frontend/src/app/api/health/route.ts](../frontend/src/app/api/health/route.ts), a small
+Next.js Route Handler returning `Response.json({ status: "ok" }, { status: 200 })`.
+
+### 9.2 Healthcheck-path parity (Railway vs in-image HEALTHCHECK)
+
+| Service | Railway probes | In-image HEALTHCHECK probes | Both must pass |
+|---|---|---|---|
+| `api` | `/health/ready` | `/health/ready` | Yes |
+| `keycloak` | `/health/ready` | `/health/ready` | Yes |
+| `web` | `/api/health` | `/` | **Yes** (Railway-level + in-image both gate readiness) |
+
+### 9.3 Behavior under probe failure
+
+Railway uses atomic-swap deploy semantics: if a new deploy fails its healthcheck within the
+configured timeout, Railway aborts the new deploy and keeps the previous version running.
+Tester-visible downtime is zero for unhealthy deploys.
+
+Cascade behavior: `keycloak` down → `api`'s `KeycloakHealthCheck` fails → `/health/ready`
+returns 503 on `api` → Railway marks `api` unhealthy even though Postgres is fine. The
+top-of-funnel is always Keycloak; if `api` is red, check `keycloak` first.
+
+---
+
+## 10. First end-to-end deploy
+
+> Story alignment: **E13-S4 AC-4, AC-7** + Tasks 3–4.
+
+### 10.1 Pre-flight checklist
+
+Before triggering the first deploy, confirm:
+
+- [ ] All four Section 1 prerequisites green.
+- [ ] All six services provisioned (Section 3) and assigned Railway hostnames.
+- [ ] All 12 GHA repo variables populated with **real** Railway hostnames (Section 4).
+- [ ] GHA `build-images.yml` re-run after Section 4 update (Section 4.3 trigger commit).
+- [ ] All Section 5 variables set per service (`api`, `web`, `keycloak`, `rustfs`).
+- [ ] Section 8 networking enabled (3 public + 3 private, verified).
+- [ ] Section 9 healthcheckPath configured per service.
+
+### 10.2 Trigger the deploy
+
+Either:
+
+- Push a fresh commit to `beta` (any change). GHA rebuilds images → Railway detects new
+  digest → all three image services redeploy.
+- Or trigger a manual redeploy of each service from Railway dashboard (faster if Section 4.3
+  already ran and the image is up to date).
+
+### 10.3 Watch the deploys
+
+Open the Deploys tab of each service in parallel:
+
+- `api`: pulls new digest → boot → EF migrations execute (visible in logs) → `/health/ready=200`
+  within ~60 seconds → marked healthy.
+- `keycloak`: pulls new digest → JDBC connect to `postgres-kc.railway.internal:5432` → realm
+  import → `/health/ready=200` within ~30 seconds → marked healthy.
+- `web`: pulls new digest → Node boot → `/api/health=200` within ~10 seconds → marked healthy.
+
+### 10.4 Browser smoke (mandatory — only way to catch CORS/issuer/cookie-domain bugs)
+
+1. Open `https://<web-public-domain>/` in an incognito browser. Expect the landing page,
+   no CORS errors in the console.
+2. Sign in to the Keycloak Admin Console at `https://<keycloak-public-domain>/admin/`
+   as the env-var-seeded `admin` / `KEYCLOAK_ADMIN_PASSWORD`.
+3. Switch the realm dropdown (top-left) from `master` to `iabconnect`. Create a test user
+   `<your-admin-email>` (e.g. the maintainer's address) with a password. On the **Role mappings**
+   tab → **Assign role** → filter `By realm roles` and add **`admin`** (lowercase — the canonical
+   realm-admin role per [Roles.cs#L16](../backend/src/IabConnect.Api/Authorization/Roles.cs#L16)
+   and [iabconnect-realm.json#L167](../infra/keycloak/realms-beta/iabconnect-realm.json#L167);
+   the backend's `RequireAdmin` policy at [DependencyInjection.cs#L171](../backend/src/IabConnect.Api/DependencyInjection.cs#L171)
+   matches on `Roles.Admin = "admin"`).
+4. Back at `https://<web-public-domain>/` click **Login** → redirected to Keycloak →
+   enter test-user credentials → redirected back to the authenticated dashboard.
+5. Navigate to `https://<api-public-domain>/health/detail` while signed in (or via Postman
+   with the bearer token). Expect HTTP 200 with `entries[]` including
+   `database: Healthy` and `keycloak: Healthy`.
+
+The `/health/detail` JSON output **is** the gold-standard verification of the live wiring —
+`database: Healthy` proves `postgres-app` reachability + the connection string + EF migrations
+ran; `keycloak: Healthy` proves Keycloak's OIDC discovery endpoint is up AND `Keycloak__Authority`
+on `api` points at it correctly AND the realm import worked.
+
+### 10.5 Realm-issuer triangle (live verification)
+
+The OIDC-issuer parity invariant from Section 6.3 + Section 5.3 is **live-verified** the
+moment `/health/detail` reports `keycloak: Healthy`. The check is structural (string-equal) at
+configuration time but only end-to-end at first deploy. If `keycloak: Healthy` returns
+`Unhealthy` with a "discovery document mismatch" message, drift exists — re-run the Section
+6.3 diff before debugging anything else.
+
+### 10.6 External-monitoring contract (forward-link to E17-S4)
+
+The `api`'s `/health/ready` endpoint is designed to be polled by an external uptime monitor
+(UptimeRobot or BetterStack) every 5 minutes with 3-consecutive-failure alerting per the NFR.
+E13-S4 does not wire the monitor; E17-S4 does. This story verifies the endpoint is publicly
+reachable and stable enough to support eventual polling.
+
+---
+
+## 11. Recovery procedures
+
+### 11.1 `api` won't go healthy
+
+Most common: env-var typo (Section 5.1 — re-verify), CORS string mismatch
+(`Frontend__BaseUrl` ≠ `<web-public-domain>`), Keycloak admin password drift, or
+EF migration failure on first run.
+
+Inspect via the Railway CLI without modifying any code:
+
+```sh
+# Inject the api service's env-vars into a local shell, then call its container directly.
+# `railway run` evaluates the command on the local machine with the service's env-vars
+# bound — it does NOT shell into the container. For an in-container probe, prefer
+# `railway shell --service api` (where supported) and run `curl http://localhost:8080/health/detail`
+# from inside the container.
+railway shell --service api
+# then, inside:
+curl -s http://localhost:8080/health/detail | jq .
+```
+
+If `railway shell` isn't available on the current Railway plan, use the Railway dashboard's
+"Open shell" button on the service's Deploys tab. **Do not** lift `RequireAuthorization("RequireAdmin")`
+on `/health/detail` in source code as a debug shortcut — the in-container probe above
+covers the same diagnosis without a code change that could leak past merge.
+
+### 11.2 `keycloak` won't go healthy / admin can't sign in
+
+Chicken-and-egg: Keycloak admin login is needed to fix Keycloak, but Keycloak is the thing
+that's broken. Recovery paths:
+
+1. **Roll back via Railway**: redeploy the previous good `:sha-<commit>` immutable tag
+   via Railway dashboard → Settings → Source → edit image to `ghcr.io/htos/iabc-keycloak:sha-<previous-commit>` → Redeploy.
+2. **Seed a recovery admin from inside the Keycloak container.** Open a shell on the running
+   `keycloak` service (Railway dashboard → keycloak → Deploys → "Open shell", or
+   `railway shell --service keycloak` if your plan supports it), then use Keycloak 26's
+   `bootstrap-admin user` subcommand. The password is read from an env var, not a flag literal:
+
+   ```sh
+   # Inside the keycloak container (the kc.sh binary is on $PATH; the database is already wired):
+   export KC_BOOTSTRAP_ADMIN_PASSWORD='<new-strong-random>'
+   kc.sh bootstrap-admin user --username recovery --password:env KC_BOOTSTRAP_ADMIN_PASSWORD
+   ```
+
+   `bootstrap-admin user` always targets the `master` realm — there is no `--realm` flag.
+   This command works only when the `master` realm currently has zero admin users; if an
+   admin still exists, log in as that admin via Admin Console instead.
+3. **Force-pull `:beta`**: change the image to a different tag and back to `:beta` to force
+   a clean pull. **Caveat**: `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD` only seed the master
+   admin on the very first boot against an empty database — they are **not** re-applied to an
+   existing database. If `postgres-kc` retains state, the existing admin (and existing realm,
+   client secrets, users, federation state) persists across the redeploy. If `postgres-kc`
+   has been wiped, the redeploy re-imports the realm from
+   [infra/keycloak/realms-beta/iabconnect-realm.json](../infra/keycloak/realms-beta/iabconnect-realm.json)
+   and re-seeds the admin — **but** any post-import secret rotations done via the Admin Console
+   (Section 7) are lost because the realm-import JSON contains the placeholder `${IABCONNECT_*_CLIENT_SECRET}`
+   values, not the rotated values. Plan accordingly before deciding to force-pull on a partially
+   broken Keycloak.
+
+### 11.3 Personal-admin migration (post-first-deploy hardening)
+
+After the first deploy is stable, replace the env-var-seeded `admin` with a personal account
+attributed to a real user:
+
+1. Sign in as `admin` → Master realm → Users → Add user `<your-admin-email>`.
+2. Credentials tab → set permanent password (store in password manager).
+3. Role mappings → assign `admin` role from the master realm.
+4. Verify the personal admin can sign in (use a private/incognito browser).
+5. Use the personal admin for ~1 week of normal Beta operations.
+6. After 1 week clean → delete the env-var-seeded `admin` from the master realm AND remove
+   `KEYCLOAK_ADMIN` + `KEYCLOAK_ADMIN_PASSWORD` from the `keycloak` service Variables tab.
+
+The env-var pair stays in Railway as chicken-and-egg insurance during the first week.
+Tracked at deferred-work.md E13-FT-5.
+
+### 11.4 Rollback a bad deploy
+
+Per ADR-014, rollback for image-source services is redeploying a specific
+`:sha-<40-char-commit>` immutable tag via Railway dashboard. The `:beta` tag is overwritten
+on every push and is **not** a rollback target. Cross-reference the commit SHA via the
+`/about` endpoint (E20-S3) to see what is actually running.
+
+### 11.5 RustFS data loss prevention
+
+The `rustfs-data` volume (Section 3.3) is the durability boundary. Railway redeploys of
+the `rustfs` service do not delete the volume; only explicit volume deletion does. The
+volume is also where E15-S3's daily encrypted Postgres backups land — losing it loses
+both documents and backups.
+
+---
+
+## 12. Fork-replacement guidance
+
+A fork of `htos/iab-connect` setting up its own Beta needs to substitute three things:
+
+1. **GHCR namespace.** Edit [.github/workflows/build-images.yml#L109](../.github/workflows/build-images.yml#L109)
+   `IMAGE_NAMESPACE: htos` to the fork's GitHub username/org. Push to `beta`; GHA will publish
+   to the new namespace.
+2. **Railway image-deploy URLs.** In each of `api`, `web`, `keycloak` services on the fork's
+   Railway project, edit the image source from `ghcr.io/htos/iabc-<name>:beta` to
+   `ghcr.io/<fork>/iabc-<name>:beta`.
+3. **`Branding__SourceUrl` (api) + `NEXT_PUBLIC_SOURCE_URL` build-arg (web).** The backend
+   `Branding__SourceUrl` is a runtime Railway env var on the `api` service — override there.
+   The frontend `NEXT_PUBLIC_SOURCE_URL` is **hard-coded** in [build-images.yml#L193](../.github/workflows/build-images.yml#L193)
+   (`NEXT_PUBLIC_SOURCE_URL=https://github.com/htos/iab-connect`) rather than read from a
+   `vars.*` repo variable. A fork must edit that line in the workflow file — adding a Railway
+   env var or a repo variable named `NEXT_PUBLIC_SOURCE_URL` has no effect because the
+   workflow's `build-args` block doesn't read either. Once the workflow file is edited, the
+   change propagates to the next `:beta` image build. This ensures the AGPL §13 source-disclosure
+   links on the `/about` endpoint and license footer point at the fork's repository, not the upstream.
+
+GHCR package visibility (Section 1.4) must be set to Public on the fork's packages as well.
+
+---
+
+## 13. Reference tables
+
+> Per-deployment values. Replace placeholders with the real values captured during provisioning.
+> Non-secret only — Sealed values live exclusively in Railway + a password manager.
+
+### 13.1 Project + plan
+
+| Field | Value |
+|---|---|
+| Railway project name | `iab-connect-beta` |
+| Project UUID | `<populate after Section 2.4>` |
+| Region | `europe-west4` (Amsterdam) |
+| Plan | `<populate: Hobby / Pro / Team>` |
+| Provisioned at | `<YYYY-MM-DD>` |
+| Provisioned by | `<maintainer email>` |
+
+### 13.2 Service inventory
+
+| Service | Source | Internal hostname | Public hostname | Notes |
+|---|---|---|---|---|
+| `api` | `ghcr.io/htos/iabc-api:beta` | `api.railway.internal:8080` | `<populate>.up.railway.app` | |
+| `web` | `ghcr.io/htos/iabc-web:beta` | `web.railway.internal:3000` | `<populate>.up.railway.app` | |
+| `keycloak` | `ghcr.io/htos/iabc-keycloak:beta` | `keycloak.railway.internal:8080` | `<populate>.up.railway.app` | |
+| `rustfs` | `rustfs/rustfs@sha256:<populate digest>` | `rustfs.railway.internal:9000` | n/a | Volume `rustfs-data` 20 GB at `/data` |
+| `postgres-app` | Railway managed PG 17 | `postgres-app.railway.internal:5432` | n/a | App schema |
+| `postgres-kc` | Railway managed PG 17 | `postgres-kc.railway.internal:5432` | n/a | Keycloak schema |
+
+### 13.3 Cross-references
+
+- AGPL license + `/about` endpoint contract: [E20-S3](../_bmad-output/implementation-artifacts/e20-s3-add-backend-about-endpoint.md) / ADR-021.
+- License footer + `NEXT_PUBLIC_SOURCE_URL`: [E20-S4](../_bmad-output/implementation-artifacts/e20-s4-add-frontend-license-footer.md).
+- GHCR publish workflow: [.github/workflows/build-images.yml](../.github/workflows/build-images.yml) (E20-S5).
+- DCO workflow: [.github/workflows/dco.yml](../.github/workflows/dco.yml) (E20-S1).
+- Local Beta-shape testing (no Railway burn): README "Option 4: Local Beta-shape testing (full overlay)" + [infra/docker-compose.full.yml](../infra/docker-compose.full.yml) (E12-S4).
+- Architecture decision records: [_bmad-output/planning-artifacts/architecture.md](../_bmad-output/planning-artifacts/architecture.md) ADR-011..021.
+
+---
+
+## Appendix: secrets-in-repo guard
+
+The dev-agent ran the following greps at story-close and confirmed no operational Railway
+tokens, no Sealed values, no Postgres passwords leaked into tracked files:
+
+```sh
+git grep -inE 'railway|RAILWAY_TOKEN' \
+  -- ':(exclude)docs/*' ':(exclude)_bmad-output/*' ':(exclude)*.md' ':(exclude).github/*'
+# Expected: zero operational hits (matches only in story / planning context).
+
+git grep -inE 'NEXTAUTH_SECRET\s*=|CLIENT_SECRET\s*=|EncryptionKey\s*=|RUSTFS_ROOT_PASSWORD\s*=' \
+  -- ':(exclude)*.env.example'
+# Expected: zero hits assigning real-looking values. Placeholder strings like
+# `__set_in_environment__` are OK and excluded.
+```
+
+The result of these greps at the close of E13 is captured in each story's Quality-Gates
+table (AC-11 for E13-S1, AC-11 for E13-S2).
