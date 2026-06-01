@@ -63,18 +63,26 @@
 #    from .github/workflows/dco.yml (E20-S1).
 #
 # ── Third-party action pinning ──────────────────────────────────────────────────────────
-# All `uses:` lines pinned by 40-char commit SHA per supply-chain hardening (matches the
-# discipline established in .github/workflows/dco.yml, E20-S1). SHA → human-readable tag
-# mapping resolved at story implementation time (2026-06-01):
+# `actions/checkout` is pinned by 40-char commit SHA (matches the discipline in
+# .github/workflows/dco.yml, E20-S1). The four `docker/*` actions are pinned by
+# major-version tag (`@v3` / `@v5` / `@v6`) as a temporary measure — the first attempt to
+# pin them by SHA at 2026-06-01 used unverified SHAs (the dev-agent couldn't reach
+# `gh api repos/<action>/commits/v<tag>` and guessed the digests), and the resulting
+# workflow failed at action-resolution time with `Unable to resolve action
+# docker/build-push-action@<bogus-SHA>`. Major-version tags resolve reliably and are
+# the published GitHub Marketplace contract — supply-chain risk is non-zero (tag can
+# be re-pointed) but workflow execution is restored.
 #
-#   actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683          ← v4.2.2
-#   docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 ← v3.10.0
-#   docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772         ← v3.4.0
-#   docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804      ← v5.7.0
-#   docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c1c    ← v6.18.0
+# E20-S5-D4 (logged in deferred-work.md under "code review of Epic-20 boundary"):
+#   set up `.github/dependabot.yml` with `github-actions` ecosystem; let Dependabot
+#   propose SHA-pinning PRs that refresh the comment + SHA in lock-step. That fix
+#   converts the 4 floating `@vN` tags below back into 40-char SHA pins safely.
 #
-# Dependabot will surface upstream tag releases (pin by SHA, refresh comment) — opening
-# Dependabot ecosystem `github-actions` is a future task.
+#   actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 ← v4.2.2 (verified, dco.yml)
+#   docker/setup-buildx-action@v3 ← unpinned until Dependabot
+#   docker/login-action@v3         ← unpinned until Dependabot
+#   docker/metadata-action@v5      ← unpinned until Dependabot
+#   docker/build-push-action@v6    ← unpinned until Dependabot
 
 name: Build and publish container images
 
@@ -130,10 +138,10 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2
+        uses: docker/setup-buildx-action@v3
 
       - name: Login to GHCR
-        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772
+        uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -141,7 +149,7 @@ jobs:
 
       - name: Extract image metadata (tags + OCI labels)
         id: meta
-        uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804
+        uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ matrix.image }}
           tags: |
@@ -160,7 +168,7 @@ jobs:
       # condition is a one-line ternary expression evaluated by GHA. Empty strings on the
       # not-selected branch path are harmless — Next.js bakes them as empty constants.
       - name: Build and push ${{ matrix.image }}
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c1c
+        uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.context }}/${{ matrix.dockerfile }}
