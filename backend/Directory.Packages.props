@@ -25,6 +25,8 @@
     <PackageVersion Include="Serilog.Sinks.Console" Version="6.1.1" />
     <PackageVersion Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageVersion Include="Serilog.Sinks.Seq" Version="8.0.0" />
+    <!-- REQ-088 AC-4 (E14-S5): in-memory Serilog sink for redaction-policy + enricher tests -->
+    <PackageVersion Include="Serilog.Sinks.TestCorrelator" Version="4.0.0" />
     <!-- CQRS & Validation -->
     <PackageVersion Include="MediatR" Version="12.4.1" />
     <PackageVersion Include="FluentValidation" Version="11.11.0" />

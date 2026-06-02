@@ -2580,6 +2580,376 @@ Operator paste:
 
 ---
 
+## 20. Secrets audit baseline (E14-S1)
+
+Story: E14-S1 (REQ-088 AC-4) — *Secrets audit and repository cleanup.* This section is the operator-facing companion to [`scripts/audit-secrets.ps1`](../scripts/audit-secrets.ps1), the scripted scan that produces a reproducible audit baseline.
+
+### 20.1 Goal + scope
+
+**Goal**: confirm the public-OSS release surface carries no operational secrets — Railway tokens, Sealed values, real Production credentials, third-party API keys. The audit is the artifact a security reviewer (project maintainer, fork operator, external auditor) re-runs before any merge to confirm the secrets envelope did not grow.
+
+**In scope**:
+- Working-tree grep over tracked files for 10 secret-shaped patterns (`password`, `secret`, `client_secret`, `api_key`, `access_key`, `ConnectionStrings`, `BEGIN RSA`, `BEGIN PRIVATE`, `NEXTAUTH_SECRET`, `EncryptionKey`).
+- An allowlist of documented dev-only well-known values (e.g., `postgres/postgres`, `rustfsadmin/rustfsadmin`, the 6 dev realm seed-user passwords).
+- Advisory git-history scan (no automated fail; reviewer should run [`gitleaks`](https://github.com/gitleaks/gitleaks) or [`trufflehog`](https://github.com/trufflesecurity/trufflehog) for forensic depth).
+
+**Out of scope**:
+- Operational Serilog log-line shielding (covered by E14-S5 destructure-block, [Section 24](#24-log-audit-and-secret-shielding-e14-s5)).
+- Binary scans for embedded secrets in pre-built artifacts.
+- SSH-key audit in `.ssh/authorized_keys`-style files (not applicable to this repo).
+
+### 20.2 Allowlisted dev-only well-known values
+
+The audit script's `$StringAllowlist` hashtable contains the documented dev-only well-known values + structural patterns. Any working-tree finding that contains one of these substrings is treated as "expected" and contributes to the AUDIT_OK exit-0 count.
+
+| Substring | Reason |
+|---|---|
+| `postgres/postgres` | SCP §5 well-known PostgreSQL dev credential |
+| `Password=postgres` | SCP §5 well-known PostgreSQL dev credential (ConnectionString form) |
+| `rustfsadmin` | SCP §5 well-known RustFS dev credential |
+| `dev-secret-change-me` | Generic placeholder grammar; communicates Dev-only intent (Keycloak.ClientSecret) |
+| `dev-admin-secret-change-me` | Generic placeholder grammar (E14-S1 Task 2.1 replacement for KeycloakAdmin.ClientSecret) |
+| `Admin-Dev-2026!` / `Vorstand-Dev-2026!` / `Member-Dev-2026!` / `Kassier-Dev-2026!` / `Auditor-Dev-2026!` / `Events-Dev-2026!` | Dev realm seed user passwords (`temporary:true` forces password change at first login); E14-S1 DEC-1=A |
+| `frontend-dev-secret-2026` | Dev realm Frontend client secret; never deployed to Beta (Beta uses `${IABCONNECT_FRONTEND_CLIENT_SECRET}` placeholder); E14-S1 DEC-1=A |
+| `local-dev-secret-min-32-chars-aaaaaaaaaaaaaaa` | docker-compose.full.yml NextAuth dev secret (E12-S4-D20' deferred; E14-S1 DEC-1=A allowlist) |
+| `admin-full` | docker-compose.full.yml Keycloak admin password (overlay-only; E14-S1 DEC-1=A) |
+| `test-access-key` / `test-secret-key` / `Username=test;Password=test` | TestWebApplicationFactory dummy credentials |
+| `__set_in_environment__` / `__min_32_chars__` / `__base64_32_bytes__` | .env.example placeholder grammar |
+| `${IABCONNECT_ADMIN_CLIENT_SECRET}` / `${IABCONNECT_FRONTEND_CLIENT_SECRET}` / `${IABCONNECT_BETA_HOST}` / `${FRONTEND_PUBLIC_URL}` | Beta-realm placeholder substitutions |
+| `POSTGRES_PASSWORD: postgres` / `KC_DB_PASSWORD: postgres` / `KEYCLOAK_ADMIN_PASSWORD: admin` / `RUSTFS_ACCESS_KEY: rustfsadmin` / `RUSTFS_SECRET_KEY: rustfsadmin` | docker-compose.yml dev well-knowns |
+| `${{ secrets.GITHUB_TOKEN }}` / `${{ secrets.` | GitHub Actions built-in secret reference (never a literal) |
+| `"type": "password"` / `"resetPasswordAllowed"` / `RESET_PASSWORD` / `SEND_RESET_PASSWORD` / `UPDATE_PASSWORD` / `auth-username-password-form` | Keycloak realm structural / enum / authenticator-name strings (not values) |
+| `"Password": null` / `"ClientSecret": ""` / `"SecretKey": ""` / `Keycloak__ClientSecret: ""` / `"password": ""` | Empty / placeholder JSON + YAML entries |
+
+The `$FileAllowlistPatterns` array file-allowlists doc files (`docs/*.md`, `README.md`, `CONTRIBUTING.md`, `NOTICE.md`, `LICENSE`), placeholder-only env templates (`backend/.env.example`, `frontend/.env.example`), the sanitized Beta realm (`infra/keycloak/realms-beta/*.json`), the audit script itself, BMAD planning + skill-pack artifacts, i18n message dictionaries, and code-identifier-mention extensions (`*.cs`, `*.ts`, `*.tsx`, `*.dockerignore`, etc.).
+
+### 20.3 How to run the audit
+
+Run the script from the repo root. **Requires PowerShell Core / pwsh 7+ (NOT Windows PowerShell 5.1)**:
+
+```bash
+# Default: working-tree + advisory git-history scan
+pwsh ./scripts/audit-secrets.ps1
+
+# Pre-commit hook shape (~1-2 seconds vs. ~30-60s with history)
+pwsh ./scripts/audit-secrets.ps1 -WorkingTreeOnly
+
+# Print every allowlisted match too (debug)
+pwsh ./scripts/audit-secrets.ps1 -Verbose
+
+# In-memory self-test (doesn't touch the repo; deterministic)
+pwsh ./scripts/audit-secrets.ps1 -SelfTest
+```
+
+Exit code: `0` = AUDIT_OK; `1` = un-allowlisted finding (script prints the file/line/pattern triplet for triage).
+
+**Operator reachability check (A45)**: `pwsh` is required. Install via:
+
+- **Windows**: `winget install Microsoft.PowerShell`
+- **macOS**: `brew install powershell`
+- **Linux**: Microsoft package-management `apt`/`yum` repository per [official PMC docs](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-linux).
+
+Windows PowerShell 5.1 (`powershell.exe`) is NOT supported — the script exits 1 with an install-snippet hint when run under 5.1.
+
+### 20.4 How to extend the allowlist
+
+When a new feature legitimately introduces a new dev-only well-known value (e.g., a new dev-realm client, a new docker-compose service with an init credential), extend BOTH:
+
+1. **Script**: edit [`scripts/audit-secrets.ps1`](../scripts/audit-secrets.ps1) — add an entry to the `$StringAllowlist` hashtable (key = literal substring, value = one-line reason).
+2. **Section 20.2 table** (this section): add a row mirroring the script entry's reason verbatim.
+3. **Commit message**: `chore(security): extend secret-audit allowlist for <X>` and reference the originating story.
+
+Both updates must land in the same PR — the audit script's hashtable and Section 20.2's table are intentionally redundant so a reader skimming the runbook doesn't need to also parse the PowerShell.
+
+### 20.5 What to do when the audit fails
+
+`AUDIT_FAIL: N un-allowlisted finding(s)` triggers this triage:
+
+1. **Is the finding a real operational secret?** → Rotate the affected secret IMMEDIATELY. If the secret is still operational, also consider history rewrite via [`git filter-repo`](https://github.com/newren/git-filter-repo) and forced-push (coordinate with all collaborators first).
+2. **Is the finding a new dev-only well-known?** → Extend the allowlist per [Section 20.4](#204-how-to-extend-the-allowlist).
+3. **Is the finding a false positive from the grep pattern?** → Either narrow the script's grep pattern (rare) or add a more-specific structural allowlist entry (preferred).
+
+### 20.6 Future expansion
+
+The script is locally-runnable today. **Integration with the GitHub Actions CI workflow** (running on every PR open + on `beta` push as a required check) is a follow-up tracked in [deferred-work.md](../_bmad-output/implementation-artifacts/deferred-work.md). The implementation would be a 5-line addition to `.github/workflows/build-images.yml` invoking `pwsh ./scripts/audit-secrets.ps1` as a pre-build step.
+
+---
+
+## 21. Security headers and HTTPS baseline (E14-S2)
+
+Story: E14-S2 (REQ-088 AC-4) — *Security headers and HTTPS enforcement review.* This section documents the hardening surface backend + frontend ship in Beta.
+
+### 21.1 Goal + scope
+
+**Goal**: Beta deployment surface emits the same security headers as Production. A `curl -I` against `https://web.<beta>/` or `https://api.<beta>/` returns the documented header set. Frontend ships a Content-Security-Policy that restricts `connect-src` + `frame-src` to the api + Keycloak public origins.
+
+### 21.2 Backend header table
+
+| Header | Value | Source-of-truth | Gate |
+|---|---|---|---|
+| `X-Content-Type-Options` | `nosniff` | [DependencyInjection.cs:272](../backend/src/IabConnect.Api/DependencyInjection.cs#L272) | Always |
+| `X-Frame-Options` | `DENY` | [DependencyInjection.cs:273](../backend/src/IabConnect.Api/DependencyInjection.cs#L273) | Always |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | [DependencyInjection.cs:274](../backend/src/IabConnect.Api/DependencyInjection.cs#L274) | Always |
+| `X-Permitted-Cross-Domain-Policies` | `none` | [DependencyInjection.cs:275](../backend/src/IabConnect.Api/DependencyInjection.cs#L275) | Always (defense-in-depth; browser-ignored for HTML) |
+| `Strict-Transport-Security` | ASP.NET Core default (`max-age=2592000` ≥ 30 days) | [DependencyInjection.cs:281](../backend/src/IabConnect.Api/DependencyInjection.cs#L281) `app.UseHsts()` | `!IsDevelopment() && != "Testing"` — i.e., Beta + Production |
+| `Server` (suppressed) | — | [Program.cs:26](../backend/src/IabConnect.Api/Program.cs#L26) `AddServerHeader = false` | Always |
+| HTTPS redirect | `307 → https://` | [DependencyInjection.cs:305](../backend/src/IabConnect.Api/DependencyInjection.cs#L305) `app.UseHttpsRedirection()` | Same as HSTS |
+
+### 21.3 Frontend header table
+
+| Header | Value | Source-of-truth | Mirror status |
+|---|---|---|---|
+| `X-Frame-Options` | `DENY` | [next.config.ts:55-58](../frontend/next.config.ts#L55-L58) | A31: matches backend byte-for-byte |
+| `X-Content-Type-Options` | `nosniff` | [next.config.ts:59-62](../frontend/next.config.ts#L59-L62) | A31: matches backend |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | [next.config.ts:63-66](../frontend/next.config.ts#L63-L66) | A31: matches backend |
+| `Content-Security-Policy` | Computed; see §21.4 | [next.config.ts:67-70](../frontend/next.config.ts#L67-L70) + [src/lib/config/security-headers.ts](../frontend/src/lib/config/security-headers.ts) | Frontend-only |
+| `X-Permitted-Cross-Domain-Policies` | — | — | Backend-only — browsers ignore for HTML responses (Flash-era artifact); backend keeps it for paranoia |
+
+### 21.4 CSP rationale + directives
+
+Per E14-S2 DEC-1=A (Practical-enforcing). Each directive's intent:
+
+| Directive | Value | Rationale |
+|---|---|---|
+| `default-src 'self'` | self | Baseline; anything not explicitly allowed below falls back to same-origin |
+| `script-src 'self' 'unsafe-inline' 'unsafe-eval'` | self + inline + eval | Next.js 16 + React 19 streaming SSR uses inline scripts for hydration; `next-intl` dictionary injection uses `'unsafe-eval'`. **Tradeoff documented**: `connect-src` lockdown is the higher-value defense — script injection cannot exfiltrate to attacker origins |
+| `style-src 'self' 'unsafe-inline'` | self + inline | Tailwind 4 + emotion + streaming SSR injects inline `<style>` blocks |
+| `img-src 'self' data: blob: ${NEXT_PUBLIC_DOCUMENT_HOST}` | self + data + blob + document host | `data:` for inline base64 images; `blob:` for `URL.createObjectURL()` previews; `${NEXT_PUBLIC_DOCUMENT_HOST}` is the RustFS/proxy origin per E16-S1 |
+| `font-src 'self' data:` | self + data | `data:` URIs occasionally appear in font payloads |
+| `connect-src 'self' ${NEXT_PUBLIC_API_URL} ${NEXT_PUBLIC_KEYCLOAK_URL}` | self + api + Keycloak | **Highest-value directive**: locks `fetch`/`XHR`/`WebSocket` destinations. Any injected script cannot exfiltrate to attacker origins |
+| `frame-src ${NEXT_PUBLIC_KEYCLOAK_URL}` | Keycloak only | Keycloak's password-reset + consent screens can be iframe-embedded |
+| `frame-ancestors 'none'` | none | Complements `X-Frame-Options: DENY` (modern variant); IAB Connect is never embedded |
+| `base-uri 'self'` | self | Prevents injected `<base href>` from redirecting relative URLs |
+| `form-action 'self' ${NEXT_PUBLIC_KEYCLOAK_URL}` | self + Keycloak | NextAuth flow posts to Keycloak's token endpoint |
+
+The `${NEXT_PUBLIC_*}` substitutions happen at `next build` time (build-args from GHA repo variables per E13-S2). Forks override the values via their own GHA repo variables.
+
+### 21.5 Live curl verification recipe
+
+After first deploy, capture the headers via `curl -I`:
+
+```bash
+# Backend (api service)
+curl -I https://api.<beta-domain>/about
+# Expected: HTTP/2 200 + X-Content-Type-Options + X-Frame-Options +
+#           Referrer-Policy + X-Permitted-Cross-Domain-Policies + Strict-Transport-Security
+
+curl -I http://api.<beta-domain>/about
+# Expected: HTTP/2 307 + Location: https://api.<beta-domain>/about
+
+# Frontend (web service)
+curl -I https://web.<beta-domain>/
+# Expected: HTTP/2 200 + X-Frame-Options + X-Content-Type-Options +
+#           Referrer-Policy + Content-Security-Policy
+```
+
+Cross-platform alternative (no curl required):
+
+```powershell
+pwsh -c "Invoke-WebRequest https://api.<beta-domain>/about -Method Head | Select-Object -ExpandProperty Headers"
+```
+
+Browser DevTools "Security" tab on `https://web.<beta-domain>/` confirms the CSP is active (look for the `Content-Security-Policy` row).
+
+---
+
+## 22. Hangfire dashboard verification (E14-S3)
+
+Story: E14-S3 (REQ-088 AC-4) — *Verify Hangfire dashboard is dev-only in Beta.*
+
+### 22.1 Goal + scope
+
+The Hangfire dashboard surfaces privileged job-control operations (pause/resume jobs, force-trigger recurring jobs, delete failed jobs, view job arguments which may contain PII). Exposing the dashboard on the public internet would let an unauthenticated visitor manipulate the api's background processing. The dashboard is gated behind `IsDevelopment()` per ADR-015 — Beta + Production must return 404.
+
+### 22.2 Code anchor
+
+- [DependencyInjection.cs:317-320](../backend/src/IabConnect.Api/DependencyInjection.cs#L317-L320): `if (app.Environment.IsDevelopment()) { app.UseHangfireDashboard("/hangfire"); }`
+- [DependencyInjection.cs:291-300](../backend/src/IabConnect.Api/DependencyInjection.cs#L291-L300): same gate applied to Swagger UI (A31 invariant — both endpoints lock-step).
+
+### 22.3 Live curl verification recipe
+
+```bash
+curl -I https://api.<beta-domain>/hangfire        # Expected: HTTP/2 404
+curl -I https://api.<beta-domain>/hangfire/       # Expected: HTTP/2 404 (trailing slash)
+curl -I https://api.<beta-domain>/swagger         # Expected: HTTP/2 404
+curl -I https://api.<beta-domain>/swagger/v1/swagger.json  # Expected: HTTP/2 404
+```
+
+Cross-platform alternative:
+
+```powershell
+pwsh -c "Invoke-WebRequest https://api.<beta-domain>/hangfire -Method Head -SkipHttpErrorCheck | Select-Object -ExpandProperty StatusCode"
+# Expected: 404
+```
+
+### 22.4 Integration-test reference
+
+The regression guard for this section lives at [`backend/tests/IabConnect.Api.Tests/Endpoints/DevOnlyEndpointGatingTests.cs`](../backend/tests/IabConnect.Api.Tests/Endpoints/DevOnlyEndpointGatingTests.cs). 4 [Fact] tests assert 404 for `/hangfire`, `/hangfire/`, `/swagger`, `/swagger/v1/swagger.json` against the Testing environment (which has `IsDevelopment() == false`, transitively proving the Beta + Production behaviour).
+
+---
+
+## 23. Rate-limiting baseline (E14-S4)
+
+Story: E14-S4 (REQ-088 AC-4) — *Rate-limiting baseline.* Uses ASP.NET Core 10's built-in `Microsoft.AspNetCore.RateLimiting` middleware. Configurable via the `RateLimiting` section in `appsettings.json`.
+
+### 23.1 Goal + scope
+
+**Mitigates**: anonymous enumeration of public endpoints, brute-force attempts against the strict-identity endpoints (session-revocation, admin MFA reset), lazy DoS attempts against the api.
+
+**Does NOT mitigate**: motivated DDoS (volumetric attacks need edge-layer mitigation — Cloudflare/Railway's own platform-level protections), slow-loris (handled by Kestrel timeouts), application-logic abuse (covered by E14-S5 audit + business-rule validations).
+
+### 23.2 Policy table
+
+| Policy | PermitLimit | Window | Partition key | Applied to | Exempted from |
+|---|---|---|---|---|---|
+| Anonymous (global default) | 100 req/min | 60s fixed window | `anon:<remoteIp>` | every unauthenticated request | `/health`, `/health/ready`, `/health/detail` |
+| Authenticated (global default) | 600 req/min | 60s | `auth:<userId>` (from `ClaimTypes.NameIdentifier` or JWT `sub`) | every authenticated request | (same) |
+| `strict-identity` (named) | 10 req/min | 60s | `strict-<auth|anon>:<identity>` | `DELETE /api/v1/identity/sessions/{id}`, `DELETE /api/v1/users/{userId}/sessions/{id}`, `POST /api/v1/users/{userId}/reset-mfa` | n/a |
+
+All defaults configurable via `appsettings.json` → `"RateLimiting": { "AnonymousPermitLimit": 100, "AuthenticatedPermitLimit": 600, "StrictPermitLimit": 10, "WindowSeconds": 60 }`. Override via Railway env vars (`RateLimiting__AnonymousPermitLimit=200`, etc.) without a code change.
+
+### 23.3 429 response shape
+
+```http
+HTTP/2 429 Too Many Requests
+Retry-After: 47
+X-Correlation-Id: a3f8b2c1d4e5f6a7b8c9d0e1f2a3b4c5
+Content-Type: application/json
+
+{"error":"rate_limit_exceeded"}
+```
+
+Implementation: [`RateLimiterRegistration.OnRejected`](../backend/src/IabConnect.Api/RateLimiting/RateLimiterRegistration.cs). The `Retry-After` value is computed from the partition's lease metadata; `X-Correlation-Id` is propagated by the existing `CorrelationIdMiddleware` which runs BEFORE the limiter in the pipeline.
+
+### 23.4 `X-Forwarded-For` trust
+
+Railway terminates TLS at its edge and forwards the original client IP via the `X-Forwarded-For` header. Without trusting that header, `httpContext.Connection.RemoteIpAddress` returns Railway's proxy IP — collapsing all anonymous clients into a single bucket and devastating the rate-limit semantic.
+
+[`RateLimiterRegistration`](../backend/src/IabConnect.Api/RateLimiting/RateLimiterRegistration.cs) configures `ForwardedHeadersOptions` with `KnownIPNetworks.Clear()` + `KnownProxies.Clear()` — trust any upstream proxy. **Risk**: this is spoof-able if a client can reach the api service directly without going through Railway's edge. Railway's private-networking topology (per ADR-013 + E13-S3) blocks direct ingress to the api — only the public-facing `web` service has direct public exposure, and it forwards through the api's private DNS name. The trust model holds as long as no rogue service has public exposure to the api.
+
+### 23.5 Load-test verification recipe
+
+```bash
+# Linux/macOS with hey installed (brew install hey OR go install github.com/rakyll/hey@latest)
+hey -z 30s -c 50 -m GET https://api.<beta-domain>/about
+# Expected: ~3000 requests/30s = ~100 req/s. The first ~100 succeed; subsequent return 429
+# with Retry-After header. /health remains 200 throughout.
+
+# Verify healthcheck exemption explicitly
+hey -z 30s -c 50 -m GET https://api.<beta-domain>/health
+# Expected: ALL requests return 200/503 (never 429).
+```
+
+Cross-platform alternative (PowerShell-Core 7+):
+
+```powershell
+pwsh -c @'
+1..150 | ForEach-Object -Parallel {
+    try { (Invoke-WebRequest "https://api.<beta-domain>/about" -SkipHttpErrorCheck).StatusCode }
+    catch { 'ERR' }
+} -ThrottleLimit 20
+'@ | Group-Object | Sort-Object Count -Descending
+# Expected: a mix of 200 + 429; the 429 count rises with the iteration count.
+```
+
+### 23.6 Integration tests
+
+[`backend/tests/IabConnect.Api.Tests/Middleware/RateLimitingTests.cs`](../backend/tests/IabConnect.Api.Tests/Middleware/RateLimitingTests.cs) ships 6 [Fact] tests:
+- `RateLimitingOptions_BindsFromConfiguration_WithDocumentedDefaults` — options binding.
+- `StrictPolicyName_MatchesNamedPolicyConstant` — typo guard on the named policy string.
+- `HealthcheckEndpoint_RemainsResponsive_AcrossManyRequests` — 150 sequential `/health` requests, never 429.
+- `HealthEndpoints_ChainDisableRateLimiting_CodeAudit` — regex on `DependencyInjection.cs` confirming the `.DisableRateLimiting()` chains.
+- `UseRateLimiter_RegisteredAfterAuth_CodeAudit` — middleware ordering.
+- `UseForwardedHeaders_RegisteredFirst_CodeAudit` — IP-forwarding order.
+
+---
+
+## 24. Log audit and secret-shielding (E14-S5)
+
+Story: E14-S5 (REQ-088 AC-4) — *Log audit for sensitive data.* Wave-8 closer for E14.
+
+### 24.1 Goal + scope
+
+**Protects**: operational Serilog log lines from accidentally emitting credentials. The defense applies to: (a) destructured objects via `{@cfg}` message-template syntax (e.g., `Log.Information("Config: {@Cfg}", config)` where `config.Password` would otherwise leak), (b) the request-pipeline `Authorization` header (replaced by a coarse `bearer-present`/`bearer-absent` enricher signal).
+
+**Does NOT protect**: the `AuditEvents` PostgreSQL table populated by `IAuditService` (separately controlled — see §24.2); the request body (verified OFF at §24.4); the JWT validation chain's debug-level logs in Development env (acceptable; Dev logs are local).
+
+### 24.2 Operational logs ↔ audit logs separation
+
+| Surface | Mechanism | Destination | Access |
+|---|---|---|---|
+| **Operational logs** | `Log.Information(...)`, `Log.Warning(...)`, etc. via `ILogger<T>` | Console (Railway log viewer) + File-sink in Dev | Whoever can `railway logs --service api` |
+| **Audit logs** | `IAuditService.LogAsync(AuditEvent)` | PostgreSQL `AuditEvents` table | Only `RequireAdmin` (via Admin API endpoint) |
+
+The destructure-block in this story applies to the **operational logs** path. The `AuditEvents` table's columns are structured + intentional + access-controlled separately (per [`docs/05_security_privacy.md`](05_security_privacy.md) §Audit + §Logging). A Member's email IS logged in `AuditEvents` (REQ-011 requires audit traceability); operational logs go through the destructure-block to ensure secret-shaped fields are scrubbed.
+
+### 24.3 Destructure-block field-name table
+
+The Serilog destructuring policy at [`backend/src/IabConnect.Api/Logging/SensitiveDataDestructuringPolicy.cs`](../backend/src/IabConnect.Api/Logging/SensitiveDataDestructuringPolicy.cs) carries a case-insensitive HashSet of sensitive property names. When an object containing any of these property names is destructured via `{@obj}` syntax, the matching property values are replaced with `"***REDACTED***"`.
+
+| Property name (case-insensitive) | Reason |
+|---|---|
+| `password`, `Password` | User credentials, SMTP, PostgreSQL |
+| `secret`, `Secret`, `client_secret`, `ClientSecret`, `clientSecret` | OAuth client secrets, generic secrets |
+| `api_key`, `apiKey`, `ApiKey` | API keys (Mailgun, SES, Stripe, …) |
+| `access_key`, `AccessKey`, `secret_key`, `SecretKey` | S3-compatible storage credentials |
+| `Authorization`, `authorization` | Raw bearer tokens in headers |
+| `ConnectionString`, `connectionString`, `connectionstring` | Full database connection strings |
+| `EncryptionKey`, `encryption_key` | Backup encryption keys per ADR-019 |
+| `NEXTAUTH_SECRET`, `nextauth_secret` | NextAuth session signing secret |
+| `webhook_secret`, `WebhookSecret` | Future webhook signing secrets (E5/E8) |
+| `pepper`, `Pepper`, `CalendarTokenPepper` | HMAC pepper per REQ-025 |
+| `PGPASSWORD` | pg_dump/pg_restore env-var per REQ-088 AC-6 |
+| `X-API-Key`, `x-api-key` | Generic API-key header form |
+
+The list mirrors the E14-S1 audit script's `$StringAllowlist` field-name vocabulary; see [§20.2](#202-allowlisted-dev-only-well-known-values). The `AllowlistParity_DestructureFieldsCoverAuditScriptAllowlist` test enforces the parity.
+
+**Extension procedure**: when a new secret-shaped property name is introduced anywhere in the codebase, BOTH the audit script (§20.4) AND the destructure HashSet must be extended in lockstep. PRs adding either should reference the other.
+
+### 24.4 Dev-only logging tradeoff
+
+[`appsettings.Development.json:6-8`](../backend/src/IabConnect.Api/appsettings.Development.json#L6-L8) sets `Microsoft.AspNetCore.Authentication.JwtBearer: Debug`. At Debug level the JWT bearer middleware may log token-validation internals — claim values (not raw token bytes, but adjacent metadata like `iss`, `aud`, `exp`). This is acceptable because:
+- Dev logs are emitted to the local Console (and Dev's File sink at `logs/`); they never reach Railway.
+- Dev `.gitignore` blocks `logs/` from being committed.
+- Dev tooling assumes a trust boundary at the developer's machine.
+
+Beta + Production override the JwtBearer logger to Information via `appsettings.json:5` `Microsoft.AspNetCore: Warning` baseline — debug logs are suppressed at the upstream `Microsoft.AspNetCore` level.
+
+### 24.5 Live log-grep verification recipe
+
+After first Beta deploy, sanity-check the Railway log viewer:
+
+```bash
+# All recent api-service logs containing the word "password" or "secret"
+railway logs --service api --tail 1000 | grep -iE 'password|secret|client_secret|api_key|access_key'
+# Expected: ZERO matches, OR only matches whose surrounding context is the literal
+#           "***REDACTED***" (proving the destructure-block fired and shielded the value).
+
+# Authorization-header bearer-presence enrichment (NOT raw tokens)
+railway logs --service api --tail 1000 | grep -E 'BearerPresence'
+# Expected: matches show "bearer-present" or "bearer-absent"; NEVER a JWT triplet
+#           ([A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+).
+```
+
+Cross-platform alternative:
+
+```powershell
+pwsh -c "& railway logs --service api --tail 1000 | Select-String -Pattern '(password|secret|client_secret|api_key|access_key)' -CaseSensitive:$false"
+```
+
+Operator-reachability gate (A45): `railway` CLI install — `npm install -g @railway/cli` OR `brew install railway` OR `iwr https://railway.app/install.sh | iex` (Windows pwsh).
+
+### 24.6 Integration tests
+
+[`backend/tests/IabConnect.Api.Tests/Logging/SensitiveDataDestructuringPolicyTests.cs`](../backend/tests/IabConnect.Api.Tests/Logging/SensitiveDataDestructuringPolicyTests.cs) ships 7 [Fact] tests:
+- `RedactsPasswordField_WhenObjectIsDestructured` — destructure shielding for `Password`.
+- `RedactsClientSecretField_WhenObjectIsDestructured` — same for `ClientSecret`.
+- `DoesNotIntervene_WhenObjectHasNoSensitiveProperties` — side-effect guard for benign objects.
+- `BearerPresenceEnricher_LogsPresent_WhenAuthorizationHeaderStartsWithBearer` + `_LogsAbsent_WhenAuthorizationHeaderMissing` + `_LogsNoHttpContext_WhenAccessorIsEmpty` — enricher behaviour for 3 paths.
+- `AllowlistParity_DestructureFieldsCoverAuditScriptAllowlist` — A31 invariant test.
+
+---
+
 ## Appendix: secrets-in-repo guard
 
 The dev-agent ran the following greps at story-close and confirmed no operational Railway

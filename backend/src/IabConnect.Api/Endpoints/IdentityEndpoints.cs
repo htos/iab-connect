@@ -1,7 +1,9 @@
 using System.Security.Claims;
+using IabConnect.Api.RateLimiting;
 using IabConnect.Application.Authorization;
 using IabConnect.Infrastructure.Identity;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace IabConnect.Api.Endpoints;
 
@@ -81,9 +83,12 @@ public static class IdentityEndpoints
             .Produces(401)
             .Produces(StatusCodes.Status500InternalServerError);
 
-        // REQ-010: Revoke one of the current user's own Keycloak sessions
+        // REQ-010 + REQ-088 AC-4 (E14-S4 DEC-1=A): own-session revocation is brute-
+        // forceable + mutates identity state, so it falls under the strict-identity
+        // rate-limit policy (10 req/min/identity).
         identity.MapDelete("/sessions/{sessionId}", RevokeCurrentUserSession)
             .RequireAuthorization()
+            .RequireRateLimiting(RateLimitingOptions.StrictPolicyName)
             .WithName("RevokeCurrentUserSession")
             .WithDescription("REQ-010: Beendet eine eigene Keycloak-Session des aktuell angemeldeten Benutzers")
             .Produces(204)

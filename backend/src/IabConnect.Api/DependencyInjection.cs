@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using Hangfire;
 using IabConnect.Api.Authorization;
 using IabConnect.Api.Middleware;
+using IabConnect.Api.RateLimiting;
 using IabConnect.Infrastructure.Backup;
 using IabConnect.Infrastructure.Common;
 using IabConnect.Infrastructure.Finance.Jobs;
@@ -11,6 +12,8 @@ using IabConnect.Infrastructure.Events.Jobs;
 using IabConnect.Infrastructure.Retention;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
@@ -231,6 +234,14 @@ public static class DependencyInjection
             .AddCheck<HealthChecks.DatabaseHealthCheck>("database", tags: ["db", "ready"])
             .AddCheck<HealthChecks.KeycloakHealthCheck>("keycloak", tags: ["auth", "ready"]);
 
+        // REQ-088 AC-4 (E14-S4): rate-limiting baseline. 100/min/IP anonymous,
+        // 600/min/user authenticated, 10/min on the strict-identity named policy
+        // (DEC-1=A: applied to session-revocation + admin MFA reset). Healthcheck
+        // endpoints are chained with .DisableRateLimiting() in UseApiPipeline so
+        // Railway's probe never trips the limiter. See RateLimiterRegistration.cs
+        // and docs/14_beta_railway_setup.md Section 23.
+        services.AddIabConnectRateLimiter(configuration);
+
         return services;
     }
 
@@ -266,6 +277,11 @@ public static class DependencyInjection
 
     public static WebApplication UseApiPipeline(this WebApplication app)
     {
+        // REQ-088 AC-4 (E14-S4): Forwarded headers must run first so the rate-limiter's
+        // partition function sees the real client IP (X-Forwarded-For from Railway's edge),
+        // not the proxy IP. Without this every anonymous request would share one bucket.
+        app.UseForwardedHeaders();
+
         // Security headers
         app.Use(async (context, next) =>
         {
@@ -312,6 +328,12 @@ public static class DependencyInjection
         // Auth
         app.UseAuthentication();
         app.UseAuthorization();
+
+        // REQ-088 AC-4 (E14-S4): rate-limiter middleware. AFTER UseAuthentication +
+        // UseAuthorization so the global partition function inspects httpContext.User;
+        // AFTER UseCors so CORS preflights are not counted; AFTER UseForwardedHeaders
+        // so RemoteIpAddress reflects the real client IP.
+        app.UseRateLimiter();
 
         // Hangfire Dashboard (dev only) + recurring jobs
         if (app.Environment.IsDevelopment())
@@ -365,13 +387,16 @@ public static class DependencyInjection
                 new RecurringJobOptions { TimeZone = reminderJobTimeZone });
         }
 
-        // REQ-054: Health check endpoints (basic + detailed)
-        app.MapHealthChecks("/health");
+        // REQ-054: Health check endpoints (basic + detailed). REQ-088 AC-4 (E14-S4):
+        // healthcheck endpoints chain .DisableRateLimiting() so Railway's probe (every
+        // ~10s) never trips the limiter when a noisy neighbour on the same egress IP
+        // is rate-limited.
+        app.MapHealthChecks("/health").DisableRateLimiting();
         app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
         {
             Predicate = check => check.Tags.Contains("ready"),
             ResponseWriter = WriteHealthCheckResponse
-        });
+        }).DisableRateLimiting();
         app.MapGet("/health/detail", async (
             Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckService healthCheckService) =>
         {
@@ -392,7 +417,7 @@ public static class DependencyInjection
             return report.Status == Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy
                 ? Results.Ok(response)
                 : Results.Json(response, statusCode: 503);
-        }).RequireAuthorization("RequireAdmin");
+        }).RequireAuthorization("RequireAdmin").DisableRateLimiting();
 
         // API Endpoints
         app.MapApiEndpoints();

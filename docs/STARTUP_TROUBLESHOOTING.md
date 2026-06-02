@@ -157,7 +157,7 @@ Set-Service -Name postgresql-x64-17 -StartupType Manual
   "ServerUrl": "http://localhost:8080",
   "Realm": "iabconnect",
   "AdminClient": "admin-service",
-  "AdminClientSecret": "admin-service-secret-2026"  // ← Must match!
+  "AdminClientSecret": "dev-admin-secret-change-me"  // ← Must match! (E14-S1 sanitization)
 }
 ```
 

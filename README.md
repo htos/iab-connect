@@ -420,7 +420,7 @@ Self-hosters and forks reproduce the deployment from that document.
 | Service            | URL                   | Username            | Password        |
 | ------------------ | --------------------- | ------------------- | --------------- |
 | **Application**    | http://localhost:3000 | admin@iabconnect.ch | Admin-Dev-2026! |
-| **Keycloak Admin** | http://localhost:8080 | admin               | admin-dev-2026  |
+| **Keycloak Admin** | http://localhost:8080 | admin               | admin           |
 | **MailHog**        | http://localhost:8025 | -                   | -               |
 | **Seq Logs**       | http://localhost:5341 | -                   | -               |
 | **RustFS Console** | http://localhost:9001 | rustfsadmin         | rustfsadmin     |

@@ -1,5 +1,156 @@
 # generated: 2026-05-12
-# last_updated: 2026-06-01 (bmad-create-story BULK REFRESH for entire Epic-15 (Database, Persistence,
+# last_updated: 2026-06-02 (Epic-14 CLOSED — Security and Secrets Management. Single autonomous-mode
+#   session delivered all 5 stories + epic-boundary code review + retrospective per user directive
+#   "implementiere alle stories von e14. ohne stopp bis alles implementiert ist. danach kannst du
+#   die retro durchfürhen. es handelt sich nicht mehr um einen mvp." (2026-06-02). A41 escape applied
+#   to all DEC-Needed surfaces with (a)/(b)/(c) Debug Log per A43; A47 escape applied uniformly to
+#   ~13 live-walkthrough [!] items (queued for Wave-8/9 unified walkthrough). **Epic summary:**
+#   (1) scripts/audit-secrets.ps1 (~290 lines pwsh-portable secret-grep audit + $StringAllowlist
+#   hashtable + -SelfTest mode); appsettings.Development.json + dev realm L228 sanitized to
+#   dev-admin-secret-change-me; README §Default Credentials Keycloak Admin password
+#   admin-dev-2026→admin parity fix; docs/14 Section 20. (2) SecurityHeadersTests (7 tests: 4
+#   header + HSTS + HTTPS-redirect code-audit + A31 parity); frontend/src/lib/config/security-headers.ts
+#   buildContentSecurityPolicy with 10 directives; next.config.ts CSP wired; Vitest tests (4→6);
+#   Section 21. (3) DevOnlyEndpointGatingTests (4 tests: Hangfire + Swagger 404 in Testing env);
+#   Section 22. (4) RateLimiting/{RateLimitingOptions,RateLimiterRegistration}.cs (anonymous 100/min/IP
+#   + authenticated 600/min/user + strict-identity 10/min named policy chained on 3 endpoints —
+#   DELETE /sessions own + admin + POST /reset-mfa); RateLimitingTests (6→7 tests); appsettings.json
+#   RateLimiting section; Section 23. (5) Logging/{SensitiveDataDestructuringPolicy,BearerPresenceEnricher}.cs
+#   (~30-entry sensitive-property HashSet + IHttpContextAccessor-backed bearer presence enrichment);
+#   Program.cs wiring; SensitiveDataDestructuringPolicyTests (7→9 tests including A31 parity with
+#   audit script); Serilog.Sinks.TestCorrelator 4.0.0 added; Section 24. **Quality gates:** dotnet
+#   build 0 warnings 0 errors; backend test suite 2023 → 2050 (+34 new for E14 stories + post-patch
+#   epic-boundary additions); frontend test suite 4 → 6 next-config-headers tests. **Epic-boundary
+#   code review** (Blind Hunter + Edge Case Hunter + Acceptance Auditor, 3-layer adversarial per
+#   feedback_bmad_workflow hybrid CR+ER policy) produced 39 unique findings → **10 patches APPLIED**:
+#   P1 docker-compose.full.yml IABCONNECT_ADMIN_CLIENT_SECRET swap (HIGH match-up-site gap); P2
+#   docs/STARTUP_TROUBLESHOOTING.md secret reference fix; P3 StrictPolicyChained_OnAllThreeTargetEndpoints
+#   regex code-audit test; P4 429 body includes retryAfter field (was header-only); P5
+#   BearerPresenceEnricher DI-registration code-audit test; P6 OnRejected HasStarted guard (race
+#   protection); P7 BearerPresenceEnricher loops over StringValues (multi-value Authorization
+#   header); P8 CSP normalizeOrigin + normalizeHostSource (env-var injection defense + path-stripping;
+#   +2 Vitest tests); P9 audit-secrets.ps1 git rev-parse repo-check (false-pass when invoked outside
+#   repo); P10 RequestBodyLogging_IsNotEnabledInPipeline code-audit test (E14-S5 AC-2 coverage gap).
+#   6 acknowledged in retrospective (DEC-pivots traded runtime tests for code-audit per Serilog
+#   single-logger constraint → A49 action item); 18 defers logged + 5 dismissed. Build re-ran clean;
+#   full backend suite 2050/2050 green; frontend 6/6 green. **Epic-14 retrospective:** doc saved
+#   at _bmad-output/implementation-artifacts/epic-14-retro-2026-06-02.md. 4 new action items
+#   A49-A52 promoted to project-context.md under Story Authoring & Dev-Story Execution Rules: A49
+#   refactor Program.cs Serilog setup to be WebApplicationFactory-idempotent (recurring constraint
+#   forcing test pivots across E14-S2/S3/S4); A50 build-time env vars in security-relevant strings
+#   MUST be parsed/normalized not raw-concatenated (CSP injection defense surfaced by P8); A51 A31
+#   cross-story orthogonal-AC invariants tested via direct artifact-read (E14-S5 AC-4 + E14-S2
+#   parity test + new StrictPolicyChained test pattern); A52 when SCP/spec AC references an endpoint
+#   pattern, verify endpoint exists at refresh time (E14-S4 DEC-1 spec divergence for /api/v1/auth/*).
+#   A28-A48 carry forward. **Status transitions:** e14-s1/s2/s3/s4/s5 review→done; epic-14
+#   in-progress→done; epic-14-retrospective optional→done. Sprint state: E1-E3 + E9-E16 + E20 all
+#   done. **NEXT per workflow.on_complete:** Wave-8 second half = E17 (Monitoring/Logging/Health).
+#   Per project memory feedback_session_pacing_dev_cycles, recommend committing this 5-story bulk
+#   + epic-boundary review + retro + project-context A49-A52 update and starting bmad-create-story
+#   for E17-S1 in a fresh session.) ## Previously: 2026-06-02 (bmad-create-story BULK REFRESH for entire Epic-14 (Security and Secrets
+#   Management): COMPLETE. All 4 remaining stub files (e14-s2..s5, previously 19-line generate-stubs.sh
+#   output) replaced with ~500-900 line dev-ready stories per A34 (bulk spec-refresh at epic start
+#   when N≥3 stories in one session). E14-S1 was authored earlier this same session as the Wave-8
+#   opener; user followed with explicit "for the entire epic 14" arg to invoke the A34 path for
+#   the remaining 4. **Refresh deltas vs. 2026-05-15 stubs:** (1) e14-s2 grew to ~680 lines, 11 ACs,
+#   8 Tasks. Critical finding: backend security headers + HSTS + HTTPS-redirect are ALREADY shipping
+#   per ADR-015 closure in E11-S2/E12 (DependencyInjection.cs:269-282 + 303-306 + Program.cs:26).
+#   The story's contribution is regression-test coverage + frontend CSP (the net-new feature) + A31
+#   backend↔frontend header-value parity test. DEC-1 CSP profile (Practical-enforcing vs.
+#   Report-only vs. Strict-no-unsafe) recommended A. DEC-2 frontend test shape (Vitest vs.
+#   Playwright vs. both) recommended A. DEC-3 HSTS test env fixture (derived factory vs.
+#   Environment.SetEnvironmentVariable) recommended A. (2) e14-s3 grew to ~360 lines, 9 ACs, 5
+#   Tasks — smallest story in epic. Hangfire dashboard already gated at DependencyInjection.cs:317;
+#   story adds 3-5 regression tests + Section 22 in runbook. A31 invariant: the parallel
+#   `IsDevelopment()` gate at DependencyInjection.cs:291 (Swagger) tested together as one
+#   "no-dev-tooling-in-Beta" invariant. DEC-1 AC-4 dev-positive test recommended B (skip with
+#   documented reason; AC-1/AC-2/AC-3 are the load-bearing assertions). (3) e14-s4 grew to ~770
+#   lines, 12 ACs, 8 Tasks — largest story in epic. NEW middleware: Microsoft.AspNetCore.RateLimiting.
+#   **CRITICAL SPEC DIVERGENCE surfaced**: SCP §5 AC-1 names `/api/v1/auth/*` but IAB Connect has
+#   NO such route (auth delegated to Keycloak). DEC-1 surfaces 3 options for the equivalent
+#   IAB-Connect surface: A=IdentityEndpoints session-revocation + admin MFA reset (RECOMMENDED), B=
+#   No-op (literal AC misapplicable, documented), C=All RequireAdmin (too broad). 3 rate-limit
+#   policies (anonymous 100/min/IP, authenticated 600/min/user, strict-identity 10/min). Healthcheck
+#   exemption explicit (Railway probe survival). X-Forwarded-For trust documented (Railway edge IP
+#   model). DEC-2 FakeTimeProvider injection recommended A (deterministic). New package added:
+#   Microsoft.Extensions.Time.Testing. Cross-epic downstream: E8 (when resumed) inherits this
+#   policy per epics-and-stories.md L2132. (4) e14-s5 grew to ~600 lines, 10 ACs, 7 Tasks — Wave-8
+#   closer for E14. Net new: Serilog destructure-block via `SensitiveDataDestructuringPolicy`
+#   + `BearerPresenceEnricher` (JWT logged as `bearer-present`/`bearer-absent`). Hard A31
+#   dependency on E14-S1: AC-4 asserts byte-equal field-name parity between the destructure
+#   list and the `scripts/audit-secrets.ps1` $Allowlist. **Operational vs. audit log separation**
+#   explicitly documented (Section 24.2) — Console/Railway logs vs. AuditEvents PostgreSQL table.
+#   DEC-1 field-name source recommended A (inline static list, decoupled from E14-S1 close-state
+#   at runtime; AC-4 test enforces parity). DEC-2 in-memory sink recommended A (Serilog.Sinks.InMemory
+#   package). **Cross-cutting findings during refresh:** (a) Backend security state is more mature
+#   than the SCP §5 text reads — E11-S2 + E12 already closed most of E14-S2's surface; the story
+#   reads as 80% verification + 20% new feature (CSP). (b) The `/api/v1/auth/*` spec divergence in
+#   E14-S4 surfaces a real translation gap between the SCP and the codebase reality; the story's
+#   DEC-1 is the design space. (c) A38 doc-bundle pattern from E13/E15/E16 continues across the
+#   epic — docs/14_beta_railway_setup.md gains 4 new sections during E14: Section 21 (E14-S2) +
+#   Section 22 (E14-S3) + Section 23 (E14-S4) + Section 24 (E14-S5), all inserted between
+#   Section 20 (E14-S1) + Appendix. (d) A31 cross-story invariants: E14-S1 allowlist ↔ E14-S5
+#   destructure-block (field-name parity tested); backend ↔ frontend security headers (3 mirror-able);
+#   Hangfire-dashboard ↔ Swagger-UI dev-only (one A31 pair); healthcheck exemption from rate-limiter.
+#   (e) A47 escape applied uniformly: all stories have 2-3 `[!]` items deferred to the unified
+#   Wave-8/9 walkthrough per user's standing post-MVP autonomous-mode directive carried through
+#   E15/E16. **Status transitions:** epic-14 unchanged (in-progress — was flipped by E14-S1 refresh
+#   earlier this session); e14-s2 backlog → ready-for-dev; e14-s3 backlog → ready-for-dev; e14-s4
+#   backlog → ready-for-dev; e14-s5 backlog → ready-for-dev. Sprint state: E1-E3 + E9-E12 + E13 +
+#   E15 + E16 + E20 all done + E14 in-progress (5 ready-for-dev). NEXT per workflow.on_complete +
+#   project memory feedback_session_pacing_dev_cycles + A34: recommend committing this 5-story
+#   bulk-context refresh (E14-S1 + S2 + S3 + S4 + S5) + sprint-status update and starting
+#   bmad-dev-story for e14-s1 in a fresh session. After e14-s1 close, dev-story can run for
+#   e14-s2..s5 in any order (no story-internal sequencing constraints — all 4 are independent
+#   of each other given E14-S1 closed). E14-S2/S3/S4 are independent; E14-S5 has soft AC-4
+#   dependency on E14-S1's `scripts/audit-secrets.ps1` shipping (the AC-4 test reads the script).
+#   Per project memory feedback_session_pacing_dev_cycles, recommend separate sessions per
+#   dev-story.) ## Previously: 2026-06-02 (bmad-create-story REFRESH for e14-s1-secrets-audit-and-repo-cleanup:
+#   COMPLETE. Story file at _bmad-output/implementation-artifacts/e14-s1-secrets-audit-and-repo-cleanup.md
+#   authored from 19-line stub to ~900-line dev-ready story per Wave-8 opener for E14 (Security and
+#   Secrets Management). Single-story refresh (NOT bulk A34 — user invoked /bmad-create-story without
+#   specifying multiple). Story expands the SCP §5 3-AC text to an 8-artifact audit surface inventory
+#   produced by Task-0 spike: (1) backend/.env.example ✅ clean, (2) frontend/.env.example ✅ clean,
+#   (3) appsettings.json ⚠️ ConnectionStrings L23 still has postgres-literal (E11-S2-D1 deferred),
+#   (4) appsettings.Development.json ⚠️ KeycloakAdmin.ClientSecret L48 = `admin-service-secret-2026`
+#   (project-literal not generic placeholder), (5) appsettings.Beta.json ✅ clean, (6)
+#   realms-beta/iabconnect-realm.json ✅ sanitized per ADR-016 (${IABCONNECT_*} placeholders +
+#   bearerOnly api client), (7) realms/iabconnect-realm.json (DEV) ⚠️ 2 literal client secrets +
+#   6 user passwords (DEC-1-dependent treatment), (8) docker-compose.full.yml ⚠️ literals matching
+#   dev realm (E12-S4-D20' deferred). Story carries 3 DEC-Needed surfaces per A32/A41: DEC-1 Scope
+#   (Strict-AC narrow Beta-image-only vs. Broad sanitize dev realm too) — recommended A; DEC-2
+#   Allowlist format (inline PowerShell hashtable + Markdown table mirror vs. JSON file) —
+#   recommended A; DEC-3 E11-S2-D1 closure (close base ConnectionStrings cleanup here per A36
+#   pattern vs. defer further) — recommended A. Recommendation rationale: A28's spike confirms
+#   the audit-script + allowlist approach gives byte-equal reproducibility regardless of B's
+#   additional file changes. Story deliverables (DEC-A baseline): NEW scripts/audit-secrets.ps1
+#   PowerShell-core portable script (~80-120 lines, runs on Win+Linux+macOS via pwsh, SPDX-headered
+#   per CONTRIBUTING.md, includes -WorkingTreeOnly + -Verbose + -SelfTest + -Help switches);
+#   MODIFIED appsettings.Development.json (L48 placeholder swap); MODIFIED README.md §Default
+#   Credentials (A42 reread surfaced README:423 `admin-dev-2026` vs docker-compose.yml:38 `admin`
+#   doc-vs-code drift); A38 doc-bundle adds Section 20 to docs/14_beta_railway_setup.md (6
+#   subsections: 20.1 Goal+scope, 20.2 Allowlist table, 20.3 How to run + pwsh-install snippets
+#   per A45 reachability check, 20.4 Extend procedure, 20.5 Failure decision tree, 20.6 Future
+#   expansion). DEC-3=A optional adds: MODIFIED appsettings.json L23 to empty string +
+#   TestWebApplicationFactory extension per A36/E20-S5-P4 pattern. DEC-1=B optional adds:
+#   MODIFIED dev realm (`${IABCONNECT_DEV_*}` placeholders) + MODIFIED docker-compose.yml
+#   (keycloak env block) + MODIFIED docker-compose.full.yml + NEW infra/.env.example.dev +
+#   NEW infra/.env.example.full. **Cross-story orthogonal-AC parity (A31, 6 invariants closed):**
+#   (1) __set_in_environment__ placeholder grammar consistency across both .env.example files;
+#   (2) appsettings.json layering invariant (base empty + overlay inherit + env-var override);
+#   (3) sanitized-realm-import invariant; (4) secret-grep allowlist completeness; (5) .gitignore
+#   envelope completeness (`.env`/`.env.*`-except-`.env.example`/`appsettings.*.Local.json` all
+#   blocked — confirmation only); (6) README ↔ compose documentation parity (currently broken;
+#   AC-4 closes). **A47 escape NOT applied** — story has zero `[!]` live-walkthrough items
+#   (no Beta deploy required, no browser session, no Railway dashboard). **Status transitions:**
+#   epic-14 backlog → in-progress; e14-s1-secrets-audit-and-repo-cleanup backlog → ready-for-dev.
+#   Sprint state: E1-E3 + E9-E12 + E13 + E15 + E16 + E20 all done + E14 in-progress (1
+#   ready-for-dev). NEXT per workflow.on_complete + project memory feedback_session_pacing_dev_cycles:
+#   recommend committing this story refresh + sprint-status update and starting bmad-dev-story
+#   for e14-s1 in a fresh session. OPTIONAL alternative: per A34 bulk-refresh pattern + the E13/E15/E16
+#   precedent, Harry can request `/bmad-create-story` for e14-s2 + e14-s3 + e14-s4 + e14-s5 + e17-s1..s4
+#   upfront to cover the entire Wave 8 before any dev-story — this is the cadence E13/E15/E16
+#   used. Single-story-now vs. bulk-Wave-8-refresh is Harry's call.) ## Previously: 2026-06-01 (bmad-create-story BULK REFRESH for entire Epic-15 (Database, Persistence,
 #   and Migrations): COMPLETE. All 4 stories (e15-s1..s4) authored or refreshed in one session per A34
 #   (bulk spec-refresh at epic start when N≥3 stories in one session). **Refresh deltas:** (1) e15-s1
 #   (verify two-Postgres separation) — LIGHT refresh: 2026-05-15 draft was 284 lines + comprehensive;
@@ -607,13 +758,13 @@ development_status:
   e16-s3-validate-document-upload-against-rustfs: done
   epic-16-retrospective: done
 
-  epic-14: backlog
-  e14-s1-secrets-audit-and-repo-cleanup: backlog
-  e14-s2-review-security-headers-and-https: backlog
-  e14-s3-verify-hangfire-dashboard-dev-only: backlog
-  e14-s4-add-rate-limiting-baseline: backlog
-  e14-s5-audit-logs-for-sensitive-data: backlog
-  epic-14-retrospective: optional
+  epic-14: done
+  e14-s1-secrets-audit-and-repo-cleanup: done
+  e14-s2-review-security-headers-and-https: done
+  e14-s3-verify-hangfire-dashboard-dev-only: done
+  e14-s4-add-rate-limiting-baseline: done
+  e14-s5-audit-logs-for-sensitive-data: done
+  epic-14-retrospective: done
 
   epic-17: backlog
   e17-s1-restrict-serilog-to-console-in-containers: backlog

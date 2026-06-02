@@ -1,9 +1,11 @@
 using IabConnect.Api;
+using IabConnect.Api.Logging;
 using IabConnect.Application;
 using IabConnect.Infrastructure;
 using IabConnect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using Serilog.Core;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
@@ -16,11 +18,20 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
-    // Use Serilog instead of default logging
+    // Use Serilog instead of default logging. REQ-088 AC-4 (E14-S5):
+    // - Destructure.With<SensitiveDataDestructuringPolicy>() replaces sensitive-property
+    //   values with "***REDACTED***" when an object is logged via the @ destructuring
+    //   syntax (e.g., Log.Information("Config: {@Cfg}", cfg)).
+    // - BearerPresenceEnricher is registered as an ILogEventEnricher service and picked
+    //   up by ReadFrom.Services(); emits a BearerPresence={bearer-present|bearer-absent}
+    //   property without ever exposing the raw token contents.
+    // See docs/14_beta_railway_setup.md Section 24.
+    builder.Services.AddSingleton<ILogEventEnricher, BearerPresenceEnricher>();
     builder.Host.UseSerilog((context, services, configuration) => configuration
         .ReadFrom.Configuration(context.Configuration)
         .ReadFrom.Services(services)
-        .Enrich.FromLogContext());
+        .Enrich.FromLogContext()
+        .Destructure.With<SensitiveDataDestructuringPolicy>());
 
     // Suppress Server header (SEC-012)
     builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
