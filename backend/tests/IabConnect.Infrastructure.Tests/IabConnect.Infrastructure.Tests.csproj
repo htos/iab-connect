@@ -16,6 +16,7 @@
     <PackageReference Include="Moq" />
     <PackageReference Include="Testcontainers" />
     <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="Testcontainers.Minio" />
     <PackageReference Include="coverlet.collector" />
   </ItemGroup>
 

@@ -40,6 +40,9 @@
 14. [Two-Postgres separation verification (E15-S1)](#14-two-postgres-separation-verification-e15-s1)
 15. [Daily PostgreSQL backup + restore (E15-S3)](#15-daily-postgresql-backup--restore-e15-s3)
 16. [First Beta-Admin seeding (E15-S4)](#16-first-beta-admin-seeding-e15-s4)
+17. [Frontend public URLs: bake + redirect-URI verification (E16-S1)](#17-frontend-public-urls-bake--redirect-uri-verification-e16-s1)
+18. [End-to-end OIDC verification (E16-S2)](#18-end-to-end-oidc-verification-e16-s2)
+19. [Document upload/download verification against RustFS (E16-S3)](#19-document-uploaddownload-verification-against-rustfs-e16-s3)
 
 ---
 
@@ -1034,6 +1037,9 @@ GHCR package visibility (Section 1.4) must be set to Public on the fork's packag
 - DCO workflow: [.github/workflows/dco.yml](../.github/workflows/dco.yml) (E20-S1).
 - Local Beta-shape testing (no Railway burn): README "Option 4: Local Beta-shape testing (full overlay)" + [infra/docker-compose.full.yml](../infra/docker-compose.full.yml) (E12-S4).
 - Architecture decision records: [_bmad-output/planning-artifacts/architecture.md](../_bmad-output/planning-artifacts/architecture.md) ADR-011..021.
+- Frontend image bake + Keycloak realm redirect URIs: [E16-S1](../_bmad-output/implementation-artifacts/e16-s1-verify-frontend-public-urls.md) — see [Section 17](#17-frontend-public-urls-bake--redirect-uri-verification-e16-s1).
+- End-to-end OIDC walkthrough + JWT `iss` parity (runtime): [E16-S2](../_bmad-output/implementation-artifacts/e16-s2-validate-end-to-end-oidc-in-beta.md) — see [Section 18](#18-end-to-end-oidc-verification-e16-s2).
+- Document upload/download against RustFS + two-bucket separation invariant: [E16-S3](../_bmad-output/implementation-artifacts/e16-s3-validate-document-upload-against-rustfs.md) — see [Section 19](#19-document-uploaddownload-verification-against-rustfs-e16-s3).
 
 ---
 
@@ -1733,6 +1739,844 @@ escalation) but the master-realm admin still works: log into the master realm,
 navigate to `iabconnect` realm → Users → select the locked-out user → Credentials
 → Reset password. Set a temporary password, communicate it through a secure
 channel, the user signs in and changes it.
+
+---
+
+## 17. Frontend public URLs: bake + redirect-URI verification (E16-S1)
+
+> Story alignment: **E16-S1** — REQ-088 AC-7. Validates that the published
+> `ghcr.io/htos/iabc-web:beta` container image bakes the live Beta `api`,
+> `keycloak`, and document-host URLs into its static client bundle (no
+> `localhost:` strings), and that the Keycloak realm's `iabconnect-frontend`
+> client redirect URIs materialize to the deployed `web` Railway domain. Re-run
+> whenever a GHA `NEXT_PUBLIC_*_BETA` repo variable rotates or whenever the
+> Keycloak realm import changes.
+>
+> **Why this is its own section.** [Section 6.1](#61-build-time-baked-into-the-image-at-gha-docker-build)
+> enumerates the build-time-baked variables; this section is the *post-publish*
+> verification that the bake actually happened (variables can be missing at
+> build time → empty strings inlined → silent runtime failure that only
+> surfaces on the first browser login or first thumbnail render). [Section 6.3](#63-the-keycloak_issuer-parity-invariant)
+> documents the issuer parity invariant; this section closes the bake-side of
+> that invariant as a runtime fact. [Section 8.4](#84-internal-reachability-verification-deploy-log-inspection)
+> confirms internal reachability; this section confirms the *correct URL was
+> baked* into the published image.
+
+### 17.1 Goal + commitments
+
+This procedure proves five things:
+
+1. The `:beta` image's `.next/static/` chunks contain the live `api` Railway
+   domain as a baked literal — no `localhost`, no empty string, no stale fork
+   URL.
+2. The `:beta` image's chunks contain the live `keycloak` Railway domain (for
+   OIDC discovery + password-reset deep links).
+3. The `:beta` image's chunks contain the literal `"beta"` (`NEXT_PUBLIC_ENV_LABEL`),
+   which is the BetaBanner activation signal.
+4. The `frontend/Dockerfile` ARG↔ENV bridge for all 9 `NEXT_PUBLIC_*` is
+   intact (regression-guarded by a Vitest test, not the live image).
+5. The Keycloak realm's `iabconnect-frontend` client lists the live `web`
+   Railway domain in `redirectUris` and `webOrigins` (so the OIDC callback is
+   not rejected with `Invalid parameter: redirect_uri`).
+
+What this section **does not** prove (deferred to later sections):
+
+- The OIDC round-trip succeeds end-to-end → [Section 18](#18-end-to-end-oidc-verification-e16-s2) (E16-S2).
+- Document upload/download to RustFS → [Section 19](#19-document-uploaddownload-verification-e16-s3) (E16-S3).
+
+### 17.2 Prerequisites
+
+Operator-side, before running this section:
+
+- **Beta deploy GREEN** — Section 10 has been completed at least once and the
+  three public services (`web`, `api`, `keycloak`) are reachable on their
+  assigned Railway hostnames.
+- **`docker` CLI** on the operator workstation (image extraction). Docker
+  Desktop, Rancher Desktop, Podman with the `docker` alias, or Colima all
+  work — anything that handles `docker pull` + `docker create` + `docker cp`.
+- **`gh` CLI** authenticated against `htos/iab-connect` (`gh auth status`
+  reports a logged-in user with read access to the repo). Used to fetch the
+  current values of the `NEXT_PUBLIC_*_BETA` GHA repo variables.
+- **`grep`** — POSIX-standard; on Windows use Git Bash, WSL, or the bundled
+  `grep` from Git for Windows. `findstr` is NOT a drop-in substitute (no
+  recursion, different regex dialect).
+- **`kcadm.sh`** (optional, for path B of 17.4) — either installed locally
+  from a Keycloak distribution or invoked inside the `keycloak` container
+  via `railway shell -s keycloak`. The in-container path at
+  `/opt/keycloak/bin/kcadm.sh` is the always-available option.
+
+### 17.3 Image-side bake verification
+
+Pull the current `:beta` image and extract its static chunks:
+
+```sh
+docker pull ghcr.io/htos/iabc-web:beta
+CID=$(docker create ghcr.io/htos/iabc-web:beta)
+docker cp "$CID:/app/.next/static" /tmp/iabc-web-static
+docker rm "$CID" >/dev/null
+```
+
+Capture the current GHA repo variables (their values are the **source of
+truth** for what should be baked):
+
+```sh
+API_URL=$(gh variable get NEXT_PUBLIC_API_URL_BETA --json value --jq .value)
+KC_URL=$(gh variable get NEXT_PUBLIC_KEYCLOAK_URL_BETA --json value --jq .value)
+KC_ISSUER=$(gh variable get NEXT_PUBLIC_KEYCLOAK_ISSUER_BETA --json value --jq .value)
+DOC_HOST=$(gh variable get NEXT_PUBLIC_DOCUMENT_HOST_BETA --json value --jq .value)
+```
+
+Run the five greps. Paste each result below the grep that produced it.
+
+```sh
+# AC-1: api Railway domain baked
+grep -rl "$API_URL" /tmp/iabc-web-static
+# Expected: ≥1 line listing a chunk under /tmp/iabc-web-static/chunks/*.js
+#           AND/OR under /tmp/iabc-web-static/standalone/.next/static/chunks/*.js
+# Paste result:
+#   <operator fills>
+
+# AC-2: zero localhost strings (most likely silent-failure mode)
+grep -r "localhost:" /tmp/iabc-web-static | head
+# Expected: zero output. ANY hit = a `_BETA` GHA variable is missing
+#           OR an optional NEXT_PUBLIC_* fell back to its Dockerfile localhost
+#           default (most likely culprit: NEXT_PUBLIC_DOCUMENT_HOST_BETA).
+# Paste result:
+#   <operator fills>
+
+# AC-3: keycloak Railway domain baked
+grep -rl "$KC_URL" /tmp/iabc-web-static
+# Expected: ≥1 chunk file.
+# Paste result:
+#   <operator fills>
+
+# AC-3b: keycloak issuer baked
+grep -rl "$KC_ISSUER" /tmp/iabc-web-static
+# Expected: ≥1 chunk file. (Distinct from AC-3 because issuer includes the
+# /realms/<realm> suffix.)
+# Paste result:
+#   <operator fills>
+
+# AC-4: "beta" env-label baked (BetaBanner activation signal)
+grep -rl '"beta"' /tmp/iabc-web-static
+# Expected: ≥1 chunk file in the BetaBanner-emitting bundle.
+# Paste result:
+#   <operator fills>
+```
+
+Cleanup:
+
+```sh
+rm -rf /tmp/iabc-web-static
+```
+
+**Drift resolution if any grep above failed.** The GHA repo variable is the
+source of truth for the *image*. Update the variable in GitHub → Settings →
+Secrets and variables → Actions, then re-trigger the build-images.yml
+workflow on the `beta` branch. The next `:beta` image pulls the corrected
+bake. Note: Railway service env vars on the `web` service do **nothing** for
+`NEXT_PUBLIC_*` — those are build-time-baked, not runtime-read.
+
+### 17.4 Keycloak realm redirect-URI verification
+
+The realm import at
+[infra/keycloak/realms-beta/iabconnect-realm.json:256-263](../infra/keycloak/realms-beta/iabconnect-realm.json#L256-L263)
+declares the `iabconnect-frontend` client's `redirectUris` and `webOrigins`
+as `${IABCONNECT_BETA_HOST}/*` + `${FRONTEND_PUBLIC_URL}/*` substitution
+placeholders. The Keycloak service must supply both env vars at first start
+so the realm-import resolves them; otherwise the runtime config carries the
+literal `${...}` strings and every login attempt fails with
+`Invalid parameter: redirect_uri`.
+
+**Path A — Keycloak Admin Console (GUI).** Sign into the deployed Keycloak
+Admin Console at `https://<keycloak>.up.railway.app/admin/`. Realm
+`iabconnect` → Clients → `iabconnect-frontend` → Settings → scroll to
+"Valid redirect URIs" and "Web origins".
+
+```text
+Expected Valid redirect URIs:
+  <operator pastes the actual list — should include a line ending /*
+   whose prefix equals https://<web>.up.railway.app>
+
+Expected Web origins:
+  <operator pastes the actual list — should include https://<web>.up.railway.app
+   without a trailing /* — CORS spec rejects /* in webOrigins>
+```
+
+**Path B — `kcadm.sh` (CLI).** Either install locally, or use the in-container
+path:
+
+```sh
+# Path B-local: install Keycloak distribution + kcadm.sh on workstation
+kcadm.sh config credentials --server https://<keycloak>.up.railway.app \
+  --realm master --user <bootstrap-admin>
+kcadm.sh get clients -r iabconnect --query clientId=iabconnect-frontend \
+  --fields redirectUris,webOrigins
+
+# Path B-container: invoke inside the running keycloak service
+railway shell -s keycloak --command "/opt/keycloak/bin/kcadm.sh \
+  config credentials --server http://localhost:8080 --realm master \
+  --user <bootstrap-admin> && /opt/keycloak/bin/kcadm.sh get clients \
+  -r iabconnect --query clientId=iabconnect-frontend \
+  --fields redirectUris,webOrigins"
+# Paste resulting JSON:
+#   <operator fills>
+```
+
+**Keycloak service substitution env vars.** In the Railway dashboard, navigate
+to `keycloak` service → Variables. Confirm both `IABCONNECT_BETA_HOST` and
+`FRONTEND_PUBLIC_URL` are set to `https://<web>.up.railway.app` (the live
+public domain assigned by Railway to the `web` service, as recorded in
+[Section 13.2](#132-service-inventory)).
+
+```text
+Operator paste:
+  IABCONNECT_BETA_HOST = <fill>
+  FRONTEND_PUBLIC_URL  = <fill>
+```
+
+**Drift resolution.** If Path A/B returns the literal `${IABCONNECT_BETA_HOST}`
+or a stale URL, the env vars were missing at first realm-import time and the
+realm cache has the unresolved value. Two options:
+
+1. Set both env vars in Railway, then restart the `keycloak` service. The
+   realm import re-runs on next start and the placeholders resolve.
+2. If the realm is already in a usable state, manually edit the
+   `iabconnect-frontend` client in the Admin Console to set the correct
+   URIs. Note this edit is not persisted to git — re-run realm import on
+   next deploy will overwrite it.
+
+### 17.5 5-anchor parity table
+
+Operator fills the table below. Each anchor should agree on the **single**
+live value of the `api` Railway public domain. Discrepancies are the most
+common Beta misconfigurations.
+
+| # | Anchor | Source | Value (operator fills) |
+|---|---|---|---|
+| 1 | `frontend/.env.example:19` | repo placeholder (documentation only) | `http://localhost:5000` |
+| 2 | GHA repo variable `NEXT_PUBLIC_API_URL_BETA` | `gh variable get NEXT_PUBLIC_API_URL_BETA --json value --jq .value` | |
+| 3 | `frontend/Dockerfile:49` ARG default | (no default — strict, must be passed) | _(no default)_ |
+| 4 | build-args in `.github/workflows/build-images.yml` for `:beta` tag | `gh workflow view build-images.yml --yaml \| grep NEXT_PUBLIC_API_URL` | |
+| 5 | Baked literal in `:beta` image | grep result from 17.3 AC-1 | |
+| 6 | **Inverse anchor**: backend `api` service `Frontend__BaseUrl` Railway env var (the `web` public domain, CORS strict-allowlist origin per [DependencyInjection.cs:106-132](../backend/src/IabConnect.Api/DependencyInjection.cs#L106-L132)) | Railway dashboard → `api` service → Variables | |
+
+**Expected outcome.** Anchors 2 + 4 + 5 must be byte-identical. Anchor 1 is
+documentation only (carries the dev fallback). Anchor 3 has no default
+because the Dockerfile fail-fast guard requires it at build time. Anchor 6
+is the *inverse* — it's the `web` Railway domain, not the `api` domain, and
+it must equal what the backend allows as a CORS origin (verify against the
+preflight test in [Section 8.5](#85-cors-allowlist-verification-beta-strict-allowlist-branch)).
+
+**Mismatch resolution.** The GHA repo variable wins for the *image bake*;
+the Railway service env var wins for the *runtime CORS allowlist*. If
+anchors 2 and 5 disagree, the GHA variable was changed after the image was
+built — re-trigger `build-images.yml` on the `beta` branch. If anchor 6
+disagrees with the live `web` Railway domain, update the `Frontend__BaseUrl`
+env var on the `api` service.
+
+---
+
+## 18. End-to-end OIDC verification (E16-S2)
+
+> Story alignment: **E16-S2** — REQ-088 AC-5. Validates the runtime side of
+> the realm-issuer parity invariant from Section 6.3 — that a real JWT
+> issued by the deployed Keycloak carries an `iss` claim equal to the
+> `api` service's `Keycloak__Authority` Railway env var — plus the rest of
+> the OIDC round-trip: PKCE-S256 enforcement, CORS strict-allowlist
+> runtime acceptance + hostile-origin rejection, HSTS + HTTPS-redirect on
+> the api host, `/api/v1/identity/me` returning the expected claim
+> projection, and a two-effect logout (NextAuth cookie + Keycloak SSO).
+> Re-run whenever any of (Keycloak version, NextAuth-version, realm
+> import JSON, `iabconnect-frontend` client config, or `Keycloak__*`
+> Railway env vars on `api`) changes.
+>
+> **Why this is its own section.** Section 6.3 documents the issuer
+> parity as a *static-configuration* invariant; this section closes the
+> *runtime* half by reading the actual `iss` claim out of a live JWT.
+> Section 8.5 documents the CORS allowlist; Section 8.6 documents
+> HSTS + HTTPS-redirect; this section re-verifies both during the OIDC
+> walkthrough because the redirect chain traverses both schemes and
+> both origins, which is the only path where a misconfiguration
+> actually breaks login (Sections 8.5/8.6 isolate each layer; this
+> section exercises the integration).
+
+### 18.1 Goal + commitments
+
+This procedure proves seven things end-to-end:
+
+1. A sign-in via the IAB Connect frontend redirects the browser to
+   Keycloak, accepts credentials, returns the user to the frontend with
+   an authenticated session, and renders a protected page.
+2. The OIDC authorization request carries `code_challenge_method=S256` —
+   PKCE-S256 is enforced (realm-import declaration is honored at runtime).
+3. The resulting access-token's `iss` claim equals
+   `Keycloak__Authority` on the `api` service — the *runtime* issuer
+   parity that Section 6.3 only proves *statically*.
+4. `GET /api/v1/identity/me` with that access token returns 200 with the
+   6-field `UserProfileResponse` shape and the user's realm roles in the
+   `roles` array.
+5. The same endpoint without a bearer token returns 401 — the policy
+   gate is real, not silent-`AllowAnonymous`.
+6. CORS preflight from `https://<web>.up.railway.app` is accepted; the
+   same preflight from `https://evil.example.com` is rejected (the
+   strict-allowlist enforcement).
+7. Logout terminates *both* the NextAuth session cookie *and* the
+   Keycloak SSO session — a fresh sign-in prompts for credentials
+   (no silent SSO re-auth).
+
+What this section **does not** prove (out of scope):
+
+- Document upload/download → [Section 19](#19-document-uploaddownload-verification-e16-s3) (E16-S3).
+- Automated browser end-to-end test (Playwright against the live Beta
+  target) — deferred to E16-FT-1 / future work.
+
+### 18.2 Prerequisites
+
+- **Beta deploy GREEN** — Section 10 has been completed; `web`, `api`,
+  `keycloak` reachable on their Railway domains.
+- **At least one Beta-Admin user seeded** — per [Section 16](#16-first-beta-admin-seeding-e15-s4)
+  (E15-S4). The user must have the `admin` realm role assigned (or
+  any user with `vorstand` + `member` if testing role-routing).
+- **Section 17 verification green** — the `:beta` image bakes the live
+  Railway URLs; misconfigured bakes break the OIDC redirect chain at
+  step 1, not step 3.
+- **A modern browser with DevTools** — Chrome, Firefox, or Edge.
+  Recommend a fresh **Incognito / Private** window so existing
+  SSO cookies don't mask Keycloak-side logout failures.
+- **`node`** on the operator workstation for offline JWT decoding
+  (the secure alternative to `jwt.io`). `node -e "..."` snippets below
+  work on any version >= 18.
+
+### 18.3 Sign-in walkthrough
+
+Open a fresh Incognito window. Navigate to
+`https://<web>.up.railway.app/login`. Open DevTools → **Network** tab,
+check "**Preserve log**" so the redirect chain survives the navigation.
+
+Click "Sign in". Expected redirect chain (paste into the block below):
+
+```text
+Operator paste — Network-tab redirect chain (4+ hops):
+  GET  https://<web>.up.railway.app/login
+       → 200 (login button)
+  GET  https://<web>.up.railway.app/api/auth/signin/keycloak?callbackUrl=...
+       → 302 to <keycloak>/protocol/openid-connect/auth?
+              response_type=code
+              &client_id=iabconnect-frontend
+              &scope=openid+email+profile
+              &code_challenge=<base64url>           ← required (AC-7)
+              &code_challenge_method=S256          ← required (AC-7)
+              &state=<random>
+              &redirect_uri=https%3A%2F%2F<web>.up.railway.app%2Fapi%2Fauth%2Fcallback%2Fkeycloak
+  POST <keycloak>/realms/iabconnect/login-actions/authenticate
+       (username + password form)
+       → 302 to https://<web>.up.railway.app/api/auth/callback/keycloak?code=...&state=...
+  GET  https://<web>.up.railway.app/api/auth/callback/keycloak?code=...&state=...
+       → 302 to https://<web>.up.railway.app/ (authenticated landing)
+```
+
+Confirm the `next-auth.session-token` cookie is now set on
+`<web>.up.railway.app` with `HttpOnly` + `Secure` flags
+(DevTools → Application → Cookies).
+
+### 18.4 JWT claim verification (offline, secure)
+
+In the DevTools Console, run:
+
+```js
+const sess = await (await fetch("/api/auth/session")).json();
+const tok = sess.accessToken;
+const payloadB64 = tok.split(".")[1];
+const payload = JSON.parse(atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/")));
+console.log("iss:", payload.iss);
+console.log("aud:", payload.aud);
+console.log("azp:", payload.azp);
+console.log("sub:", payload.sub);
+console.log("realm_access.roles:", payload.realm_access?.roles);
+console.log("exp:", new Date(payload.exp * 1000).toISOString());
+```
+
+```text
+Operator paste:
+  iss:                 <fill — must equal Keycloak__Authority byte-for-byte>
+  aud:                 <fill — must include "iabconnect-api">
+  azp:                 <fill — typically "iabconnect-frontend">
+  sub:                 <fill — Keycloak user UUID>
+  realm_access.roles:  <fill — must include "admin" (or whatever role admin has)>
+  exp:                 <fill — ISO timestamp in the near future>
+```
+
+> **Do not paste the access token into [jwt.io](https://jwt.io).** That
+> site transmits the token to a third-party server. The `node -e` /
+> DevTools `atob` paths above stay entirely on the operator's machine.
+
+**Issuer parity check.** Compare the `iss` value above with the
+`Keycloak__Authority` Railway env var on the `api` service
+(Railway dashboard → `api` → Variables). Both must be the byte-identical
+string `https://<keycloak>.up.railway.app/realms/iabconnect`. Any
+difference fails the runtime half of the realm 3-anchor parity
+documented at [Section 6.3](#63-the-keycloak_issuer-parity-invariant).
+
+**Drift resolution.** If `iss` and `Keycloak__Authority` diverge,
+the api service is rejecting tokens with `Bearer error="invalid_token"`
+in its Railway logs. Update `Keycloak__Authority` on the `api` service
+to match the `iss` value, restart the api service.
+
+### 18.5 `/api/v1/identity/me` verification + CORS + HSTS
+
+In the DevTools Console, run:
+
+```js
+const sess = await (await fetch("/api/auth/session")).json();
+const resp = await fetch(`https://<api>.up.railway.app/api/v1/identity/me`, {
+  headers: { Authorization: `Bearer ${sess.accessToken}` }
+});
+console.log("status:", resp.status);
+console.log("content-type:", resp.headers.get("content-type"));
+console.log("access-control-allow-origin:",
+  resp.headers.get("access-control-allow-origin"));
+console.log("body:", await resp.json());
+```
+
+```text
+Operator paste:
+  status:                        <fill — 200>
+  content-type:                  application/json; charset=utf-8
+  access-control-allow-origin:   <fill — must equal https://<web>.up.railway.app>
+  body:
+    {
+      "userId":     "<Keycloak sub UUID>",
+      "email":      "<admin email>",
+      "name":       "<full name>",
+      "givenName":  "<first name>",
+      "familyName": "<last name>",
+      "roles":      ["admin", ...]
+    }
+```
+
+**Negative control — no bearer.** From a normal terminal (NOT the
+browser, so no session cookie attaches):
+
+```sh
+curl -i https://<api>.up.railway.app/api/v1/identity/me
+```
+
+```text
+Operator paste:
+  Expected: HTTP/2 401
+  <fill — actual response>
+```
+
+**Negative control — hostile CORS origin.** Browser preflight from a
+non-allowlisted origin must be rejected. From a normal terminal:
+
+```sh
+curl -i -X OPTIONS \
+  -H "Origin: https://evil.example.com" \
+  -H "Access-Control-Request-Method: GET" \
+  https://<api>.up.railway.app/api/v1/identity/me
+```
+
+```text
+Operator paste:
+  Expected: response does NOT include "Access-Control-Allow-Origin" header
+            (or includes it set to the strict-allowlist value, NEVER echoing
+             back the hostile origin)
+  <fill — actual response>
+```
+
+**HSTS + HTTPS-redirect.**
+
+```sh
+# HTTP → 308 to HTTPS
+curl -I http://<api>.up.railway.app/api/v1/identity/me
+# Expected: HTTP/1.1 308 Permanent Redirect, Location: https://...
+
+# HTTPS carries HSTS header
+curl -I https://<api>.up.railway.app/api/v1/identity/me
+# Expected: Strict-Transport-Security: max-age=...; includeSubDomains
+```
+
+```text
+Operator paste:
+  HTTP scheme:  <fill — 308 + Location: https://...>
+  HSTS header:  <fill — Strict-Transport-Security: ...>
+```
+
+### 18.6 Logout verification (two-effect)
+
+Click the user-menu Sign-out action in the IAB Connect frontend.
+Verify both effects:
+
+```text
+Operator paste:
+  Effect 1 (NextAuth-side):
+    - DevTools → Application → Cookies: next-auth.session-token cookie is GONE
+    - Refreshing any protected route redirects to /login (NOT silent re-auth)
+    - <fill: confirmation Yes/No>
+
+  Effect 2 (Keycloak-side):
+    - Click "Sign in" again on /login
+    - Keycloak prompts for credentials (NOT auto-skipping via SSO cookie)
+    - <fill: confirmation Yes/No>
+```
+
+If Effect 2 fails (Keycloak auto-skips the credentials form), the
+NextAuth session was cleared but the Keycloak SSO session is still alive
+— a silent failure of the "logout terminates both" contract. Diagnose
+via the `lib/auth.ts#logout` function: it must call NextAuth `signOut`
+with a `callbackUrl` pointing at
+`<NEXT_PUBLIC_KEYCLOAK_ISSUER>/protocol/openid-connect/logout?redirect_uri=<origin>`.
+The Vitest regression test at
+[`frontend/src/lib/auth.logout.test.ts`](../frontend/src/lib/auth.logout.test.ts)
+guards this contract at CI time; if it regressed without the test
+catching it, the test pattern needs strengthening.
+
+### 18.7 Anti-patterns + recovery
+
+- **Silent token-refresh masking issuer drift.** NextAuth's silent
+  token refresh runs every 5 minutes by default. If `iss` changes
+  between initial sign-in and the next refresh (because someone
+  rotated the realm name), the refresh either succeeds with a new
+  `iss` (drift now hidden) or fails silently (user sees stale
+  session). Always take the JWT for AC-2 verification *immediately
+  after sign-in*, before any refresh.
+- **`aud` claim mismatch.** Keycloak's audience-resolver issues tokens
+  whose `aud` typically equals the client_id of the requesting
+  application (`iabconnect-frontend`). The backend JWT validator
+  expects `aud` to include `iabconnect-api`. If the realm's
+  audience-mapper isn't configured to add `iabconnect-api`, every
+  request silently 401s with `Bearer error="invalid_token"
+  error_description="The audience 'iabconnect-frontend' is invalid"`.
+  Diagnose via Railway api-service logs; fix by adding an
+  audience-mapper to the `iabconnect-frontend` client.
+- **Clock skew between `<keycloak>` and `<api>` Railway services.**
+  JWT `nbf` / `exp` claims are evaluated against the validator's
+  clock. >60s skew rejects tokens. Railway services share a managed
+  NTP source so this should not happen in practice, but it has shown
+  up on fork deployments using self-managed hosts.
+- **Cookie-domain / SameSite misconfiguration.** NextAuth defaults
+  to `SameSite=Lax`, which works for same-origin OIDC. If the
+  Keycloak callback domain differs from the `web` domain by more
+  than a port or subpath, the session cookie will not be set on
+  callback. Diagnose via DevTools → Network → callback response →
+  `Set-Cookie` header sanity check.
+
+**Recovery: locked out after logout fails.**
+
+Clear cookies for both `<web>.up.railway.app` and
+`<keycloak>.up.railway.app` in the browser; the next sign-in starts
+fresh. The Keycloak SSO session expires server-side per
+realm `ssoSessionMaxLifespan` (default 10h) regardless of the
+browser-side cookie.
+
+---
+
+## 19. Document upload/download verification against RustFS (E16-S3)
+
+> Story alignment: **E16-S3** — REQ-088 AC-3. Validates that authenticated
+> document upload via the IAB Connect frontend persists into the RustFS
+> `iabconnect-documents` bucket (NOT into `backups`), the download
+> endpoint returns byte-identical bytes (SHA-256 equality), the Next.js
+> `<Image>` component renders thumbnails through the configured remote
+> pattern, and the **two-bucket separation invariant** introduced by
+> E15-S3 holds — `iabconnect-documents` and `backups` live on the same
+> RustFS volume but stay disjoint in their key namespaces.
+>
+> **Why this is its own section.** Section 15 (E15-S3) introduced the
+> `backups` bucket and verified the backup-write path; this section
+> closes the *other* side — the document-write path — and asserts the
+> separation invariant from both directions. Section 17 (E16-S1)
+> verified the bake of `NEXT_PUBLIC_DOCUMENT_HOST`; this section
+> verifies the *runtime* path renders an actual image.
+
+### 19.1 Goal + commitments
+
+This procedure proves seven things:
+
+1. An authenticated `vorstand` (or `admin`) uploads a deterministic test
+   PNG via the frontend Documents UI. Upload returns HTTP 201; the
+   document appears in the folder list.
+2. The uploaded object exists in the RustFS `iabconnect-documents`
+   bucket under key `documents/<documentId>/<random-guid>.png` with
+   `Content-Type: image/png` and a content-length equal to the test
+   artifact byte size.
+3. The download endpoint returns byte-identical bytes (SHA-256
+   equality) and the original `Content-Type` + `Content-Disposition`.
+4. The Next.js `<Image>` component renders the thumbnail (HTTP 200
+   `image/*`) — no `INVALID_IMAGE_OPTIMIZE_REQUEST` 400 error.
+5. The `backups` bucket contains **zero** `documents/`-keyed objects;
+   the `iabconnect-documents` bucket contains **zero** `pg_dump`-keyed
+   objects (two-bucket separation invariant).
+6. Two consecutive uploads of the same file produce two distinct
+   objects (the `Guid.NewGuid()` salt in the storage key prevents
+   silent dedup — `DocumentEndpoints.cs:395`).
+7. A `member`-role-only user attempting to download a folder with no
+   `Member: Read` permission receives HTTP 403 (folder-level access
+   control enforced).
+
+What this section does **not** prove (out of scope):
+
+- Concurrent-upload race tests, >100 MB file tests — deferred.
+- Member with `Member: Read` folder permission downloading
+  successfully — covered by existing `DocumentEndpoints` unit tests
+  in the backend test suite.
+
+### 19.2 Test artifact
+
+The verification uses the well-known canonical 1×1 transparent PNG:
+
+```text
+Base64 (single line):
+iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=
+
+Decoded byte size: 68 bytes
+SHA-256: 63ef318d96b5d0d0ceba6e04a4e622b1158335cdc67c49e27839132c6f655058
+```
+
+Reconstruct locally:
+
+```sh
+# Linux / macOS / Git Bash
+echo 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=' \
+  | base64 -d > hello-world.png
+
+# Verify
+sha256sum hello-world.png
+# Expected: 63ef318d96b5d0d0ceba6e04a4e622b1158335cdc67c49e27839132c6f655058  hello-world.png
+```
+
+```powershell
+# Windows PowerShell
+$b64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
+[IO.File]::WriteAllBytes('hello-world.png', [Convert]::FromBase64String($b64))
+Get-FileHash hello-world.png -Algorithm SHA256
+# Expected Hash: 63EF318D96B5D0D0CEBA6E04A4E622B1158335CDC67C49E27839132C6F655058
+```
+
+### 19.3 Upload + RustFS-bucket verification (AC-1, AC-2)
+
+Signed in as the Beta-Admin from §16, navigate to **Board → Documents**
+(or **Admin → Documents** if the role assignments require). Create a
+test folder (e.g. `e16-s3-verification-folder`) with no member-read
+permissions — folder.permissions array stays empty, making the folder
+admin-only-readable.
+
+Click **Upload document**; select `hello-world.png` from §19.2; fill
+`name = "E16-S3 test document"`; submit.
+
+```text
+Operator paste:
+  Upload response status:  <fill — must be 201>
+  documentId:              <fill — UUID from response body>
+```
+
+**Path A — RustFS web console.** Open `https://<rustfs>.up.railway.app`
+(or the RustFS console URL recorded in §13.2). Sign in with the RustFS
+root credentials from §3.3 / §5.4. Navigate to bucket
+`iabconnect-documents` → expand `documents/<documentId>/`. Confirm one
+object exists with `.png` extension, size 68 bytes (the artifact size
+from §19.2), content-type `image/png`.
+
+```text
+Operator paste (RustFS web console):
+  Object key:    documents/<documentId>/<random-guid>.png
+  Object size:   <fill — must be 68>
+  Content-Type:  <fill — must be image/png>
+```
+
+**Path B — `mc` inside the rustfs container.** Requires the rustfs
+service image to bundle `mc` (MinIO Client). Verify reachability
+before proceeding:
+
+```sh
+railway shell -s rustfs --command 'which mc'
+# Expected output: /usr/bin/mc  (or similar path)
+# If the command returns empty, mc is NOT bundled in the rustfs image;
+# fall back to Path A or install mc on the operator workstation.
+```
+
+If `mc` is reachable:
+
+```sh
+railway shell -s rustfs --command \
+  "mc alias set local http://localhost:9000 \$RUSTFS_ROOT_USER \$RUSTFS_ROOT_PASSWORD && \
+   mc ls local/iabconnect-documents/documents/<documentId>/"
+```
+
+```text
+Operator paste (mc):
+  <fill — single PNG line with size + timestamp>
+```
+
+### 19.4 Download + SHA-256 verification (AC-3)
+
+In the browser DevTools Console (with the active authenticated session
+from §18):
+
+```js
+const sess = await (await fetch("/api/auth/session")).json();
+const tok = sess.accessToken;
+const documentId = "<paste documentId from §19.3>";
+const resp = await fetch(
+  `https://<api>.up.railway.app/api/v1/documents/${documentId}/download`,
+  { headers: { Authorization: `Bearer ${tok}` } }
+);
+const blob = await resp.blob();
+const buf = await blob.arrayBuffer();
+const hash = await crypto.subtle.digest("SHA-256", buf);
+const hex = Array.from(new Uint8Array(hash))
+  .map(b => b.toString(16).padStart(2, "0"))
+  .join("");
+console.log("status:", resp.status);
+console.log("content-type:", resp.headers.get("content-type"));
+console.log("content-disposition:", resp.headers.get("content-disposition"));
+console.log("size:", blob.size);
+console.log("sha256:", hex);
+```
+
+```text
+Operator paste:
+  status:               <fill — must be 200>
+  content-type:         image/png
+  content-disposition:  <fill — should reference the document name>
+  size:                 68
+  sha256:               63ef318d96b5d0d0ceba6e04a4e622b1158335cdc67c49e27839132c6f655058
+```
+
+The SHA-256 must equal §19.2's expected hash byte-for-byte.
+
+### 19.5 `next/image` host-allowlist verification (AC-5)
+
+In the document-list UI, the uploaded PNG renders as a thumbnail via
+the Next.js `<Image>` component. Open DevTools → **Network** tab →
+filter to **Img** requests. Locate the request to
+`<web>.up.railway.app/_next/image?url=...&w=...&q=...`. Decode the
+`url=` query param (URL-decoded).
+
+```text
+Operator paste:
+  next/image request URL:
+    <fill — e.g. /_next/image?url=https%3A%2F%2F<host>%2F...&w=...&q=...>
+
+  Decoded `url=` host:
+    <fill — must match NEXT_PUBLIC_DOCUMENT_HOST_BETA>
+
+  Response status:
+    <fill — must be 200>
+
+  Response content-type:
+    <fill — must be image/*>
+```
+
+**The `INVALID_IMAGE_OPTIMIZE_REQUEST` failure mode.** If the response
+is HTTP 400 with body `{ "error": "INVALID_IMAGE_OPTIMIZE_REQUEST" }`,
+the `NEXT_PUBLIC_DOCUMENT_HOST_BETA` GHA repo variable is set to a host
+not listed in the `next.config.ts` images.remotePatterns allowlist.
+
+**Resolution:**
+
+1. Identify the correct host that serves the document bytes — on the
+   current Beta architecture (ADR-013, RustFS private-network), that is
+   the **api Railway public domain** (which proxies the download
+   endpoint), NOT the `<rustfs>.railway.internal` private hostname.
+2. Update the GHA repo variable:
+   ```sh
+   gh variable set NEXT_PUBLIC_DOCUMENT_HOST_BETA \
+     --body "<api>.up.railway.app"
+   ```
+3. Re-trigger the `build-images.yml` workflow on the `beta` branch.
+4. Wait for the new `:beta` web image to publish; Railway pulls and
+   redeploys.
+5. Re-run §19.5 to confirm 200.
+
+### 19.6 Negative-control + bucket-separation verification (AC-4, AC-6, AC-7, AC-8)
+
+**AC-4 — two-bucket separation.** From inside the rustfs container
+(or via the web console):
+
+```sh
+railway shell -s rustfs --command \
+  "mc ls local/backups/ --recursive | grep -c 'documents/' || true"
+# Expected: 0
+
+railway shell -s rustfs --command \
+  "mc ls local/iabconnect-documents/ --recursive | grep -c '\.dump\.gz\.enc' || true"
+# Expected: 0
+```
+
+```text
+Operator paste:
+  backups/ contains documents/ keys:      <fill — must be 0>
+  iabconnect-documents/ contains backup:  <fill — must be 0>
+```
+
+**AC-6 — authorization triple.** Three negative controls:
+
+```sh
+# (a) no JWT — must be 401
+curl -i -X POST \
+  -F "file=@hello-world.png" \
+  -F "folderId=<any-uuid>" \
+  https://<api>.up.railway.app/api/v1/documents/
+# Expected: HTTP 401
+```
+
+```text
+Operator paste (a):
+  <fill — must be HTTP 401>
+```
+
+```text
+(b) member role only → POST upload → must be HTTP 403
+    Operator: sign in as a 'member'-only test user (create via Keycloak
+    Admin Console → Users → Add user → Role mapping → assign only `member`).
+    From DevTools Console:
+      const sess = await (await fetch("/api/auth/session")).json();
+      const tok = sess.accessToken;
+      const form = new FormData();
+      form.append("file", new Blob([new Uint8Array(68)]), "test.png");
+      form.append("folderId", "<any-uuid>");
+      fetch("https://<api>.up.railway.app/api/v1/documents/",
+            { method: "POST", body: form, headers: { Authorization: `Bearer ${tok}` } })
+        .then(r => console.log(r.status));
+    Expected: 403
+
+  Operator paste (b):  <fill>
+```
+
+```text
+(c) documents module disabled → vorstand POST → must be HTTP 403
+    Operator: as `admin`, navigate to Admin → Module Settings → toggle
+    `Documents` module OFF. As `vorstand`, attempt upload.
+    Expected: 403. Re-enable the module after the test.
+
+  Operator paste (c):  <fill>
+```
+
+**AC-7 — storage-key uniqueness.** Re-upload `hello-world.png` to the
+same folder a second time. Confirm:
+
+- A second document row appears with a distinct `documentId`.
+- RustFS bucket lists two objects under `documents/<id-1>/` and
+  `documents/<id-2>/` (NOT a single deduped object).
+
+```text
+Operator paste:
+  Second documentId:             <fill — distinct from first>
+  Two distinct prefixes in mc:   <fill — both visible>
+```
+
+**AC-8 — folder-permission enforcement.** Sign in as a second user
+with ONLY the `member` realm role (no `vorstand` / `admin`). Attempt
+to download the document uploaded in §19.3 (the folder has no member
+permissions). Expect HTTP 403.
+
+```text
+Operator paste:
+  Status:  <fill — must be 403>
+```
 
 ---
 
