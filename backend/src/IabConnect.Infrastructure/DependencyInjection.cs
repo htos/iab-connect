@@ -129,9 +129,12 @@ public static class DependencyInjection
         // REQ-052: Global search service
         services.AddScoped<IGlobalSearchService, PostgresGlobalSearchService>();
 
-        // REQ-053: Backup service
+        // REQ-053 / REQ-088 AC-6 (E15-S3): Backup service + Hangfire-resolvable job
+        // classes. PostgresBackupService now depends on IAmazonS3 (registered above for
+        // RustFS) + IHostEnvironment for the fail-fast-on-missing-encryption-key check.
         services.AddScoped<IBackupService, PostgresBackupService>();
         services.AddScoped<ScheduledBackupJob>();
+        services.AddScoped<PruneOldBackupsJob>();
 
         // REQ-057: Retention policy & enforcement services
         services.AddScoped<IRetentionPolicyService, PostgresRetentionPolicyService>();

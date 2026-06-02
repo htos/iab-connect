@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using Hangfire;
 using IabConnect.Api.Authorization;
 using IabConnect.Api.Middleware;
+using IabConnect.Infrastructure.Backup;
 using IabConnect.Infrastructure.Common;
 using IabConnect.Infrastructure.Finance.Jobs;
 using IabConnect.Infrastructure.Events.Jobs;
@@ -42,6 +43,29 @@ public static class DependencyInjection
     /// tester data while retention defaults are still being validated.
     /// </summary>
     internal const string RetentionJobId = "enforce-retention-policies";
+
+    /// <summary>
+    /// REQ-088 AC-6 (E15-S3 / ADR-019): recurring-job id for the daily encrypted
+    /// PostgreSQL backup. Extracted so <c>RegisterDailyBackupJobTests</c> can assert
+    /// presence/absence by id without standing up Hangfire storage. The job
+    /// registration is gated on <c>!IsDevelopment()</c> per ADR-020 inverse — Dev
+    /// does not run nightly backups locally.
+    /// </summary>
+    internal const string DailyBackupJobId = "daily-pg-backup";
+
+    /// <summary>Cron expression for the daily backup — 03:00 UTC.</summary>
+    internal const string DailyBackupCron = "0 3 * * *";
+
+    /// <summary>
+    /// REQ-088 AC-6 (E15-S3 / ADR-019): recurring-job id for the daily prune pass
+    /// that deletes RustFS + local-cache backups older than 30 days. Same gating as
+    /// <see cref="DailyBackupJobId"/>; runs one hour after the backup job at 04:00
+    /// UTC so a same-day backup is never deleted by the same day's prune.
+    /// </summary>
+    internal const string PruneOldBackupsJobId = "prune-old-backups";
+
+    /// <summary>Cron expression for the prune pass — 04:00 UTC.</summary>
+    internal const string PruneOldBackupsCron = "0 4 * * *";
 
     public static IServiceCollection AddApiServices(
         this IServiceCollection services,
@@ -318,6 +342,14 @@ public static class DependencyInjection
             // registration is unit-testable without standing up Hangfire storage.
             RegisterRetentionEnforcementJob(app.Configuration, jobManager);
 
+            // REQ-088 AC-6 (E15-S3 / ADR-019): daily encrypted PostgreSQL backup at
+            // 03:00 UTC + matching prune pass at 04:00 UTC. Gated on !IsDevelopment()
+            // per ADR-020 inverse — Dev does not exercise pg_dump every morning and
+            // also lacks the RustFS Sealed env. The helper extracts the gating so
+            // RegisterDailyBackupJobTests can verify both env paths without standing
+            // up Hangfire storage.
+            RegisterDailyBackupJob(jobManager, app.Environment);
+
             // REQ-024 (E3.S4): Daily 09:00 Europe/Zurich (first non-UTC schedule in the project).
             // Local timezone matches the operations expectation that recipients see the reminder
             // on the morning of the day BEFORE their shift in their own time.
@@ -397,6 +429,42 @@ public static class DependencyInjection
             // retention job weekly, silently deleting tester data — defeating ADR-020.
             jobManager.RemoveIfExists(RetentionJobId);
         }
+    }
+
+    /// <summary>
+    /// REQ-088 AC-6 (E15-S3 / ADR-019 / ADR-020): registers the daily encrypted
+    /// PostgreSQL backup + 30-day prune Hangfire recurring jobs IFF the host is
+    /// non-Development. Dev calls <see cref="IRecurringJobManager.RemoveIfExists"/>
+    /// for both job IDs so a deployment that previously ran in Beta + later moves to
+    /// Dev locally (rare but possible during fork bootstrap) cleans up the orphaned
+    /// schedule instead of running pg_dump every morning against the dev database.
+    /// Extracted as <c>internal static</c> so <c>RegisterDailyBackupJobTests</c> can
+    /// verify both env paths with a stubbed <see cref="IRecurringJobManager"/>.
+    /// </summary>
+    internal static void RegisterDailyBackupJob(IRecurringJobManager jobManager, IWebHostEnvironment env)
+    {
+        if (env.IsDevelopment())
+        {
+            // ADR-020 inverse + E11-S2 review D4 RemoveIfExists pattern: an orphaned
+            // schedule must be removed when the gate flips OFF, otherwise an old
+            // Beta-side recurring job persists in the Hangfire table and continues
+            // to fire after the env switch.
+            jobManager.RemoveIfExists(DailyBackupJobId);
+            jobManager.RemoveIfExists(PruneOldBackupsJobId);
+            return;
+        }
+
+        jobManager.AddOrUpdate<ScheduledBackupJob>(
+            DailyBackupJobId,
+            job => job.ExecuteAsync(CancellationToken.None),
+            DailyBackupCron,
+            new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+        jobManager.AddOrUpdate<PruneOldBackupsJob>(
+            PruneOldBackupsJobId,
+            job => job.ExecuteAsync(CancellationToken.None),
+            PruneOldBackupsCron,
+            new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
     }
 
     /// <summary>

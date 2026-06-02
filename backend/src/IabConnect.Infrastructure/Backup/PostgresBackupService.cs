@@ -1,29 +1,57 @@
 using System.Diagnostics;
+using System.IO.Compression;
+using Amazon.S3;
+using Amazon.S3.Model;
 using IabConnect.Application.Backup;
 using IabConnect.Domain.Operations;
 using IabConnect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace IabConnect.Infrastructure.Backup;
 
 /// <summary>
-/// REQ-053: Backup service using pg_dump for PostgreSQL database backups.
-/// Stores backup files in a configurable local directory.
+/// REQ-053 / REQ-088 AC-6 (E15-S3): Backup service using <c>pg_dump</c> /
+/// <c>pg_restore</c> for PostgreSQL backup + restore. Stores the raw dump locally in
+/// a configurable directory (admin-UI download/restore/upload semantics preserved
+/// per DEC-1 Option A) and, when an encryption key + S3 client + bucket name are
+/// available, also encrypts (AES-256-GCM via <see cref="BackupEncryption"/>) and
+/// uploads a gzipped copy to RustFS at
+/// <c>s3://&lt;Backup__BucketName&gt;/backups/yyyy/MM/dd-HHmmss.dump.gz.enc</c>.
+///
+/// <para>The previous Docker-exec-based implementation (6 <c>Process.Start("docker",
+/// "exec ...")</c> + <c>docker cp</c> sites at lines 66/90/116/212/233/260 of the
+/// pre-E15-S3 version) was incompatible with Railway (E13-FT-6): the api container
+/// on Railway has no Docker daemon, no <c>docker</c> CLI, and no sibling
+/// <c>iabconnect-postgres</c> container to exec into. This refactor invokes
+/// <c>pg_dump</c>/<c>pg_restore</c> as direct host processes — the backend
+/// Dockerfile (E15-S3 Task 2) installs <c>postgresql-client-17</c> so the binaries
+/// are present in the runtime image.</para>
+///
+/// <para>Fail-fast posture: in any non-Development environment, missing or invalid
+/// <c>Backup__EncryptionKey</c> throws at first construction so the misconfigured
+/// service never silently runs without encryption. In Development the encryption +
+/// upload steps are optional (the cron <c>daily-pg-backup</c> job is not registered
+/// in Dev per <see cref="ADR-020"/> inverse / E15-S3 Task 5 gating); local backups
+/// continue to work for admin-UI exploration without RustFS / encryption.</para>
 /// </summary>
 public sealed class PostgresBackupService : IBackupService
 {
     private readonly ApplicationDbContext _db;
     private readonly string _connectionString;
     private readonly string _backupDirectory;
+    private readonly IAmazonS3? _s3;
+    private readonly string? _backupBucketName;
+    private readonly byte[]? _encryptionKey;
     private readonly ILogger<PostgresBackupService> _logger;
-
-    private readonly string _dockerContainer;
 
     public PostgresBackupService(
         ApplicationDbContext db,
         IConfiguration configuration,
+        IAmazonS3 s3,
+        IHostEnvironment environment,
         ILogger<PostgresBackupService> logger)
     {
         _db = db;
@@ -31,9 +59,31 @@ public sealed class PostgresBackupService : IBackupService
             ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
         _backupDirectory = configuration.GetValue<string>("Backup:Directory")
             ?? Path.Combine(AppContext.BaseDirectory, "backups");
-        _dockerContainer = configuration.GetValue<string>("Backup:DockerContainer")
-            ?? "iabconnect-postgres";
         _logger = logger;
+
+        // E15-S3 AC-3 + AC-10: load the encryption key. In Beta/Production, missing
+        // or invalid Backup__EncryptionKey is a fatal misconfiguration — these
+        // deployments MUST encrypt backups uploaded to RustFS. In Development and
+        // Testing the encryption + upload pipeline is optional (the cron job is also
+        // disabled in Dev per ADR-020 inverse; Testing tests rarely exercise the
+        // upload path). Treating Testing as encryption-optional matches the existing
+        // env-pair convention at Api/DependencyInjection.cs (HTTPS-metadata gating).
+        var rawKey = configuration.GetValue<string>("Backup:EncryptionKey");
+        var bucket = configuration.GetValue<string>("Backup:BucketName");
+
+        if (environment.IsDevelopment() || environment.EnvironmentName == "Testing")
+        {
+            _encryptionKey = string.IsNullOrWhiteSpace(rawKey) ? null : BackupEncryption.ParseConfiguredKey(rawKey);
+            _backupBucketName = string.IsNullOrWhiteSpace(bucket) ? null : bucket;
+            _s3 = _backupBucketName is null ? null : s3;
+        }
+        else
+        {
+            // Fail-fast on Beta/Production misconfig.
+            _encryptionKey = BackupEncryption.ParseConfiguredKey(rawKey);
+            _backupBucketName = string.IsNullOrWhiteSpace(bucket) ? "backups" : bucket;
+            _s3 = s3;
+        }
 
         if (!Directory.Exists(_backupDirectory))
             Directory.CreateDirectory(_backupDirectory);
@@ -50,21 +100,31 @@ public sealed class PostgresBackupService : IBackupService
         try
         {
             var connParts = ParseConnectionString(_connectionString);
-            var containerDumpPath = $"/tmp/{record.FileName}";
 
-            // Run pg_dump inside the Docker container
+            // E15-S3 Task 1: direct pg_dump invocation against the connection-string
+            // host/port/db/user. PGPASSWORD passed via ProcessStartInfo.Environment so
+            // it never appears in the command-line (visible in /proc/<pid>/cmdline).
             var dumpInfo = new ProcessStartInfo
             {
-                FileName = "docker",
-                Arguments = $"exec -e PGPASSWORD={connParts.Password} {_dockerContainer} pg_dump --format=custom --file={containerDumpPath} --dbname={connParts.Database} -U {connParts.Username}",
+                FileName = "pg_dump",
+                ArgumentList =
+                {
+                    "--format=custom",
+                    "--no-password",
+                    "--file", filePath,
+                    "--host", connParts.Host,
+                    "--port", connParts.Port,
+                    "--username", connParts.Username,
+                    "--dbname", connParts.Database,
+                },
                 UseShellExecute = false,
-                RedirectStandardOutput = true,
                 RedirectStandardError = true,
-                CreateNoWindow = true
+                CreateNoWindow = true,
             };
+            dumpInfo.Environment["PGPASSWORD"] = connParts.Password;
 
             using var dumpProcess = Process.Start(dumpInfo)
-                ?? throw new InvalidOperationException("Failed to start docker exec process.");
+                ?? throw new InvalidOperationException("Failed to start pg_dump process.");
 
             var stderr = await dumpProcess.StandardError.ReadToEndAsync(ct);
             await dumpProcess.WaitForExitAsync(ct);
@@ -76,45 +136,54 @@ public sealed class PostgresBackupService : IBackupService
             }
             else
             {
-                // Copy the dump file from the container to the host
-                var cpInfo = new ProcessStartInfo
+                var fileInfo = new FileInfo(filePath);
+
+                // E15-S3 boundary review P3: a pg_dump that exits 0 but produces a 0-byte file
+                // is a silent failure (failed write, disk full at flush time, or pg_dump
+                // misbehaviour). Mark the record Failed here rather than letting an empty
+                // archive land on RustFS where it would silently replace a valid prior copy.
+                if (fileInfo.Length == 0)
                 {
-                    FileName = "docker",
-                    Arguments = $"cp {_dockerContainer}:{containerDumpPath} \"{filePath}\"",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                };
-
-                using var cpProcess = Process.Start(cpInfo)
-                    ?? throw new InvalidOperationException("Failed to start docker cp process.");
-
-                var cpStderr = await cpProcess.StandardError.ReadToEndAsync(ct);
-                await cpProcess.WaitForExitAsync(ct);
-
-                if (cpProcess.ExitCode != 0)
-                {
-                    record.MarkFailed($"docker cp failed: {cpStderr}");
-                    _logger.LogError("docker cp failed: {Error}", cpStderr);
+                    record.MarkFailed("pg_dump exited 0 but produced a 0-byte file; refusing to upload empty backup.");
+                    _logger.LogError("Backup empty: pg_dump exit 0 but {FileName} is 0 bytes", record.FileName);
                 }
                 else
                 {
-                    var fileInfo = new FileInfo(filePath);
-                    record.MarkCompleted(fileInfo.Length);
-                    _logger.LogInformation("Backup created: {FileName} ({Size} bytes)", record.FileName, fileInfo.Length);
-                }
+                    _logger.LogInformation("Backup created locally: {FileName} ({Size} bytes)", record.FileName, fileInfo.Length);
 
-                // Clean up temp file inside the container
-                var rmInfo = new ProcessStartInfo
-                {
-                    FileName = "docker",
-                    Arguments = $"exec {_dockerContainer} rm -f {containerDumpPath}",
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-                using var rmProcess = Process.Start(rmInfo);
-                if (rmProcess is not null) await rmProcess.WaitForExitAsync(ct);
+                    // E15-S3 AC-3 / Task 4: when encryption + bucket are wired, also upload
+                    // a gzipped+encrypted copy to RustFS. Non-Dev environments always have
+                    // these wired (fail-fast in constructor); Dev may skip when the operator
+                    // has not configured local encryption.
+                    var uploadOk = true;
+                    if (_encryptionKey is not null && _s3 is not null && _backupBucketName is not null)
+                    {
+                        try
+                        {
+                            var objectKey = BuildRustFsObjectKey(record);
+                            await UploadEncryptedAsync(filePath, objectKey, ct);
+                            _logger.LogInformation(
+                                "Backup uploaded to RustFS: s3://{Bucket}/{Key}",
+                                _backupBucketName,
+                                objectKey);
+                        }
+                        catch (Exception uploadEx)
+                        {
+                            // E15-S3 boundary review P5: defer the final state-setter until
+                            // we know the outcome of BOTH local pg_dump AND RustFS upload, so
+                            // EF's change-tracker has a single, unambiguous transition from
+                            // InProgress to either Completed or Failed.
+                            uploadOk = false;
+                            record.MarkFailed($"pg_dump succeeded but RustFS upload failed: {uploadEx.Message}");
+                            _logger.LogError(uploadEx, "Backup upload to RustFS failed for {FileName}", record.FileName);
+                        }
+                    }
+
+                    if (uploadOk)
+                    {
+                        record.MarkCompleted(fileInfo.Length);
+                    }
+                }
             }
         }
         catch (Exception ex)
@@ -197,69 +266,51 @@ public sealed class PostgresBackupService : IBackupService
             throw new InvalidOperationException("Backup file not found on disk.");
 
         var connParts = ParseConnectionString(_connectionString);
-        var containerDumpPath = $"/tmp/restore_{record.FileName}";
 
-        // Copy backup file into the container
-        var cpInfo = new ProcessStartInfo
+        // E15-S3 Task 1: direct pg_restore invocation against the connection-string
+        // host/port/db/user. PGPASSWORD passed via ProcessStartInfo.Environment.
+        // pg_restore exit code 1 = warnings (e.g., "role already exists") — accepted.
+        var restoreInfo = new ProcessStartInfo
         {
-            FileName = "docker",
-            Arguments = $"cp \"{filePath}\" {_dockerContainer}:{containerDumpPath}",
+            FileName = "pg_restore",
+            ArgumentList =
+            {
+                "--clean",
+                "--if-exists",
+                "--no-password",
+                "--host", connParts.Host,
+                "--port", connParts.Port,
+                "--username", connParts.Username,
+                "--dbname", connParts.Database,
+                filePath,
+            },
             UseShellExecute = false,
             RedirectStandardError = true,
-            CreateNoWindow = true
+            CreateNoWindow = true,
         };
+        restoreInfo.Environment["PGPASSWORD"] = connParts.Password;
 
-        using var cpProcess = Process.Start(cpInfo)
-            ?? throw new InvalidOperationException("Failed to start docker cp process.");
-        var cpStderr = await cpProcess.StandardError.ReadToEndAsync(ct);
-        await cpProcess.WaitForExitAsync(ct);
+        using var restoreProcess = Process.Start(restoreInfo)
+            ?? throw new InvalidOperationException("Failed to start pg_restore process.");
 
-        if (cpProcess.ExitCode != 0)
-            throw new InvalidOperationException($"docker cp failed: {cpStderr}");
+        var stderr = await restoreProcess.StandardError.ReadToEndAsync(ct);
+        await restoreProcess.WaitForExitAsync(ct);
 
-        try
-        {
-            // Restore using pg_restore with --clean to drop & recreate objects
-            var restoreInfo = new ProcessStartInfo
-            {
-                FileName = "docker",
-                Arguments = $"exec -e PGPASSWORD={connParts.Password} {_dockerContainer} pg_restore --clean --if-exists --dbname={connParts.Database} -U {connParts.Username} {containerDumpPath}",
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true
-            };
+        // E15-S3 boundary review P1: `> 1` accepts exit code 0 (success) and 1 (warnings —
+        // e.g. "role already exists"), but silently accepts NEGATIVE exit codes that arise
+        // when the process is terminated by a signal (SIGKILL = -9 on Linux, -1 on Windows
+        // for "killed externally"). A SIGKILL'd pg_restore leaves the target DB in an
+        // inconsistent state, and marking the restore as successful would mask the
+        // corruption. Accept only the documented exit codes 0 and 1.
+        if (restoreProcess.ExitCode != 0 && restoreProcess.ExitCode != 1)
+            throw new InvalidOperationException($"pg_restore exited with code {restoreProcess.ExitCode}: {stderr}");
 
-            using var restoreProcess = Process.Start(restoreInfo)
-                ?? throw new InvalidOperationException("Failed to start pg_restore process.");
+        record.MarkRestored(restoredBy);
+        _db.Set<BackupRecord>().Update(record);
+        await _db.SaveChangesAsync(ct);
 
-            var stderr = await restoreProcess.StandardError.ReadToEndAsync(ct);
-            await restoreProcess.WaitForExitAsync(ct);
-
-            // pg_restore exit code 1 = warnings (e.g., "role already exists"), only fail on > 1
-            if (restoreProcess.ExitCode > 1)
-                throw new InvalidOperationException($"pg_restore exited with code {restoreProcess.ExitCode}: {stderr}");
-
-            record.MarkRestored(restoredBy);
-            _db.Set<BackupRecord>().Update(record);
-            await _db.SaveChangesAsync(ct);
-
-            _logger.LogInformation("Database restored from backup {FileName} by {User}", record.FileName, restoredBy);
-            return record;
-        }
-        finally
-        {
-            // Clean up temp file inside the container
-            var rmInfo = new ProcessStartInfo
-            {
-                FileName = "docker",
-                Arguments = $"exec {_dockerContainer} rm -f {containerDumpPath}",
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-            using var rmProcess = Process.Start(rmInfo);
-            if (rmProcess is not null) await rmProcess.WaitForExitAsync(ct);
-        }
+        _logger.LogInformation("Database restored from backup {FileName} by {User}", record.FileName, restoredBy);
+        return record;
     }
 
     public async Task<BackupRecord> UploadBackupAsync(Stream fileStream, string fileName, string uploadedBy, string? notes = null, CancellationToken ct = default)
@@ -282,6 +333,56 @@ public sealed class PostgresBackupService : IBackupService
         return record;
     }
 
+    /// <summary>
+    /// E15-S3 Section 15.3: <c>backups/yyyy/MM/dd-HHmmss.dump.gz.enc</c> object key
+    /// pattern (UTC). The local <see cref="BackupRecord.FileName"/> keeps its
+    /// <c>.sql</c> extension for the admin-UI download path; the RustFS object key
+    /// is a separate construct derived from the same datetime stamp.
+    /// </summary>
+    internal static string BuildRustFsObjectKey(BackupRecord record)
+    {
+        var utc = record.CreatedAt.ToUniversalTime();
+        return $"backups/{utc:yyyy}/{utc:MM}/{utc:dd}-{utc:HHmmss}.dump.gz.enc";
+    }
+
+    private async Task UploadEncryptedAsync(string localFilePath, string objectKey, CancellationToken ct)
+    {
+        // Build the gzipped + AES-256-GCM-encrypted payload entirely in memory. The
+        // Beta dataset is bounded; a chunked streaming variant can replace this if
+        // dump size grows past ~256 MB. The order matters: compress first (compressed
+        // ciphertext yields zero compression benefit because GCM output is uniform),
+        // then encrypt.
+        await using var gzipped = new MemoryStream();
+        await using (var source = new FileStream(localFilePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+        await using (var gz = new GZipStream(gzipped, CompressionLevel.SmallestSize, leaveOpen: true))
+        {
+            await source.CopyToAsync(gz, ct);
+        }
+        gzipped.Position = 0;
+
+        await using var encrypted = new MemoryStream();
+        await BackupEncryption.EncryptAsync(gzipped, encrypted, _encryptionKey!, ct);
+        encrypted.Position = 0;
+
+        var put = new PutObjectRequest
+        {
+            BucketName = _backupBucketName,
+            Key = objectKey,
+            InputStream = encrypted,
+            ContentType = "application/octet-stream",
+            // E15-S3 boundary review P9: DisablePayloadSigning is required for RustFS
+            // compatibility — RustFS's S3 adapter does not implement AWS V4 streaming
+            // signing and rejects requests that include the streaming-signature
+            // header. The security tradeoff is mitigated by the AES-256-GCM tag in
+            // the payload itself: any in-flight tampering corrupts the ciphertext,
+            // and decryption fails with AuthenticationTagMismatchException at restore
+            // time — the tampered backup cannot be silently substituted for the real
+            // one. Same flag is used by S3DocumentStorage for member-document uploads.
+            DisablePayloadSigning = true,
+        };
+        await _s3!.PutObjectAsync(put, ct);
+    }
+
     private static (string Host, string Port, string Database, string Username, string Password)
         ParseConnectionString(string connectionString)
     {
@@ -295,7 +396,7 @@ public sealed class PostgresBackupService : IBackupService
             Port: parts.GetValueOrDefault("Port", "5432"),
             Database: parts.GetValueOrDefault("Database", "iabconnect"),
             Username: parts.GetValueOrDefault("Username", "postgres"),
-            Password: parts.GetValueOrDefault("Password", "")
+            Password: parts.GetValueOrDefault("Password", string.Empty)
         );
     }
 }

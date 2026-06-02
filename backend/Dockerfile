@@ -48,12 +48,26 @@ LABEL org.opencontainers.image.source="https://github.com/htos/iab-connect" \
       org.opencontainers.image.description="Backend API for IAB Connect — AGPL-3.0-or-later open-source membership platform." \
       org.opencontainers.image.vendor="IAB Connect contributors"
 
-# Install tzdata + curl so Europe/Zurich resolves and HEALTHCHECK can run.
+# Install tzdata + curl + postgresql-client-17 so Europe/Zurich resolves, HEALTHCHECK
+# can run, and the daily backup job (E15-S3) can invoke pg_dump / pg_restore directly
+# against postgres-app.railway.internal without a Docker-in-Docker sidecar. The
+# postgresql-client-17 package is published in the official PostgreSQL apt repo
+# (PGDG); Ubuntu Noble's `postgresql-client` meta-package alone pulls v16 which does
+# not match the Railway-managed PG-17 dump format. We add the PGDG repo, install the
+# pinned v17 client, then drop the apt lists + the PGDG repo key files in the same
+# RUN to keep image size growth bounded to the ~15-25 MB client payload.
 # aspnet:10.0 Ubuntu Noble base ships tzdata + ICU pre-bundled (~14B no-op);
-# curl is needed for the HEALTHCHECK declared below. All in one RUN to
-# minimize layers; cleanup apt lists.
+# curl is needed for the HEALTHCHECK declared below.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends tzdata curl \
+    && apt-get install -y --no-install-recommends tzdata curl ca-certificates gnupg \
+    && install -d /usr/share/postgresql-common/pgdg \
+    && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+         | gpg --dearmor -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.gpg \
+    && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.gpg] https://apt.postgresql.org/pub/repos/apt noble-pgdg main" \
+         > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends postgresql-client-17 \
+    && apt-get purge -y --auto-remove gnupg \
     && rm -rf /var/lib/apt/lists/* \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
     && echo $TZ > /etc/timezone

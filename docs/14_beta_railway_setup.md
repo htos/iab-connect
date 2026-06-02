@@ -37,6 +37,9 @@
 11. [Recovery procedures](#11-recovery-procedures)
 12. [Fork-replacement guidance](#12-fork-replacement-guidance)
 13. [Reference: canonical service-name + image-name + hostname tables](#13-reference-tables)
+14. [Two-Postgres separation verification (E15-S1)](#14-two-postgres-separation-verification-e15-s1)
+15. [Daily PostgreSQL backup + restore (E15-S3)](#15-daily-postgresql-backup--restore-e15-s3)
+16. [First Beta-Admin seeding (E15-S4)](#16-first-beta-admin-seeding-e15-s4)
 
 ---
 
@@ -413,7 +416,7 @@ configure everything else; only after Section 5 does the `web` deploy reach a he
 | `ASPNETCORE_ENVIRONMENT` | `Beta` | No | Activates [appsettings.Beta.json](../backend/src/IabConnect.Api/appsettings.Beta.json) overlay per ADR-015 — Console-only Serilog, retention-disabled. |
 | `ASPNETCORE_URLS` | `http://+:8080` | No | Kestrel binds to container port 8080 ([backend/Dockerfile#L71](../backend/Dockerfile#L71)). |
 | `ConnectionStrings__DefaultConnection` | `Host=${{postgres-app.RAILWAY_PRIVATE_DOMAIN}};Port=${{postgres-app.PGPORT}};Database=${{postgres-app.PGDATABASE}};Username=${{postgres-app.PGUSER}};Password=${{postgres-app.PGPASSWORD}}` | **Yes** | Npgsql connection string consumed at Infrastructure/DependencyInjection.cs:53. |
-| `Database__AutoMigrate` | `true` | No | Beta auto-migrates per ADR-015. |
+| `Database__AutoMigrate` | `true` | No | Beta auto-migrates per ADR-015 / E15-S2. Set to `false` for Production manual-migration path (apply via `dotnet ef database update` in a controlled change window before api start so rolling restarts don't race the migration). Read at [Api/Program.cs `ShouldAutoMigrate`](../backend/src/IabConnect.Api/Program.cs). |
 | `Keycloak__Authority` | `https://${{keycloak.RAILWAY_PUBLIC_DOMAIN}}/realms/iabconnect` | No | JWT bearer authority (Api/DependencyInjection.cs:139). |
 | `Keycloak__ClientId` | `iabconnect-api` | No | OIDC client id / Audience (Api/DependencyInjection.cs:140). |
 | `KeycloakAdmin__BaseUrl` | `https://${{keycloak.RAILWAY_PUBLIC_DOMAIN}}` | No | Admin API base URL (KeycloakAdminService.cs:58). |
@@ -443,8 +446,9 @@ configure everything else; only after Section 5 does the `web` deploy reach a he
 | `InvoiceSettings__Currency` | `CHF` | No | |
 | `InvoiceSettings__DefaultPaymentTermDays` | `30` | No | |
 | `RetentionEnforcement__Enabled` | `false` | No | ADR-020 / REQ-088 — Beta suppresses retention deletions. Belt-and-suspenders with appsettings.Beta.json. |
-| `Backup__Directory` | `/tmp/backups` | No | Ephemeral landing path; backup is gzipped + uploaded to RustFS immediately (E15-S3). |
-| `Backup__EncryptionKey` | base64-encoded 32-byte random | **Yes** | Symmetric encryption key for pg_dump output (ADR-019). |
+| `Backup__Directory` | `/tmp/backups` | No | Local cache landing path. Under E15-S3 DEC-1 Option A (hybrid local + RustFS), pg_dump writes locally first; the gzipped + encrypted copy uploads to RustFS immediately. Local copy serves the admin-UI download/restore path. |
+| `Backup__BucketName` | `backups` | No | RustFS bucket name for encrypted backup objects (E15-S3 / ADR-019). Distinct from `DocumentStorage__BucketName` (`iabconnect-documents`) — two independent buckets on the same RustFS instance per ADR-019. |
+| `Backup__EncryptionKey` | base64-encoded 32-byte random (44 base64 chars) | **Yes** | AES-256-GCM symmetric key for the gzipped pg_dump output (ADR-019 / E15-S3). Missing or wrong-length value fails the `PostgresBackupService` constructor fast in non-Dev / non-Testing envs — backups MUST be encrypted before upload. Read at [Infrastructure/Backup/PostgresBackupService.cs](../backend/src/IabConnect.Infrastructure/Backup/PostgresBackupService.cs). |
 | `Logging__LogLevel__Default` | `Information` | No | Matches [appsettings.Beta.json](../backend/src/IabConnect.Api/appsettings.Beta.json) line 8. |
 
 **Not set on `api` (intentional):**
@@ -1030,6 +1034,705 @@ GHCR package visibility (Section 1.4) must be set to Public on the fork's packag
 - DCO workflow: [.github/workflows/dco.yml](../.github/workflows/dco.yml) (E20-S1).
 - Local Beta-shape testing (no Railway burn): README "Option 4: Local Beta-shape testing (full overlay)" + [infra/docker-compose.full.yml](../infra/docker-compose.full.yml) (E12-S4).
 - Architecture decision records: [_bmad-output/planning-artifacts/architecture.md](../_bmad-output/planning-artifacts/architecture.md) ADR-011..021.
+
+---
+
+## 14. Two-Postgres separation verification (E15-S1)
+
+> Story alignment: **E15-S1** — REQ-088 AC-3. Validates the ADR-012 migration-blast-radius
+> isolation invariant against the live Beta project. Re-run whenever a PG credential rotates
+> or whenever either Postgres service is rebuilt (e.g., after a Railway-side schema reset).
+>
+> **Why this section is separate from Section 8 (Networking topology).** Section 8 verifies the
+> *transport-layer* isolation (from outside Railway, `dig postgres-app.railway.internal` fails;
+> the public hostname doesn't route). This section verifies the *data-layer* isolation: even
+> from inside Railway with valid credentials for one DB, the other DB's user store / migration
+> history / row data are unreachable. ADR-012 calls the latter "migration safety" — the
+> verifiable promise that an EF Core migration in the application's bounded context cannot
+> accidentally touch Keycloak's realm tables. These are distinct security properties: Section 8
+> covers attacker-from-internet; Section 14 covers attacker-with-one-leaked-credential.
+>
+> **All verification commands are non-destructive** — every check is read-only
+> (`SELECT version()`, `\dt`, attempted-but-failing `psql -c 'SELECT 1'`). Do NOT run a
+> destructive `DROP DATABASE` or `DROP SCHEMA` to "prove" the separation.
+
+### 14.1 Service inventory
+
+Run from a shell with the Railway CLI authenticated to the `iab-connect-beta` project and the
+Beta environment selected (`railway environment` reports `beta`):
+
+```sh
+railway service list --json | jq '.[] | {name, plugin}'
+```
+
+Expected output shape (two managed PG services + the four application services from Section 13.2):
+
+```json
+{ "name": "postgres-app", "plugin": "PostgreSQL" }
+{ "name": "postgres-kc",  "plugin": "PostgreSQL" }
+```
+
+PostgreSQL major-version probe per service:
+
+```sh
+railway run --service postgres-app psql -c 'SELECT version();'
+railway run --service postgres-kc  psql -c 'SELECT version();'
+```
+
+Expected: both report `PostgreSQL 17.x ...`. Drift (one on 16.x, one on 17.x) indicates a
+Railway-managed PG version pin divergence — escalate before proceeding.
+
+| Field | postgres-app | postgres-kc |
+|---|---|---|
+| Service plugin | `PostgreSQL` | `PostgreSQL` |
+| Major version | `17.x` (populate after probe) | `17.x` (populate after probe) |
+| Private hostname | `postgres-app.railway.internal:5432` | `postgres-kc.railway.internal:5432` |
+| Public hostname | _none_ (Public Domain OFF — see 14.6) | _none_ (Public Domain OFF — see 14.6) |
+| Consumer | `api` (Section 5.1 `ConnectionStrings__DefaultConnection`) | `keycloak` (Section 3.4 `KC_DB_URL`) |
+
+### 14.2 Credential distinctness
+
+```sh
+railway variables --service postgres-app --json | jq '{PGUSER, PGDATABASE, RAILWAY_PRIVATE_DOMAIN}'
+railway variables --service postgres-kc  --json | jq '{PGUSER, PGDATABASE, RAILWAY_PRIVATE_DOMAIN}'
+```
+
+Expected shape (concrete values redacted — Sealed credentials NEVER pasted into this doc; the
+verifier records only that the values differ):
+
+| Variable | postgres-app | postgres-kc | Invariant |
+|---|---|---|---|
+| `PGUSER` | `u_<16-hash-chars>` | `u_<different-16-hash-chars>` | **MUST differ** (per-service random username) |
+| `PGPASSWORD` | `<32-char-Sealed-random>` | `<different-32-char-Sealed-random>` | **MUST differ** (per-service random; byte-distinct) |
+| `PGDATABASE` | `railway` (Railway default) | `railway` (Railway default) | May match — the **credential** is the discriminator, not the database name |
+| `RAILWAY_PRIVATE_DOMAIN` | `postgres-app.railway.internal` | `postgres-kc.railway.internal` | **MUST differ** (per-service hostname) |
+
+> **Note on `PGDATABASE` parity.** Railway's managed PostgreSQL template defaults
+> `PGDATABASE=railway` for every instance. Both `postgres-app` and `postgres-kc` will likely
+> have `PGDATABASE=railway` — this is acceptable per the invariant above; the credential
+> (`PGUSER`/`PGPASSWORD`) is the cross-DB authentication discriminator, not the database name.
+>
+> **Sealed-value redaction.** When populating this section after running the commands, paste
+> only the **shape** (length + hash prefix) of `PGUSER` / `PGPASSWORD` — never the resolved
+> values. The Sealed values live exclusively in Railway + the maintainer's password manager.
+
+### 14.3 Connection-string targets
+
+#### 14.3.1 `api` → `postgres-app`
+
+```sh
+railway variables --service api --json | jq -r '.ConnectionStrings__DefaultConnection'
+```
+
+Expected resolved string (with credentials redacted):
+
+```
+Host=postgres-app.railway.internal;Port=5432;Database=railway;Username=<redacted>;Password=<redacted>
+```
+
+`api` deploy logs on boot should show the Npgsql connection success line:
+
+```sh
+railway logs --service api --tail 200 | grep -E 'Npgsql|Connection opened|Database migrations'
+```
+
+Expected: `Database migrations applied` (per Beta default `Database__AutoMigrate=true`, see
+E15-S2 Section 5.1 row) within ~5 seconds of the most recent deploy.
+
+**Failure modes to watch for:**
+- `connection refused` → `${{postgres-app.RAILWAY_PRIVATE_DOMAIN}}` reference unresolved in Section 5.1.
+- `host not found` → `postgres-app` service was renamed or removed.
+- `password authentication failed` → `${{postgres-app.PGPASSWORD}}` reference points at the
+  wrong service. Escalate to a Section 5.1 patch + redeploy.
+
+#### 14.3.2 `keycloak` → `postgres-kc`
+
+```sh
+railway variables --service keycloak --json | jq -r '.KC_DB_URL'
+```
+
+Expected resolved JDBC URL:
+
+```
+jdbc:postgresql://postgres-kc.railway.internal:5432/railway
+```
+
+`keycloak` deploy logs on boot should show:
+
+```sh
+railway logs --service keycloak --tail 200 | grep -E 'KC-SERVICES000[19]|Keycloak.*started in'
+```
+
+Expected: `KC-SERVICES0009 Added user 'admin' to realm 'master'` AND
+`Keycloak 26.5.2 on JVM ... started in N.NNs` — the second proves the JDBC handshake against
+`postgres-kc` succeeded.
+
+**Failure modes to watch for:**
+- `Failed to obtain JDBC connection` → `KC_DB_URL` or `KC_DB_USERNAME`/`KC_DB_PASSWORD` env vars
+  from Section 3.4 / Section 5.3 drifted from the actual `postgres-kc` references.
+
+### 14.4 Schema isolation
+
+#### 14.4.1 `postgres-app` table list
+
+```sh
+railway run --service postgres-app psql -c '\dt'
+```
+
+Expected: application tables matching the EF Core migration set — `Members`, `Events`,
+`EmailCampaigns`, `EmailTemplates`, `EmailRecipients`, `AuditLogs`, `__EFMigrationsHistory`,
+`Documents`, `Invoices`, plus any other migration-produced tables (exact count drifts with the
+migration history — record the count at verification time).
+
+**Negative check** (grep the captured `\dt` output for Keycloak tables):
+
+```sh
+railway run --service postgres-app psql -c '\dt' | grep -iE 'USER_ENTITY|REALM|CLIENT|RESOURCE_SERVER|KEYCLOAK_ROLE|COMPONENT|MIGRATION_MODEL|RESOURCE_ATTRIBUTE|SCOPE_MAPPING'
+```
+
+Expected: **zero matches**. If any Keycloak table is present in `postgres-app`, the
+two-Postgres separation is broken at the schema layer — critical defect, escalate immediately.
+
+#### 14.4.2 `postgres-kc` table list
+
+```sh
+railway run --service postgres-kc psql -c '\dt'
+```
+
+Expected: ~80 Keycloak 26 internal tables (canonical Keycloak schema imported by
+`kc.sh start --optimized` against an empty PG). Exact count may differ slightly across
+Keycloak patch versions — the verifiable claim is "Keycloak's canonical schema present, zero
+application tables".
+
+**Negative check** (grep for application tables):
+
+```sh
+railway run --service postgres-kc psql -c '\dt' | grep -iE 'Members|Events|EmailCampaigns|EmailTemplates|Invoices|__EFMigrationsHistory'
+```
+
+Expected: **zero matches**. Any hit indicates the application's EF Core migrations ran against
+`postgres-kc` instead of `postgres-app` — escalate (likely `ConnectionStrings__DefaultConnection`
+on `api` pointed at the wrong managed-PG reference).
+
+### 14.5 Cross-credential rejection
+
+The highest-confidence isolation check: even if both schemas were somehow visible, the
+credential-level rejection makes the data unreachable across the boundary.
+
+#### 14.5.1 api credentials → postgres-kc (should fail)
+
+```sh
+railway run --service api bash -c '
+  # Try to use api'\''s connection-string credentials against postgres-kc'\''s host.
+  PGPASSWORD="$(echo "$ConnectionStrings__DefaultConnection" | sed -n "s/.*Password=\([^;]*\).*/\1/p")"
+  PGUSER_API="$(echo "$ConnectionStrings__DefaultConnection" | sed -n "s/.*Username=\([^;]*\).*/\1/p")"
+  PGPASSWORD="$PGPASSWORD" psql -h postgres-kc.railway.internal -p 5432 -U "$PGUSER_API" -d railway -w -c "SELECT 1;"
+'
+```
+
+Expected output:
+
+```
+psql: error: connection to server at "postgres-kc.railway.internal" (...), port 5432 failed:
+FATAL:  password authentication failed for user "<api-PGUSER>"
+```
+
+#### 14.5.2 keycloak credentials → postgres-app (should fail)
+
+```sh
+railway run --service keycloak bash -c '
+  KC_USER="$KC_DB_USERNAME"
+  KC_PASS="$KC_DB_PASSWORD"
+  PGPASSWORD="$KC_PASS" psql -h postgres-app.railway.internal -p 5432 -U "$KC_USER" -d railway -w -c "SELECT 1;"
+'
+```
+
+Expected output (same shape, swapped user/host):
+
+```
+psql: error: connection to server at "postgres-app.railway.internal" (...), port 5432 failed:
+FATAL:  password authentication failed for user "<kc-PGUSER>"
+```
+
+Both rejections together establish the cross-credential isolation invariant: a leaked
+application-DB credential cannot pivot to read Keycloak's user store; a leaked
+Keycloak-DB credential cannot pivot to read member/finance/audit rows.
+
+> **Audit-log side-effect.** The two failed `psql` attempts above will generate authn-failure
+> audit-log entries on the target Postgres. This is intentional + useful for E14-S5 (audit
+> logs audit). If the audit-log volume is rate-sensitive, capture timestamps so the failed
+> attempts can be correlated and explained.
+
+### 14.6 Private-networking re-assertion
+
+This re-asserts Section 8.2 + Section 8.3 — neither Postgres service exposes itself to the
+public internet.
+
+From a workstation **outside** Railway:
+
+```sh
+dig +short postgres-app.railway.internal
+dig +short postgres-kc.railway.internal
+echo "exit codes: $?"
+```
+
+Expected: both produce empty output + non-zero exit code (DNS resolution fails outside the
+Railway private network — matches Section 8.3's negative-test baseline).
+
+Railway-dashboard state probe:
+
+```sh
+railway service show postgres-app --json | jq '.serviceInstances[0].domains'
+railway service show postgres-kc  --json | jq '.serviceInstances[0].domains'
+```
+
+Expected: both return `null` or `[]` (Public Domain OFF) and no TCP Proxy entry (Section 8.2
+state preserved).
+
+> **Do NOT propose enabling TCP Proxy on either Postgres for "easier verification"**.
+> Section 8.7 explicitly forbids this; the verification works via `railway run --service` shell
+> tunneling without any exposure change. Even temporarily flipping the toggle creates an
+> attack-window incident.
+
+---
+
+## 15. Daily PostgreSQL backup + restore (E15-S3)
+
+> Story alignment: **E15-S3** — REQ-088 AC-6 / ADR-019 (backup destination) /
+> ADR-020 (Hangfire job suppression inverse). Closes the
+> [E13-FT-6 deferred-work entry](../_bmad-output/implementation-artifacts/deferred-work.md)
+> by removing the 6 `docker exec` / `docker cp` invocations that were Railway-incompatible.
+>
+> **What this section gives you.** A 24-hour RPO for `postgres-app` data: a daily
+> encrypted `pg_dump` of the application database lands on RustFS at 03:00 UTC; a 30-day
+> retention prune removes older copies at 04:00 UTC; a documented manual-restore procedure
+> reverses the pipeline end-to-end. Keycloak's `postgres-kc` schema is **not** backed up —
+> it is reproducible from
+> [infra/keycloak/realms-beta/iabconnect-realm.json](../infra/keycloak/realms-beta/iabconnect-realm.json)
+> on container restart; the realm DB only carries hashed user passwords + resolved
+> client secrets, both of which increase the attacker surface for marginal recovery
+> value if exfiltrated.
+
+### 15.1 Cron schedule
+
+| Job ID | When (UTC) | What | Source |
+|---|---|---|---|
+| `daily-pg-backup` | `0 3 * * *` (03:00 UTC) | `pg_dump --format=custom` → gzip → AES-256-GCM → upload to `s3://<bucket>/backups/yyyy/MM/dd-HHmmss.dump.gz.enc` | [ScheduledBackupJob.cs](../backend/src/IabConnect.Infrastructure/Backup/ScheduledBackupJob.cs) wired by [Api/DependencyInjection.cs `RegisterDailyBackupJob`](../backend/src/IabConnect.Api/DependencyInjection.cs) |
+| `prune-old-backups` | `0 4 * * *` (04:00 UTC) | List `backups/` prefix → delete RustFS objects + local cache files older than 30 days | [PruneOldBackupsJob.cs](../backend/src/IabConnect.Infrastructure/Backup/PruneOldBackupsJob.cs) |
+
+Both jobs are gated `!IsDevelopment()` per ADR-020 inverse — Dev environments do not
+run nightly pg_dump locally. A Dev install that previously ran Beta in the same
+Hangfire storage cleans up the orphaned schedule via `RemoveIfExists` (E11-S2 review
+D4 pattern). Test verification: [RegisterDailyBackupJobTests.cs](../backend/tests/IabConnect.Api.Tests/RegisterDailyBackupJobTests.cs).
+
+### 15.2 Required env vars + Sealed flags
+
+These already appear in Section 5.1; reiterated here for self-contained reference.
+
+| Variable | Service | Value | Sealed | Rationale |
+|---|---|---|---|---|
+| `Backup__EncryptionKey` | `api` | base64-encoded 32-byte random (44 base64 chars) | **Yes** | AES-256-GCM symmetric key. Missing/wrong-length value fails the `PostgresBackupService` constructor fast in non-Dev/non-Testing — backups MUST be encrypted before upload. |
+| `Backup__BucketName` | `api` | `backups` | No | RustFS bucket name. Distinct from `DocumentStorage__BucketName` (`iabconnect-documents`) — two independent buckets per ADR-019. |
+| `Backup__Directory` | `api` | `/tmp/backups` | No | Local cache landing path (DEC-1 Option A hybrid). Admin-UI download/restore reads from here. |
+| `DocumentStorage__ServiceUrl` | `api` | `http://${{rustfs.RAILWAY_PRIVATE_DOMAIN}}:9000` | No | The same RustFS instance hosts both the documents bucket and the backups bucket. |
+| `DocumentStorage__AccessKey` / `DocumentStorage__SecretKey` | `api` | RustFS root creds | partial | The S3 client is bucket-agnostic — the same creds work for both buckets. |
+
+> **Bucket-creation chicken-and-egg.** On a fresh Beta deploy the `backups` bucket
+> may not yet exist on RustFS. The current code path expects the operator to create
+> it once via the RustFS admin console or `aws s3 mb s3://backups --endpoint-url
+> http://<rustfs-host>:9000`. A future story may add auto-create-on-first-upload
+> semantics — for now, manual one-time creation matches the
+> `iabconnect-documents` precedent.
+
+### 15.3 Storage path convention
+
+| Layer | Path |
+|---|---|
+| Local cache | `${Backup__Directory}/iabconnect_backup_yyyyMMdd_HHmmss.sql` (pg_dump `--format=custom` despite the `.sql` extension; preserved for admin-UI backward compat) |
+| RustFS object key | `backups/yyyy/MM/dd-HHmmss.dump.gz.enc` (UTC; nested by year + month for human-readable listings) |
+| On-disk encryption format | `[12-byte nonce][16-byte tag][ciphertext]` (AES-256-GCM via [BackupEncryption.cs](../backend/src/IabConnect.Infrastructure/Backup/BackupEncryption.cs)) |
+
+The local and RustFS filename conventions diverge intentionally: the local file
+keeps its `BackupRecord.FileName` legacy extension so admin-UI download / restore
+endpoints work unchanged; the RustFS object name encodes the gzip + encrypt steps
+in the suffix for clarity.
+
+### 15.4 Listing backups
+
+```sh
+# Local cache (ephemeral; may be empty after a Railway redeploy of the api):
+railway run --service api ls -lh /tmp/backups/
+```
+
+For the RustFS-side listing the backend image intentionally does NOT bundle the
+AWS CLI (every binary added to the runtime image is reviewed for attack-surface
+growth at E14-S1). Use one of these two paths instead:
+
+1. **RustFS web console** (recommended). The RustFS service in Beta exposes its
+   admin console on the address declared via `RUSTFS_CONSOLE_ADDRESS`. From the
+   Railway dashboard → `rustfs` service → Settings → enable temporary public
+   access on the console port if you have not already (revoke when done), open
+   the URL, sign in with the Sealed `RUSTFS_ROOT_USER` / `RUSTFS_ROOT_PASSWORD`,
+   navigate `backups/` to browse the encrypted objects.
+2. **Direct `mc` (MinIO CLI) inside the rustfs container.** `railway shell
+   --service rustfs` lands in the container which ships `mc`:
+
+   ```sh
+   # Inside the rustfs container:
+   mc alias set local http://127.0.0.1:9000 "$RUSTFS_ROOT_USER" "$RUSTFS_ROOT_PASSWORD"
+   mc ls --recursive local/backups/
+   ```
+
+   `[!] verify against rustfs/rustfs container docs before executing` — `mc`
+   ships in the default RustFS image but the alias step assumes the loopback +
+   internal port pattern; confirm by reading `${{RUSTFS_ADDRESS}}` first.
+
+### 15.5 Manual restore procedure
+
+> Use this procedure when a Beta data-loss incident requires restoring `postgres-app`
+> from a known-good backup. **Do NOT run `pg_restore` against the live `postgres-app`
+> instance receiving traffic** — restore into a throwaway `postgres-app-restore-test`
+> Railway service first, validate row counts, then cut traffic over via a coordinated
+> redeploy.
+
+#### Step 1 — Download the encrypted backup from RustFS
+
+The backend image does not bundle the AWS CLI (Section 15.4 prose). Two ways to
+get the encrypted dump onto your workstation:
+
+**Path A — via the rustfs container's `mc`:**
+
+```sh
+# Inside `railway shell --service rustfs`:
+mc alias set local http://127.0.0.1:9000 "$RUSTFS_ROOT_USER" "$RUSTFS_ROOT_PASSWORD"
+mc cp "local/${{Backup__BucketName}}/backups/YYYY/MM/DD-HHMMSS.dump.gz.enc" /tmp/restore-incoming.dump.gz.enc
+# Then `railway shell` to scp/copy the file off the container. Or use Path B below.
+```
+
+**Path B — via the RustFS web console:** open the console URL from Section 15.4,
+navigate `backups/YYYY/MM/DD-HHMMSS.dump.gz.enc`, click Download. The file lands
+on the operator's workstation directly.
+
+`[!] verify against rustfs/rustfs container docs before executing` — the `mc`
+alias step uses the loopback endpoint; the `RUSTFS_ADDRESS` env var in the
+container is the canonical source of the actual address.
+
+#### Step 2 — Decrypt with the `Backup__EncryptionKey`
+
+The encryption format `[nonce(12)][tag(16)][ciphertext]` is read by
+[BackupEncryption.DecryptAsync](../backend/src/IabConnect.Infrastructure/Backup/BackupEncryption.cs).
+The simplest decrypt path is a small `dotnet run`-style helper that imports the
+same `BackupEncryption` class:
+
+```csharp
+// scratch/Decrypt.cs — one-off script; do not commit
+var keyBase64 = Environment.GetEnvironmentVariable("Backup__EncryptionKey")!;
+var key = IabConnect.Infrastructure.Backup.BackupEncryption.ParseConfiguredKey(keyBase64);
+await using var cipher = File.OpenRead("/tmp/restore-incoming.dump.gz.enc");
+await using var plain = File.Create("/tmp/restore-incoming.dump.gz");
+await IabConnect.Infrastructure.Backup.BackupEncryption.DecryptAsync(cipher, plain, key);
+```
+
+> **Do NOT** invoke `openssl enc -d` here — the format is not compatible with OpenSSL's
+> CLI defaults (AES-GCM with auto-detected nonce + tag is not a stock OpenSSL mode).
+> Use the project's `BackupEncryption` API for symmetric tooling.
+
+#### Step 3 — Gunzip
+
+```sh
+gunzip /tmp/restore-incoming.dump.gz
+# → /tmp/restore-incoming.dump
+```
+
+#### Step 4 — Restore into a non-production target
+
+Two recommended targets, in preference order:
+
+(a) A **throwaway Railway service** `postgres-app-restore-test` provisioned with
+the standard PostgreSQL plugin:
+
+```sh
+# In the Railway dashboard: New → Database → PostgreSQL, name it postgres-app-restore-test.
+# Capture its ConnectionStrings__DefaultConnection-equivalent into a local env var.
+PGPASSWORD="<restore-target-PGPASSWORD>" pg_restore \
+  --clean --if-exists --no-password \
+  --host postgres-app-restore-test.railway.internal --port 5432 \
+  --username "<restore-target-PGUSER>" --dbname railway \
+  /tmp/restore-incoming.dump
+```
+
+(b) A **local docker-compose Postgres** (offline verification, no Beta touch):
+
+```sh
+docker compose -f infra/docker-compose.yml up -d postgres
+PGPASSWORD=postgres pg_restore --clean --if-exists --no-password \
+  --host localhost --port 5433 --username postgres --dbname iabconnect \
+  /tmp/restore-incoming.dump
+```
+
+`pg_restore` exit code 1 = warnings (e.g., "role already exists") — accepted as
+success matches [PostgresBackupService.RestoreBackupAsync](../backend/src/IabConnect.Infrastructure/Backup/PostgresBackupService.cs).
+
+#### Step 5 — Validate the restore + cut traffic
+
+Row-count + table-list sanity check before any traffic cut:
+
+```sh
+PGPASSWORD="<restore-target-PGPASSWORD>" psql \
+  --host postgres-app-restore-test.railway.internal -U "<restore-target-PGUSER>" -d railway \
+  -c "SELECT COUNT(*) FROM \"Members\"; SELECT COUNT(*) FROM \"Events\";"
+```
+
+Compare against the last-known-good row counts (capture them periodically when
+healthy). Only then re-point `api.ConnectionStrings__DefaultConnection` at the
+restored instance via Railway-dashboard env-var rotation + redeploy.
+
+### 15.6 Real-restore evidence
+
+`[!] needs-human-verify` — Harry's session populates this subsection after the
+first end-to-end restore drill against the Beta deploy. Capture:
+
+- Backup-file timestamp (redacted to month resolution: `2026-MM-DD-HHMMSS.dump.gz.enc`).
+- Decryption time + gunzip time (wall-clock seconds, not credentials).
+- `pg_restore` exit code + the count of restored rows in `Members` + `Events`
+  before / after.
+- Sign-off date (the operator who validated the procedure).
+
+E19-S2 (Wave-10) repeats the drill as a Production-readiness gate.
+
+### 15.7 Recovery procedures
+
+**Hangfire `daily-pg-backup` job stuck "In Progress":** the
+[PostgresBackupService.GetBackupsAsync auto-resolve at 10 minutes](../backend/src/IabConnect.Infrastructure/Backup/PostgresBackupService.cs)
+marks any record stuck > 10 min as Failed. If a successor run never appears at
+03:00 UTC the next day, check the Hangfire dashboard (Dev only — Beta dashboards
+are disabled per E12-S1) OR `railway logs --service api --since 24h | grep -E
+'daily-pg-backup|Backup'`. Common causes: (a) `Backup__EncryptionKey` rotated but
+not propagated to the `api` env-var; (b) `Backup__BucketName` bucket missing on
+RustFS; (c) `pg_dump` binary missing from the api container (`postgresql-client-17`
+package not installed — verify via `railway run --service api pg_dump --version`).
+
+**Encryption-key rotation impact:** rotating `Backup__EncryptionKey` makes all
+**pre-rotation** backups undecryptable with the new key. The old key MUST be
+archived in the maintainer's password manager AND in a separate recovery vault
+(e.g., 1Password vault `iabconnect/recovery`). A future story (deferred-work) may
+add a key-versioning header to the on-disk format so multi-key decryption is
+possible without manual key lookup; today's contract is single-key-at-a-time.
+
+**RustFS bucket full / RustFS storage exhausted:** the prune job at 04:00 UTC
+caps RustFS growth at ~30 daily dumps. If a backup fails with
+`PutObject ... exceeded quota`, list the bucket directly + manually delete the
+oldest objects to reclaim space, then investigate why the prune job did not run
+(check Hangfire dashboard / Serilog ERROR stream for `PruneOldBackupsJob`
+failures).
+
+---
+
+## 16. First Beta-Admin seeding (E15-S4)
+
+> Story alignment: **E15-S4** — REQ-088 AC-10 / ADR-016 (custom Keycloak image
+> with realm-import baked in). Closes Epic-15. Operator-facing reference for
+> bootstrapping the first administrator account on a fresh Beta deploy. Read this
+> after a green deploy from Section 10.4; the procedure produces the first user
+> who can log in with the `admin` realm role and see the IAB Connect admin UI.
+
+### 16.1 Goal + commitments
+
+- **Goal**: deterministic, reproducible procedure for any operator (Harry, a
+  co-maintainer, a fork's first deployer) to bootstrap the first IAB-Connect
+  `admin`-role-holder on a fresh Beta deploy. The procedure is browser-driven
+  through the Keycloak Admin Console; no SQL INSERTs, no realm-JSON edits, no
+  dev-realm dumps.
+- **RPO / RTO commitments for the seeding action itself**: ~5 min for an operator
+  with the master-admin credentials already in hand; ~30 min including recovery
+  of a lost `KEYCLOAK_ADMIN_PASSWORD` via the procedure in Section 16.7.
+- **Source of authority**:
+  [ADR-016](../_bmad-output/planning-artifacts/architecture.md#adr-016-custom-keycloak-image-with-spi-baked-in)
+  ("realm import is the persistence shape for first-deploy seeding") +
+  [E12-S3](../_bmad-output/implementation-artifacts/e12-s3-add-custom-keycloak-image-with-spi.md)
+  (sanitized realm at `infra/keycloak/realms-beta/iabconnect-realm.json` ships
+  with the image; no seed users baked in).
+
+### 16.2 Prerequisites
+
+Before starting:
+
+- Beta deploy is green per Section 10.4 (login round-trip would-succeed-if-we-had-an-admin
+  user — but we don't yet; this is the chicken-and-egg this section unwinds).
+- `/health/detail` reports `database: Healthy` + `keycloak: Healthy` (Section 9).
+- Sealed Railway env vars on the `keycloak` service (per Section 5.3):
+  - `KEYCLOAK_ADMIN` = `admin`
+  - `KEYCLOAK_ADMIN_PASSWORD` = strong-random-≥-16-chars (stored in operator's
+    password manager).
+- Keycloak Admin Console reachable at
+  `https://${{keycloak.RAILWAY_PUBLIC_DOMAIN}}/admin/master/console/`.
+- The operator's browser (private window recommended to avoid OIDC-session
+  pollution from any prior dev session).
+
+### 16.3 Verify the seven realm roles
+
+The realm-import baked into the custom Keycloak image ships **exactly seven**
+realm-level roles. Verify the deployed state matches the source-of-truth file.
+
+Source-of-truth roles in
+[infra/keycloak/realms-beta/iabconnect-realm.json](../infra/keycloak/realms-beta/iabconnect-realm.json)
+lines 163-198:
+
+| Role name | Used by |
+|---|---|
+| `mfa-required` | Keycloak conditional flow trigger (enforces MFA at login when assigned). NOT an application authorization role; not present in `IabConnect.Api.Authorization.Roles`. |
+| `admin` | `[Roles.Admin](../backend/src/IabConnect.Api/Authorization/Roles.cs)` — `RequireAdmin` policy + all admin-only UI sections. |
+| `vorstand` | `[Roles.Vorstand]` — board members. |
+| `member` | `[Roles.Member]` — regular member. |
+| `kassier` | `[Roles.Kassier]` — finance read+write policy. |
+| `auditor` | `[Roles.Auditor]` — finance read-only policy. |
+| `event-manager` | `[Roles.EventManager]` — `RequireEventStaff` set member. |
+
+**Why the 7-vs-6 mismatch.** `Roles.cs` defines six **application** authorization
+constants; the seventh realm role (`mfa-required`) is a Keycloak conditional
+authentication trigger — not an authorization role — and intentionally does not
+appear in the application-side enum. A future story adding "step-up MFA for
+finance writes" would consume `mfa-required` via Keycloak's `Required Action`
+flow, not via `[Authorize(Roles = "mfa-required")]`.
+
+**Verification steps (browser, on the deployed Beta Keycloak Admin Console):**
+
+1. Sign in to the Admin Console at
+   `https://${{keycloak.RAILWAY_PUBLIC_DOMAIN}}/admin/master/console/` using
+   `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD`. (You land in the **master** realm by default.)
+2. Use the realm-picker (top-left) → select `iabconnect`.
+3. Left nav → **Realm roles**. Confirm the table lists exactly the seven names
+   above. `mfa-required` may show with a different default `Composite` / `Description`
+   value — only the **name** is verified here.
+4. `[!] needs-human-verify` — capture either a screenshot (saved to
+   `docs/screenshots/16-3-realm-roles.png` and referenced here) OR a copy of the
+   seven role names pasted into Section 16.3 as a `code-block`. Redact any
+   user-PII or audit-log metadata that might be visible in the Admin Console
+   chrome — only role names matter.
+
+**Anti-patterns to avoid:**
+
+- Do NOT delete `mfa-required` "to clean up the seven into six matching the
+  application roles" — it is referenced by the conditional auth flow declared in
+  the realm JSON (search for `"alias": "browser"` to find it).
+- Do NOT add a new realm role here (e.g., a `super-admin` for elevated
+  operations). New roles flow from a feature story + a coordinated update to
+  `Roles.cs` + the realm JSON.
+
+### 16.4 Create the first Beta-Admin user
+
+1. In the `iabconnect` realm (left-nav realm-picker if you drifted back to
+   master) → **Users**. The table should be empty (no seed users per
+   `realms-beta` sanitisation in E12-S3 AC-5).
+2. Click **Add user**. Fill:
+   - **Username**: operator's preferred administrative handle. Convention is the
+     operator's email address — but any unique string works.
+   - **Email**: the operator's real email address.
+   - **Email verified**: **ON** (toggle on). Skipping this forces an email-verify
+     flow on first sign-in that the Beta Mailtrap sandbox catches silently.
+   - **First name** / **Last name**: real names (these appear on member-list
+     views).
+   - Leave the rest at defaults.
+3. Click **Create**. Keycloak navigates to the new user's detail page.
+4. Open the **Credentials** tab → **Set password**.
+   - Enter a strong random password (≥ 16 chars, mixed case + digits + symbol).
+   - **Temporary**: **OFF** (toggle off). With Temporary ON, the operator is
+     forced through a password-change flow on first sign-in which the IAB
+     Connect frontend cannot complete (it does not route through Keycloak's
+     password-change page).
+   - Save the password.
+   - **CRITICAL**: store the password in the operator's password manager
+     IMMEDIATELY. There is no recovery path other than the master-admin
+     reset described in Section 16.7.
+5. Open the **Role mapping** tab. Click **Assign role**.
+6. In the role-picker, filter by source `realm-roles`. Tick `admin`. Optionally
+   also tick `vorstand` if the operator should also have the `RequireVorstand`
+   permissions today. Click **Assign**.
+
+### 16.5 Sign-in smoke test
+
+1. Open a private browser window. Navigate to
+   `https://${{web.RAILWAY_PUBLIC_DOMAIN}}/`.
+2. Click **Sign in** (top-right). NextAuth redirects to the Keycloak login page
+   at `${{keycloak.RAILWAY_PUBLIC_DOMAIN}}/realms/iabconnect/protocol/openid-connect/auth?...`.
+3. Enter the username + password from Section 16.4. Submit.
+4. Keycloak redirects back to the IAB Connect frontend. The header should now
+   show the operator's name + an avatar dropdown.
+5. Navigate to **Settings** (left nav) — the route is guarded by the
+   `RequireAdmin` policy. If the route loads and the settings form renders,
+   the seeding is complete; the operator has effective `admin` privileges.
+
+If sign-in fails at step 3 with `Invalid username or password`, the
+**Temporary** toggle was likely left ON in Section 16.4 step 4 OR the
+**Email verified** toggle was left OFF (Keycloak then asks for an email-verify
+loop the frontend cannot complete). Return to the Admin Console, fix the
+toggles, retry.
+
+### 16.6 Adding additional Beta testers
+
+Once the first admin user exists, additional testers can be onboarded via two
+paths:
+
+**Path A — Operator pre-creates each tester (recommended for closed Beta):**
+
+1. Admin Console → `iabconnect` realm → Users → Add user. Same toggles as
+   Section 16.4 step 2 (email verified ON; temporary OFF on password).
+2. Assign realm role(s) appropriate to the tester. Typical: just `member`.
+3. Communicate the username + password to the tester through a secure channel
+   (Signal, password manager share link, etc.). NOT email.
+
+**Path B — Self-service via SMTP-confirmed email (recommended when SMTP is wired):**
+
+When the `keycloak` service has SMTP configured (per ADR-018 Mailtrap sandbox in
+Beta, or real provider in Production), Keycloak's **Forgot password?** link on
+the login page allows testers to set their own password if the operator has
+created the account + assigned a role + ticked Email verified. The operator
+shares the username; the tester runs the reset flow and lands on the frontend
+signed-in.
+
+In Beta the Mailtrap sandbox intercepts the password-reset emails — they do
+NOT land in the tester's real inbox. The operator must forward the captured
+email manually OR switch to a real provider before relying on Path B.
+
+### 16.7 Anti-patterns + recovery
+
+**Do NOT:**
+
+- Commit the Beta-Admin password to the repo. The Sealed `KEYCLOAK_ADMIN_PASSWORD`
+  is the only credential that ever lives anywhere persistent outside the
+  operator's password manager.
+- Seed via SQL INSERT into `postgres-kc`. The Keycloak password hashing scheme
+  (Argon2id parameters + per-user salt + pepper) is not reproducible from outside
+  Keycloak; a manual SQL insert would create an unusable user.
+- Import a dev-realm dump (`infra/keycloak/realms/iabconnect-realm.json`) into
+  the Beta `postgres-kc`. The dev realm ships demo seed users with known
+  passwords — importing them into Beta would create six tester-visible accounts
+  with leaked credentials.
+- Run `DevelopmentDataSeeder.SeedAsync` against Beta. The seeder is gated to
+  `env.IsDevelopment()` in [Program.cs](../backend/src/IabConnect.Api/Program.cs)
+  with a regression test at
+  [DevelopmentDataSeederGatingTests.cs](../backend/tests/IabConnect.Api.Tests/DevelopmentDataSeederGatingTests.cs).
+  If you find yourself trying to force it, you're in the wrong document — that
+  is Dev-only behaviour for the seeded `admin@iabconnect.ch`/
+  `vorstand@iabconnect.ch`/`member@iabconnect.ch` Members.
+
+**Recovery: lost `KEYCLOAK_ADMIN_PASSWORD`.**
+
+If the master-realm admin password is lost AND the operator cannot recover it
+from their password manager, Keycloak 26 supports the
+`bootstrap-admin user --password:env` recovery flow against the running
+container. The procedure is documented in Section 11.2 of this same doc
+(Keycloak admin recovery). Follow that runbook — do NOT delete the
+`postgres-kc` volume to "start fresh", that would destroy realm config and
+every user account.
+
+**Recovery: locked out of `admin` realm role.**
+
+If the only `admin`-role-holder loses access (forgot password AND no master-admin
+escalation) but the master-realm admin still works: log into the master realm,
+navigate to `iabconnect` realm → Users → select the locked-out user → Credentials
+→ Reset password. Set a temporary password, communicate it through a secure
+channel, the user signs in and changes it.
 
 ---
 
