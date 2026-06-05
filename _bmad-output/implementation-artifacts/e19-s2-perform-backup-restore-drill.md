@@ -1,6 +1,6 @@
 # Story E19-S2: Backup restore drill
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -69,36 +69,36 @@ This story was authored from the 19-line 2026-05-15 stub against post-Epic-18 re
 
 ### Task 0: Spike — confirm anchors + binary surface + resolve DECs (A28; A41 escape if pre-declared)
 
-- [ ] 0.1 Confirm [RUNBOOK §3](./RUNBOOK-beta.md) restore prose + the `pg_restore --clean --if-exists` invocation + the BackupEncryption-not-openssl note are unchanged since E18-S1 close (the drill reuses them by cross-link).
-- [ ] 0.2 Re-confirm the backup object-key pattern + cron from `PostgresBackupService` / [ADR-019](../planning-artifacts/architecture.md): `backups/yyyy/MM/dd-HHmmss.dump.gz.enc`, `0 3 * * *` UTC, 30-day retention.
-- [ ] 0.3 Re-confirm `postgresql-client-17` in [backend/Dockerfile](../../backend/Dockerfile) (A45 — `pg_restore` reachable in `api`) and that `mc`/`openssl`/`jq` are NOT in the image (A57 — workstation-side for object location).
-- [ ] 0.4 Confirm `/health/ready` + `/health/detail` + `/about` endpoint paths (the smoke targets) against the API (E17-S4 + E20-S3 + [RUNBOOK §6.2](./RUNBOOK-beta.md)).
-- [ ] 0.5 Resolve DEC-1 + DEC-2 (A41 escape if pre-declared, else AskUserQuestion per A32 step d) — record (a)/(b)/(c) per A43.
-- [ ] 0.6 Spike outcome recorded in Dev Agent Record.
+- [x] 0.1 Confirmed [RUNBOOK §3](./RUNBOOK-beta.md) restore prose + `pg_restore --clean --if-exists` + BackupEncryption-not-openssl note unchanged since E18-S1 close — §3.1 reuses them by cross-link.
+- [x] 0.2 Re-confirmed backup object-key + cron from [ADR-019](../planning-artifacts/architecture.md) + RUNBOOK §3: `backups/yyyy/MM/dd-HHmmss.dump.gz.enc`, `0 3 * * *` UTC, 30-day retention.
+- [x] 0.3 Re-confirmed `postgresql-client-17` in [backend/Dockerfile](../../backend/Dockerfile) (`pg_restore` reachable) + `mc`/`openssl`/`jq` NOT in the image (A57) — §3.1 puts object-location on the workstation.
+- [x] 0.4 Confirmed `/health/ready` + `/health/detail` + `/about` as smoke targets ([RUNBOOK §6.2](./RUNBOOK-beta.md), E17-S4 + E20-S3).
+- [x] 0.5 DEC-1=A (ephemeral Railway Postgres) + DEC-2=A (full smoke set) resolved via A41 autonomous-mode escape — see Debug Log References.
+- [x] 0.6 Spike outcome recorded in Dev Agent Record.
 
 ### Task 1: Author §3.1 drill procedure — locate + decrypt + restore-into-throwaway (AC-1, AC-2, AC-3)
 
-- [ ] 1.1 Add `### 3.1 Restore drill (rehearsal + captured log)` under §3; intent paragraph (this rehearses §3 end-to-end + proves data integrity; the live run is deferred to a green Beta).
-- [ ] 1.2 Locate-yesterday's-backup step (RustFS console / workstation `mc ls`, `[!]`-marked; object-key pattern + cron).
-- [ ] 1.3 Decrypt (C# BackupEncryption, not openssl) → gunzip → `pg_restore --clean --if-exists` into throwaway, reusing §3 / docs/14 §15 by cross-link; `[!] verify` on `railway shell` + decrypt + `mc`.
+- [x] 1.1 Added `### 3.1 Restore drill (rehearsal + captured log)` under §3 + intent paragraph (rehearses §3 + proves data integrity; live run deferred to green Beta).
+- [x] 1.2 Locate-yesterday's-backup step (RustFS console / workstation `mc ls` `[!]`-marked; object-key pattern + cron).
+- [x] 1.3 Decrypt (BackupEncryption, not openssl) → gunzip → `pg_restore --clean --if-exists` into throwaway, reusing §3/docs-15 by cross-link; `railway shell` + decrypt + `mc` `[!] verify`.
 
 ### Task 2: Author the throwaway-API + smoke-test steps (AC-4, AC-5)
 
-- [ ] 2.1 (DEC-1) Throwaway-target step: ephemeral Railway Postgres primary + local Compose fallback; throwaway `api` `ConnectionStrings__DefaultConnection` → restored DB; `Database__AutoMigrate` OFF for the drill.
-- [ ] 2.2 (DEC-2) Smoke-test checklist (a)–(e): `/health/ready` 200 · `/health/detail` all-Healthy · `/about` · login round-trip · critical-table row-count spot-checks — each a discrete line (A29).
+- [x] 2.1 (DEC-1=A) §3.1 step 3: throwaway `api` `ConnectionStrings__DefaultConnection` → restored DB; `Database__AutoMigrate=false`; never-live-on-first-pass (ephemeral Railway Postgres primary / local Compose fallback in DEC).
+- [x] 2.2 (DEC-2=A) §3.1 step 4 smoke checklist (a)–(e): `/health/ready` 200 · `/health/detail` all-Healthy · `/about` · login round-trip · critical-table row-count spot-checks — each a discrete line.
 
 ### Task 3: Author the captured drill-log template + caveats (AC-6, AC-7)
 
-- [ ] 3.1 Drill-log table (Drill date · Backup key/timestamp · Backup age · Restore duration · Throwaway target · Smoke result a–e · Operator · Notes), one BLANK row marked "fill during the live drill" (A42 — no invented numbers).
-- [ ] 3.2 Cross-link ADR-019 blast-radius caveat + single-key `Backup__EncryptionKey` caveat ([RUNBOOK §3 / 6.7](./RUNBOOK-beta.md)); note off-site replication is the E19 Production follow-up.
-- [ ] 3.3 Update the §3 TOC reference + §7 Quick-reference with a drill pointer.
+- [x] 3.1 Drill-log table (Drill date · Backup key/timestamp · Backup age · Restore duration · Throwaway target · Smoke a/b/c/d/e · Operator · Notes), one BLANK row marked "fill during the live drill" (A42 — no invented numbers).
+- [x] 3.2 Cross-linked ADR-019 blast-radius + single-key `Backup__EncryptionKey` (Incident 6.7); noted off-site replication = E19 Production follow-up.
+- [x] 3.3 Added §7 Quick-reference drill row pointing at §3.1.
 
 ### Task 4: A42 reread + Quality-Gates closing (AC-8, AC-9)
 
-- [ ] 4.1 A42 six-category reread: (1) no contradiction with §3 / Incident 6.7; (2) the drill-log reads clearly as a blank template, not a one-drill snapshot; (3) cross-links use §-numbers; (4) object-key/cron/env-var/`pg_restore`-flags/binary-claims match code+docs/14+ADR-019; (5) no sprint leakage; (6) A57 — `pg_restore` in image, `mc`/`openssl`/`jq` workstation-side + `[!]`-marked.
-- [ ] 4.2 AC-Subitem Completion Check (A29 / A54) — Quality-Gates table has one row per AC + per smoke sub-item (a–e); AC-9 deferred row split per A54 if multi-sub-item.
-- [ ] 4.3 (A47) AC-9 live drill → Completion Notes Q-items (needs green Beta + ≥1 real backup + throwaway target).
-- [ ] 4.4 Flip status to `review`.
+- [x] 4.1 A42 six-category reread complete: (1) no contradiction with §3 / Incident 6.7; (2) drill-log reads as a blank template; (3) cross-links use §-numbers + the `#31-...` anchor; (4) object-key/cron/env-var/`pg_restore`-flags/binary-claims match code+docs-15+ADR-019; (5) no sprint leakage; (6) A57 — `pg_restore` in image, `mc`/`openssl`/`jq` workstation-side + `[!]`-marked.
+- [x] 4.2 AC-Subitem Completion Check (A29/A54) — Quality-Gates one row per AC + per smoke sub-item (a–e); AC-9 deferred.
+- [!] 4.3 (A47) AC-9 live drill deferred → Completion Notes Q1–Q2 (needs green Beta + ≥1 real backup + throwaway target).
+- [x] 4.4 Status flipped to `review`.
 
 ## Dev Notes
 
@@ -133,21 +133,21 @@ This story was authored from the 19-line 2026-05-15 stub against post-Epic-18 re
 
 ## Quality-Gates Closing
 
-| AC | Evidence (planned) | Status |
+| AC | Evidence | Status |
 |---|---|---|
-| AC-1 §3.1 authored under §3 + TOC/QuickRef | new subsection; no disturbance to §3/§8/§9 | pending |
-| AC-2 locate-backup | object-key pattern + RustFS console / workstation `mc` `[!]` | pending |
-| AC-3 decrypt→gunzip→restore-throwaway | BackupEncryption(not-openssl) + `pg_restore` cross-link + `[!]` | pending |
-| AC-4 throwaway API | restored-DB connection string + AutoMigrate OFF + never-live | pending |
-| AC-5 (a) `/health/ready` 200 | smoke checklist line | pending |
-| AC-5 (b) `/health/detail` all-Healthy | smoke checklist line | pending |
-| AC-5 (c) `/about` reachable | smoke checklist line | pending |
-| AC-5 (d) login round-trip | smoke checklist line | pending |
-| AC-5 (e) critical-table row-count spot-check | smoke checklist line | pending |
-| AC-6 captured drill-log template (blank) | table + "fill during live drill" marker | pending |
-| AC-7 caveats cross-linked | ADR-019 blast-radius + key-archival via §3/6.7 | pending |
-| AC-8 no contradiction / A42 reread | six-category reread + diff vs §3/docs-15/ADR-019/code | pending |
-| AC-9 actual drill run + filled log row | live drill (Q1..Qn) | deferred-pending-beta-green (A47) |
+| AC-1 §3.1 authored under §3 + QuickRef | new subsection under §3; §8/§9 undisturbed; §7 drill row added | covered |
+| AC-2 locate-backup | §3.1 step 1 object-key pattern + RustFS console / workstation `mc` `[!]` | covered |
+| AC-3 decrypt→gunzip→restore-throwaway | §3.1 step 2 BackupEncryption(not-openssl) + `pg_restore` cross-link + `[!]` | covered |
+| AC-4 throwaway API | §3.1 step 3 restored-DB connection string + AutoMigrate=false + never-live | covered |
+| AC-5 (a) `/health/ready` 200 | §3.1 step 4 smoke line (a) | covered |
+| AC-5 (b) `/health/detail` all-Healthy | §3.1 step 4 smoke line (b) | covered |
+| AC-5 (c) `/about` reachable | §3.1 step 4 smoke line (c) | covered |
+| AC-5 (d) login round-trip | §3.1 step 4 smoke line (d) | covered |
+| AC-5 (e) critical-table row-count spot-check | §3.1 step 4 smoke line (e) | covered |
+| AC-6 captured drill-log template (blank) | §3.1 table + "fill during the live drill" marker | covered |
+| AC-7 caveats cross-linked | §3.1 ADR-019 blast-radius + key-archival via Incident 6.7 | covered |
+| AC-8 no contradiction / A42 reread | six-category reread + diff vs §3/docs-15/ADR-019/code | covered |
+| AC-9 actual drill run + filled log row | live drill (Q1–Q2) | deferred-pending-beta-green (A47) |
 
 ## Tests / Evidence
 
@@ -159,19 +159,46 @@ This story was authored from the 19-line 2026-05-15 stub against post-Epic-18 re
 
 ### Agent Model Used
 
-_(populated by dev-story)_
+claude-opus-4-8[1m] (Opus 4.8, 1M context)
 
 ### Debug Log References
 
-_(DEC-1 + DEC-2 resolution recorded here at dev-story time per A43 (a)/(b)/(c))_
+**DEC-1 (throwaway target — ephemeral Railway Postgres vs. local Compose) — resolved A via A41 per A43 (a)/(b)/(c):**
+- (a) **Option chosen:** A (ephemeral Railway Postgres primary; local Compose documented fallback).
+- (b) **Rationale:** story recommendation = A; user autonomous-mode verbatim quote = "alle stories von diesem epic umsetzen ohne stopp bis sie implementiert sind. danach review und retro durchführen." (2026-06-05); justification = Production parity (same managed-PG engine + private networking) + the encrypted dump stays inside the Railway project (narrower key-exposure surface).
+- (c) **Consequence chain:** §3.1 step 3 frames the throwaway as a temporary Railway Postgres; the DEC records local Compose as the offline fallback.
+
+**DEC-2 (smoke-test depth — health-only vs. full) — resolved A via A41 per A43 (a)/(b)/(c):**
+- (a) **Option chosen:** A (full set: health + `/health/detail` + `/about` + login + critical-table row-count spot-checks).
+- (b) **Rationale:** story recommendation = A (post-MVP); same autonomous-mode quote + the standing "kein mvp" posture; justification = a restore drill's whole point is data integrity — a green `/health/ready` on an empty-but-valid schema would falsely pass, so row-count spot-checks are decisive.
+- (c) **Consequence chain:** §3.1 step 4 enumerates smoke (a)–(e); AC-5 Quality-Gates has five sub-item rows (A54).
+
+### Spike outcome (Task 0.6)
+
+The restore procedure (§3) confirmed present + stable; §3.1 is additive (reuses §3 commands by cross-link, A38). Backup object-key/cron/`pg_restore` form verified against ADR-019 + RUNBOOK §3. `pg_restore` confirmed in the api image (postgresql-client-17); `mc`/`openssl`/`jq` confirmed absent (A57) → object location is workstation-side. Smoke endpoints confirmed. Pure documentation — zero production code, zero automated tests. The actual drill (AC-9) is intrinsically live and deferred per A47.
 
 ### Completion Notes List
 
-_(populated by dev-story; AC-9 Q-items surfaced in the unified human-verify queue)_
+- **What was implemented:** added [RUNBOOK-beta.md §3.1 Restore drill (rehearsal + captured log)](./RUNBOOK-beta.md) under §3 — a 5-step repeatable drill (locate → decrypt/restore-into-throwaway → throwaway-API → smoke a–e → log) + a BLANK drill-log table + ADR-019/key caveats by cross-link. §7 Quick-reference gained a drill row. §3/§8/§9 undisturbed.
+- **DEC-1=A + DEC-2=A** auto-resolved via A41; (a)/(b)/(c) Debug Log above.
+- **Drill-log ships blank** (A42 pre-filled-status discipline) — a captured row appears only after a real drill (AC-9, deferred).
+- **Zero production code / zero tests** — documentation artifact; correctness enforced by the A42 reread (AC-8, clean).
+
+### Unified human-verify queue (per A47 surface convention)
+
+- **Q1 (AC-9 drill run):** on a green Beta with ≥1 real `daily-pg-backup` object, execute the §3.1 drill into a throwaway target.
+- **Q2 (AC-9 captured log):** append the filled drill-log row (backup timestamp, restore duration, smoke a–e outcome) — the Production-readiness evidence (feeds RUNBOOK §9.2 + §9.1 backup-success row).
 
 ### File List
 
-_(populated by dev-story)_
+**MODIFIED:**
+- `_bmad-output/implementation-artifacts/RUNBOOK-beta.md` (new §3.1 Restore drill + blank drill-log + §7 Quick-reference drill row)
+- `_bmad-output/implementation-artifacts/e19-s2-perform-backup-restore-drill.md` (this story file: tasks/record/status)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (e19-s2: ready-for-dev → in-progress → review)
+
+### Change Log
+
+- 2026-06-05 — E19-S2 dev-story: added RUNBOOK §3.1 (repeatable restore-drill procedure + blank captured-log template + throwaway-API smoke set incl. data-integrity row-count checks). DEC-1=A + DEC-2=A auto-resolved via A41. AC-1..AC-8 covered; AC-9 (actual drill + filled log) deferred-pending-beta-green per A47 → Q1/Q2. Zero production code, zero tests.
 
 ## Project Context Reference
 
@@ -188,6 +215,6 @@ _(populated by dev-story)_
 
 ## Story Completion Status
 
-Status: ready-for-dev
+Status: review (was: ready-for-dev; flipped by dev-story 2026-06-05)
 
-Comprehensive context engine analysis completed — comprehensive developer guide created. A repeatable restore-drill procedure + a blank captured-log template to be added as RUNBOOK `### 3.1`, reusing the existing §3 restore commands by cross-link and adding the throwaway-API + smoke-test + data-integrity layer. DEC-1 (ephemeral Railway Postgres) + DEC-2 (full smoke set) carry recommendations for dev-story resolution. The actual drill run + the filled drill-log row (AC-9) are the load-bearing `[!]` live item, deferred-pending-beta-green per A47.
+RUNBOOK §3.1 added: a repeatable restore-drill procedure + a blank captured-log template, reusing the existing §3 restore commands by cross-link and adding the throwaway-API + smoke-test + data-integrity (row-count) layer. DEC-1=A + DEC-2=A auto-resolved via A41. AC-1..AC-8 covered; the actual drill run + the filled drill-log row (AC-9) are the load-bearing live item, deferred-pending-beta-green per A47 → Wave-10 walkthrough Q1/Q2.

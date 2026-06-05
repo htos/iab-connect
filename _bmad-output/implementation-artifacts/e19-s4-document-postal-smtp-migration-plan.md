@@ -1,6 +1,6 @@
 # Story E19-S4: Self-host SMTP migration plan (Postal on Hetzner)
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -71,37 +71,37 @@ This story was authored from the 19-line 2026-05-15 stub against post-Epic-18 re
 
 ### Task 0: Spike — confirm SMTP contract + file absence + resolve DECs (A28; A41 escape if pre-declared)
 
-- [ ] 0.1 Confirm `SMTP-MIGRATION-POSTAL.md` absent (glob) — genuine net-new.
-- [ ] 0.2 Re-confirm the `Smtp:*` contract from [SmtpSettings.cs](../../backend/src/IabConnect.Infrastructure/Email/SmtpSettings.cs) (`Host/Port/Username/Password/EnableSsl/FromName/FromEmail`) + the `Smtp__*` env-var form in [backend/.env.example](../../backend/.env.example) (A51 parity).
-- [ ] 0.3 Re-confirm the sender is provider-agnostic + speaks SMTP (`System.Net.Mail.SmtpClient`, STARTTLS via `EnableSsl`) in [SmtpEmailSender.cs](../../backend/src/IabConnect.Infrastructure/Email/SmtpEmailSender.cs) → migration is config-only, no code.
-- [ ] 0.4 Re-confirm ADR-018 rationale (port-25 block / RBL / rDNS / four-var change / Postal-Hetzner sovereignty).
-- [ ] 0.5 Resolve DEC-1 + DEC-2 (A41 escape if pre-declared, else AskUserQuestion per A32 step d) — record (a)/(b)/(c) per A43.
-- [ ] 0.6 Spike outcome recorded in Dev Agent Record.
+- [x] 0.1 Confirmed `SMTP-MIGRATION-POSTAL.md` absent (glob) — genuine net-new.
+- [x] 0.2 Re-confirmed the `Smtp:*` contract from [SmtpSettings.cs](../../backend/src/IabConnect.Infrastructure/Email/SmtpSettings.cs) (`Host/Port/Username/Password/EnableSsl/FromName/FromEmail`) + the `Smtp__*` env-var form in [backend/.env.example](../../backend/.env.example) (lines 78–90, A51 parity — incl. the port-587-STARTTLS / 25-blocked notes already in the file).
+- [x] 0.3 Re-confirmed the sender is provider-agnostic + speaks SMTP (`System.Net.Mail.SmtpClient`, STARTTLS via `EnableSsl`, no OAuth2) in [SmtpEmailSender.cs](../../backend/src/IabConnect.Infrastructure/Email/SmtpEmailSender.cs) → migration is config-only, no code.
+- [x] 0.4 Re-confirmed ADR-018 rationale (port-25 block / RBL / rDNS / four-var change / Postal-Hetzner sovereignty).
+- [x] 0.5 DEC-1=A (Hetzner worked example) + DEC-2=A (Postal path + alternatives note) resolved via A41 — see Debug Log References.
+- [x] 0.6 Spike outcome recorded in Dev Agent Record.
 
 ### Task 1: Author the doc skeleton + why-self-host + install (AC-1, AC-2, AC-3)
 
-- [ ] 1.1 Create `SMTP-MIGRATION-POSTAL.md` with SPDX header + H1 + intent preface (plan, not yet executed).
-- [ ] 1.2 Why-self-host section (ADR-018 PaaS-mail hostility + sovereignty-vs-lock-in); cross-link ADR-018.
-- [ ] 1.3 (DEC-1/DEC-2) VPS (Hetzner worked example) + Postal install (Docker, official-docs cross-ref); all commands `[!] verify` (A40); port-25 + rDNS prerequisite note.
+- [x] 1.1 Created `SMTP-MIGRATION-POSTAL.md` with SPDX header + H1 + intent preface (plan, not yet executed).
+- [x] 1.2 §1 Why-self-host (ADR-018 PaaS-mail hostility + sovereignty-vs-lock-in); cross-link ADR-018.
+- [x] 1.3 (DEC-1/DEC-2=A) §3 VPS (Hetzner worked example) + Postal install (Docker, official-docs cross-ref); commands `[!] verify` (A40); port-25 + rDNS prerequisite note; §1 alternatives (mailcow/docker-mailserver) note.
 
 ### Task 2: Author DNS + the config swap + IP warmup (AC-4, AC-5, AC-6)
 
-- [ ] 2.1 DNS section: SPF + DKIM + DMARC + rDNS/PTR (purpose each; `dig`/`host` verify `[!]`); missing-record = top deliverability failure.
-- [ ] 2.2 Config-swap section: exact `Smtp__Host/Port/Username/Password/EnableSsl` change on `api` + redeploy; **no code change**; `Smtp__FromName/FromEmail` ↔ SPF/DKIM domain alignment; env-var names byte-match `.env.example` (A51).
-- [ ] 2.3 IP-warmup section: gradual volume ramp schedule + bounce/complaint monitoring + Postal dashboard; SPF/DKIM/DMARC/rDNS as warmup prerequisite.
+- [x] 2.1 §4 DNS table: SPF + DKIM + DMARC + rDNS/PTR (purpose each; `dig` verify `[!]`); missing-record = top deliverability failure; rDNS set at VPS provider not DNS host.
+- [x] 2.2 §2 Config-swap table: exact `Smtp__Host/Port/EnableSsl/Username/Password` change on `api` + redeploy; **no code change**; `Smtp__FromEmail` ↔ SPF/DKIM domain alignment; env-var names byte-match `.env.example` (A51).
+- [x] 2.3 §5 IP-warmup: gradual volume ramp + bounce/complaint monitoring + Postal dashboard; SPF/DKIM/DMARC/rDNS as warmup prerequisite; DMARC `p=none`→tighten.
 
 ### Task 3: Author order-of-operations + smoke test + rollback (AC-7, AC-8)
 
-- [ ] 3.1 Ordered checklist (provision → install → DNS+rDNS → verify propagation → Postal creds+domain → test mail+DKIM-pass → warmup → swap `Smtp__*`+redeploy → monitor).
-- [ ] 3.2 Smoke test: a real outbound (password-reset) through Postal confirmed delivered + DKIM-pass at an external inbox.
-- [ ] 3.3 Rollback section: revert `Smtp__*` to Mailtrap + redeploy → instant (config-only, no data migration); keep VPS provisioned for retry.
+- [x] 3.1 §6 Ordered checklist (provision → install → DNS+rDNS → verify → Postal creds+domain → test mail+DKIM-pass → warmup → swap `Smtp__*`+redeploy → monitor).
+- [x] 3.2 §6 step 7 smoke: a real outbound (password-reset) through Postal confirmed delivered + DKIM-pass at an external inbox.
+- [x] 3.3 §7 Rollback: revert `Smtp__*` to Mailtrap + redeploy → instant (config-only, no data migration); keep VPS provisioned for retry.
 
 ### Task 4: A42 reread + Quality-Gates closing (AC-10, AC-9)
 
-- [ ] 4.1 A42 six-category reread: (1) no internal contradiction (e.g. port/EnableSsl consistency); (2) no pre-filled "done" status (it's a plan); (3) cross-refs to Postal docs are pointers, not invented exact commands; (4) `Smtp__*` keys + ports + "no code change" claim match `SmtpSettings.cs`/`SmtpEmailSender.cs`/`.env.example`/ADR-018; (5) no sprint leakage; (6) A57 — every install/DNS command operator-VPS-side + `[!]`-marked, none in an IAB Connect image.
-- [ ] 4.2 AC-Subitem Completion Check (A29) — Quality-Gates table one row per AC; the DNS sub-records (SPF/DKIM/DMARC/rDNS) each a line.
-- [ ] 4.3 AC-9 peer review → Completion Notes Q-item (human-reader; not beta-green-gated).
-- [ ] 4.4 Flip status to `review`.
+- [x] 4.1 A42 six-category reread complete: (1) no internal contradiction (port 587/EnableSsl=true consistent throughout); (2) no pre-filled "done" status (reads as a plan); (3) Postal-docs cross-refs are pointers, not invented commands; (4) `Smtp__*` keys + ports + "no code change" claim match `SmtpSettings.cs`/`SmtpEmailSender.cs`/`.env.example`/ADR-018; (5) no sprint leakage; (6) A57 — every install/DNS command operator-VPS-side + `[!]`-marked, none in an IAB Connect image.
+- [x] 4.2 AC-Subitem Completion Check (A29) — Quality-Gates one row per AC; the DNS sub-records (SPF/DKIM/DMARC/rDNS) each a line.
+- [!] 4.3 AC-9 peer review → Completion Notes Q1 (human-reader; NOT beta-green-gated — future-plan doc).
+- [x] 4.4 Status flipped to `review`.
 
 ## Dev Notes
 
@@ -134,21 +134,21 @@ This story was authored from the 19-line 2026-05-15 stub against post-Epic-18 re
 
 ## Quality-Gates Closing
 
-| AC | Evidence (planned) | Status |
+| AC | Evidence | Status |
 |---|---|---|
-| AC-1 file at spec'd path + SPDX + preface | new SMTP-MIGRATION-POSTAL.md | pending |
-| AC-2 why-self-host rationale | ADR-018 PaaS-hostility + sovereignty-vs-lock-in | pending |
-| AC-3 VPS + Postal install | Hetzner example + Docker install + `[!]` + port-25/rDNS prereq | pending |
-| AC-4 (SPF) | DNS record line + purpose + `[!]` verify | pending |
-| AC-4 (DKIM) | DNS record line + purpose + `[!]` verify | pending |
-| AC-4 (DMARC) | DNS record line + purpose + `[!]` verify | pending |
-| AC-4 (rDNS/PTR) | VPS-provider record + purpose + `[!]` verify | pending |
-| AC-5 config swap (no code) | `Smtp__Host/Port/Username/Password/EnableSsl` + redeploy; key-parity | pending |
-| AC-6 IP warmup | ramp schedule + bounce/complaint monitoring + prereq note | pending |
-| AC-7 order-of-operations + smoke | ordered checklist + DKIM-pass external-inbox smoke | pending |
-| AC-8 rollback explicit | revert `Smtp__*` to Mailtrap + redeploy; instant/config-only | pending |
+| AC-1 file at spec'd path + SPDX + preface | `SMTP-MIGRATION-POSTAL.md` created (SPDX + H1 + intent preface) | covered |
+| AC-2 why-self-host rationale | §1 ADR-018 PaaS-hostility + sovereignty-vs-lock-in | covered |
+| AC-3 VPS + Postal install | §3 Hetzner example + Docker install + `[!]` + port-25/rDNS prereq | covered |
+| AC-4 (SPF) | §4 DNS row + purpose + `[!]` verify | covered |
+| AC-4 (DKIM) | §4 DNS row + purpose + `[!]` verify | covered |
+| AC-4 (DMARC) | §4 DNS row + purpose + `[!]` verify | covered |
+| AC-4 (rDNS/PTR) | §4 VPS-provider row + purpose + `[!]` verify | covered |
+| AC-5 config swap (no code) | §2 `Smtp__Host/Port/EnableSsl/Username/Password` + redeploy; key-parity to .env.example | covered |
+| AC-6 IP warmup | §5 ramp + bounce/complaint monitoring + auth-record prereq + DMARC tighten | covered |
+| AC-7 order-of-operations + smoke | §6 ordered checklist + step 7 DKIM-pass external-inbox smoke | covered |
+| AC-8 rollback explicit | §7 revert `Smtp__*` to Mailtrap + redeploy; instant/config-only | covered |
 | AC-9 peer review realistic/rollback | human-reader Q1 (not beta-green-gated) | deferred-human-verify (A47-style) |
-| AC-10 no contradiction / A42 reread | six-category reread + diff vs SmtpSettings/sender/.env.example/ADR-018 | pending |
+| AC-10 no contradiction / A42 reread | six-category reread + diff vs SmtpSettings/sender/.env.example/ADR-018 | covered |
 
 ## Tests / Evidence
 
@@ -160,19 +160,48 @@ This story was authored from the 19-line 2026-05-15 stub against post-Epic-18 re
 
 ### Agent Model Used
 
-_(populated by dev-story)_
+claude-opus-4-8[1m] (Opus 4.8, 1M context)
 
 ### Debug Log References
 
-_(DEC-1 + DEC-2 resolution recorded here at dev-story time per A43 (a)/(b)/(c))_
+**DEC-1 (VPS provider framing — Hetzner worked example vs. provider-agnostic) — resolved A via A41 per A43 (a)/(b)/(c):**
+- (a) **Option chosen:** A (Hetzner concrete worked example + a "any provider with outbound-25 + rDNS works identically" note).
+- (b) **Rationale:** story recommendation = A; user autonomous-mode verbatim quote = "alle stories von diesem epic umsetzen ohne stopp bis sie implementiert sind. danach review und retro durchführen." (2026-06-05); justification = the epic title names Hetzner, and the rDNS step is provider-UI-specific so a concrete example is more actionable than placeholders.
+- (c) **Consequence chain:** §3 + §4 use the Hetzner worked example; §3 carries the portability note.
+
+**DEC-2 (mail-server software — Postal vs. alternatives) — resolved A via A41 per A43 (a)/(b)/(c):**
+- (a) **Option chosen:** A (Postal as the documented path + a one-paragraph mailcow/docker-mailserver alternatives note).
+- (b) **Rationale:** story recommendation = A; same autonomous-mode quote; justification = the epic + SCP name Postal specifically, and Postal's transactional-relay model fits app-outbound-only mail (vs. mailcow's full mailbox-hosting); the comparison already lives in ADR-018.
+- (c) **Consequence chain:** the whole plan is Postal-specific; §1 carries the alternatives note.
+
+### Spike outcome (Task 0.6)
+
+`SMTP-MIGRATION-POSTAL.md` confirmed absent (genuine net-new). The `Smtp:*` contract + `Smtp__*` env-var names verified against `SmtpSettings.cs` + `.env.example` (which already documents 587-STARTTLS / 25-blocked-on-clouds). The sender confirmed provider-agnostic (`System.Net.Mail.SmtpClient`, STARTTLS via `EnableSsl`, no OAuth2) → migration is config-only, no code. ADR-018 rationale verified. Pure documentation — zero production code, zero automated tests; no live infrastructure provisioned.
 
 ### Completion Notes List
 
-_(populated by dev-story)_
+- **What was implemented:** authored the new [`SMTP-MIGRATION-POSTAL.md`](./SMTP-MIGRATION-POSTAL.md) — §1 why-self-host (ADR-018), §2 the config-only `Smtp__*` swap table (no code change), §3 Hetzner VPS + Postal install, §4 SPF/DKIM/DMARC/rDNS DNS table, §5 IP-warmup, §6 ordered cutover + DKIM-pass smoke, §7 instant config-only rollback, §8 references.
+- **DEC-1=A + DEC-2=A** auto-resolved via A41; (a)/(b)/(c) Debug Log above.
+- **Config-only confirmed:** the backend sender is already provider-agnostic, so the plan prescribes env-var changes + redeploy, never a code edit; env-var keys byte-match `.env.example` (A51).
+- **Zero production code / zero tests** — documentation artifact; correctness enforced by the A42 reread (AC-10, clean) + peer review (AC-9, deferred).
+
+### Unified human-verify queue (per A47 surface convention)
+
+- **Q1 (AC-9 peer review):** a peer reads the plan and confirms the order-of-operations is realistic and the rollback steps are explicit. **Human-reader task — NOT beta-green-gated** (future-plan doc); may be folded into the Wave-10 walkthrough for convenience but does not require a live Beta.
 
 ### File List
 
-_(populated by dev-story)_
+**NEW:**
+- `_bmad-output/implementation-artifacts/SMTP-MIGRATION-POSTAL.md`
+
+**MODIFIED:**
+- `_bmad-output/implementation-artifacts/e19-s4-document-postal-smtp-migration-plan.md` (this story file: tasks/record/status)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (e19-s4: ready-for-dev → in-progress → review)
+
+### Change Log
+
+- 2026-06-05 — E19-S4 dev-story: authored `SMTP-MIGRATION-POSTAL.md` (Mailtrap→Postal-on-Hetzner migration plan — why-self-host, config-only `Smtp__*` swap, SPF/DKIM/DMARC/rDNS, IP-warmup, DKIM-pass smoke, instant config-only rollback). DEC-1=A + DEC-2=A auto-resolved via A41. AC-1..AC-8 + AC-10 covered; AC-9 (peer review) deferred human-verify (not beta-gated) → Q1. Zero production code, zero tests.
+- 2026-06-05 — Epic-boundary review patch (1, §2): **P4** corrected the `Smtp__Port` guidance from "587 — or 465 (implicit TLS)" to **587/STARTTLS only**, with a note that `System.Net.Mail.SmtpClient` + `EnableSsl` does STARTTLS and does **not** reliably support implicit-TLS/SMTPS on 465 (doc-vs-code accuracy — the offered 465 option would have stranded an operator on the app's actual transport).
 
 ## Project Context Reference
 
@@ -187,6 +216,6 @@ _(populated by dev-story)_
 
 ## Story Completion Status
 
-Status: ready-for-dev
+Status: review (was: ready-for-dev; flipped by dev-story 2026-06-05)
 
-Comprehensive context engine analysis completed — comprehensive developer guide created. A new `SMTP-MIGRATION-POSTAL.md` to be authored: a complete, ordered, reversible Mailtrap-Sandbox → self-hosted-Postal-on-Hetzner migration plan (rationale per ADR-018, VPS + Postal install, SPF/DKIM/DMARC/rDNS, the config-only `Smtp__*` backend swap with byte-matched keys, IP-warmup expectations, DKIM-pass smoke test, instant config-only rollback). DEC-1 (Hetzner worked example) + DEC-2 (Postal path) carry recommendations for dev-story resolution. AC-9 peer review is a human-reader task (not beta-green-gated). Zero production code, zero config change.
+`SMTP-MIGRATION-POSTAL.md` authored: a complete, ordered, reversible Mailtrap-Sandbox → self-hosted-Postal-on-Hetzner migration plan (rationale per ADR-018, config-only `Smtp__*` backend swap with byte-matched keys, Hetzner VPS + Postal install, SPF/DKIM/DMARC/rDNS, IP-warmup expectations, DKIM-pass smoke, instant config-only rollback). DEC-1=A + DEC-2=A auto-resolved via A41. AC-1..AC-8 + AC-10 covered; AC-9 peer review is a human-reader task (not beta-green-gated) → Q1. Zero production code, zero config change.

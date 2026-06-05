@@ -25,8 +25,8 @@ each incident is a self-contained **Symptoms → Diagnose → Fix → Verify** p
 5. [Bootstrap: first Beta-Admin](#5-bootstrap-first-beta-admin)
 6. [Incident playbooks](#6-incident-playbooks)
 7. [Quick reference](#7-quick-reference)
-8. [Custom-domain migration](#8-custom-domain-migration) *(placeholder — authored by E19-S1)*
-9. [Production-gate NFR checklist](#9-production-gate-nfr-checklist) *(placeholder — authored by E19-S3)*
+8. [Custom-domain migration](#8-custom-domain-migration)
+9. [Production-gate NFR checklist](#9-production-gate-nfr-checklist)
 
 ---
 
@@ -105,6 +105,47 @@ is 30 days (`prune-old-backups` at `0 4 * * *` UTC).
 > **Encryption-key caveat:** `Backup__EncryptionKey` is single-key-at-a-time. Rotating it makes all **pre-rotation** backups
 > undecryptable with the new key. Archive the old key in a separate vault before rotating (→ setup guide §15 + §7 Secret
 > rotation). See [Incident 6.7](#67-backups-undecryptable-after-key-rotation).
+
+### 3.1 Restore drill (rehearsal + captured log)
+
+A backup file existing is **not** proof it restores. This drill rehearses §3 end-to-end against a **throwaway** target, then proves
+the *data* came back — not just the schema — by smoke-testing a throwaway API pointed at the restored database. Run it periodically and
+append one row to the drill log below; that log is the Production-readiness evidence (gate row in [§9](#9-production-gate-nfr-checklist)).
+
+> The live drill requires a green Beta that has produced at least one real `daily-pg-backup` object. Until then this section is the
+> procedure of record; the log table ships blank — **do not pre-fill it with example numbers.**
+
+**Drill steps:**
+
+1. **Locate yesterday's backup.** On the RustFS `backups` bucket, find `backups/<year>/<month>/<dd-HHmmss>.dump.gz.enc` for the previous
+   UTC day (written by `daily-pg-backup` at `0 3 * * *` UTC). Use the RustFS web console or `mc ls` **on your workstation** — `mc` is
+   **not** installed in the `api` image. `[!] verify before executing` the `mc` alias/credentials for your RustFS endpoint.
+2. **Decrypt → gunzip → restore into a throwaway** exactly per [§3](#3-database-restore) steps 2–4 (C# `BackupEncryption`, **not**
+   `openssl`; then `pg_restore --clean --if-exists` into a **throwaway** Postgres — never the live DB). `[!] verify` the `railway shell`
+   + decrypt invocation for your host.
+3. **Point a throwaway API at the restored DB.** Stand up a throwaway `api` (a temporary Railway service, or local Compose) whose
+   `ConnectionStrings__DefaultConnection` targets the restored throwaway Postgres. Set `Database__AutoMigrate=false` on the drill API so
+   the restore is validated **as-restored**, not silently migrated over. **Never** re-point the live `api` at the restored DB on the
+   first pass.
+4. **Run the smoke set** against the throwaway API and record each result (a–e):
+   - **(a)** `GET /health/ready` → 200.
+   - **(b)** `GET /health/detail` → all dependencies `Healthy` (the DB check proves the restored DB is reachable + schema-valid).
+   - **(c)** `GET /about` → reachable (running `commitSha`).
+   - **(d)** A browser login round-trip (or, if the throwaway has no Keycloak wired, an authenticated API call with a token from the
+     live Keycloak).
+   - **(e)** Spot-check row counts on critical tables (members / finance / events) — proves **data** restored, not just schema.
+5. **Append a drill-log row** (below). Tear down the throwaway target.
+
+**Drill log** — append one row per drill run; do not edit prior rows:
+
+| Drill date | Backup object key (timestamp) | Backup age | Restore duration | Throwaway target | Smoke (a/b/c/d/e) | Operator | Notes |
+|---|---|---|---|---|---|---|---|
+| _(fill during the live drill)_ | | | | | | | |
+
+> Caveats this drill exercises (cross-linked, not restated): the [ADR-019](../planning-artifacts/architecture.md) single-RustFS
+> blast-radius (backups share the documents volume — off-site replication is the E19 Production follow-up) and the single-key-at-a-time
+> `Backup__EncryptionKey` ([Incident 6.7](#67-backups-undecryptable-after-key-rotation) — a key rotated without archiving the old one
+> makes pre-rotation backups undecryptable, which a drill surfaces).
 
 ---
 
@@ -264,6 +305,7 @@ Each incident is **Symptoms → Diagnose → Fix → Verify**. Work them top-to-
 | Routine deploy | [§1](#1-deploy) → setup guide §10 |
 | Roll back a bad deploy | [§2](#2-rollback) → setup guide §11 |
 | Restore the database | [§3](#3-database-restore) → setup guide §15 |
+| Rehearse a restore (drill + log) | [§3.1](#31-restore-drill-rehearsal--captured-log) → setup guide §15 |
 | Find logs | [§4](#4-logs) → setup guide §25/§26 |
 | Create the first admin | [§5](#5-bootstrap-first-beta-admin) → setup guide §16 |
 | Keycloak down | [§6.1](#61-keycloak-wont-go-healthy-crash-loop) → setup guide §11.2 |
@@ -274,17 +316,156 @@ Each incident is **Symptoms → Diagnose → Fix → Verify**. Work them top-to-
 | Image tags | `:beta` (moving) + `:sha-<commit>` (rollback). No `:latest`. |
 | Backup schedule | `daily-pg-backup` 03:00 UTC; `prune-old-backups` 04:00 UTC; 30-day retention |
 | Running commit | API `/about` → `commitSha` |
+| Custom-domain cutover | [§8](#8-custom-domain-migration) → setup guide §6.3 (five-anchor parity) |
+| Production go/no-go | [§9](#9-production-gate-nfr-checklist) (NFR thresholds + cutover blockers) |
 
 ---
 
 ## 8. Custom-domain migration
 
-> **Placeholder — authored by E19-S1 (Production Readiness Preparation).**
-> This section will cover migrating from the Railway-default domain to a custom domain: DNS records, Keycloak hostname change,
-> redirect-URI updates, and the `Frontend__BaseUrl` / `NEXT_PUBLIC_API_URL` rebuild. Not yet authored.
+This section rehearses a **future Production cutover** from the Railway-default `*.up.railway.app` domains to custom domains for the
+three public services (`web`, `api`, `keycloak`). The Railway defaults keep serving throughout — you retire them **last**, only after
+the custom domains are verified. Nothing here is destructive until that final step, and every step carries a rollback note.
+
+> **Worked example:** an apex `example.org` with three subdomains — `app.example.org` (web), `api.example.org` (api),
+> `auth.example.org` (keycloak). Independent (non-subdomain) domains work identically — each is just another Railway custom domain + a
+> DNS record at your provider.
+
+### 8.1 What changes — and why the build-time bake-ins are the trap
+
+A custom-domain swap touches **runtime Railway variables** (edit + redeploy) **and** **build-time bake-ins** (which need a `web` image
+rebuild). The single most common failure is updating the runtime side and forgetting that the two `NEXT_PUBLIC_*` values are frozen into
+the `web` image at build time — a Railway-variable edit on them is a **no-op** (→ setup guide §6 Build-time vs runtime variables).
+
+| Value | Service | Type | New value | Cutover action |
+|---|---|---|---|---|
+| `KC_HOSTNAME` | keycloak | runtime | `auth.example.org` (bare) | edit + redeploy |
+| `IABCONNECT_BETA_HOST` | keycloak | runtime | `https://app.example.org` | edit + redeploy (re-applies `redirectUris[0]` / `webOrigins[0]`) |
+| `FRONTEND_PUBLIC_URL` | keycloak | runtime | `https://app.example.org` | edit + redeploy (re-applies `redirectUris[1]` / `webOrigins[1]`) |
+| `Keycloak__Authority` | api | runtime | `https://auth.example.org/realms/iabconnect` | edit + redeploy |
+| `KeycloakAdmin__BaseUrl` | api | runtime | `https://auth.example.org` | edit + redeploy |
+| `Frontend__BaseUrl` | api | runtime | `https://app.example.org` | edit + redeploy (drives CORS + absolute mail links) |
+| `KEYCLOAK_ISSUER` | web | runtime | `https://auth.example.org/realms/iabconnect` | edit + redeploy |
+| `NEXTAUTH_URL` | web | runtime | `https://app.example.org` | edit + redeploy (NextAuth callback URL — a stale value breaks login) |
+| `NEXT_PUBLIC_API_URL_BETA` | GHA repo var → `iabc-web` image | **build-time** | `https://api.example.org` | update repo var + **rebuild `web`** |
+| `NEXT_PUBLIC_KEYCLOAK_ISSUER_BETA` | GHA repo var → `iabc-web` image | **build-time** | `https://auth.example.org/realms/iabconnect` | update repo var + **rebuild `web`** |
+
+> The `web` service carries **both** kinds: two build-time `NEXT_PUBLIC_*` bakes **and** two runtime vars (`KEYCLOAK_ISSUER`,
+> `NEXTAUTH_URL`). The rebuild in step 5 covers the bakes; the two runtime `web` vars are edited + redeployed like any other Railway
+> variable. Missing `NEXTAUTH_URL` is a silent login break; missing `web.KEYCLOAK_ISSUER` breaks the five-anchor parity (§8.2).
+
+> **Scheme + path rules (getting these wrong is the §6.2 / §6.3 incident):**
+> - `KC_HOSTNAME` = the **bare hostname** (`auth.example.org`, no `https://`, no path).
+> - `Keycloak__Authority`, `web.KEYCLOAK_ISSUER`, `NEXT_PUBLIC_KEYCLOAK_ISSUER_BETA` = the **full issuer URL with the realm path**:
+>   `https://auth.example.org/realms/iabconnect`.
+> - `KeycloakAdmin__BaseUrl` = `https://auth.example.org` (scheme, **no** realm path).
+> - `IABCONNECT_BETA_HOST`, `FRONTEND_PUBLIC_URL`, `Frontend__BaseUrl`, `NEXTAUTH_URL`, `NEXT_PUBLIC_API_URL_BETA` = full `https://`
+>   origins (`https://app.example.org`, `https://api.example.org`).
+
+### 8.2 The five-anchor issuer-parity invariant (restated for the cutover)
+
+After the cutover, all five anchors must describe the **same** new Keycloak public URL — treat them as **one atomic change set**:
+
+| # | Anchor | New value | Type |
+|---|---|---|---|
+| 1 | `api.Keycloak__Authority` | `https://auth.example.org/realms/iabconnect` | runtime |
+| 2 | `web.KEYCLOAK_ISSUER` | `https://auth.example.org/realms/iabconnect` | runtime |
+| 3 | `keycloak.KC_HOSTNAME` | `auth.example.org` (bare) | runtime |
+| 4 | `api.KeycloakAdmin__BaseUrl` | `https://auth.example.org` | runtime |
+| 5 | GHA `NEXT_PUBLIC_KEYCLOAK_ISSUER_BETA` | `https://auth.example.org/realms/iabconnect` | **build-time → rebuild** |
+
+A partial update is the [§6.2 "API won't go healthy"](#62-api-wont-go-healthy-keycloak--db-health-check-failing) incident (login starts
+at issuer A, ends at issuer B → silent token rejection). Re-run the full 5-anchor diff → setup guide §6.3 after the cutover.
+
+### 8.3 Ordered cutover checklist (each step reversible)
+
+1. **Add the three custom domains in Railway** (dashboard → each public service → Settings → Networking → Custom Domain → add
+   `app.`/`api.`/`auth.example.org`). Railway issues a CNAME target per domain. `[!] verify before executing` against your Railway
+   dashboard version. *Rollback:* delete the custom domain in Railway — the `*.up.railway.app` default keeps serving.
+2. **Create the DNS records** at your DNS provider: a `CNAME` for each subdomain → the Railway-issued target (an apex would use
+   `ALIAS`/`ANAME`). Wait until Railway shows each domain **Active** (TLS cert issued). `[!] verify before executing` —
+   `dig +short app.example.org CNAME` (and `api`/`auth`) should return the Railway target. *Rollback:* remove the DNS record.
+3. **Keycloak first.** Set `keycloak.KC_HOSTNAME = auth.example.org` (bare), `keycloak.IABCONNECT_BETA_HOST = https://app.example.org`
+   (scheme), and `keycloak.FRONTEND_PUBLIC_URL = https://app.example.org` (the realm import uses **both** host vars — `IABCONNECT_BETA_HOST`
+   → `redirectUris[0]`/`webOrigins[0]` and `FRONTEND_PUBLIC_URL` → `redirectUris[1]`/`webOrigins[1]`; setup guide §5.3 line 499 names this
+   the E19-S1 divergence point) → **redeploy `keycloak`** so the realm import re-applies the `iabconnect-frontend` client's redirect URIs +
+   web origins. If the realm was already imported, also repair the client's Valid Redirect URIs / Web Origins in the Admin Console
+   (Clients → `iabconnect-frontend` → Settings) → setup guide §5.3 / §17.4. *Rollback:* restore the previous `KC_HOSTNAME` /
+   `IABCONNECT_BETA_HOST` / `FRONTEND_PUBLIC_URL` values + redeploy.
+4. **API next.** Set `api.Keycloak__Authority = https://auth.example.org/realms/iabconnect`,
+   `api.KeycloakAdmin__BaseUrl = https://auth.example.org`, and `api.Frontend__BaseUrl = https://app.example.org` → **redeploy `api`**.
+   *Rollback:* restore the previous three values + redeploy.
+5. **Update the web runtime vars + rebuild the web image (build-time bakes).** The `web` service needs **both**:
+   - **Runtime vars** (edit + redeploy `web`): `web.KEYCLOAK_ISSUER = https://auth.example.org/realms/iabconnect` and
+     `web.NEXTAUTH_URL = https://app.example.org`. **A stale `NEXTAUTH_URL` silently breaks login; a stale `web.KEYCLOAK_ISSUER` breaks
+     the §8.2 parity.**
+   - **Build-time bakes** (GHA repo var + rebuild): `NEXT_PUBLIC_API_URL_BETA = https://api.example.org` and
+     `NEXT_PUBLIC_KEYCLOAK_ISSUER_BETA = https://auth.example.org/realms/iabconnect`, then trigger a `web` image rebuild (push to `beta`,
+     or re-run [`build-images.yml`](../../.github/workflows/build-images.yml)). **A Railway-variable edit on the `NEXT_PUBLIC_*` values has
+     no effect** — they are frozen at build time (→ setup guide §6).
+   Do the runtime edits and the rebuild together so the single `web` redeploy picks up all four. *Rollback:* restore the previous runtime
+   var values + the previous repo-variable values + rebuild.
+6. **Browser smoke (mandatory).** From `https://app.example.org`: log in (full round-trip through `auth.example.org`); confirm
+   `https://api.example.org/health/ready` is 200; confirm the CORS `Access-Control-Allow-Origin` echoes `https://app.example.org`; confirm
+   `https://api.example.org/about` loads. This browser pass is the only way to catch cookie-domain / issuer / CORS bugs (→ setup guide
+   §10.4). *Rollback:* if anything fails, revert the changed variables per the per-step rollback notes (the defaults are still live).
+7. **Retire the old defaults (last, optional).** Once the custom domains are verified stable, you may remove the `*.up.railway.app`
+   domains from the three services. *Rollback:* the defaults can be re-added in Railway at any time — keep them until you are confident.
+
+### 8.4 Post-cutover verification
+
+- Re-run the five-anchor parity diff (→ setup guide §6.3) — anchors 1/2/5 equal `https://auth.example.org/realms/iabconnect`, anchor 3
+  equals `auth.example.org`, anchor 4 equals `https://auth.example.org`.
+- A fresh browser login round-trips on `https://app.example.org`.
+- `/health/ready` → 200; `/health/detail` → all dependencies `Healthy`.
+- CORS: a request from `app.example.org` to `api.example.org` returns `Access-Control-Allow-Origin: https://app.example.org`; an unknown
+  origin does not.
+- `https://api.example.org/about` returns the running `commitSha`.
+
+> Login fails with `Invalid parameter: redirect_uri` after the cutover → [Incident 6.3](#63-login-fails-with-invalid-parameter-redirect_uri).
+> API won't go healthy → [Incident 6.2](#62-api-wont-go-healthy-keycloak--db-health-check-failing).
 
 ## 9. Production-gate NFR checklist
 
-> **Placeholder — authored by E19-S3 (Production Readiness Preparation).**
-> This section will hold the NFR-threshold checklist (response-time targets, error-rate, backup-success-rate, uptime
-> percentage) that gates a future Production-Go-Live decision. Not yet authored.
+A documented go/no-go gate for a future **Production-Go-Live** decision. Two tables: (9.1) measurable NFR thresholds, each anchored to a
+telemetry source the Beta deployment already produces; (9.2) the architectural cutover blockers. **Snapshot this section into your
+go/no-go record per decision — do not tick the master copy here** (a ticked checklist becomes a one-decision artifact, not a reusable gate).
+
+> Beta has **no APM / metrics aggregator** — Seq / Loki / Prometheus are out of Beta scope ([ADR-017](../planning-artifacts/architecture.md)).
+> Thresholds that would need a percentile dashboard are marked **`[!] needs measurement tooling`** rather than implied to be measurable
+> today; standing that tooling up is itself a Production-readiness item.
+
+### 9.1 NFR thresholds
+
+Proposed thresholds — the maintainer tunes the numbers; the **measurement source** column is the load-bearing part (every threshold must
+be checkable from existing Beta telemetry).
+
+| NFR | Proposed threshold | Rationale | Measurement source (existing Beta telemetry) | Measured value | Pass/Fail |
+|---|---|---|---|---|---|
+| **Uptime** | ≥ 99.5% rolling 30-day | Free-tier-monitor-observable floor; ~15–20 min detection floor (3×5-min poll) bounds the achievable SLA | E17-S4 external monitor dashboard (UptimeRobot / BetterStack / Uptime-Kuma) polling `/health/ready` → setup guide §27 | | |
+| **Error-rate** | < 1% of requests (5xx) over rolling 7-day | Distinguishes a genuinely unstable service from incidental client errors | Serilog request log (E17-S2 `UseSerilogRequestLogging`, CorrelationId-enriched) via Railway Logs tab → setup guide §26; Railway Metrics tab for infra-level signal | | |
+| **Response-time** | p95 < 800 ms for primary read endpoints — `[!] needs measurement tooling` | A user-perceptible-latency target; no percentile dashboard in Beta, so today this is a **sampled** read of the request logs, not a computed p95 | Serilog request log sampling (manual) → setup guide §26. `[!]` a percentile would need an APM/log-aggregator (Seq/Loki) | | |
+| **Backup-success-rate** | ≥ 29 of 30 daily backups present **and** the most recent [§3.1](#31-restore-drill-rehearsal--captured-log) restore drill green | A backup that never restores is not a backup — success = object present **and** restorable | `daily-pg-backup` Hangfire job success/failure log lines (Railway Logs) + RustFS `backups/` object count vs. daily cadence; restorability from the §3.1 drill log | | |
+
+### 9.2 Production-cutover blockers
+
+Architectural items deferred to Production (each named in an ADR / E19 story). All must be resolved before go-live; this is the single
+go/no-go home for them.
+
+| Blocker | What must change | Source | Done |
+|---|---|---|---|
+| Retention enforcement re-enabled | `RetentionEnforcement__Enabled` `false` → `true` with audited default policies | [ADR-020](../planning-artifacts/architecture.md) | |
+| Manual migration path | `Database__AutoMigrate` `true` → `false` (Production applies migrations deliberately, not on boot) | [ADR-015](../planning-artifacts/architecture.md) + E15-S2 | |
+| Off-site backup replication | Replicate the `backups` bucket off the single RustFS volume (second Railway project / OSS S3 on Hetzner) — closes the single-failure-domain risk | [ADR-019](../planning-artifacts/architecture.md) | |
+| Custom domain cutover | The [§8](#8-custom-domain-migration) cutover executed + verified on the Production domains | E19-S1 §8 | |
+| Real outbound SMTP | Mailtrap Sandbox replaced by a delivering SMTP (self-hosted Postal) — see `SMTP-MIGRATION-POSTAL.md` | [ADR-018](../planning-artifacts/architecture.md) + E19-S4 | |
+| Backup-restore drill green | A real [§3.1](#31-restore-drill-rehearsal--captured-log) drill executed against Beta with a captured-log row | E19-S2 §3.1 | |
+
+### 9.3 How to read each source
+
+- **Uptime %** — the external monitor's own dashboard reports it directly (the monitor account set up per setup guide §27 / E17-S4).
+- **Request latency / 5xx** — open the `api` Logs tab on Railway; each request log line is CorrelationId-enriched (E17-S2). Sample or
+  grep for status ≥ 500 and for slow requests. The Railway **Metrics** tab (per service) gives CPU / memory / network as infra context.
+- **Backup success** — grep the `api` Logs for the `daily-pg-backup` job outcome lines, and count `backups/<yyyy>/<MM>/*.dump.gz.enc`
+  objects on RustFS against the expected one-per-day cadence (30-day retention via `prune-old-backups`).
+- **Restore evidence** — the [§3.1](#31-restore-drill-rehearsal--captured-log) drill log (backup timestamp, restore duration, smoke a–e).

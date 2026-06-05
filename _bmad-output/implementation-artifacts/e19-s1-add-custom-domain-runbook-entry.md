@@ -1,6 +1,6 @@
 # Story E19-S1: Custom-domain runbook entry
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -71,42 +71,42 @@ This story was authored from the 19-line 2026-05-15 stub against post-Epic-18 re
 
 ### Task 0: Spike — confirm anchors + resolve DECs (A28 spike-first; A41 escape if pre-declared)
 
-- [ ] 0.1 Confirm RUNBOOK-beta.md §8 placeholder + TOC entry (line 28) + Quick-reference table still present and unchanged since E18-S1 close (re-grep `Custom-domain migration`).
-- [ ] 0.2 Re-confirm the five issuer-parity anchor names against [docs/14 §6.3](../../docs/14_beta_railway_setup.md) + [RUNBOOK §6.2](./RUNBOOK-beta.md) (`Keycloak__Authority`, `KEYCLOAK_ISSUER`, `KC_HOSTNAME`, `KeycloakAdmin__BaseUrl`, `NEXT_PUBLIC_KEYCLOAK_ISSUER_BETA`) — names must match byte-for-byte.
-- [ ] 0.3 Re-confirm the `${...}` realm-import placeholders that depend on host (`${IABCONNECT_BETA_HOST}`, `${FRONTEND_PUBLIC_URL}` / equivalent) per A39 — `grep -oP '\$\{[A-Z_]+\}' infra/keycloak/realms-beta/iabconnect-realm.json | sort -u`.
-- [ ] 0.4 Resolve DEC-1 + DEC-2 (A41 autonomous-mode escape if pre-declared, else AskUserQuestion per A32 step d) — record (a)/(b)/(c) per A43.
-- [ ] 0.5 Spike outcome recorded in Dev Agent Record.
+- [x] 0.1 Confirmed RUNBOOK-beta.md §8 placeholder + TOC entry (line 28) + Quick-reference table present and unchanged since E18-S1 close.
+- [x] 0.2 Re-confirmed the five issuer-parity anchor names against [docs/14 §6.3](../../docs/14_beta_railway_setup.md) (lines 581–610) + [RUNBOOK §6.2](./RUNBOOK-beta.md) — names byte-match. **Refinement found:** the issuer anchors carry the realm path (`https://<kc>/realms/iabconnect`) while `KeycloakAdmin__BaseUrl` is `https://<kc>` (no path) and `KC_HOSTNAME` is bare — §8.2 table encodes this precisely.
+- [x] 0.3 Re-confirmed the GHA repo-variable names against [docs/14 §6.1](../../docs/14_beta_railway_setup.md) (lines 547–558): `NEXT_PUBLIC_API_URL_BETA`, `NEXT_PUBLIC_KEYCLOAK_ISSUER_BETA` (not invented).
+- [x] 0.4 DEC-1=A (all three public services) + DEC-2=A (apex-subdomain worked example) resolved via A41 autonomous-mode escape — see Debug Log References.
+- [x] 0.5 Spike outcome recorded in Dev Agent Record.
 
 ### Task 1: Author §8 prose — DNS + Railway custom-domain flow (AC-2, AC-8 ordering)
 
-- [ ] 1.1 Replace the §8 placeholder with the authored section header + a one-paragraph intent ("this rehearses a future Production cutover; the `*.up.railway.app` defaults keep serving throughout until you retire them").
-- [ ] 1.2 Document the Railway dashboard Custom-Domain flow per service + the CNAME/ALIAS DNS record at the operator's provider; mark DNS verification (`dig +short`) `[!] verify before executing` (A40).
-- [ ] 1.3 (DEC-2=A) Present the apex-subdomain worked example (`app.`/`api.`/`auth.`) + the independent-domains note.
+- [x] 1.1 Replaced the §8 placeholder with the authored section + intent paragraph (defaults keep serving until retired last).
+- [x] 1.2 Documented the Railway Custom-Domain flow per service + CNAME/ALIAS DNS record; `dig +short` + Railway flow `[!] verify before executing` (A40).
+- [x] 1.3 (DEC-2=A) Apex-subdomain worked example (`app.`/`api.`/`auth.example.org`) + independent-domains note.
 
 ### Task 2: Author the Keycloak + redirect-URI + Frontend__BaseUrl steps (AC-3, AC-4, AC-5)
 
-- [ ] 2.1 §8 step: `keycloak.KC_HOSTNAME` → bare new host (no scheme) + redeploy; cross-link docs/14 §5.3.
-- [ ] 2.2 §8 step: `keycloak.IABCONNECT_BETA_HOST` → `https://<new-web-domain>` (scheme mandatory) → realm import re-applies redirect URIs / web origins; + Admin-Console manual-repair note for an already-imported realm.
-- [ ] 2.3 §8 step: `api.Frontend__BaseUrl` → `https://<new-web-domain>` + redeploy `api` (runtime variable; CORS + mail links).
+- [x] 2.1 §8.3 step 3: `keycloak.KC_HOSTNAME` → bare new host + redeploy; docs/14 §5.3.
+- [x] 2.2 §8.3 step 3: `keycloak.IABCONNECT_BETA_HOST` → `https://app.example.org` → realm re-applies redirect URIs/web origins; Admin-Console manual-repair note; docs/14 §5.3/§17.4.
+- [x] 2.3 §8.3 step 4: `api.Frontend__BaseUrl` → `https://app.example.org` + redeploy `api` (runtime; CORS + mail links).
 
 ### Task 3: Author the build-time rebuild caveat + five-anchor atomic change set (AC-6, AC-7)
 
-- [ ] 3.1 §8 callout: `NEXT_PUBLIC_API_URL` + `NEXT_PUBLIC_KEYCLOAK_ISSUER_BETA` are build-time-constant → require GHA repo-variable update + `web` image rebuild + redeploy; a Railway-variable edit alone is a no-op. Cross-link docs/14 §6.
-- [ ] 3.2 §8 table: the five issuer-parity anchors as one atomic change set, with which are runtime (edit+redeploy) vs. build-time (rebuild); note partial update → RUNBOOK §6.2 incident. Cross-link docs/14 §6.3.
+- [x] 3.1 §8.1 callout + table: `NEXT_PUBLIC_API_URL_BETA` + `NEXT_PUBLIC_KEYCLOAK_ISSUER_BETA` build-time → GHA repo-var update + `web` rebuild; var-edit alone is a no-op; docs/14 §6.
+- [x] 3.2 §8.2 table: five issuer-parity anchors as one atomic change set (runtime vs build-time per row); partial → RUNBOOK §6.2; docs/14 §6.3.
 
 ### Task 4: Author the ordered reversible checklist + verification block (AC-8, AC-9)
 
-- [ ] 4.1 §8 ordered checklist (DNS-first → Keycloak → api → web rebuild → smoke → retire defaults), each step with a paired rollback note (AC-8 reversibility).
-- [ ] 4.2 §8 verification block: re-run docs/14 §6.3 parity check + browser login round-trip + `/health/ready` 200 + CORS echo + `/about` reachable on new `api` domain (AC-9).
-- [ ] 4.3 Update TOC line 28 (drop placeholder suffix) + add §7 Quick-reference row.
+- [x] 4.1 §8.3 ordered checklist (Railway domains → DNS → Keycloak → api → web rebuild → smoke → retire defaults), each step with a paired rollback note.
+- [x] 4.2 §8.4 verification block: §6.3 parity diff + login round-trip + `/health/ready` 200 + CORS echo + `/about` on new api domain.
+- [x] 4.3 Updated TOC line 28 (placeholder suffix dropped) + added §7 Quick-reference row.
 
 ### Task 5: A42 reread-as-a-stranger pass + Quality-Gates closing (AC-10, AC-11)
 
-- [ ] 5.1 A42 six-category reread: (1) no cross-section contradictions with §1/§6 of RUNBOOK; (2) §8 no longer reads as a placeholder; (3) cross-links use docs/14 section numbers; (4) every env-var/host/scheme-rule/tag matches code+docs/14+realm JSON; (5) no sprint-tracking leakage; (6) A57 — `dig`/`railway`/`kcadm` are operator-workstation or `[!]`-marked, none assumed in a runtime image.
-- [ ] 5.2 AC-10 no-contradiction diff vs. RUNBOOK §1/§6 + docs/14 §5/§6 + architecture.md ADR-012/ADR-015 + realm JSON.
-- [ ] 5.3 AC-Subitem Completion Check (A29 / A54) — Quality-Gates table has one row per AC (incl. the AC-11 deferred row).
-- [ ] 5.4 (A47) AC-11 peer review + any live-fire rehearsal → Completion Notes Q-item (needs human reader + green Beta + spare domain).
-- [ ] 5.5 Flip status to `review`.
+- [x] 5.1 A42 six-category reread complete: (1) no contradiction with §1/§6; (2) §8 reads as authored, not placeholder; (3) cross-links use docs/14 section numbers + the file's own `#62`/`#63` incident anchors (verified against the existing §7 quick-ref); (4) env-vars/hosts/scheme-path rules/tags match code+docs/14; (5) no sprint leakage; (6) A57 — `dig`/Railway flow `[!]`-marked, none assumed in a runtime image.
+- [x] 5.2 AC-10 no-contradiction diff vs. RUNBOOK §1/§6 + docs/14 §5/§6 + architecture.md ADR-012/ADR-015.
+- [x] 5.3 AC-Subitem Completion Check (A29/A54) — Quality-Gates table one row per AC incl. the AC-11 deferred row.
+- [!] 5.4 (A47) AC-11 peer review + live-fire custom-domain rehearsal deferred → Completion Notes Q1 (needs human reader + green Beta + spare domain).
+- [x] 5.5 Status flipped to `review`.
 
 ## Dev Notes
 
@@ -140,18 +140,18 @@ This story was authored from the 19-line 2026-05-15 stub against post-Epic-18 re
 
 ## Quality-Gates Closing
 
-| AC | Evidence (planned) | Status |
+| AC | Evidence | Status |
 |---|---|---|
-| AC-1 §8 authored in place + TOC/QuickRef updated | placeholder replaced; line 28 suffix dropped; §7 row added; no renumber | pending |
-| AC-2 DNS + Railway custom-domain flow | §8 per-service Custom-Domain flow + CNAME + `[!]` dig | pending |
-| AC-3 Keycloak hostname | §8 `KC_HOSTNAME` bare-host + redeploy; docs/14 §5.3 | pending |
-| AC-4 redirect-URI / web-origin | §8 `IABCONNECT_BETA_HOST` https-scheme + Admin-Console repair; docs/14 §5.3/§17.4 | pending |
-| AC-5 `Frontend__BaseUrl` | §8 runtime var + redeploy `api` | pending |
-| AC-6 build-time rebuild caveat | §8 `NEXT_PUBLIC_*` rebuild callout; docs/14 §6 | pending |
-| AC-7 five-anchor atomic change set | §8 parity table; docs/14 §6.3 | pending |
-| AC-8 ordered reversible checklist | §8 ordered steps + paired rollback notes | pending |
-| AC-9 verification + smoke | §8 verification block (parity + login + health + CORS + /about) | pending |
-| AC-10 no contradiction / A42 reread | six-category reread + diff vs docs/14 + realm JSON | pending |
+| AC-1 §8 authored in place + TOC/QuickRef updated | placeholder replaced; TOC line 28 suffix dropped; §7 Quick-ref row added; no renumber (§9 untouched) | covered |
+| AC-2 DNS + Railway custom-domain flow | §8.3 steps 1–2 per-service Custom-Domain flow + CNAME + `[!]` dig | covered |
+| AC-3 Keycloak hostname | §8.3 step 3 `KC_HOSTNAME` bare-host + redeploy; docs/14 §5.3 | covered |
+| AC-4 redirect-URI / web-origin | §8.3 step 3 `IABCONNECT_BETA_HOST` https-scheme + Admin-Console repair; docs/14 §5.3/§17.4 | covered |
+| AC-5 `Frontend__BaseUrl` | §8.3 step 4 runtime var + redeploy `api` | covered |
+| AC-6 build-time rebuild caveat | §8.1 table + step 5 `NEXT_PUBLIC_*_BETA` rebuild callout; docs/14 §6 | covered |
+| AC-7 five-anchor atomic change set | §8.2 parity table (realm-path precision); docs/14 §6.3 | covered |
+| AC-8 ordered reversible checklist | §8.3 ordered steps + paired rollback notes | covered |
+| AC-9 verification + smoke | §8.4 verification block (parity + login + health + CORS + /about) | covered |
+| AC-10 no contradiction / A42 reread | six-category reread + diff vs docs/14 §5/§6 + ADR-012/ADR-015 | covered |
 | AC-11 peer review reversibility/IDP coord | live walkthrough (Q1) | deferred-pending-beta-green (A47) |
 
 ## Tests / Evidence
@@ -164,19 +164,45 @@ This story was authored from the 19-line 2026-05-15 stub against post-Epic-18 re
 
 ### Agent Model Used
 
-_(populated by dev-story)_
+claude-opus-4-8[1m] (Opus 4.8, 1M context)
 
 ### Debug Log References
 
-_(DEC-1 + DEC-2 resolution recorded here at dev-story time per A43 (a)/(b)/(c))_
+**DEC-1 (cutover scope — web-only vs. all three public services) — resolved A via A41 autonomous-mode escape per A43 (a)/(b)/(c):**
+- (a) **Option chosen:** A (cover custom domains for all three public services `web`/`api`/`keycloak`, incl. the `NEXT_PUBLIC_*` rebuild).
+- (b) **Rationale:** story recommendation = A; user autonomous-mode verbatim quote = "alle stories von diesem epic umsetzen ohne stopp bis sie implementiert sind. danach review und retro durchführen." (2026-06-05) + the standing "kein mvp" posture; architectural justification = the `api` custom domain is the build-time-`NEXT_PUBLIC_API_URL` step, the single most failure-prone surface — omitting it would make AC-6/AC-7 partial.
+- (c) **Consequence chain:** §8.1 table + §8.2 five-anchor table + §8.3 step 5 all cover the three-service cutover; AC-6/AC-7 fully covered.
+
+**DEC-2 (domain topology — subdomains of one apex vs. independent domains) — resolved A via A41 per A43 (a)/(b)/(c):**
+- (a) **Option chosen:** A (apex-subdomain worked example + a general-case note).
+- (b) **Rationale:** story recommendation = A; same autonomous-mode quote; justification = the worked `app.`/`api.`/`auth.example.org` example makes the cookie-domain/CORS guidance concrete, and the one-line note keeps it portable.
+- (c) **Consequence chain:** §8 lead-in carries the apex example + the "independent domains work identically" note.
+
+### Spike outcome (Task 0.5)
+
+§8 placeholder confirmed present + unchanged since E18-S1. The five issuer-parity anchor names verified against docs/14 §6.3 — with the realm-path refinement (issuer anchors carry `/realms/iabconnect`; `KeycloakAdmin__BaseUrl` does not; `KC_HOSTNAME` is bare), now encoded precisely in §8.2. GHA repo-variable names (`NEXT_PUBLIC_API_URL_BETA`, `NEXT_PUBLIC_KEYCLOAK_ISSUER_BETA`) verified against docs/14 §6.1 (not invented). Pure documentation deliverable — zero production code, zero automated tests.
 
 ### Completion Notes List
 
-_(populated by dev-story)_
+- **What was implemented:** filled [RUNBOOK-beta.md §8 Custom-domain migration](./RUNBOOK-beta.md) in place — §8.1 what-changes table (runtime vs build-time), §8.2 five-anchor issuer-parity atomic change set (realm-path precise), §8.3 seven-step ordered cutover with per-step rollback notes, §8.4 post-cutover verification. TOC line 28 placeholder suffix dropped; §7 Quick-reference gained a custom-domain row. No renumber; §9 untouched.
+- **DEC-1=A + DEC-2=A** auto-resolved via A41 (user pre-declared full-epic autonomous mode); (a)/(b)/(c) Debug Log above.
+- **Zero production code / zero tests** — documentation artifact; correctness enforced by the A42 reread (AC-10, clean).
+
+### Unified human-verify queue (per A47 surface convention)
+
+- **Q1 (AC-11 peer review + live-fire):** during the unified Wave-10 walkthrough, a peer confirms each §8 step is reversible and the DNS/IDP coordination is explicit; on a green Beta + a spare domain, optionally rehearse the cutover end-to-end.
 
 ### File List
 
-_(populated by dev-story)_
+**MODIFIED:**
+- `_bmad-output/implementation-artifacts/RUNBOOK-beta.md` (§8 authored in place + TOC line 28 + §7 Quick-reference row)
+- `_bmad-output/implementation-artifacts/e19-s1-add-custom-domain-runbook-entry.md` (this story file: tasks/record/status)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (e19-s1: ready-for-dev → in-progress → review)
+
+### Change Log
+
+- 2026-06-05 — E19-S1 dev-story: filled RUNBOOK §8 (custom-domain cutover — DNS, Keycloak hostname, redirect URIs, `Frontend__BaseUrl`, build-time `NEXT_PUBLIC_*` rebuild, five-anchor issuer parity, ordered reversible checklist). DEC-1=A + DEC-2=A auto-resolved via A41. AC-1..AC-10 covered; AC-11 (peer review + live-fire) deferred-pending-beta-green per A47 → Q1. Zero production code, zero tests.
+- 2026-06-05 — Epic-boundary review patches (3, all in §8, verified against docs/14 §5.2/§5.3): **P1** added `web.NEXTAUTH_URL = https://<web-domain>` (runtime) to §8.1 table + §8.3 step 5 — a stale value silently breaks NextAuth login on a web custom-domain change; **P2** added `web.KEYCLOAK_ISSUER` (runtime) to §8.1 table + §8.3 step 5 — it was only in the §8.2 parity table, so the actionable checklist would have left it stale (→ §6.2 incident); **P3** added `keycloak.FRONTEND_PUBLIC_URL = https://<web-domain>` to §8.1 + §8.3 step 3 — the realm import binds `redirectUris[1]`/`webOrigins[1]` from it (docs/14 §5.3 line 499 names this the E19-S1 divergence point). §8 now covers all host-dependent vars across all three public services.
 
 ## Project Context Reference
 
@@ -193,6 +219,6 @@ _(populated by dev-story)_
 
 ## Story Completion Status
 
-Status: ready-for-dev
+Status: review (was: ready-for-dev; flipped by dev-story 2026-06-05)
 
-Comprehensive context engine analysis completed — comprehensive developer guide created. §8 of RUNBOOK-beta.md to be filled in place with an ordered, reversible custom-domain cutover (DNS → Keycloak hostname → redirect URIs → `Frontend__BaseUrl` → build-time `NEXT_PUBLIC_*` rebuild → five-anchor issuer parity → smoke), each step with a rollback note. DEC-1 (all-three-services) + DEC-2 (apex-subdomain example) carry recommendations for dev-story resolution. AC-11 peer review deferred-pending-beta-green per A47.
+RUNBOOK-beta.md §8 filled in place: an ordered, reversible custom-domain cutover for all three public services (DNS → Keycloak hostname → redirect URIs → `Frontend__BaseUrl` → build-time `NEXT_PUBLIC_*` rebuild → five-anchor issuer parity → browser smoke → retire defaults last), each step with a rollback note; realm-path precision in the five-anchor table. DEC-1=A + DEC-2=A auto-resolved via A41. AC-1..AC-10 covered; AC-11 (peer review + live-fire rehearsal) deferred-pending-beta-green per A47 → Wave-10 walkthrough Q1.

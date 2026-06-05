@@ -1,6 +1,6 @@
 # Story E19-S3: Production gate checklist
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -70,36 +70,36 @@ This story was authored from the 19-line 2026-05-15 stub against post-Epic-18 re
 
 ### Task 0: Spike — confirm telemetry surface + anchors + resolve DECs (A28; A41 escape if pre-declared)
 
-- [ ] 0.1 Confirm RUNBOOK §9 placeholder + TOC line 29 + §7 table unchanged since E18-S1 close (re-grep `Production-gate NFR checklist`).
-- [ ] 0.2 Re-confirm the E17-S4 monitor contract (5-min poll, 3-consecutive-failure alert, `/health/ready` target) + [docs/14 §27](../../docs/14_beta_railway_setup.md); confirm no APM/Seq/Loki in Beta ([ADR-017](../planning-artifacts/architecture.md)).
-- [ ] 0.3 Re-confirm env-var names + ADR citations: `RetentionEnforcement__Enabled` (ADR-020), `Database__AutoMigrate` (ADR-015/E15-S2), off-site backup (ADR-019), `Backup__EncryptionKey`.
-- [ ] 0.4 Confirm Serilog request-logging (E17-S2 `UseSerilogRequestLogging`, CorrelationId) is the request-latency/5xx source + [docs/14 §26](../../docs/14_beta_railway_setup.md).
-- [ ] 0.5 Resolve DEC-1 + DEC-2 (A41 escape if pre-declared, else AskUserQuestion per A32 step d) — record (a)/(b)/(c) per A43.
-- [ ] 0.6 Spike outcome recorded in Dev Agent Record.
+- [x] 0.1 Confirmed RUNBOOK §9 placeholder + TOC line 29 present + unchanged since E18-S1 close.
+- [x] 0.2 Re-confirmed the E17-S4 monitor contract (5-min poll, 3-consecutive-failure alert, `/health/ready` target) + [docs/14 §27](../../docs/14_beta_railway_setup.md); confirmed no APM/Seq/Loki in Beta ([ADR-017](../planning-artifacts/architecture.md)) → percentile thresholds flagged `[!] needs tooling`.
+- [x] 0.3 Re-confirmed env-var names + ADR citations: `RetentionEnforcement__Enabled` (ADR-020), `Database__AutoMigrate` (ADR-015/E15-S2), off-site backup (ADR-019), `Backup__EncryptionKey`.
+- [x] 0.4 Confirmed Serilog request-logging (E17-S2 `UseSerilogRequestLogging`, CorrelationId) as the request-latency/5xx source + [docs/14 §26](../../docs/14_beta_railway_setup.md).
+- [x] 0.5 DEC-1=A (include-but-flag tooling-gaps) + DEC-2=A (NFRs + cutover-blockers sub-table) resolved via A41 — see Debug Log References.
+- [x] 0.6 Spike outcome recorded in Dev Agent Record.
 
 ### Task 1: Author §9 NFR threshold table (AC-1, AC-2, AC-3, AC-4)
 
-- [ ] 1.1 Replace §9 placeholder; intent paragraph (this is a reusable go/no-go gate; snapshot per decision; do not tick the master).
-- [ ] 1.2 NFR threshold table: response-time · error-rate · backup-success-rate · uptime — columns metric / proposed threshold / measurement source / pass-fail(blank) / measured-value(blank).
-- [ ] 1.3 (DEC-1) Anchor each to existing telemetry; mark any tooling-gap threshold `[!] needs measurement tooling` with the providing-tool note.
-- [ ] 1.4 Fill concrete proposed thresholds + one-line rationale each (AC-4).
+- [x] 1.1 Replaced §9 placeholder; intent paragraph (reusable go/no-go gate; snapshot per decision; don't tick the master) + the no-APM-in-Beta note.
+- [x] 1.2 §9.1 NFR threshold table: uptime · error-rate · response-time · backup-success — columns NFR / proposed threshold / rationale / measurement source / measured-value(blank) / pass-fail(blank).
+- [x] 1.3 (DEC-1=A) Each anchored to existing telemetry; the p95 response-time row flagged `[!] needs measurement tooling` with the providing-tool note.
+- [x] 1.4 Concrete proposed thresholds + one-line rationale each (uptime ≥99.5%/30d, error-rate <1%/7d, backup ≥29/30 + drill green, p95 <800ms sampled).
 
 ### Task 2: Author the cutover-blockers sub-table + how-to-measure block (AC-5, AC-7)
 
-- [ ] 2.1 (DEC-2) Production-cutover blockers sub-table: retention (ADR-020) · auto-migrate→false (ADR-015) · off-site backup (ADR-019) · custom domain (E19-S1 §8) · real SMTP (E19-S4) · restore-drill green (E19-S2 §3.1) — each with a blank done-column + cross-link.
-- [ ] 2.2 "How to read each source" block: monitor dashboard (§27), Serilog request logs (§26), Railway Metrics tab, backup object/outcome counting.
+- [x] 2.1 (DEC-2=A) §9.2 Production-cutover blockers sub-table: retention (ADR-020) · auto-migrate→false (ADR-015) · off-site backup (ADR-019) · custom domain (§8) · real SMTP (E19-S4) · restore-drill green (§3.1) — each with a blank done-column + cross-link.
+- [x] 2.2 §9.3 "How to read each source" block: monitor dashboard (§27), Serilog request logs (§26), Railway Metrics tab, backup object/outcome counting, §3.1 drill log.
 
 ### Task 3: Reusable-gate hygiene + TOC/QuickRef (AC-6)
 
-- [ ] 3.1 Ensure all status columns ship blank + the "snapshot per decision, don't tick the master" instruction (A42 pre-filled-status).
-- [ ] 3.2 Update TOC line 29 (drop placeholder suffix) + §7 Quick-reference row.
+- [x] 3.1 All status columns (measured-value / pass-fail / done) ship blank + the "snapshot per decision, don't tick the master" instruction (A42 pre-filled-status).
+- [x] 3.2 Updated TOC line 29 (placeholder suffix dropped) + §7 Quick-reference go/no-go row.
 
 ### Task 4: A42 reread + Quality-Gates closing (AC-8, AC-9)
 
-- [ ] 4.1 A42 six-category reread: (1) no contradiction with §3/§4/§6 + docs/14 §9/§26/§27 + ADRs; (2) checklist reads as a blank reusable gate, not a snapshot; (3) cross-links use §-numbers; (4) metric/env-var/cron/monitor-contract/ADR citations match sources; (5) no sprint leakage; (6) A57 — no documented command assumes an absent binary (this section is metrics-reading, mostly dashboard-based).
-- [ ] 4.2 AC-Subitem Completion Check (A29) — Quality-Gates table one row per AC + per NFR threshold + per cutover-blocker.
-- [ ] 4.3 (A47) AC-9 peer review → Completion Notes Q-item (needs human reviewer + live E17-S4 monitor).
-- [ ] 4.4 Flip status to `review`.
+- [x] 4.1 A42 six-category reread complete: (1) no contradiction with §3/§4/§6 + docs/14 §9/§26/§27 + ADRs; (2) gate reads as a blank reusable checklist, not a snapshot; (3) cross-links use §-numbers + the `#31-...`/`#8-...` anchors; (4) metric/env-var/cron/monitor-contract/ADR citations match sources; (5) no sprint leakage; (6) A57 — metrics-reading is dashboard/log-based, no documented command assumes an absent binary.
+- [x] 4.2 AC-Subitem Completion Check (A29) — Quality-Gates one row per AC + per NFR threshold + per cutover-blocker.
+- [!] 4.3 (A47) AC-9 measurability peer-confirm deferred → Completion Notes Q1 (needs human reviewer + live E17-S4 monitor to validate the sources).
+- [x] 4.4 Status flipped to `review`.
 
 ## Dev Notes
 
@@ -132,16 +132,16 @@ This story was authored from the 19-line 2026-05-15 stub against post-Epic-18 re
 
 ## Quality-Gates Closing
 
-| AC | Evidence (planned) | Status |
+| AC | Evidence | Status |
 |---|---|---|
-| AC-1 §9 authored in place + TOC/QuickRef | placeholder replaced; line 29 suffix dropped; §7 row; no renumber | pending |
-| AC-2 four NFR thresholds | response-time · error-rate · backup-success · uptime table | pending |
-| AC-3 telemetry-anchored (+ `[!]` tooling-gaps) | source column per threshold; gaps flagged | pending |
-| AC-4 concrete thresholds + rationale | numeric proposals + one-line each | pending |
-| AC-5 cutover-blockers sub-table | retention/auto-migrate/off-site/domain/SMTP/drill rows + cross-links | pending |
-| AC-6 reusable gate (blank status cols) | empty pass-fail/measured/done + snapshot instruction | pending |
-| AC-7 how-to-measure block | dashboard/logs/metrics/backup-count pointers | pending |
-| AC-8 no contradiction / A42 reread | six-category reread + diff vs docs/14 §9/§26/§27 + ADRs | pending |
+| AC-1 §9 authored in place + TOC/QuickRef | placeholder replaced; TOC line 29 suffix dropped; §7 go/no-go row; §8 untouched | covered |
+| AC-2 four NFR thresholds | §9.1 uptime · error-rate · response-time · backup-success table | covered |
+| AC-3 telemetry-anchored (+ `[!]` tooling-gaps) | §9.1 measurement-source column per threshold; p95 row flagged `[!] needs tooling` | covered |
+| AC-4 concrete thresholds + rationale | §9.1 numeric proposals + one-line rationale each | covered |
+| AC-5 cutover-blockers sub-table | §9.2 retention/auto-migrate/off-site/domain/SMTP/drill rows + cross-links | covered |
+| AC-6 reusable gate (blank status cols) | §9 empty measured/pass-fail/done + "snapshot per decision" instruction | covered |
+| AC-7 how-to-measure block | §9.3 dashboard/logs/metrics/backup-count/drill-log pointers | covered |
+| AC-8 no contradiction / A42 reread | six-category reread + diff vs docs/14 §9/§26/§27 + ADRs | covered |
 | AC-9 peer review measurability | live walkthrough (Q1) | deferred-pending-beta-green (A47) |
 
 ## Tests / Evidence
@@ -154,19 +154,45 @@ This story was authored from the 19-line 2026-05-15 stub against post-Epic-18 re
 
 ### Agent Model Used
 
-_(populated by dev-story)_
+claude-opus-4-8[1m] (Opus 4.8, 1M context)
 
 ### Debug Log References
 
-_(DEC-1 + DEC-2 resolution recorded here at dev-story time per A43 (a)/(b)/(c))_
+**DEC-1 (threshold sourcing — strict-existing-telemetry vs. include-but-flag) — resolved A via A41 per A43 (a)/(b)/(c):**
+- (a) **Option chosen:** A (anchor every threshold to existing telemetry; include desirable-but-unmeasurable ones marked `[!] needs measurement tooling`).
+- (b) **Rationale:** story recommendation = A (post-MVP); user autonomous-mode verbatim quote = "alle stories von diesem epic umsetzen ohne stopp bis sie implementiert sind. danach review und retro durchführen." (2026-06-05) + "kein mvp"; justification = a flagged tooling-gap (the p95 percentile, since Beta has no APM per ADR-017) is a Production-readiness signal in itself; a silent omission would read as "covered".
+- (c) **Consequence chain:** §9.1 includes the p95 response-time row flagged `[!] needs measurement tooling`; the other three are measurable-as-stated.
+
+**DEC-2 (scope — four NFRs only vs. NFRs + cutover blockers) — resolved A via A41 per A43 (a)/(b)/(c):**
+- (a) **Option chosen:** A (two sub-tables: §9.1 NFR thresholds + §9.2 production-cutover blockers).
+- (b) **Rationale:** story recommendation = A (post-MVP); same autonomous-mode quote; justification = the cutover blockers are all already ADR-named E19/Production follow-ups — collecting them into the gate is exactly what a go/no-go needs, and it ties E19-S1/S2/S4 in as evidence rows.
+- (c) **Consequence chain:** §9.2 lists retention/auto-migrate/off-site-backup/custom-domain/real-SMTP/restore-drill with blank done-columns + cross-links.
+
+### Spike outcome (Task 0.6)
+
+§9 placeholder confirmed present + stable. The E17-S4 monitor contract (5-min poll, 3-consecutive-failure, `/health/ready`) + the no-APM-in-Beta reality (Seq/Loki/Prometheus out of scope, ADR-017) verified — so percentile thresholds are honestly flagged, not implied measurable. Env-var/ADR citations (`RetentionEnforcement__Enabled`/ADR-020, `Database__AutoMigrate`/ADR-015, off-site backup/ADR-019) verified. Pure documentation — zero production code, zero automated tests.
 
 ### Completion Notes List
 
-_(populated by dev-story)_
+- **What was implemented:** filled [RUNBOOK-beta.md §9 Production-gate NFR checklist](./RUNBOOK-beta.md) — §9.1 four telemetry-anchored NFR thresholds (uptime/error-rate/response-time/backup-success, p95 flagged `[!] needs tooling`), §9.2 six production-cutover blockers (cross-linking ADR-020/015/019 + E19-S1/S2/S4), §9.3 how-to-read-each-source block. All status columns blank (reusable gate). TOC line 29 suffix dropped; §7 Quick-reference go/no-go row added. §8 untouched.
+- **DEC-1=A + DEC-2=A** auto-resolved via A41; (a)/(b)/(c) Debug Log above.
+- **Ships as a blank reusable gate** (A42 pre-filled-status) — "snapshot per decision, don't tick the master".
+- **Zero production code / zero tests** — documentation artifact; correctness enforced by the A42 reread (AC-8, clean).
+
+### Unified human-verify queue (per A47 surface convention)
+
+- **Q1 (AC-9 measurability peer-confirm):** during the Wave-10 walkthrough, a peer confirms each §9.1 threshold is measurable from existing Beta telemetry (and that the `[!] needs tooling` p95 flag is correctly classified), validating the sources against the live E17-S4 monitor + Railway Logs/Metrics.
 
 ### File List
 
-_(populated by dev-story)_
+**MODIFIED:**
+- `_bmad-output/implementation-artifacts/RUNBOOK-beta.md` (§9 authored in place + TOC line 29 + §7 Quick-reference go/no-go row)
+- `_bmad-output/implementation-artifacts/e19-s3-define-production-gate-checklist.md` (this story file: tasks/record/status)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (e19-s3: ready-for-dev → in-progress → review)
+
+### Change Log
+
+- 2026-06-05 — E19-S3 dev-story: filled RUNBOOK §9 (Production go/no-go gate — four telemetry-anchored NFR thresholds with the p95 flagged needs-tooling + a production-cutover-blockers sub-table + a how-to-measure block; blank reusable gate). DEC-1=A + DEC-2=A auto-resolved via A41. AC-1..AC-8 covered; AC-9 (measurability peer-confirm) deferred-pending-beta-green per A47 → Q1. Zero production code, zero tests.
 
 ## Project Context Reference
 
@@ -181,6 +207,6 @@ _(populated by dev-story)_
 
 ## Story Completion Status
 
-Status: ready-for-dev
+Status: review (was: ready-for-dev; flipped by dev-story 2026-06-05)
 
-Comprehensive context engine analysis completed — comprehensive developer guide created. §9 of RUNBOOK-beta.md to be filled with a reusable Production go/no-go gate: four telemetry-anchored NFR thresholds (each naming an existing Beta telemetry source, tooling-gaps flagged `[!]`) + a production-cutover-blockers sub-table (retention / auto-migrate / off-site backup / domain / SMTP / restore-drill) + a how-to-measure block, all status columns blank for per-decision snapshotting. DEC-1 (include-but-flag tooling-gaps) + DEC-2 (NFRs + cutover blockers) carry recommendations for dev-story resolution. AC-9 peer review deferred-pending-beta-green per A47.
+RUNBOOK §9 filled: a reusable Production go/no-go gate — §9.1 four telemetry-anchored NFR thresholds (p95 flagged `[!] needs tooling` since Beta has no APM) + §9.2 production-cutover-blockers sub-table (retention / auto-migrate / off-site backup / domain / SMTP / restore-drill) + §9.3 how-to-measure block, all status columns blank for per-decision snapshotting. DEC-1=A + DEC-2=A auto-resolved via A41. AC-1..AC-8 covered; AC-9 measurability peer-confirm deferred-pending-beta-green per A47 → Wave-10 walkthrough Q1.

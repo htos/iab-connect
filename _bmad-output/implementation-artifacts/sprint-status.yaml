@@ -1,5 +1,33 @@
 # generated: 2026-05-12
-# last_updated: 2026-06-05 (bmad-create-story BULK REFRESH for entire Epic-19 (Production Readiness
+# last_updated: 2026-06-05 (Epic-19 CLOSED — Production Readiness Preparation (Wave-10). Single autonomous-mode
+#   session delivered all 4 stories + epic-boundary code review + retrospective per user directive "alle stories
+#   von diesem epic umsetzen ohne stopp bis sie implementiert sind. danach review und retro durchführen."
+#   (2026-06-05). All 8 DEC-Needed surfaces (2/story) auto-resolved via A41 with (a)/(b)/(c) Debug Logs (A43);
+#   A47 escape applied to the live-Beta [!] queue (E19-S1 AC-11 live-fire, E19-S2 AC-9 actual drill, E19-S3 AC-9
+#   measurability peer-confirm); E19-S4 AC-9 is a non-beta-gated human-reader peer review. **Epic summary — zero
+#   production code, zero automated tests (docs only):** (1) e19-s1 filled RUNBOOK-beta.md §8 custom-domain
+#   cutover in place (the E18-S1 A38 placeholder): §8.1 what-changes table, §8.2 five-anchor issuer parity
+#   (realm-path precise), §8.3 ordered reversible checklist, §8.4 verification. (2) e19-s2 added RUNBOOK §3.1
+#   restore-drill (repeatable procedure reusing §3 commands by cross-link + throwaway-API smoke set a–e +
+#   data-integrity row-counts) + a BLANK captured-log template. (3) e19-s3 filled RUNBOOK §9 production gate in
+#   place: §9.1 four telemetry-anchored NFR thresholds (p95 flagged [!] needs-tooling — no APM in Beta), §9.2
+#   six production-cutover blockers, §9.3 how-to-measure; ships as a blank reusable gate. (4) e19-s4 authored
+#   NEW SMTP-MIGRATION-POSTAL.md (Mailtrap→Postal-on-Hetzner; config-only Smtp__* swap, SPF/DKIM/DMARC/rDNS,
+#   IP-warmup, instant rollback). **Epic-boundary code review** (3-layer adversarial, hybrid CR+ER): **4 patches
+#   APPLIED** — P1 §8 missing `web.NEXTAUTH_URL` (HIGH, stale value silently breaks login); P2 §8
+#   `web.KEYCLOAK_ISSUER` in the parity table but not the actionable checklist (HIGH → §6.2 incident); P3 §8
+#   missing `keycloak.FRONTEND_PUBLIC_URL` (MED, realm redirectUris[1]; docs/14 §5.3 L499 names E19-S1 as its
+#   divergence point); P4 SMTP doc offered port 465 against the STARTTLS-only System.Net.Mail.SmtpClient (MED).
+#   5 dismissed (drill-log blank, §9 blank gate, anchors, A51 parity, A38 reuse — all clean). Doc:
+#   epic-19-boundary-review-2026-06-05.md. **Epic-19 retrospective:** epic-19-retro-2026-06-05.md. 2 new action
+#   items promoted to project-context.md: A59 host/URL-change runbooks must sweep every consumer var across every
+#   service not just the named invariant (root cause of P1/P2/P3); A60 doc-vs-code accuracy covers library/
+#   transport capability not just binary presence (refines A45/A57; root cause of P4). A28-A58 carry forward.
+#   **Status transitions:** e19-s1..s4 review → done; epic-19 in-progress → done; epic-19-retrospective optional
+#   → done. Sprint state: E1-E3 + E9-E20 all done (**14 epics closed — ALL Beta-pivot epics E9-E20 complete**);
+#   E4-E8 deferred backlog (pre-Beta-pivot). **OUTSTANDING before Beta go-live:** the unified Wave-10 walkthrough
+#   must execute the deferred [!] items across E14/E16/E17/E18 + the new E19 items — all require a GREEN Beta
+#   deploy (Harry's live-Beta prerequisites). **NEXT:** commit this epic close + push.) ## Previously: 2026-06-05 (bmad-create-story BULK REFRESH for entire Epic-19 (Production Readiness
 #   Preparation, Wave-10): COMPLETE. All 4 stub files (e19-s1..s4, previously 19-line generate-stubs.sh
 #   output) replaced with comprehensive dev-ready stories per A34 (bulk spec-refresh at epic start when
 #   N≥3 stories in one session). Per user directive "das nächste epic angehen und alle stories für die
@@ -1032,12 +1060,12 @@ development_status:
   e18-s4-add-feedback-channel: done
   epic-18-retrospective: done
 
-  epic-19: in-progress
-  e19-s1-add-custom-domain-runbook-entry: ready-for-dev
-  e19-s2-perform-backup-restore-drill: ready-for-dev
-  e19-s3-define-production-gate-checklist: ready-for-dev
-  e19-s4-document-postal-smtp-migration-plan: ready-for-dev
-  epic-19-retrospective: optional
+  epic-19: done
+  e19-s1-add-custom-domain-runbook-entry: done
+  e19-s2-perform-backup-restore-drill: done
+  e19-s3-define-production-gate-checklist: done
+  e19-s4-document-postal-smtp-migration-plan: done
+  epic-19-retrospective: done
 
   # === DEFERRED backlog — pre-Beta-pivot work (resumes after Beta validation) ===
   # Epics 4-8 were consciously reset to 'backlog' on 2026-05-14 because the
