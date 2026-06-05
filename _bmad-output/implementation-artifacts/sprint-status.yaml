@@ -1,5 +1,48 @@
 # generated: 2026-05-12
-# last_updated: 2026-06-05 (Epic-18 CLOSED — Beta Test Preparation and Operations Documentation. Single
+# last_updated: 2026-06-05 (bmad-create-story BULK REFRESH for entire Epic-19 (Production Readiness
+#   Preparation, Wave-10): COMPLETE. All 4 stub files (e19-s1..s4, previously 19-line generate-stubs.sh
+#   output) replaced with comprehensive dev-ready stories per A34 (bulk spec-refresh at epic start when
+#   N≥3 stories in one session). Per user directive "das nächste epic angehen und alle stories für die
+#   implementierung vorbereiten. wichtig es ist kein mvp mehr" (2026-06-05), scope is post-MVP-comprehensive.
+#   **Epic shape — all 4 stories are documentation deliverables, zero production code:** E19 prepares
+#   Production-Go-Live blockers during Beta; NOT on the Beta critical path. **A56 existing-implementation
+#   spike findings:** (1) e19-s1 (custom-domain) FILLS the pre-laid RUNBOOK-beta.md §8 placeholder (E18-S1
+#   A38 anchor) in place — NOT a new file, no renumber. The hard part is the five-anchor Keycloak issuer
+#   parity (api.Keycloak__Authority / web.KEYCLOAK_ISSUER / keycloak.KC_HOSTNAME bare-host /
+#   api.KeycloakAdmin__BaseUrl / GHA NEXT_PUBLIC_KEYCLOAK_ISSUER_BETA) presented as one atomic change set +
+#   the NEXT_PUBLIC_* build-time-rebuild caveat (api-URL swap needs a web image rebuild, not a var edit).
+#   DEC-1=A (all 3 public services), DEC-2=A (apex-subdomain worked example). (2) e19-s2 (backup-restore
+#   drill) — the restore PROCEDURE already exists in RUNBOOK §3 (E18-S1); story is ADDITIVE: a new §3.1
+#   repeatable drill (restore yesterday's backup into a throwaway Postgres → point a throwaway API at it →
+#   smoke set → captured-log) + a BLANK drill-log template (A42 no-invented-numbers). The actual drill run
+#   (AC-9) is the load-bearing [!] live item, deferred-pending-beta-green per A47. DEC-1=A (ephemeral Railway
+#   Postgres primary), DEC-2=A (full smoke set incl. row-count spot-checks). pg_restore IS in api image
+#   (postgresql-client-17); mc/openssl/jq are NOT (A57 — workstation-side). (3) e19-s3 (production gate) FILLS
+#   the pre-laid RUNBOOK §9 placeholder in place. Load-bearing constraint = epics evidence line "measurable
+#   from existing Beta telemetry": every threshold (response-time/error-rate/backup-success/uptime) anchored
+#   to a real source (E17-S4 monitor uptime% / Railway Metrics + Serilog request logs / daily-pg-backup
+#   Hangfire outcomes); percentile thresholds flagged [!] needs-tooling (no APM in Beta per ADR-017, A42
+#   imprecise-claim). DEC-1=A (include-but-flag tooling-gaps), DEC-2=A (NFRs + production-cutover-blockers
+#   sub-table: retention ADR-020 / auto-migrate→false ADR-015 / off-site backup ADR-019 / domain E19-S1 /
+#   SMTP E19-S4 / drill E19-S2). Ships as a BLANK reusable gate (A42 pre-filled-status). (4) e19-s4 (Postal
+#   SMTP) is GENUINE net-new — _bmad-output/implementation-artifacts/SMTP-MIGRATION-POSTAL.md absent. Backend
+#   sender is already provider-agnostic (System.Net.Mail.SmtpClient + Smtp:* contract) → migration is
+#   CONFIG-ONLY (Smtp__Host/Port/Username/Password/EnableSsl swap + redeploy, no code change). Plan covers
+#   ADR-018 why-self-host, Hetzner+Postal install, SPF/DKIM/DMARC/rDNS, IP-warmup, DKIM-pass smoke, instant
+#   config-only rollback. DEC-1=A (Hetzner worked example), DEC-2=A (Postal path + alternatives note). All
+#   install/DNS commands operator-VPS-side + [!] (A40/A57); env-var keys byte-match SmtpSettings.cs +
+#   .env.example (A51). AC-9 peer review is a human-reader task, NOT beta-green-gated. **Cross-cutting:**
+#   (a) RUNBOOK-beta.md is the A38 doc-bundle anchor for 3 of the 4 stories (§8 S1, §3.1 S2, §9 S3); S4 is
+#   the only new file. (b) The [!] live items (e19-s1 AC-11 live-fire custom-domain rehearsal, e19-s2 AC-9
+#   actual drill, e19-s3 AC-9 measurability peer-confirm) join the carried-forward E14/E16/E17/E18 unified
+#   Wave-9/10 walkthrough — all require a GREEN Beta deploy (Harry's live-Beta prerequisites). e19-s4 AC-9 is
+#   the exception (doc peer-read, not beta-gated). (c) Zero production code/config change across the epic.
+#   **Status transitions:** epic-19 backlog → in-progress; e19-s1/s2/s3/s4 backlog → ready-for-dev. Sprint
+#   state: E1-E3 + E9-E18 + E20 all done (13 epics closed) + E19 in-progress (4 ready-for-dev); E4-E8 deferred
+#   backlog (pre-Beta-pivot). NEXT per workflow + project memory feedback_session_pacing_dev_cycles + A34:
+#   recommend committing this 4-story bulk-context refresh + sprint-status update and starting bmad-dev-story
+#   for e19-s1 (recommended sequence: S1 → S3 → S2 → S4, since S3's gate cross-links S1/S2/S4 anchors and S2's
+#   live drill is the heaviest) in a fresh session per feedback_session_pacing_dev_cycles.) ## Previously: 2026-06-05 (Epic-18 CLOSED — Beta Test Preparation and Operations Documentation. Single
 #   autonomous-mode session delivered all 4 stories + epic-boundary code review + retrospective per user
 #   directive "das ganze epic umsetzen ohne unterbrechung und ohne stop bis alle stories implementiert sind.
 #   danach gemäss plan eine retro durchführen." (2026-06-05). A41 DEC auto-resolution applied to all 8
@@ -989,11 +1032,11 @@ development_status:
   e18-s4-add-feedback-channel: done
   epic-18-retrospective: done
 
-  epic-19: backlog
-  e19-s1-add-custom-domain-runbook-entry: backlog
-  e19-s2-perform-backup-restore-drill: backlog
-  e19-s3-define-production-gate-checklist: backlog
-  e19-s4-document-postal-smtp-migration-plan: backlog
+  epic-19: in-progress
+  e19-s1-add-custom-domain-runbook-entry: ready-for-dev
+  e19-s2-perform-backup-restore-drill: ready-for-dev
+  e19-s3-define-production-gate-checklist: ready-for-dev
+  e19-s4-document-postal-smtp-migration-plan: ready-for-dev
   epic-19-retrospective: optional
 
   # === DEFERRED backlog — pre-Beta-pivot work (resumes after Beta validation) ===
