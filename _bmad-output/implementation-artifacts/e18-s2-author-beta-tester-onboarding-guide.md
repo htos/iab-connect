@@ -1,6 +1,6 @@
 # Story E18-S2: Beta tester onboarding guide
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -67,29 +67,29 @@ Authored from the 19-line 2026-05-15 stub. This is a **genuine net-new documenta
 
 ### Task 0: Spike — confirm realm + mail facts + resolve DECs (A28 spike-first)
 
-- [ ] 0.1 Confirm realm flags (`registrationAllowed`/`registrationEmailAsUsername`/`verifyEmail`/`resetPasswordAllowed`) in [realms-beta/iabconnect-realm.json](../../infra/keycloak/realms-beta/iabconnect-realm.json).
-- [ ] 0.2 Confirm ADR-018 Mailtrap routing + the SMTP keys in docs/14 §5.1.
-- [ ] 0.3 Confirm the shipped banner feedback label (de.json `beta.feedbackLink` = "Feedback geben") + E18-S4 template name, so the feedback section matches.
-- [ ] 0.4 Confirm E18-S3 (banner) + E18-S4 (template) are settled/ahead in the dev sequence (this story should run last in the epic).
-- [ ] 0.5 Resolve DEC-1 + DEC-2 (A41 escape per A43 if pre-declared; else AskUserQuestion).
-- [ ] 0.6 Record spike outcome in Dev Agent Record.
+- [x] 0.1 Confirmed realm flags `registrationAllowed: true` / `registrationEmailAsUsername: true` / `verifyEmail: true` / `resetPasswordAllowed: true` in [realms-beta/iabconnect-realm.json](../../infra/keycloak/realms-beta/iabconnect-realm.json).
+- [x] 0.2 Confirmed ADR-018 Mailtrap routing (`sandbox.smtp.mailtrap.io`) + SMTP keys (docs/14 §5).
+- [x] 0.3 Confirmed shipped banner feedback label (de.json `beta.feedbackLink` = "Feedback geben") + E18-S4 template `beta-feedback.md` — feedback section matches.
+- [x] 0.4 Authored LAST in the epic (after E18-S1/S3/S4) so banner + template are settled.
+- [x] 0.5 DEC-1=A (self-registration + maintainer pre-verify step) + DEC-2=A (standalone Markdown) resolved via A41 — see Debug Log References.
+- [x] 0.6 Spike outcome recorded in Dev Agent Record.
 
 ### Task 1: Author the guide (AC-1..AC-6)
 
-- [ ] 1.1 Create `BETA-TESTER-GUIDE.md` (German), ≤2 pages, scannable headings.
-- [ ] 1.2 "Anmeldung / Registrierung" section — self-registration + honest Mailtrap-verification coordination step (DEC-1=A) (AC-2).
-- [ ] 1.3 "Was ist die Beta?" section — scope, data-reset caveat, not-for-production (AC-3).
-- [ ] 1.4 "E-Mails ansehen (Mailtrap)" section — sandbox behaviour + how to see captured mail + which flows send mail (AC-4).
-- [ ] 1.5 "Feedback geben" section — the BETA banner link → GitHub `beta-feedback` template; wording matches E18-S4 (AC-5).
-- [ ] 1.6 "Bekannte Einschränkungen" section — sandboxed mail, data resets, no custom domain, best-effort uptime (AC-6).
+- [x] 1.1 Created `BETA-TESTER-GUIDE.md` (German, SPDX header), 579 words / ~1.3 pages, scannable headings (AC-1).
+- [x] 1.2 §1 "Anmeldung / Registrierung" — self-registration (email-as-username) + honest Mailtrap-verification coordination step ("Bestätigungs-E-Mail landet im Test-Postfach … gib der Betreuung Bescheid") (DEC-1=A) (AC-2).
+- [x] 1.3 §2 "Was ist die Beta?" — scope (Mitglieder/Finanzen/Events), data-reset caveat (mirrors banner), not-for-production (AC-3).
+- [x] 1.4 §3 "E-Mails ansehen (Mailtrap)" — sandbox behaviour + Mailtrap inbox-link/forward + which flows send mail (verify/reset/invoice/event) (AC-4).
+- [x] 1.5 §4 "Feedback geben" — the orange Beta banner "Feedback geben" link → GitHub `beta-feedback` template + Correlation-ID hint; wording matches E18-S4 (AC-5).
+- [x] 1.6 §5 "Bekannte Einschränkungen" — sandboxed mail, data resets, no custom domain, best-effort uptime (AC-6).
 
 ### Task 2: A42 reread + Quality-Gates close (AC-7, AC-8 deferred)
 
-- [ ] 2.1 A42 six-category reread (tester-facing): (1) no cross-section contradictions; (2) no pre-filled placeholders left as real content; (3) no stale anchors (docs/14 §16/§5 links resolve); (4) **no imprecise claim — especially the Mailtrap "you will/won't get a real email" statement must be exactly true**; (5) no sprint-tracking leakage; (6) any tool/URL the tester is told to use is reachable (Beta URL is a placeholder the operator fills; the GitHub template exists per E18-S4).
-- [ ] 2.2 ≤2-page length check.
-- [ ] 2.3 AC-Subitem Completion Check (A29) — fill the Quality-Gates table.
-- [ ] 2.4 AC-8 pilot-tester evidence deferred per A47 → Completion Notes Q-item.
-- [ ] 2.5 Flip status to `review`.
+- [x] 2.1 A42 six-category reread complete: (1) no cross-section contradictions; (2) no pre-filled placeholders; (3) no stale anchors (Beta URL is an operator-filled placeholder; no hard docs/14 line anchors embedded); (4) **the Mailtrap claim is exactly true** — the guide states the verification email goes to the test inbox and the tester must coordinate, never promises a real inbox email; (5) no sprint-tracking leakage; (6) the GitHub template exists (E18-S4) + the banner link is shipped.
+- [x] 2.2 Length check: 579 words ≈ 1.3 pages (≤2).
+- [x] 2.3 AC-Subitem Completion Check (A29) — Quality-Gates table filled.
+- [!] 2.4 AC-8 pilot-tester evidence deferred per A47 → Completion Notes Q1 (needs a green Beta deploy + a human pilot: signup + 1 finance + 1 event task).
+- [x] 2.5 Status flipped to `review`.
 
 ## Dev Notes
 
@@ -129,16 +129,16 @@ Beta mail is **sandboxed** (`verifyEmail: true` + Mailtrap). A tester who self-r
 
 ## Quality-Gates Closing
 
-| AC | Planned evidence | Status |
+| AC | Evidence | Status |
 |---|---|---|
-| AC-1 file, German, ≤2pp | BETA-TESTER-GUIDE.md created | _pending dev-story_ |
-| AC-2 signup + Mailtrap caveat | "Anmeldung" section + docs/14 §16/§5.3 cross-link | _pending_ |
-| AC-3 scope of beta | "Was ist die Beta?" section | _pending_ |
-| AC-4 Mailtrap inbox access | "E-Mails ansehen" section | _pending_ |
-| AC-5 file feedback | "Feedback geben" section matching E18-S4 | _pending_ |
-| AC-6 known limitations | "Bekannte Einschränkungen" section | _pending_ |
-| AC-7 no contradiction | A42 reread (esp. Mailtrap claim) | _pending_ |
-| AC-8 pilot-tester evidence | live walkthrough (Q-item) | _deferred-pending-beta-green (A47)_ |
+| AC-1 file, German, ≤2pp | BETA-TESTER-GUIDE.md (German, 579 words ≈ 1.3 pages) | covered |
+| AC-2 signup + Mailtrap caveat | §1 Anmeldung — self-registration + honest test-inbox coordination step | covered |
+| AC-3 scope of beta | §2 Was ist die Beta? — scope + data-reset + not-for-production | covered |
+| AC-4 Mailtrap inbox access | §3 E-Mails ansehen — sandbox + inbox-link/forward + mail-sending flows | covered |
+| AC-5 file feedback | §4 Feedback geben — banner "Feedback geben" → GitHub beta-feedback template + Correlation-ID | covered |
+| AC-6 known limitations | §5 Bekannte Einschränkungen — sandboxed mail / data resets / no custom domain / best-effort uptime | covered |
+| AC-7 no contradiction | A42 reread; Mailtrap claim exactly true (no false "check your inbox" promise) | covered |
+| AC-8 pilot-tester evidence | live walkthrough (Q1) | deferred-pending-beta-green (A47) |
 
 ## Tests / Evidence
 
@@ -150,19 +150,48 @@ Beta mail is **sandboxed** (`verifyEmail: true` + Mailtrap). A tester who self-r
 
 ### Agent Model Used
 
-_(to be filled by dev-story)_
+claude-opus-4-8[1m] (Opus 4.8, 1M context)
 
 ### Debug Log References
 
-_(DEC-1 + DEC-2 resolution per A43 (a)/(b)/(c) template to be recorded here)_
+**DEC-1 (how to present self-registration + Mailtrap verification) — resolved A via A41 autonomous-mode escape per A43 (a)/(b)/(c):**
+- (a) **Option chosen:** A (document self-registration as the entry + an explicit "the maintainer activates your account / forwards the verification mail" coordination step).
+- (b) **Rationale:** story recommendation = A; user autonomous-mode verbatim quote = "das ganze epic umsetzen ohne unterbrechung und ohne stop bis alle stories implementiert sind. danach gemäss plan eine retro durchführen." (2026-06-05); architectural justification = the beta realm verifiably allows self-registration (`registrationAllowed: true`) but `verifyEmail: true` + Mailtrap sandbox means the tester cannot self-complete verification — A is the only truthful path; B (operator-only) contradicts the self-onboarding story goal; C (self-service inbox) is factually wrong and would strand every tester.
+- (c) **Consequence chain:** §1 documents register → ping maintainer → freischalten; §3 explains the sandbox; no false "check your inbox" promise anywhere.
+
+**DEC-2 (guide format: standalone Markdown vs. in-app) — resolved A via A41 autonomous-mode escape per A43 (a)/(b)/(c):**
+- (a) **Option chosen:** A (standalone `BETA-TESTER-GUIDE.md`; maintainer shares it out-of-band).
+- (b) **Rationale:** story recommendation = A; same user quote; architectural justification = matches the AC scope exactly; zero production-code change; the banner already carries the only in-app feedback affordance the SCP scopes for Beta.
+- (c) **Consequence chain:** one Markdown file; no new UI / i18n keys / layout surface.
+
+### Spike outcome (Task 0.6)
+
+The beta realm allows self-registration but verification email is sandboxed (Mailtrap, ADR-018). The guide's load-bearing correctness surface is the Mailtrap caveat — handled in §1 + §3 + §5. Authored last in the epic so the banner (E18-S3) + feedback template (E18-S4) wording is settled. German-language deliverable (AC exception to `document_output_language: English`, since the audience is the German Verein testers per ADR-018).
 
 ### Completion Notes List
 
-_(to be filled — include the A47 Q-item for AC-8 pilot read-through; note the German-language exception to document_output_language)_
+- **What was implemented:** `_bmad-output/implementation-artifacts/BETA-TESTER-GUIDE.md` — German, 579 words (~1.3 pages), 5 sections: Anmeldung (self-registration + Mailtrap coordination), Was ist die Beta?, E-Mails ansehen (Mailtrap), Feedback geben (banner → GitHub template), Bekannte Einschränkungen.
+- **Highest-risk surface handled truthfully:** the Mailtrap email-verification caveat is stated plainly in §1/§3/§5 — no "check your real inbox" promise.
+- **DEC-1=A + DEC-2=A** auto-resolved via A41; (a)/(b)/(c) Debug Log above.
+- **German-language exception** to `document_output_language: English` noted (audience-mandated by the AC + ADR-018).
+- **Zero production code / zero tests** — documentation artifact; correctness enforced by the A42 reread (AC-7, clean).
+
+### Unified human-verify queue (per A47 surface convention)
+
+- **Q1 (AC-8 pilot read-through):** during the Wave-9 unified walkthrough, a pilot tester reads the guide and successfully completes signup + one finance task + one event task on a green Beta deploy.
 
 ### File List
 
-_(expected NEW: `_bmad-output/implementation-artifacts/BETA-TESTER-GUIDE.md`; MODIFIED: `sprint-status.yaml`)_
+**NEW:**
+- `_bmad-output/implementation-artifacts/BETA-TESTER-GUIDE.md`
+
+**MODIFIED:**
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (e18-s2: ready-for-dev → in-progress → review)
+- `_bmad-output/implementation-artifacts/e18-s2-author-beta-tester-onboarding-guide.md` (this story file)
+
+### Change Log
+
+- 2026-06-05 — E18-S2 dev-story: authored German `BETA-TESTER-GUIDE.md` (579 words, 5 sections). The Mailtrap email-verification caveat is stated truthfully (testers self-register but verification mail is sandboxed → coordinate with maintainer). DEC-1=A (self-registration + coordination) + DEC-2=A (standalone Markdown) auto-resolved via A41. AC-1..AC-7 covered; AC-8 (pilot read-through) deferred-pending-beta-green per A47 → Q1. Zero production code, zero tests.
 
 ## Project Context Reference
 
@@ -176,6 +205,6 @@ _(expected NEW: `_bmad-output/implementation-artifacts/BETA-TESTER-GUIDE.md`; MO
 
 ## Story Completion Status
 
-Status: ready-for-dev
+Status: review (was: ready-for-dev; flipped by dev-story 2026-06-05)
 
-Ultimate context engine analysis completed — comprehensive developer guide created. Net-new German tester guide; the single highest-risk surface is the Mailtrap email-verification caveat (testers self-register but the verification mail is sandboxed) — the guide must state this truthfully. Recommend authoring LAST in Wave-9 so it matches the settled banner (E18-S3) + feedback template (E18-S4).
+German `BETA-TESTER-GUIDE.md` authored (579 words, 5 sections), with the Mailtrap email-verification caveat stated truthfully. Authored last in the epic so the banner + feedback-template wording match. AC-1..AC-7 covered; AC-8 (pilot read-through) deferred-pending-beta-green per A47 → Q1.

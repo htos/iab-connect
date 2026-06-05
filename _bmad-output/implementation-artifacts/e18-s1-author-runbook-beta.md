@@ -1,6 +1,6 @@
 # Story E18-S1: Author RUNBOOK-beta.md
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -76,47 +76,47 @@ This story was authored from the 19-line 2026-05-15 stub against post-Epic-17 re
 
 ### Task 0: Spike — confirm sources + resolve DECs (A28 spike-first; A41 escape if pre-declared)
 
-- [ ] 0.1 Confirm `RUNBOOK-beta.md` still absent (`git ls-files` + Glob).
-- [ ] 0.2 Re-read docs/14 section anchors to be cross-linked (§7, §8.4, §9, §10, §11.2, §11.4, §14.3.1, §15, §16, §25, §26) and record their exact current heading slugs (E17 inserted §25/§26/§27 — confirm numbering did not shift the earlier anchors).
-- [ ] 0.3 Confirm [backend/Dockerfile](../../backend/Dockerfile) still installs `postgresql-client-17` (A45 reachability for the restore playbook).
-- [ ] 0.4 Resolve DEC-1 + DEC-2 (A41 autonomous-mode escape per A43 (a)/(b)/(c) if the user pre-declared; otherwise AskUserQuestion per `feedback_decisions_via_ask_tool`).
-- [ ] 0.5 Record spike outcome in Dev Agent Record.
+- [x] 0.1 Confirmed `RUNBOOK-beta.md` absent before authoring (grep `RUNBOOK` returned only forward-references).
+- [x] 0.2 Re-read docs/14 section list at refresh: §7 Secret rotation, §8 Networking, §9 Health probes, §10 First deploy, §11 Recovery, §14 Two-Postgres, §15 Backup+restore, §16 First-admin, §25 Serilog Console-only, §26 CorrelationId. E17 appended §25/§26/§27 at the END (after §24), so the earlier §7–§16 numbering did NOT shift — cross-links resolve. RUNBOOK cross-links by section NUMBER (+ subsection in prose) for robustness against future anchor-slug drift.
+- [x] 0.3 Confirmed [backend/Dockerfile](../../backend/Dockerfile) installs `postgresql-client-17` (A45 — `pg_restore` reachable in the `api` container).
+- [x] 0.4 DEC-1=A (cross-link index) + DEC-2=A (all 7 incidents) resolved via A41 autonomous-mode escape — see Debug Log References.
+- [x] 0.5 Spike outcome recorded in Dev Agent Record.
 
 ### Task 1: Author the RUNBOOK skeleton + preface + TOC (AC-1, AC-8)
 
-- [ ] 1.1 Create `RUNBOOK-beta.md` with H1 title, "How to use this runbook" preface, and a linked TOC.
-- [ ] 1.2 Lay down all section headers including the two E19 stub sections (AC-8) clearly marked "authored by E19-S1 / E19-S3 — placeholder".
+- [x] 1.1 Created `RUNBOOK-beta.md` with SPDX header, H1, "How to use this runbook" preface, and a linked TOC.
+- [x] 1.2 Laid down all section headers incl. the two E19 stub sections §8 (E19-S1) + §9 (E19-S3), each blockquote-marked "Placeholder — authored by E19-Sx … Not yet authored" (AC-8).
 
 ### Task 2: Author Deploy / Rollback / Logs sections (AC-2, AC-3, AC-5)
 
-- [ ] 2.1 `## Deploy` — routine deploy summary + docs/14 §10 cross-link; `:beta` vs `:sha-` tag note.
-- [ ] 2.2 `## Rollback` — `:sha-<commit>` redeploy steps + `:beta`-is-not-a-rollback-target warning + `/about` commit cross-check; docs/14 §11.4 + ADR-014 cross-links.
-- [ ] 2.3 `## Logs` — Railway Logs tab + `railway logs --service`; Console-only/no-file-sink note; docs/14 §25/§26 cross-links.
+- [x] 2.1 §1 Deploy — push-to-deploy summary + setup-guide §10 cross-link; `:beta` (moving) vs `:sha-<commit>` (immutable, no `:latest`) note + `/about` commitSha.
+- [x] 2.2 §2 Rollback — `:sha-<commit>` redeploy steps + `:beta`-is-not-a-rollback-target warning + `/about` cross-check; setup-guide §11 + ADR-014.
+- [x] 2.3 §4 Logs — Railway Logs tab + `railway logs --service` (`[!]` marked) + Console-only/no-file-sink note + CorrelationId; setup-guide §25/§26.
 
 ### Task 3: Author Database-restore section (AC-4)
 
-- [ ] 3.1 `## Database restore` — locate object → C# `BackupEncryption` decrypt (NOT OpenSSL) → gunzip → `pg_restore --clean --if-exists` into throwaway → row-count validation; docs/14 §15.5 cross-link.
-- [ ] 3.2 State ADR-019 single-RustFS blast-radius caveat + `Backup__EncryptionKey` archival requirement.
-- [ ] 3.3 A40: confirm every restore command is present-and-verified in docs/14 §15.5 OR mark `[!] verify before executing`.
+- [x] 3.1 §3 Database restore — locate object → C# `BackupEncryption` decrypt (explicitly NOT OpenSSL; `[12-byte nonce][16-byte tag][ciphertext]` AES-256-GCM) → gunzip → `pg_restore --clean --if-exists` into throwaway → row-count validation; setup-guide §15.
+- [x] 3.2 Stated ADR-019 single-RustFS blast-radius caveat + `Backup__EncryptionKey` single-key archival requirement.
+- [x] 3.3 A40: `pg_restore`/`railway shell`/decrypt-invocation marked `[!] verify before executing`; `pg_restore` form matches setup-guide §15.
 
 ### Task 4: Author incident playbooks (AC-6) + bootstrap pointer (AC-7)
 
-- [ ] 4.1 Incident (a) Keycloak crash-loop — S/D/F/V; `kc.sh bootstrap-admin user --password:env` recovery via docs/14 §11.2.
-- [ ] 4.2 Incident (b) API unhealthy — S/D/F/V; five-anchor `Keycloak__Authority` parity via docs/14 §6.3.
-- [ ] 4.3 Incident (c) `redirect_uri` mismatch — S/D/F/V; `IABCONNECT_BETA_HOST` scheme via docs/14 §5.3.
-- [ ] 4.4 Incident (d) DB connection refused / migration fail — S/D/F/V; `${{postgres-app.RAILWAY_PRIVATE_DOMAIN}}` checks via docs/14 §14.3.1.
-- [ ] 4.5 Incident (e) RustFS unreachable / upload fail — S/D/F/V; `rustfs.railway.internal:9000` via docs/14 §8.4.
-- [ ] 4.6 (DEC-2=A) Incident (f) healthcheck timeout on deploy — S/D/F/V; docs/14 §9.1 60s timeout rationale.
-- [ ] 4.7 (DEC-2=A) Incident (g) backup-key rotated, old backups unrecoverable — S/D/F/V; docs/14 §15.7 key-archival.
-- [ ] 4.8 `## Bootstrap` first-Beta-Admin pointer + anti-patterns; docs/14 §16 cross-link (AC-7).
+- [x] 4.1 §6.1 Keycloak crash-loop — S/D/F/V; `kc.sh bootstrap-admin user --password:env` recovery via setup-guide §11.2.
+- [x] 4.2 §6.2 API unhealthy — S/D/F/V; five-anchor `Keycloak__Authority` parity.
+- [x] 4.3 §6.3 `redirect_uri` mismatch — S/D/F/V; `IABCONNECT_BETA_HOST` `https://` scheme via setup-guide §5.
+- [x] 4.4 §6.4 DB connection refused / migration fail — S/D/F/V; `${{postgres-app.RAILWAY_PRIVATE_DOMAIN}}` checks via setup-guide §14.
+- [x] 4.5 §6.5 RustFS unreachable / upload fail — S/D/F/V; `rustfs.railway.internal:9000` via setup-guide §8.
+- [x] 4.6 (DEC-2=A) §6.6 healthcheck timeout on deploy — S/D/F/V; setup-guide §9 60s timeout rationale.
+- [x] 4.7 (DEC-2=A) §6.7 backup-key rotated, old backups undecryptable — S/D/F/V; setup-guide §15/§7 key-archival.
+- [x] 4.8 §5 Bootstrap first-Beta-Admin pointer + 4 anti-patterns; setup-guide §16 cross-link (AC-7).
 
 ### Task 5: A42 reread-as-a-stranger pass + Quality-Gates closing (AC-9, AC-10)
 
-- [ ] 5.1 A42 six-category reread: (1) cross-section contradictions; (2) pre-filled placeholders (the two E19 stubs must read as not-yet-authored); (3) stale anchors (verify every docs/14 §N link resolves post-E17 renumber); (4) imprecise claims vs. actual code/config; (5) sprint-tracking leakage into operator-facing prose; (6) A45 binary reachability (`pg_restore` in image; `BackupEncryption` is C# not OpenSSL; `railway` CLI is operator-provided — say so).
-- [ ] 5.2 AC-9 no-contradiction check: grep the RUNBOOK for every tag/hostname/env-var/path and diff against docs/14 + code.
-- [ ] 5.3 AC-Subitem Completion Check (A29) — per-AC evidence in the Quality-Gates table; AC-6 produces one row per incident (a..g).
-- [ ] 5.4 AC-10 + live-fire incident verification deferred per A47 → Completion Notes Q-items.
-- [ ] 5.5 Flip status to `review`.
+- [x] 5.1 A42 six-category reread complete: (1) no cross-section contradictions; (2) the two E19 stubs read clearly as not-yet-authored placeholders; (3) cross-links use section NUMBERS (robust to slug drift) — verified §7–§16/§25/§26 numbering stable; (4) every command/tag/host/env-var matches code+docs/14 (`:sha-`, `postgres-app.railway.internal`, `Backup__EncryptionKey`, `/health/ready`, `rustfs.railway.internal:9000`); (5) no sprint-tracking leakage in operator prose; (6) A45 — `pg_restore` in image, `BackupEncryption` is C# (not openssl), `railway`/`kc.sh` operator-provided + `[!]`-marked.
+- [x] 5.2 AC-9 no-contradiction check: tags/hostnames/env-vars/paths cross-checked against docs/14 + architecture.md — consistent.
+- [x] 5.3 AC-Subitem Completion Check (A29) — Quality-Gates table has one row per incident (6.1–6.7).
+- [!] 5.4 AC-10 peer read-through + live-fire rollback/restore drill deferred per A47 → Completion Notes Q1/Q2 (needs a human reader + green Beta deploy).
+- [x] 5.5 Status flipped to `review`.
 
 ## Dev Notes
 
@@ -158,24 +158,24 @@ This story was authored from the 19-line 2026-05-15 stub against post-Epic-17 re
 
 ## Quality-Gates Closing
 
-| AC | Planned evidence | Status |
+| AC | Evidence | Status |
 |---|---|---|
-| AC-1 file + preface + TOC | RUNBOOK-beta.md created | _pending dev-story_ |
-| AC-2 Deploy | `## Deploy` + docs/14 §10 cross-link | _pending_ |
-| AC-3 Rollback | `## Rollback` + `:sha-` steps + ADR-014/§11.4 | _pending_ |
-| AC-4 Restore | `## Database restore` + §15.5 + ADR-019 caveat | _pending_ |
-| AC-5 Logs | `## Logs` + §25/§26 + Console-only note | _pending_ |
-| AC-6 (a) Keycloak crash-loop | incident playbook S/D/F/V | _pending_ |
-| AC-6 (b) API unhealthy | incident playbook S/D/F/V | _pending_ |
-| AC-6 (c) redirect_uri | incident playbook S/D/F/V | _pending_ |
-| AC-6 (d) DB refused | incident playbook S/D/F/V | _pending_ |
-| AC-6 (e) RustFS | incident playbook S/D/F/V | _pending_ |
-| AC-6 (f) healthcheck timeout (DEC-2=A) | incident playbook S/D/F/V | _pending_ |
-| AC-6 (g) backup-key (DEC-2=A) | incident playbook S/D/F/V | _pending_ |
-| AC-7 first-admin pointer | `## Bootstrap` + §16 cross-link + anti-patterns | _pending_ |
-| AC-8 E19 stub sections | two marked placeholder sections | _pending_ |
-| AC-9 no contradiction | A42 reread + grep diff vs docs/14 | _pending_ |
-| AC-10 peer read-through | live walkthrough (Q-item) | _deferred-pending-beta-green (A47)_ |
+| AC-1 file + preface + TOC | RUNBOOK-beta.md created: SPDX + H1 + "How to use" preface + linked TOC | covered |
+| AC-2 Deploy | §1 Deploy + setup-guide §10 cross-link + `:beta`/`:sha-` note | covered |
+| AC-3 Rollback | §2 Rollback + `:sha-<commit>` steps + `:beta`-not-a-target + ADR-014/§11 | covered |
+| AC-4 Restore | §3 Database restore + BackupEncryption(not-openssl) + pg_restore + §15 + ADR-019 caveat | covered |
+| AC-5 Logs | §4 Logs + §25/§26 + Console-only/no-file-sink + CorrelationId | covered |
+| AC-6 (6.1) Keycloak crash-loop | S/D/F/V playbook + kc.sh recovery via §11.2 | covered |
+| AC-6 (6.2) API unhealthy | S/D/F/V playbook + five-anchor parity | covered |
+| AC-6 (6.3) redirect_uri | S/D/F/V playbook + IABCONNECT_BETA_HOST scheme via §5 | covered |
+| AC-6 (6.4) DB refused | S/D/F/V playbook + RAILWAY_PRIVATE_DOMAIN checks via §14 | covered |
+| AC-6 (6.5) RustFS | S/D/F/V playbook + rustfs.railway.internal:9000 via §8 | covered |
+| AC-6 (6.6) healthcheck timeout (DEC-2=A) | S/D/F/V playbook + §9 60s rationale | covered |
+| AC-6 (6.7) backup-key (DEC-2=A) | S/D/F/V playbook + §15/§7 key-archival | covered |
+| AC-7 first-admin pointer | §5 Bootstrap + §16 cross-link + 4 anti-patterns | covered |
+| AC-8 E19 stub sections | §8 (E19-S1) + §9 (E19-S3) marked placeholder | covered |
+| AC-9 no contradiction | A42 reread + tag/host/env-var/path diff vs docs/14 + architecture.md | covered |
+| AC-10 peer read-through + live-fire drill | live walkthrough (Q1/Q2) | deferred-pending-beta-green (A47) |
 
 ## Tests / Evidence
 
@@ -187,19 +187,48 @@ This story was authored from the 19-line 2026-05-15 stub against post-Epic-17 re
 
 ### Agent Model Used
 
-_(to be filled by dev-story)_
+claude-opus-4-8[1m] (Opus 4.8, 1M context)
 
 ### Debug Log References
 
-_(DEC-1 + DEC-2 resolution per A43 (a)/(b)/(c) template to be recorded here)_
+**DEC-1 (RUNBOOK depth vs. docs/14 cross-linking) — resolved A via A41 autonomous-mode escape per A43 (a)/(b)/(c):**
+- (a) **Option chosen:** A (incident-first index that cross-links docs/14 for routine procedures; self-contained only for the Symptoms/Diagnose/Fix/Verify incident playbooks).
+- (b) **Rationale:** story recommendation = A; user autonomous-mode verbatim quote = "das ganze epic umsetzen ohne unterbrechung und ohne stop bis alle stories implementiert sind. danach gemäss plan eine retro durchführen." (2026-06-05); architectural justification = honours E15-S4 DEC-1=A cross-link resolution + the A38 doc-bundle write-once rule (re-pasting docs/14 commands would create N drift surfaces).
+- (c) **Consequence chain:** §1/§2/§3/§4/§5 are summaries + setup-guide cross-links; §6 incident playbooks are self-contained S/D/F/V; zero command duplication with docs/14.
+
+**DEC-2 (incident count — five vs. seven) — resolved A via A41 autonomous-mode escape per A43 (a)/(b)/(c):**
+- (a) **Option chosen:** A (author all seven documented incidents, not just the five mandatory).
+- (b) **Rationale:** story recommendation = A (post-MVP); user autonomous-mode verbatim quote = same as DEC-1 + the standing "es handelt sich nicht mehr um ein mvp" posture; architectural justification = all seven are already root-caused in docs/14, so the marginal cost is low and the catalogue is strictly more useful at incident time.
+- (c) **Consequence chain:** §6 contains 6.1–6.7 (the 5 mandatory + 6.6 healthcheck-timeout + 6.7 backup-key-rotation); AC-6 Quality-Gates table has 7 rows.
+
+### Spike outcome (Task 0.5)
+
+`RUNBOOK-beta.md` was genuinely absent. docs/14 sections to cross-link were confirmed stable (E17 appended §25–§27 at the end, so §7–§16 numbering is unchanged). `postgresql-client-17` confirmed in backend/Dockerfile (restore reachability). The RUNBOOK cross-links docs/14 by section NUMBER (with subsection in prose) rather than by anchor-slug, so future heading-text edits don't break the links. Pure documentation deliverable — zero production code, zero automated tests.
 
 ### Completion Notes List
 
-_(to be filled by dev-story — include the A47 unified-walkthrough Q-items for AC-10 peer read-through + live-fire drills)_
+- **What was implemented:** `_bmad-output/implementation-artifacts/RUNBOOK-beta.md` (~210 lines) — an incident-first operator runbook: §1 Deploy, §2 Rollback, §3 Database restore, §4 Logs, §5 Bootstrap (first Beta-Admin), §6 seven incident playbooks (S/D/F/V), §7 Quick reference, §8/§9 marked E19 placeholder sections.
+- **DEC-1=A + DEC-2=A** auto-resolved via A41 (user pre-declared full-epic autonomous mode); (a)/(b)/(c) Debug Log above.
+- **A38 doc-bundle:** this RUNBOOK is the anchor; §8 (E19-S1 custom-domain) + §9 (E19-S3 NFR gate) are stub sections so those stories append without renumbering.
+- **Zero production code / zero tests** — documentation artifact; correctness enforced by the A42 reread (AC-9, clean).
+
+### Unified human-verify queue (per A47 surface convention)
+
+- **Q1 (AC-10 peer read-through):** during the Wave-9 unified walkthrough, a peer unfamiliar with the operational details reads the runbook and confirms each procedure is executable as written.
+- **Q2 (AC-10 live-fire):** on a green Beta deploy, validate at least the rollback (`:sha-` redeploy) + a restore-into-throwaway drill (the latter overlaps E19-S2's backup-restore drill).
 
 ### File List
 
-_(to be filled by dev-story — expected NEW: `_bmad-output/implementation-artifacts/RUNBOOK-beta.md`; MODIFIED: `sprint-status.yaml`)_
+**NEW:**
+- `_bmad-output/implementation-artifacts/RUNBOOK-beta.md`
+
+**MODIFIED:**
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (e18-s1: ready-for-dev → in-progress → review)
+- `_bmad-output/implementation-artifacts/e18-s1-author-runbook-beta.md` (this story file: tasks/record/status)
+
+### Change Log
+
+- 2026-06-05 — E18-S1 dev-story: authored `RUNBOOK-beta.md` (incident-first operator runbook, 7 S/D/F/V playbooks, cross-links docs/14 by section number, A38 anchor with E19 stub sections). DEC-1=A + DEC-2=A auto-resolved via A41. AC-1..AC-9 covered; AC-10 (peer read-through + live-fire) deferred-pending-beta-green per A47 → Q1/Q2. Zero production code, zero tests.
 
 ## Project Context Reference
 
@@ -214,6 +243,6 @@ _(to be filled by dev-story — expected NEW: `_bmad-output/implementation-artif
 
 ## Story Completion Status
 
-Status: ready-for-dev
+Status: review (was: ready-for-dev; flipped by dev-story 2026-06-05)
 
-Ultimate context engine analysis completed — comprehensive developer guide created. The dev-agent's job is to AUTHOR the RUNBOOK as an incident-first operator index that cross-links docs/14, owning the Symptoms/Diagnose/Fix/Verify incident playbooks (the layer docs/14 lacks), and to lay the A38 stub sections for E19.
+RUNBOOK-beta.md authored as an incident-first operator index cross-linking docs/14, with 7 self-contained S/D/F/V incident playbooks and the A38 E19 stub sections. AC-1..AC-9 covered; AC-10 (peer read-through + live-fire drill) deferred-pending-beta-green per A47 → unified Wave-9 walkthrough Q1/Q2.

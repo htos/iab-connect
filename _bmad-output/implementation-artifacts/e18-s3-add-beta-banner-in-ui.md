@@ -1,6 +1,6 @@
 # Story E18-S3: Beta banner in UI
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -69,35 +69,35 @@ As **a Beta tester**, I want **a persistent orange BETA banner**, so that **I al
 
 ### Task 0: Spike — confirm shipped state + resolve DECs (A28 spike-first)
 
-- [ ] 0.1 Confirm `BetaBanner.tsx` + `BetaBanner.test.tsx` present at `frontend/src/components/navigation/` and read both.
-- [ ] 0.2 Confirm `<BetaBanner />` mounted in `frontend/src/app/layout.tsx`.
-- [ ] 0.3 Confirm `de.json` `beta.bannerMessage` == `"Beta — Daten können jederzeit zurückgesetzt werden"` byte-for-byte and `en.json` has the parallel key.
-- [ ] 0.4 Confirm `NEXT_PUBLIC_ENV_LABEL` wiring (Dockerfile ARG+ENV, build-images.yml branch-scope, .env.example).
-- [ ] 0.5 Inventory which AC sub-items the existing 11 tests already cover vs. the gaps (AC-2 orange bg, AC-3 de.json parity, AC-5 layout integration).
-- [ ] 0.6 Resolve DEC-1 + DEC-2 (A41 escape per A43 if pre-declared; else AskUserQuestion).
-- [ ] 0.7 Record spike outcome in Dev Agent Record.
+- [x] 0.1 Confirmed `BetaBanner.tsx` (112 lines) + `BetaBanner.test.tsx` present at `frontend/src/components/navigation/`; read both.
+- [x] 0.2 Confirmed `<BetaBanner />` mounted in `frontend/src/app/layout.tsx:64`, imported from `@/components/navigation/BetaBanner` (line 6).
+- [x] 0.3 Confirmed `de.json` `beta.bannerMessage` == `"Beta — Daten können jederzeit zurückgesetzt werden"` byte-for-byte; `en.json` has the parallel key.
+- [x] 0.4 Confirmed `NEXT_PUBLIC_ENV_LABEL` wiring (Dockerfile:54,63 ARG+ENV; build-images.yml:192 branch-scope; .env.example:54).
+- [x] 0.5 Coverage inventory: existing suite covers AC-1/AC-4/AC-6; gaps = AC-2 orange-bg, AC-3 de.json parity, AC-5 layout integration.
+- [x] 0.6 DEC-1=A (accept shipped; no regress) + DEC-2=A (extend jsdom + add pure-Node parity) resolved via A41 — see Debug Log References.
+- [x] 0.7 Spike outcome recorded in Dev Agent Record.
 
 ### Task 1: Verify the shipped AC sub-items already covered (AC-1, AC-4, AC-6)
 
-- [ ] 1.1 Run the existing `BetaBanner.test.tsx` — confirm all 11 pass.
-- [ ] 1.2 Map each passing test to its AC sub-item in the Quality-Gates table (AC-1 render/null/case-insensitive; AC-4 dismiss/persist/stays-hidden; AC-6 a11y/Safari).
+- [x] 1.1 Ran existing `BetaBanner.test.tsx` — 14 tests pass (the `it.each` case-insensitive block expands to 4). Baseline green.
+- [x] 1.2 Mapped passing tests to AC sub-items in the Quality-Gates table (AC-1 render/null/case-insensitive; AC-4 dismiss/persist/stays-hidden; AC-6 a11y/Safari).
 
 ### Task 2: Close the regression-coverage gaps (AC-2, AC-3, AC-5)
 
-- [ ] 2.1 (DEC-2=A) Extend `BetaBanner.test.tsx`: assert the banner root carries the `bg-orange-500` class when rendered with `NEXT_PUBLIC_ENV_LABEL=beta` (AC-2).
-- [ ] 2.2 (DEC-2=A) Add pure-Node `frontend/src/components/navigation/BetaBanner.i18n.test.ts` (NO jsdom, NO cleanup per A46): read `messages/de.json` + assert `beta.bannerMessage` == the AC string byte-for-byte (A51 direct-artifact-read); read `messages/en.json` + assert `beta.bannerMessage` exists (locale parity) (AC-3).
-- [ ] 2.3 (DEC-2=A) In the same pure-Node file (or a `layout` code-audit test): read `frontend/src/app/layout.tsx` + assert it imports `BetaBanner` from the navigation path AND uses `<BetaBanner` in JSX (AC-5 — fails if a future refactor drops the banner).
+- [x] 2.1 (DEC-2=A) Extended `BetaBanner.test.tsx`: new test asserts the banner root `role="status"` carries `bg-orange-500` when `NEXT_PUBLIC_ENV_LABEL=beta` (AC-2). Suite now 15 tests.
+- [x] 2.2 (DEC-2=A) Added pure-Node `frontend/src/components/navigation/BetaBanner.i18n.test.ts` (no jsdom/cleanup per A46): asserts `de.json` `beta.bannerMessage` == AC string byte-for-byte (A51) + `en.json` parallel key + identical `beta` key set across both locales (AC-3). 4 tests.
+- [x] 2.3 (DEC-2=A) Same pure-Node file: reads `src/app/layout.tsx` + asserts the `BetaBanner` import from a `navigation/BetaBanner` path AND `<BetaBanner` JSX usage (AC-5 — fails if a refactor drops the banner).
 
 ### Task 3: Quality gates (AC-7) + close (AC-8 deferred)
 
-- [ ] 3.1 `npm run typecheck` — clean.
-- [ ] 3.2 `npm run lint` — clean.
-- [ ] 3.3 `npm run format:check` — clean (Prettier: double quotes, semicolons, 2-space, Tailwind class sort).
-- [ ] 3.4 `npm test` (Vitest) — full frontend suite green; record the new test count delta.
-- [ ] 3.5 Confirm zero new `package.json` dependencies (AC-7).
-- [ ] 3.6 AC-Subitem Completion Check (A29) — fill the Quality-Gates table per AC sub-item.
-- [ ] 3.7 AC-8 live visual check deferred per A47 → Completion Notes Q-item.
-- [ ] 3.8 Flip status to `review`.
+- [x] 3.1 `npm run typecheck` (`tsc --noEmit`) — clean.
+- [x] 3.2 `eslint` on the 2 changed files — clean (exit 0). (Repo-wide `npm run lint` has PRE-EXISTING errors in unrelated files, e.g. a segments component's `set-state-in-effect`; not introduced by this story.)
+- [x] 3.3 `prettier --check` on the 2 changed files — clean after one `--write` on the new test file. (Repo-wide `format:check` reports ~2543 pre-existing style-drift files unrelated to this story.)
+- [x] 3.4 `npx vitest run` (full frontend suite) — **171 passed / 24 files** (was 166; +5 from this story: +1 orange-bg in BetaBanner.test.tsx, +4 in BetaBanner.i18n.test.ts). Zero regressions.
+- [x] 3.5 Confirmed zero new `package.json` dependencies (AC-7).
+- [x] 3.6 AC-Subitem Completion Check (A29) — Quality-Gates table filled per AC sub-item.
+- [!] 3.7 AC-8 live visual check on Beta deferred per A47 → Completion Notes Q1 (needs green Beta deploy + browser).
+- [x] 3.8 Status flipped to `review`.
 
 ## Dev Notes
 
@@ -135,16 +135,16 @@ render-when-beta · null-when-unset · null-when-non-beta · feedback-link-env-o
 
 ## Quality-Gates Closing
 
-| AC | Planned evidence | Status |
+| AC | Evidence | Status |
 |---|---|---|
-| AC-1 conditional render | existing render/null/case-insensitive tests | _pending verify_ |
-| AC-2 orange background | NEW assertion in BetaBanner.test.tsx | _pending dev-story_ |
-| AC-3 exact text via i18n | NEW pure-Node de.json/en.json parity test (A51) | _pending_ |
-| AC-4 dismissable per session | existing dismiss/persist/stays-hidden/Safari tests | _pending verify_ |
-| AC-5 layout integration | NEW code-audit read of layout.tsx | _pending_ |
-| AC-6 a11y + Safari-safe | existing a11y + Safari throw tests | _pending verify_ |
-| AC-7 no new deps + gates clean | typecheck/lint/format/vitest green | _pending_ |
-| AC-8 live visual check | live walkthrough (Q-item) | _deferred-pending-beta-green (A47)_ |
+| AC-1 conditional render | BetaBanner.test.tsx: render-when-beta / null-when-unset / null-when-non-beta / case-insensitive×4 | covered |
+| AC-2 orange background | BetaBanner.test.tsx "renders with an orange background fill" → `toHaveClass("bg-orange-500")` | covered |
+| AC-3 exact text via i18n | BetaBanner.i18n.test.ts: de.json byte-equal + en.json parity + identical beta key set (A51) | covered |
+| AC-4 dismissable per session | BetaBanner.test.tsx: dismiss+persist / stays-hidden-when-pre-dismissed / Safari setItem | covered |
+| AC-5 layout integration | BetaBanner.i18n.test.ts: layout.tsx import-from-navigation + `<BetaBanner` JSX | covered |
+| AC-6 a11y + Safari-safe | BetaBanner.test.tsx: role/aria assertions + Safari getItem/setItem throw tests | covered |
+| AC-7 no new deps + gates | typecheck clean; eslint+prettier clean on changed files; full vitest 171/171; zero new deps | covered |
+| AC-8 live visual check | live walkthrough (Q1) | deferred-pending-beta-green (A47) |
 
 ## Tests / Evidence
 
@@ -156,19 +156,48 @@ render-when-beta · null-when-unset · null-when-non-beta · feedback-link-env-o
 
 ### Agent Model Used
 
-_(to be filled by dev-story)_
+claude-opus-4-8[1m] (Opus 4.8, 1M context)
 
 ### Debug Log References
 
-_(DEC-1 + DEC-2 resolution per A43 (a)/(b)/(c) template to be recorded here)_
+**DEC-1 (reconcile AC-literal divergences) — resolved A via A41 autonomous-mode escape per A43 (a)/(b)/(c):**
+- (a) **Option chosen:** A (accept the shipped implementation as canonical — `navigation/` path, i18n key, `bg-orange-500`; add regression coverage only; do NOT regress to the AC literal).
+- (b) **Rationale:** story recommendation = A; user autonomous-mode verbatim quote = "das ganze epic umsetzen ohne unterbrechung und ohne stop bis alle stories implementiert sind. danach gemäss plan eine retro durchführen." (2026-06-05); architectural justification = the i18n key is MANDATED by the project next-intl rule (hardcoding the German literal would be the violation) and `de.json` already matches the AC string byte-for-byte; `navigation/` is the chrome-component convention; `orange-500` is the established banner fill. "Fixing" any of these would regress a compliant, tested component + break the layout import.
+- (c) **Consequence chain:** zero production-code change; the banner/test/layout/env stay as-shipped; net work = +1 orange-bg test + a new pure-Node parity test.
+
+**DEC-2 (where to add the coverage-gap tests) — resolved A via A41 autonomous-mode escape per A43 (a)/(b)/(c):**
+- (a) **Option chosen:** A (render-assertions extend the jsdom `BetaBanner.test.tsx`; parity-assertions get a pure-Node `BetaBanner.i18n.test.ts`).
+- (b) **Rationale:** story recommendation = A; same user quote; architectural justification = A46 — the de.json/en.json/layout reads are pure `node:fs` + JSON/regex, so they belong in a no-jsdom/no-cleanup file; forcing them into the jsdom file would be the A46 anti-pattern.
+- (c) **Consequence chain:** orange-bg assertion → BetaBanner.test.tsx (jsdom render); de.json/en.json/layout parity → BetaBanner.i18n.test.ts (pure-Node).
+
+### Spike outcome (Task 0.7)
+
+The banner, its test suite, the env wiring, and the layout integration ALREADY SHIP and are compliant. de.json `beta.bannerMessage` is byte-equal to the AC-mandated German string. Story = verification + 3 regression-coverage gaps (orange-bg, de.json string parity, layout integration). Zero production-code change.
 
 ### Completion Notes List
 
-_(to be filled — include the A47 Q-item for AC-8 live visual check; note that zero production code changed, only tests added)_
+- **What was implemented:** +1 jsdom test (orange-bg, AC-2) appended to `BetaBanner.test.tsx`; +4 pure-Node tests in new `BetaBanner.i18n.test.ts` (de.json byte-equal AC-3, en.json parity, beta key-set parity, layout integration AC-5). A51 direct-artifact-read; A46-compliant (pure-Node file has no jsdom/cleanup).
+- **Zero production code changed** — the banner is verified, not modified. DEC-1=A explicitly avoids regressing the shipped i18n/path/colour.
+- **Gates:** typecheck clean; eslint+prettier clean on changed files; full frontend suite 166 → **171** green; zero new deps.
+- **DEC-1=A + DEC-2=A** auto-resolved via A41; (a)/(b)/(c) Debug Log above.
+
+### Unified human-verify queue (per A47 surface convention)
+
+- **Q1 (AC-8 live visual check):** on a green Beta deploy, confirm the orange banner is visible on a public route, shows the German text, the feedback link is clickable, and dismiss hides it for the session.
 
 ### File List
 
-_(expected NEW: `frontend/src/components/navigation/BetaBanner.i18n.test.ts`; MODIFIED: `BetaBanner.test.tsx`, `sprint-status.yaml`)_
+**NEW:**
+- `frontend/src/components/navigation/BetaBanner.i18n.test.ts` (4 pure-Node tests)
+
+**MODIFIED:**
+- `frontend/src/components/navigation/BetaBanner.test.tsx` (+1 orange-bg test → 15 tests)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (e18-s3: ready-for-dev → in-progress → review)
+- `_bmad-output/implementation-artifacts/e18-s3-add-beta-banner-in-ui.md` (this story file)
+
+### Change Log
+
+- 2026-06-05 — E18-S3 dev-story: verification + 3 regression-coverage gaps closed (orange-bg AC-2, de.json byte-equal AC-3, layout integration AC-5) via +1 jsdom test + new pure-Node BetaBanner.i18n.test.ts. DEC-1=A (accept shipped, no regress) + DEC-2=A (jsdom+pure-Node split) auto-resolved via A41. Full frontend suite 166→171 green. AC-1..AC-7 covered; AC-8 deferred-pending-beta-green per A47 → Q1. Zero production code change.
 
 ## Project Context Reference
 
@@ -183,6 +212,6 @@ _(expected NEW: `frontend/src/components/navigation/BetaBanner.i18n.test.ts`; MO
 
 ## Story Completion Status
 
-Status: ready-for-dev
+Status: review (was: ready-for-dev; flipped by dev-story 2026-06-05)
 
-Ultimate context engine analysis completed — comprehensive developer guide created. The banner, its 11-test suite, the env wiring, and the layout integration ALREADY SHIP and are compliant; this story is verification + closing the three regression-coverage gaps (orange-bg, de.json string parity, layout integration). Do NOT regress the shipped i18n/path/colour to match the AC literal.
+Verification complete: the banner ships compliant; the 3 regression-coverage gaps (orange-bg, de.json byte-equal parity, layout integration) are closed via +1 jsdom test + a new pure-Node BetaBanner.i18n.test.ts. Full frontend suite 166→171 green; zero production-code change. AC-1..AC-7 covered; AC-8 deferred-pending-beta-green per A47 → Q1.

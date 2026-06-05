@@ -50,6 +50,16 @@ describe("BetaBanner", () => {
     );
   });
 
+  it("renders with an orange background fill (E18-S3 AC-2)", () => {
+    // The AC requires an "orange background". The shipped value is the
+    // established banner fill `bg-orange-500` (orange-600/700 is reserved for
+    // primary actions/links per the project design rule). This regression
+    // guard fails if a future restyle drops the orange fill from the banner.
+    process.env.NEXT_PUBLIC_ENV_LABEL = "beta";
+    render(<BetaBanner />);
+    expect(screen.getByRole("status")).toHaveClass("bg-orange-500");
+  });
+
   it("returns null when NEXT_PUBLIC_ENV_LABEL is unset", () => {
     delete process.env.NEXT_PUBLIC_ENV_LABEL;
     const { container } = render(<BetaBanner />);

@@ -1,5 +1,38 @@
 # generated: 2026-05-12
-# last_updated: 2026-06-05 (bmad-create-story BULK REFRESH for entire Epic-18 (Beta Test Preparation and
+# last_updated: 2026-06-05 (Epic-18 CLOSED — Beta Test Preparation and Operations Documentation. Single
+#   autonomous-mode session delivered all 4 stories + epic-boundary code review + retrospective per user
+#   directive "das ganze epic umsetzen ohne unterbrechung und ohne stop bis alle stories implementiert sind.
+#   danach gemäss plan eine retro durchführen." (2026-06-05). A41 DEC auto-resolution applied to all 8
+#   DEC-Needed surfaces ((a)/(b)/(c) Debug Log per A43); A47 escape applied to 5 [!] live-walkthrough items
+#   (unified Wave-9 walkthrough queue). **Epic summary — zero production code change:** (1) e18-s1 NEW
+#   _bmad-output/implementation-artifacts/RUNBOOK-beta.md (~210 lines): incident-first operator runbook —
+#   Deploy/Rollback/Restore/Logs/Bootstrap sections (cross-link docs/14 by section number per DEC-1=A) + 7
+#   Symptoms/Diagnose/Fix/Verify incident playbooks (DEC-2=A) + A38 stub sections §8 (E19-S1 custom-domain) +
+#   §9 (E19-S3 NFR gate). (2) e18-s2 NEW BETA-TESTER-GUIDE.md (German, 579 words, 5 sections): the Mailtrap
+#   email-verification caveat stated truthfully (testers self-register but verification mail is sandboxed →
+#   coordinate with maintainer); DEC-1=A self-registration+coordination, DEC-2=A standalone Markdown. (3)
+#   e18-s3 verification + 3 regression-coverage gaps: +1 jsdom orange-bg test in BetaBanner.test.tsx + NEW
+#   pure-Node BetaBanner.i18n.test.ts (de.json byte-equal to AC German string + en.json parity + layout
+#   integration, A51/A46); DEC-1=A accept-shipped-no-regress (i18n key + navigation/ path + orange-500 all
+#   compliant), DEC-2=A jsdom+pure-Node split. (4) e18-s4 NEW .github/ISSUE_TEMPLATE/beta-feedback.md (classic
+#   bilingual) + config.yml + NEW feedback-template.test.ts (filename-parity A51: banner template=beta-
+#   feedback.md ↔ actual file); DEC-1=A GitHub-Issues (not mailto), DEC-2=A classic .md (banner untouched).
+#   **Quality gates:** frontend Vitest 166 → 174 green (25 files); typecheck + eslint + prettier clean on all
+#   changed files; backend unaffected (no backend diff; stays 2075). **Epic-boundary code review** (3-layer
+#   adversarial per feedback_bmad_workflow hybrid CR+ER): 1 patch APPLIED — P1 RUNBOOK §6.2 removed in-container
+#   `| jq` (jq absent from the api image; A45 binary reachability, same class as E15-P2 aws-cli). Doc:
+#   epic-18-boundary-review-2026-06-05.md. **Epic-18 retrospective:** epic-18-retro-2026-06-05.md. 3 new action
+#   items A56-A58 promoted to project-context.md: A56 existing-implementation spike for feature/UI/config
+#   stories at create-story time (generalises A52 — "already-ships" recurred E14-S2 + E17-S1/S2 + E18-S3/S4);
+#   A57 runtime-image binary inventory check for documented commands (refines A45 — jq/openssl/aws/mc NOT in
+#   api image); A58 frontend quality gates on changed files until a format/lint cleanup story (repo carries
+#   ~2543 prettier-drifted files + standing lint errors). A28-A55 carry forward. **Status transitions:**
+#   e18-s1/s2/s3/s4 review → done; epic-18 in-progress → done; epic-18-retrospective optional → done. Sprint
+#   state: E1-E3 + E9-E18 + E20 all done (13 epics closed); E19 backlog (Wave-10, Production Readiness Prep —
+#   inherits RUNBOOK §8/§9 stub sections); E4-E8 deferred backlog (pre-Beta-pivot). **NEXT:** commit this epic
+#   close + start bmad-create-story for E19 in a fresh session. OUTSTANDING before Beta go-live: the unified
+#   Wave-9 walkthrough must execute the deferred [!] items across E14/E16/E17/E18 — all require a GREEN Beta
+#   deploy (Harry's live-Beta prerequisites).) ## Previously: 2026-06-05 (bmad-create-story BULK REFRESH for entire Epic-18 (Beta Test Preparation and
 #   Operations Documentation): COMPLETE. All 4 stub files (e18-s1..s4, previously 19-line generate-stubs.sh
 #   output) replaced with comprehensive dev-ready stories per A34 (bulk spec-refresh at epic start when N≥3
 #   stories in one session). Per user directive "für den ganzen nächsten epic. stoiers müssen sauber
@@ -949,12 +982,12 @@ development_status:
   e17-s4-add-external-uptime-monitoring: done
   epic-17-retrospective: done
 
-  epic-18: in-progress
-  e18-s1-author-runbook-beta: ready-for-dev
-  e18-s2-author-beta-tester-onboarding-guide: ready-for-dev
-  e18-s3-add-beta-banner-in-ui: ready-for-dev
-  e18-s4-add-feedback-channel: ready-for-dev
-  epic-18-retrospective: optional
+  epic-18: done
+  e18-s1-author-runbook-beta: done
+  e18-s2-author-beta-tester-onboarding-guide: done
+  e18-s3-add-beta-banner-in-ui: done
+  e18-s4-add-feedback-channel: done
+  epic-18-retrospective: done
 
   epic-19: backlog
   e19-s1-add-custom-domain-runbook-entry: backlog

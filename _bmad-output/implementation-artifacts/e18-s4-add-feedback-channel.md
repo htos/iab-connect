@@ -1,6 +1,6 @@
 # Story E18-S4: Feedback channel
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -67,31 +67,31 @@ As **a Beta tester**, I want **a clear feedback link in the banner that lands me
 
 ### Task 0: Spike — confirm gap + resolve DECs (A28 spike-first)
 
-- [ ] 0.1 Confirm `.github/ISSUE_TEMPLATE/` does not exist (`git ls-files .github/`).
-- [ ] 0.2 Confirm the banner URL string `template=beta-feedback.md` in [BetaBanner.tsx:77](../../frontend/src/components/navigation/BetaBanner.tsx) (the filename the template must match).
-- [ ] 0.3 Confirm the GitHub slug `htos/iab-connect` (the public repo the link targets).
-- [ ] 0.4 Resolve DEC-1 + DEC-2 (A41 escape per A43 if pre-declared; else AskUserQuestion).
-- [ ] 0.5 Record spike outcome in Dev Agent Record.
+- [x] 0.1 Confirmed `.github/ISSUE_TEMPLATE/` did not exist before this story (`.github/` had only `workflows/` + `agents/` + others).
+- [x] 0.2 Confirmed the banner URL string `template=beta-feedback.md` in [BetaBanner.tsx:77](../../frontend/src/components/navigation/BetaBanner.tsx) — the filename the template must match.
+- [x] 0.3 Confirmed the GitHub slug `htos/iab-connect` (banner fallback + .env.example default).
+- [x] 0.4 DEC-1=A (GitHub Issues) + DEC-2=A (classic `.md` + `config.yml`) resolved via A41 — see Debug Log References.
+- [x] 0.5 Spike outcome recorded in Dev Agent Record.
 
 ### Task 1: Author the issue template (AC-2, AC-4)
 
-- [ ] 1.1 Create `.github/ISSUE_TEMPLATE/beta-feedback.md` with classic frontmatter (`name`, `about`, `title: "[Beta-Feedback] "`, `labels: beta-feedback`).
-- [ ] 1.2 Body: structured sections (Umgebung/Environment = Beta; Was ich getan habe / What I did; Erwartet / Expected; Tatsächlich / Actual; Screenshots; Schweregrad / Severity). Align wording with E18-S2's tester guide (AC-4).
-- [ ] 1.3 (DEC-2=A only) Create `.github/ISSUE_TEMPLATE/config.yml` (`blank_issues_enabled: true`) (AC-5).
+- [x] 1.1 Created `.github/ISSUE_TEMPLATE/beta-feedback.md` with classic frontmatter (`name: Beta-Feedback`, `about`, `title: "[Beta-Feedback] "`, `labels: beta-feedback`, `assignees: ""`).
+- [x] 1.2 Body: bilingual DE/EN structured form — Umgebung/Environment (area + browser + Correlation-ID), Was ich getan habe / What I did, Erwartet / Expected, Tatsächlich / Actual, Screenshots/Logs (with "no secrets" note), Schweregrad / Severity (Blocker/Hoch/Mittel/Niedrig). Closing note mirrors the Mailtrap + data-reset caveat the E18-S2 guide explains (AC-4).
+- [x] 1.3 (DEC-2=A) Created `.github/ISSUE_TEMPLATE/config.yml` (`blank_issues_enabled: true`) (AC-5).
 
 ### Task 2: Lock the filename-parity invariant (AC-3)
 
-- [ ] 2.1 Add a pure-Node regression test (NO jsdom/cleanup per A46) that reads the `BetaBanner.tsx` source, extracts the `template=<name>` filename from the fallback URL, and asserts a matching file exists at `.github/ISSUE_TEMPLATE/<name>` (A51 direct-artifact-read). Co-locate sensibly (e.g. extend `BetaBanner.i18n.test.ts` from E18-S3, or a new `feedback-template.test.ts`).
-- [ ] 2.2 Confirm the test fails if either the template filename or the banner URL drifts (negative check during authoring).
+- [x] 2.1 Added pure-Node `frontend/src/components/navigation/feedback-template.test.ts` (no jsdom/cleanup per A46): reads `BetaBanner.tsx`, extracts the `template=<name>.md` filename (asserts `beta-feedback.md`), and asserts the file exists at repo-root `.github/ISSUE_TEMPLATE/<name>` (A51 — note cwd=frontend/, template is one level up via `resolve(cwd, "..", ...)`). A third test asserts the template's classic frontmatter (name/about/labels=beta-feedback/title prefix).
+- [x] 2.2 Confirmed the parity test is load-bearing: it captures the filename from the banner and asserts existence — renaming either side breaks it. 3 tests green.
 
 ### Task 3: Quality gates (AC-6) + close (AC-7 deferred)
 
-- [ ] 3.1 Confirm `BetaBanner.tsx` is NOT modified (the link already works).
-- [ ] 3.2 `npm run typecheck` / `lint` / `format:check` clean; Vitest green; record test-count delta.
-- [ ] 3.3 A42 reread of the template (operator/tester-facing): no sprint leakage, intelligible to German testers, severity guidance clear.
-- [ ] 3.4 AC-Subitem Completion Check (A29) — fill the Quality-Gates table.
-- [ ] 3.5 AC-7 end-to-end click flow deferred per A47 → Completion Notes Q-item.
-- [ ] 3.6 Flip status to `review`.
+- [x] 3.1 Confirmed `BetaBanner.tsx` is NOT modified (the link already works; `git status` shows it unchanged).
+- [x] 3.2 `typecheck` clean; `eslint`+`prettier` clean on the new test file; full frontend Vitest **171 → 174** green (+3 this story). Zero new deps.
+- [x] 3.3 A42 reread of the template: no sprint-tracking leakage; bilingual DE/EN intelligible to German testers; severity guidance + "no secrets" + Mailtrap/data-reset caveat present.
+- [x] 3.4 AC-Subitem Completion Check (A29) — Quality-Gates table filled.
+- [!] 3.5 AC-7 end-to-end click flow deferred per A47 → Completion Notes Q1 (needs public repo + logged-in GitHub user + Beta deploy).
+- [x] 3.6 Status flipped to `review`.
 
 ## Dev Notes
 
@@ -124,15 +124,15 @@ GitHub resolves `?template=beta-feedback.md` to a **classic** Markdown template 
 
 ## Quality-Gates Closing
 
-| AC | Planned evidence | Status |
+| AC | Evidence | Status |
 |---|---|---|
-| AC-1 clickable feedback link | existing BetaBanner.test.tsx URL tests | _pending verify_ |
-| AC-2 issue-template file | `.github/ISSUE_TEMPLATE/beta-feedback.md` created | _pending dev-story_ |
-| AC-3 filename parity (A31) | NEW pure-Node parity test (A51) | _pending_ |
-| AC-4 tester-aligned wording | A42 reread + E18-S2 cross-check | _pending_ |
-| AC-5 config.yml (optional) | `config.yml` if DEC-2=A, else documented out-of-scope | _pending_ |
-| AC-6 no banner change + gates | typecheck/lint/format/vitest green; BetaBanner.tsx unchanged | _pending_ |
-| AC-7 end-to-end click flow | live walkthrough (Q-item) | _deferred-pending-beta-green (A47)_ |
+| AC-1 clickable feedback link | BetaBanner.test.tsx URL tests (env-override + GitHub-fallback + fork-fallback) — verified shipped | covered |
+| AC-2 issue-template file | `.github/ISSUE_TEMPLATE/beta-feedback.md` (classic, frontmatter + bilingual structured body) | covered |
+| AC-3 filename parity (A31) | feedback-template.test.ts: banner `template=` ↔ file existence + frontmatter (A51) | covered |
+| AC-4 tester-aligned wording | A42 reread; bilingual DE/EN; Mailtrap/data-reset caveat mirrors E18-S2 | covered |
+| AC-5 config.yml | `.github/ISSUE_TEMPLATE/config.yml` (`blank_issues_enabled: true`) (DEC-2=A) | covered |
+| AC-6 no banner change + gates | BetaBanner.tsx unchanged; typecheck/eslint/prettier clean; vitest 174/174 | covered |
+| AC-7 end-to-end click flow | live walkthrough (Q1) | deferred-pending-beta-green (A47) |
 
 ## Tests / Evidence
 
@@ -144,19 +144,49 @@ GitHub resolves `?template=beta-feedback.md` to a **classic** Markdown template 
 
 ### Agent Model Used
 
-_(to be filled by dev-story)_
+claude-opus-4-8[1m] (Opus 4.8, 1M context)
 
 ### Debug Log References
 
-_(DEC-1 + DEC-2 resolution per A43 (a)/(b)/(c) template to be recorded here)_
+**DEC-1 (feedback transport: GitHub Issues vs. mailto) — resolved A via A41 autonomous-mode escape per A43 (a)/(b)/(c):**
+- (a) **Option chosen:** A (GitHub Issues classic template — confirm the already-shipped choice; create `.github/ISSUE_TEMPLATE/beta-feedback.md`).
+- (b) **Rationale:** story recommendation = A; user autonomous-mode verbatim quote = "das ganze epic umsetzen ohne unterbrechung und ohne stop bis alle stories implementiert sind. danach gemäss plan eine retro durchführen." (2026-06-05); architectural justification = the banner URL already commits to `/issues/new?template=beta-feedback.md`; mailto would regress the shipped+tested banner and leak the maintainer address into a public build var.
+- (c) **Consequence chain:** create the template file (not modify the banner); `mailto:` path out of scope.
+
+**DEC-2 (template format: classic `.md` vs. `.yml` form + config.yml) — resolved A via A41 autonomous-mode escape per A43 (a)/(b)/(c):**
+- (a) **Option chosen:** A (classic `.md` matching the shipped URL + minimal `config.yml`).
+- (b) **Rationale:** story recommendation = A; same user quote; architectural justification = the banner URL says `beta-feedback.md`; a `.yml` issue form would require editing the banner URL (regression) + changes the `?template=` resolution; classic `.md` leaves `BetaBanner.tsx` untouched.
+- (c) **Consequence chain:** `beta-feedback.md` (classic) + `config.yml` (`blank_issues_enabled: true`); banner unchanged.
+
+### Spike outcome (Task 0.5)
+
+`.github/ISSUE_TEMPLATE/` did not exist; the banner's feedback link already pointed at a non-existent `beta-feedback.md` template (silently degrading to a blank issue). The one real gap was the template file. Created it + config.yml + a filename-parity test. Zero production-code change (banner untouched).
 
 ### Completion Notes List
 
-_(to be filled — include the A47 Q-item for AC-7 end-to-end click flow; note BetaBanner.tsx unchanged)_
+- **What was implemented:** `.github/ISSUE_TEMPLATE/beta-feedback.md` (classic bilingual DE/EN feedback template) + `.github/ISSUE_TEMPLATE/config.yml` (`blank_issues_enabled: true`) + `frontend/src/components/navigation/feedback-template.test.ts` (3 pure-Node parity tests, A51/A46).
+- **Banner NOT modified** — the feedback link already worked; this story only supplies the missing template + locks the filename-parity invariant.
+- **DEC-1=A (GitHub Issues) + DEC-2=A (classic .md + config.yml)** auto-resolved via A41; (a)/(b)/(c) Debug Log above.
+- **Gates:** typecheck clean; eslint+prettier clean on the new test; full frontend suite 171 → **174** green; zero new deps.
+
+### Unified human-verify queue (per A47 surface convention)
+
+- **Q1 (AC-7 end-to-end click flow):** on a green Beta deploy, a tester clicks the banner "Feedback geben" link, lands on the pre-filled `beta-feedback` issue template on the public `htos/iab-connect` repo, and submits an issue.
 
 ### File List
 
-_(expected NEW: `.github/ISSUE_TEMPLATE/beta-feedback.md` [+ `config.yml` if DEC-2=A] + a parity test; MODIFIED: `sprint-status.yaml`)_
+**NEW:**
+- `.github/ISSUE_TEMPLATE/beta-feedback.md` (classic issue template)
+- `.github/ISSUE_TEMPLATE/config.yml`
+- `frontend/src/components/navigation/feedback-template.test.ts` (3 pure-Node tests)
+
+**MODIFIED:**
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (e18-s4: ready-for-dev → in-progress → review)
+- `_bmad-output/implementation-artifacts/e18-s4-add-feedback-channel.md` (this story file)
+
+### Change Log
+
+- 2026-06-05 — E18-S4 dev-story: created the missing `.github/ISSUE_TEMPLATE/beta-feedback.md` (classic, bilingual) + `config.yml` + a pure-Node filename-parity test locking the banner `template=beta-feedback.md` URL to the actual file (A51). DEC-1=A (GitHub Issues) + DEC-2=A (classic .md) auto-resolved via A41. BetaBanner.tsx unchanged. Full frontend suite 171→174 green. AC-1..AC-6 covered; AC-7 deferred-pending-beta-green per A47 → Q1.
 
 ## Project Context Reference
 
@@ -171,6 +201,6 @@ _(expected NEW: `.github/ISSUE_TEMPLATE/beta-feedback.md` [+ `config.yml` if DEC
 
 ## Story Completion Status
 
-Status: ready-for-dev
+Status: review (was: ready-for-dev; flipped by dev-story 2026-06-05)
 
-Ultimate context engine analysis completed — comprehensive developer guide created. The feedback LINK already ships and is tested; the one real deliverable is `.github/ISSUE_TEMPLATE/beta-feedback.md` (with a filename-parity test locking it to the banner URL). Do NOT modify the banner or switch to mailto.
+The missing `.github/ISSUE_TEMPLATE/beta-feedback.md` (+ config.yml) is shipped; a pure-Node parity test locks the banner `template=beta-feedback.md` URL to the actual filename + frontmatter. Banner unchanged; full frontend suite 171→174 green. AC-1..AC-6 covered; AC-7 deferred-pending-beta-green per A47 → Q1.
