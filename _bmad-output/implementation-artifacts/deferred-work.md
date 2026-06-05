@@ -650,3 +650,106 @@ A35 mandates `afterEach(cleanup)` on every Testing-Library-using test. The `/api
 A32 specifies "Decision-Resolution with Manual-Verify Hand-off" — Decision-Needed findings should surface via `AskUserQuestion` once before proceeding. DEC-1 (frontend `/api/health` Option A vs B vs C) was auto-resolved Option A in the same session per user "no stopping just straight forwards, implement them full" directive + the story file's own Option A recommendation.
 
 **Resolution (2026-06-01, Epic-13 retro):** A41 Path B chosen — A32 now has an explicit autonomous-mode escape clause documented in `project-context.md` requiring all three preconditions (pre-declared autonomous-mode + story-recommended option + dev-agent records (a)/(b)/(c) in Debug Log). DEC-1 resolution stands; no rework. Future sessions know the rule.
+
+---
+
+## Deferred from: code review of Epic-17 boundary (2026-06-02)
+
+Epic-17 closed Monitoring/Logging/Health (S1 Console-only Serilog + S2 CorrelationId structured logs + S4 external uptime monitoring). 3-layer adversarial boundary review produced 39 findings (12 Blind Hunter + 15 Edge Case Hunter + 12 Acceptance Auditor). **14 patches APPLIED** in-session (P1 status footers + P2 checkbox convention + P3 anchor + P4 §23 cite + P5/E2 A36 InMemoryCollection populated + P8 refresh-note + P11 §27.6 heading + P12 §27.3 reframe + E1 Logging:LogLevel parity + E3 HealthReady brace-walking + A1 Quality-Gates AC-1 evidence + A6 AC-9 sub-item expansion + A7 AC-6 sub-item enumeration + A9 A52 note + A10 Task 5.3 [!]). 14 findings deferred (below). 11 dismissed (also below).
+
+### E17-FT-1: Section anchor parsing fragile to heading-text changes
+
+[Source: E17 boundary review Edge Case Hunter E4 + Blind Hunter P3, 2026-06-02]
+
+Several E17 tests locate doc/14 sections via `IndexOf("## 25. Serilog Console-only sink")` / similar exact substrings. A future story renaming a section heading silently breaks the tests. **Action when picked up:** refactor to a SectionAnchorRegistry helper that maintains a single canonical mapping (section number → heading-text canonical form), used by all doc-vs-code A31 invariant tests. Heading renames then become a one-place edit. Targets a chore-commit between E17 and E19.
+
+### E17-FT-2: Path resolution fragile to `dotnet test --output` and CI containerization
+
+[Source: E17 boundary review Edge Case Hunter E9, 2026-06-02]
+
+Every E17 test file uses 5/6-level `..` path traversal from `AppContext.BaseDirectory`. Works for standard `dotnet test` but fails under `--output ./custom-output`, `dotnet publish` of test project, or VSTest with `/Platform:x86` (extra subfolder). **Action when picked up:** replace `..` traversal with an ancestor-walking helper that searches for `IabConnect.sln` and resolves from that anchor. Targets the next CI hardening epic; not blocking pre-Railway-deploy.
+
+### E17-FT-3: Regex evasion via Serilog wrapper sinks (Async, Logger, Conditional)
+
+[Source: E17 boundary review Edge Case Hunter E5 + E6, 2026-06-02]
+
+`BootstrapSerilogConfigurationTests` uses `\.WriteTo\.File\s*\(` regex. A future `WriteTo.Async(c => c.File(...))` for low-latency startup buffering evades the regex (the inner `c.File(` is preceded by `c.`, not `.WriteTo.`). Same risk for `.WriteTo.Logger(lc => lc.WriteTo.File(...))` and `AuditTo.File(...)`. **Action when picked up:** broaden the bootstrap regex to match `\bFile\s*\(` anywhere within the LoggerConfiguration→CreateBootstrapLogger chain; add assertions against `.WriteTo.Async(` / `.WriteTo.Logger(` / `.WriteTo.Conditional(`. Also extend AC-6 to detect a Testing-branch `Log.Logger = new LoggerConfiguration(...)` reassignment. Trigger: next story that touches Serilog setup OR Serilog 5.x upgrade.
+
+### E17-FT-4: Layering / contract A31 invariant tests are text-coarse
+
+[Source: E17 boundary review Edge Case Hunter E14 + Acceptance Auditor A8, 2026-06-02]
+
+The current `LayeringMatrix_MatchesDocs14Section25_AC9` checks the section contains each environment label as a substring + `\bFile\b` count ≥1 anywhere. A doc that misstates "Beta = Console + File" or "Development = Console only" still passes. **Action when picked up:** extract the Section 25.2 markdown table rows via regex (`| Development | ... | Console + File | ... |`), parse each Effective-WriteTo cell, assert byte-for-byte parity. Same hardening for `Docs14Section26_MatchesRuntimeSources_AC11` and `HealthReady_PathReferencesParity_AC10`. Current coverage catches whole-section deletion (most likely regression).
+
+### E17-FT-5: `ReadWriteToSinkNames` ignores bare-string WriteTo + Using array
+
+[Source: E17 boundary review Edge Case Hunter E10, 2026-06-02]
+
+Serilog allows `"Using": ["Serilog.Sinks.File"], "WriteTo": ["File"]`. Current helper filters on `JsonValueKind.Object && HasProperty("Name")` and skips bare-string entries, returning empty list. AC-4's `NotContain("File")` passes on a file-sink-active config. **Action when picked up:** extend helper to handle `JsonValueKind.String` entries + enumerate `Serilog:Using` and assert non-Development overlays don't list `Serilog.Sinks.File`. Trigger: if any future story refactors the Serilog config to bare-string form.
+
+### E17-FT-6: Concurrent-isolation test (AC-7) missing ContainKey guard
+
+[Source: E17 boundary review Edge Case Hunter E7 + Acceptance Auditor A2, 2026-06-02]
+
+`LogContext_IsolatesCorrelationIdAcrossConcurrentTasks_AC7` accesses `evt.Properties["CorrelationId"]` directly. A regression making PushProperty a no-op throws KeyNotFoundException instead of a clear assertion failure. **Action when picked up:** add explicit `.Should().ContainKey("CorrelationId")` before the indexer access. Trigger: Serilog 5.x upgrade that may change LogContext semantics.
+
+### E17-FT-7: A36 doc-vs-code parity tightening for log levels
+
+[Source: E17 boundary review Acceptance Auditor A4, 2026-06-02]
+
+`Docs14Section26_MatchesRuntimeSources_AC11` asserts Section 26 contains literal strings `Information` and `Warning` — but doesn't extract specific values from `appsettings.json` and assert they appear in matching contexts within Section 26.3. **Action when picked up:** extract each log-level value from `appsettings.json` and assert each appears within a 100-char window of the matching key name in Section 26.3. Trigger: when Section 26 grows beyond current shape or log-level overrides change.
+
+### E17-FT-8: AC-3 (E17-S4) response-writer 503 runtime path not exercised
+
+[Source: E17 boundary review Acceptance Auditor A5, 2026-06-02]
+
+`HealthReady_ResponseWriter_PropagatesHealthReportStatus_AC3` is code-audit-only. The 503-on-unhealthy behavior is wired by ASP.NET healthcheck framework dispatch. **Action when picked up after A49 Serilog re-entrancy is fixed:** add a runtime assertion using `WebApplicationFactory<Program>` that triggers a stub `IHealthCheck` returning Unhealthy and inspects `HttpResponse.StatusCode == 503`. Currently blocked by A49.
+
+### E17-FT-9: ExceptionHandlingMiddleware AC-9 weak negative assertion
+
+[Source: E17 boundary review Acceptance Auditor A3, 2026-06-02]
+
+`Pipeline_ExceptionHandlingMiddleware_DoesNotStripLogContext_AC9` asserts absence of `LogContext.Reset` — but Serilog has no `Reset()` method; the real scope-clear APIs are `LogContext.Suspend()` and re-pushing same key. **Action when picked up:** expand negative assertion list to include `LogContext.Suspend` plus future Serilog 4.x scope-clear APIs. Trigger: next Serilog API surface change.
+
+### E17-FT-10: `Pipeline_UseSerilogRequestLogging_IsRegistered_AC8` is file-wide scope
+
+[Source: E17 boundary review Edge Case Hunter E11, 2026-06-02]
+
+Current AC-8 counts `app.UseSerilogRequestLogging(` anywhere in DependencyInjection.cs. A future alternate-pipeline method adding it elsewhere fails the `Count == 1` assertion. Conversely, dropping it from UseApiPipeline but adding it elsewhere passes. **Action when picked up:** use the same `UseApiPipeline` body isolation pattern as `Pipeline_CorrelationIdMiddleware_BeforeExceptionAndRequestLogging_AC4` before counting. Trigger: if a second pipeline method is ever introduced.
+
+### E17-FT-11: Empty-string `X-Correlation-Id` request header — edge case for AC-2
+
+[Source: E17 boundary review Edge Case Hunter E13, 2026-06-02]
+
+A client sending `X-Correlation-Id: ` (empty after colon) results in `Headers[...].FirstOrDefault()` returning `""`. The middleware's null check does NOT fall through to `Guid.NewGuid()` because `""` is not null — response header echoes empty string. **Action when picked up:** decide whether empty-string-then-Guid is the intended contract. If no, change CorrelationIdMiddleware.cs:16 to `string.IsNullOrWhiteSpace(...)` and add `Middleware_RejectsEmptyIncomingHeader` regression test. Trigger: if any operator reports CorrelationId tracing producing empty-string entries.
+
+### E17-FT-12: Dockerfile audit surface widening (`install -d`, `WORKDIR /app/logs`)
+
+[Source: E17 boundary review Edge Case Hunter E15, 2026-06-02]
+
+Current Dockerfile_HasNoLogsDirectoryCreation_AC7 covers VOLUME / mkdir / COPY. A future `RUN install -d /app/logs`, `WORKDIR /app/logs`, or `RUN chown app:app /app/logs` slips through. **Action when picked up:** add patterns for `install\s+-d\b[^\n]*\blogs\b`, `WORKDIR\b[^\n]*/logs(\b|/|$)`, `chown\b[^\n]*\blogs\b`. Trigger: any Dockerfile change touching the /app filesystem layout.
+
+### E17-FT-13: Tighten cross-section anchor cites in docs/14 §25-27
+
+[Source: E17 boundary review Blind Hunter P4 partial-patch follow-up, 2026-06-02]
+
+§27.1 was patched from a wrong sub-section anchor to the whole-§23 anchor. The broader pattern (citing whole-section anchors when sub-section would be more useful) appears elsewhere in §25-27. **Action when picked up:** audit all cross-section cites in the three new sections; tighten to specific sub-section anchors where applicable. Trigger: next docs hygiene pass.
+
+### E17-FT-14: AC-1 (E17-S2) canonical test should assert LogContext push directly
+
+[Source: E17 boundary review Acceptance Auditor A1, 2026-06-02 — partially patched via Quality-Gates evidence update]
+
+Patched Quality-Gates row cites `_AC1 + _AC1b` together; structurally cleaner fix is to move the TestCorrelator probe (in `_AC1b`) INTO `_AC1`. **Action when picked up:** refactor `_AC1` to assert LogContext directly via TestCorrelator; remove `_AC1b` as duplicate; update Quality-Gates row. Trigger: next refactor pass through E17 tests.
+
+### Dismissed findings (not deferred)
+
+- P7 (Section 25.2 Testing-row clarification) — additional precondition framing is polish; row text is accurate.
+- P9 (test line-count drift in story File Lists) — line-count nits don't affect functionality.
+- P10 (BootstrapSerilogConfigurationTests includes Dockerfile assertion) — class-vs-scope cosmetic.
+- A2 (AC-3 HttpContext.Items parity) — AC-3 scope is "32-char hex contract on response header"; AC-2 covers the three-surface round-trip.
+- A11 (AC-2 LogContext probe missing) — same as A2 dismissal; `_AC1b` already covers the LogContext probe.
+- A12 (AC-10 .DisableRateLimiting parity is one-sided) — Section 23↔Section 27 parity sufficiently covered by `Docs14Section27_DocumentsRateLimitExemption_AndUnauthenticated_AC10b` + path-parity; further byte-presence assertion in Section 23 is polish.
+- E8 (DevelopmentOverlay path StartWith) — current `logs/` check is operationally adequate; cross-platform path concern is theoretical.
+- E12 (HealthReady regex lookahead) — added `.DisableRateLimiting()` positive assertion at the end mitigates the regex-ordering edge case.
+- P6 (Section 26.4 sample curl path) — `/api/v1/members` is an illustrative repro example; a fork operator substitutes their own route.
+- P9 line-count + P10 class-naming are pure cosmetic.

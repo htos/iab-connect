@@ -2950,6 +2950,297 @@ Operator-reachability gate (A45): `railway` CLI install — `npm install -g @rai
 
 ---
 
+## 25. Serilog Console-only sink in container environments (E17-S1)
+
+> Story alignment: **E17-S1 AC-1..AC-10** + Task 1..6. **AC-11 live-deploy verification** queued per A47 to the Wave-8/9 unified walkthrough.
+
+### 25.1 Goal and rationale (per ADR-017)
+
+Container runtimes (Railway today; any OCI host tomorrow) treat the container filesystem as ephemeral. Railway's log aggregator captures stdout; file-sink writes against a `logs/` directory are wasted writes at best and a startup crash at worst when the directory is read-only or missing. The contract for every non-Development environment is therefore: **Serilog writes Console only**.
+
+The Development overlay keeps the File sink (rolling daily, 30 days retained) for developer ergonomics — local `tail -f logs/iabconnect-*.log` is a useful workflow on a workstation.
+
+### 25.2 Layering matrix
+
+| Environment | Source files | Effective `Serilog:WriteTo` | Notes |
+|---|---|---|---|
+| Development | [appsettings.json](../backend/src/IabConnect.Api/appsettings.json) + [appsettings.Development.json](../backend/src/IabConnect.Api/appsettings.Development.json) | Console + File (rolling daily, retained 30) | File sink targets `logs/iabconnect-.log`. Developer convention. |
+| Testing | [appsettings.json](../backend/src/IabConnect.Api/appsettings.json) only — no Testing overlay shipped | Console | `Program.cs:66-70` special-cases Testing only for the DB init branch (EnsureCreatedAsync), not for Serilog. |
+| Beta | [appsettings.json](../backend/src/IabConnect.Api/appsettings.json) + [appsettings.Beta.json](../backend/src/IabConnect.Api/appsettings.Beta.json) | Console | Beta overlay re-declares `Serilog:Using` + `WriteTo` (.NET JSON configuration replaces arrays in overlays). |
+| Production | [appsettings.json](../backend/src/IabConnect.Api/appsettings.json) only — no Production overlay shipped today (per E17-S1 DEC-2=B) | Console | A future E19 story may introduce `appsettings.Production.json` with Production-specific posture (e.g. `Database__AutoMigrate=false`). Until then, base inheritance is intentional. |
+
+The bootstrap logger at [Program.cs:10-13](../backend/src/IabConnect.Api/Program.cs) is **always Console-only** (across all environments) and runs before `IConfiguration` loads — it captures the ~3-5 lines emitted between process start and `builder.Host.UseSerilog(...)` at line 30.
+
+### 25.3 Operator verification commands
+
+All three commands run from the repository root in `pwsh` (Windows + Linux + macOS). Built-ins: `Get-Content` + `ConvertFrom-Json` + `Select-Object`. No external installs required.
+
+```pwsh
+# Beta overlay — expect single Console sink
+Get-Content backend/src/IabConnect.Api/appsettings.Beta.json -Raw `
+  | ConvertFrom-Json | Select-Object -ExpandProperty Serilog `
+  | Select-Object -ExpandProperty WriteTo
+# Expected output: one row with Name=Console.
+
+# Base config — expect single Console sink
+Get-Content backend/src/IabConnect.Api/appsettings.json -Raw `
+  | ConvertFrom-Json | Select-Object -ExpandProperty Serilog `
+  | Select-Object -ExpandProperty WriteTo
+# Expected output: one row with Name=Console.
+
+# Development overlay — expect Console + File
+Get-Content backend/src/IabConnect.Api/appsettings.Development.json -Raw `
+  | ConvertFrom-Json | Select-Object -ExpandProperty Serilog `
+  | Select-Object -ExpandProperty WriteTo
+# Expected output: two rows, Name=Console and Name=File (Args.path = logs/iabconnect-.log).
+```
+
+### 25.4 Failure tree
+
+| Symptom | Likely cause | Diagnose | Fix |
+|---|---|---|---|
+| Beta logs missing in Railway log viewer | `ASPNETCORE_ENVIRONMENT` not set to `Beta` OR Console sink not loaded | Railway service Settings → Variables; first 10 seconds of Deploy Logs should show `[Information] Starting IAB Connect API` from the bootstrap logger | Set `ASPNETCORE_ENVIRONMENT=Beta`; redeploy |
+| `IOException` referencing `logs/` in startup logs | A recent commit re-introduced a File sink into `appsettings.json` or `appsettings.Beta.json` | `dotnet test backend/tests/IabConnect.Api.Tests --filter "FullyQualifiedName~Logging.ConsoleOnly"` will fail with the exact assertion that caught the regression | Revert or rework the offending overlay; re-run the test |
+| `logs/` directory accumulating inside the container | `backend/Dockerfile` gained a `VOLUME` or `COPY` directive against `logs/` | Run `Select-String -Path backend/Dockerfile -Pattern "logs"` — expect zero matches | Remove the Dockerfile directive; rebuild the image |
+| Bootstrap-window log line missing (no `Starting IAB Connect API`) | `Program.cs:10-13` LoggerConfiguration was altered | Run `dotnet test backend/tests/IabConnect.Api.Tests --filter "FullyQualifiedName~Logging.Bootstrap"` | Restore the canonical `new LoggerConfiguration().MinimumLevel.Information().WriteTo.Console().CreateBootstrapLogger()` shape |
+
+### 25.5 Regression-test pointer
+
+Behaviors gated by the [`ConsoleOnlySerilogConfigurationTests`](../backend/tests/IabConnect.Api.Tests/Logging/ConsoleOnlySerilogConfigurationTests.cs) + [`BootstrapSerilogConfigurationTests`](../backend/tests/IabConnect.Api.Tests/Logging/BootstrapSerilogConfigurationTests.cs) suites. Run:
+
+```pwsh
+dotnet test backend/tests/IabConnect.Api.Tests `
+  --filter "FullyQualifiedName~Logging.ConsoleOnly|FullyQualifiedName~Logging.Bootstrap"
+```
+
+### 25.6 Live-deploy verification (deferred per A47)
+
+Queued for the Wave-8/9 unified walkthrough:
+
+- (Q1) `[!]` Railway log viewer shows api-service log lines flowing in real time after a fresh deploy.
+- (Q2) `[!]` No error lines referencing `IOException` against `logs/` appear in the first 5 minutes of a fresh deploy.
+- (Q3) `[!]` `docker exec railway-api-beta sh -c 'ls -la /app/logs 2>&1 || echo NO_LOGS_DIR'` reports `NO_LOGS_DIR` (no orphan directory in the runtime image).
+
+---
+
+## 26. Structured logs with CorrelationId (E17-S2)
+
+> Story alignment: **E17-S2 AC-1..AC-11** + Task 1..7. **AC-12 live-deploy verification** queued per A47 to the Wave-8/9 unified walkthrough.
+
+### 26.1 Goal and tracing model (per ADR-017)
+
+Every request carries a `CorrelationId` from edge ingress (the first byte hits the [`CorrelationIdMiddleware`](../backend/src/IabConnect.Api/Middleware/CorrelationIdMiddleware.cs)) all the way through to any logged exception. The CorrelationId is one of: (a) the value of the `X-Correlation-Id` request header if the caller provided one (typical when re-tracing an issue from the frontend or from a `curl` reproduction), or (b) a fresh 32-character lowercase-hex GUID generated server-side. Either way, the value is echoed in the response header so the caller can grab it from browser dev-tools, and pushed into Serilog's `LogContext` so every downstream log line within the request scope carries the property.
+
+Operators trace user-visible errors back to backend events by **grep on `CorrelationId` in the Railway log viewer — one filter, no joins**. Any log line a feature emits inside the request flow (controller, MediatR handler, repository, the auto-emitted `UseSerilogRequestLogging` completion line, the rate-limiter's `OnRejected` rejection line) all share the same CorrelationId.
+
+### 26.2 Contract reference table
+
+| Surface | Field name | Value shape | Source file |
+|---|---|---|---|
+| Request header | `X-Correlation-Id` | 1..128 chars (caller-provided) OR 32-char lowercase hex GUID (server-generated) | [`CorrelationIdMiddleware.cs:12`](../backend/src/IabConnect.Api/Middleware/CorrelationIdMiddleware.cs#L12) |
+| Response header | `X-Correlation-Id` | Same value as request (caller-provided echoed verbatim; server-generated emitted) | [`CorrelationIdMiddleware.cs:20`](../backend/src/IabConnect.Api/Middleware/CorrelationIdMiddleware.cs#L20) |
+| Log property | `CorrelationId` | Same value pushed via `Serilog.Context.LogContext.PushProperty("CorrelationId", value)` for the duration of the request scope | [`CorrelationIdMiddleware.cs:22`](../backend/src/IabConnect.Api/Middleware/CorrelationIdMiddleware.cs#L22) |
+| HttpContext stash | `HttpContext.Items["CorrelationId"]` | Same value, available to any downstream handler that wants to embed it in a response body | [`CorrelationIdMiddleware.cs:19`](../backend/src/IabConnect.Api/Middleware/CorrelationIdMiddleware.cs#L19) |
+
+The middleware is registered at [`DependencyInjection.cs:301`](../backend/src/IabConnect.Api/DependencyInjection.cs#L301), strictly BEFORE `ExceptionHandlingMiddleware` (line 304) and BEFORE `UseSerilogRequestLogging` (line 326). This ordering is the contract that gives `LogContext` priority over both surfaces.
+
+### 26.3 Log levels
+
+| Source key | Value | What gets logged at this level |
+|---|---|---|
+| `Serilog:MinimumLevel:Default` | `Information` | Application emit-path: controllers, MediatR handlers, repositories, background jobs. |
+| `Serilog:MinimumLevel:Override:Microsoft` | `Warning` | Microsoft.* framework noise (model binding, route resolution, etc.) is suppressed below Warning to keep the operator-relevant signal-to-noise ratio high. |
+| `Serilog:MinimumLevel:Override:Microsoft.EntityFrameworkCore` | `Warning` | EF Core's per-query log lines (which include parameter values) are suppressed below Warning so a normal Beta operating mode does not log SQL parameters. |
+| `Serilog:MinimumLevel:Override:Microsoft.Hosting.Lifetime` | `Information` | Carve-out so `Application started.` / `Application is shutting down.` lines remain visible — operators rely on these to confirm deploys. |
+
+Operators can override per-environment via Railway service env-vars: `Serilog__MinimumLevel__Override__<Namespace>=Debug` (see [§5 Railway variables per service](#5-railway-variables-per-service)). Test-time env-var leakage is defended against in [`RequestLoggingPipelineTests.Configuration_LogLevelOverrides_MatchSpec_AC5`](../backend/tests/IabConnect.Api.Tests/Logging/RequestLoggingPipelineTests.cs) per project-context A36 (InMemoryCollection-empty-binding pattern).
+
+### 26.4 Operator workflows
+
+**A. Trace a tester-reported error back to backend events.** Tester reports the error happened at `2026-MM-DD HH:MM:SS UTC`. If the tester captured the `X-Correlation-Id` response header from browser dev-tools, use that as the filter. Otherwise pivot to time-window: open Railway log viewer for the `api` service, narrow time range to ±2 minutes around the reported timestamp, scan for matching `RequestPath` lines (emitted by `UseSerilogRequestLogging`). Once a single request is identified, use its `CorrelationId` to filter all related lines.
+
+**B. Reproduce an error manually with a known CorrelationId.** Use `curl` (operator-provided locally) — note the placeholder substitutions for `<beta-host>` and `<token>`:
+
+```sh
+curl -H 'X-Correlation-Id: manual-repro-001' \
+     -H 'Authorization: Bearer <token>' \
+     'https://api.<beta-host>/api/v1/members?search=foo'
+```
+
+Then filter Railway logs for `manual-repro-001`.
+
+**C. Distinguish slow-paths from error-paths under load.** `UseSerilogRequestLogging` emits one completion line per request with `RequestPath` + `Elapsed` properties (milliseconds). Combine with the CorrelationId to find requests whose total `Elapsed` exceeded SLO; downstream lines under the same CorrelationId reveal the per-step breakdown (EF query timings if Information-or-higher, handler timings, etc.).
+
+### 26.5 Sample Railway JSON log entry (annotated)
+
+Serilog's default JSON formatter emits a compact JSON shape. Railway's structured log viewer parses these into per-property columns. A typical request-completion line looks like (whitespace added for readability):
+
+```json
+{
+  "@t": "2026-06-02T14:32:07.4521320Z",       /* timestamp (ISO 8601 UTC) */
+  "@l": "Information",                          /* log level */
+  "@mt": "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms",
+  "RequestMethod": "GET",
+  "RequestPath": "/api/v1/members",
+  "StatusCode": 200,
+  "Elapsed": 47.8311,
+  "CorrelationId": "a4f8d2b9c0e14a7d8b1f3c5e2d6a9b07",   /* ★ pushed by CorrelationIdMiddleware */
+  "SourceContext": "Serilog.AspNetCore.RequestLoggingMiddleware",
+  "BearerPresence": "bearer-present"             /* added by E14-S5's BearerPresenceEnricher */
+}
+```
+
+The `CorrelationId` property appears on **every** log line within the request scope — controller logs, MediatR handler logs, EF Core's Warning-or-higher SQL warnings, the rate-limiter's rejection event, and any exception logged by `ExceptionHandlingMiddleware`.
+
+### 26.6 Failure tree
+
+| Symptom | Likely cause | Diagnose | Fix |
+|---|---|---|---|
+| CorrelationId field missing in Railway logs | `UseSerilogRequestLogging` registration order broken in `DependencyInjection.cs` | `dotnet test --filter "FullyQualifiedName~Logging.RequestLoggingPipeline.Pipeline_UseSerilogRequestLogging_IsRegistered_AC8"` | Restore the `app.UseSerilogRequestLogging();` call site in `UseApiPipeline` |
+| Same CorrelationId across multiple unrelated requests | `LogContext` AsyncLocal leakage; very likely a downstream `Task.Run` without re-establishing `LogContext.PushProperty` inside the spawned task | Run `Logging.RequestLoggingPipelineTests.LogContext_IsolatesCorrelationIdAcrossConcurrentTasks_AC7` locally. If green, suspect a feature that spawns `Task.Run` without copying the request context | Replace `Task.Run(...)` with `Task.Run(async () => { using (LogContext.PushProperty("CorrelationId", capturedValue)) { ... } })` |
+| Response header missing on errors | `ExceptionHandlingMiddleware` ended up BEFORE `CorrelationIdMiddleware` | Run `Logging.RequestLoggingPipelineTests.Pipeline_CorrelationIdMiddleware_BeforeExceptionAndRequestLogging_AC4` | Restore registration order: CorrelationId → ExceptionHandling → SerilogRequestLogging |
+| `Serilog__MinimumLevel__Default` env var leaking into test runs | CI runner has the env var set; tests reading raw `IConfiguration` see leaked value | Add `AddInMemoryCollection` with empty bindings for the affected keys AFTER `AddEnvironmentVariables` in the test's `ConfigurationBuilder` | See project-context.md A36 |
+
+### 26.7 Regression-test pointer
+
+Behaviors gated by [`CorrelationIdMiddlewareTests`](../backend/tests/IabConnect.Api.Tests/Middleware/CorrelationIdMiddlewareTests.cs) + [`RequestLoggingPipelineTests`](../backend/tests/IabConnect.Api.Tests/Logging/RequestLoggingPipelineTests.cs). Run:
+
+```pwsh
+dotnet test backend/tests/IabConnect.Api.Tests `
+  --filter "FullyQualifiedName~Middleware.CorrelationIdMiddleware|FullyQualifiedName~Logging.RequestLoggingPipeline"
+```
+
+### 26.8 Live-deploy verification (deferred per A47)
+
+Queued for the Wave-8/9 unified walkthrough:
+
+- (Q1) `[!]` Run `curl -H 'X-Correlation-Id: e17s2-test-001' https://api.<beta-host>/health/ready` and confirm the response includes `X-Correlation-Id: e17s2-test-001`.
+- (Q2) `[!]` Open Railway log viewer immediately after Q1, filter for `CorrelationId: e17s2-test-001`, confirm at least the `UseSerilogRequestLogging` request-completion line appears with that property.
+- (Q3) `[!]` Make a second request WITHOUT the header; confirm the response carries a freshly-generated 32-char hex GUID + that GUID appears in the Railway log line.
+
+---
+
+## 27. External uptime monitoring (E17-S4)
+
+> Story alignment: **E17-S4 AC-1..AC-5 + AC-10** + Task 1..4. **AC-6, AC-7, AC-8, AC-9 live-deploy verification** queued per A47 to the Wave-8/9 unified walkthrough.
+
+### 27.1 Goal and rationale (per ADR-017)
+
+An **external** uptime monitor is independent of Railway's own internal monitoring — so a Railway control-plane outage or aggregator failure is still detected. The polling target is `/health/ready` because it covers DB + Keycloak readiness (the two dependencies an `api` instance needs to do useful work), is unauthenticated (an external monitor cannot present a Keycloak JWT), and is rate-limit-exempt (see [Section 23](#23-rate-limiting-baseline-e14-s4) — chained with `.DisableRateLimiting()` so a 5-min polling cadence never trips the anonymous 100/min/IP limiter even when sharing an egress IP with a noisy neighbour).
+
+### 27.2 Service-choice comparison table (per E17-S4 DEC-1=C)
+
+| Service | Free-tier polling cadence | Monitor cap (free) | Alert channels (free) | Account-creation friction | Best-fit profile |
+|---|---|---|---|---|---|
+| **UptimeRobot** Free | 5 minutes | 50 monitors | Email (Voice/SMS paid) | Email only, no credit card | Longevity + simplest setup. Default in the SCP/ADR. |
+| **BetterStack** Uptime Free | 3 minutes | 10 monitors | Email + Slack + PagerDuty + webhook | Email only, no credit card | Modern UI + integrated status page (free) + more channels. |
+| **Uptime Kuma** self-hosted | Configurable (down to 20s) | Unlimited | All integrations | Requires self-hosting (Docker, one tiny VPS) | OSS-only forks; full-sovereignty operators. |
+
+*[!] Verify free-tier specifics against the vendor's current pricing page before configuring — vendors change tiers periodically.* References: [UptimeRobot pricing](https://uptimerobot.com/pricing/) · [BetterStack Uptime pricing](https://betterstack.com/uptime/pricing) · [Uptime Kuma docs](https://github.com/louislam/uptime-kuma).
+
+### 27.3 Polling cadence + alert rule (per E17-S4 DEC-2=A)
+
+The free-tier reality is documented honestly. The alert rule is **3 consecutive failures** (matches ADR-017's stated decision). The detection-latency floors are:
+
+| Service | Polling interval | Consecutive-failure rule | Best-case latency | Worst-case latency (incl. polling-phase offset) |
+|---|---|---|---|---|
+| UptimeRobot Free | 5 minutes | 3 | ~10 minutes after outage start | ~15-20 minutes |
+| BetterStack Uptime Free | 3 minutes | 3 | ~6 minutes | ~9-12 minutes |
+| Uptime Kuma self-hosted (30 s polling) | 30 seconds | 3 | ~90 seconds | ~2-3 minutes |
+
+**Beta SLO floor for monitor-detected outages: ~15-20 minutes (UptimeRobot Free) / ~9-12 minutes (BetterStack Free)**. An operator who needs tighter detection can upgrade UptimeRobot to a paid tier (1-min polling, ~$7-12/mo) or self-host Uptime Kuma (no SaaS cost; one tiny VPS).
+
+**Why not sub-5-minute detection on free tiers?** Free-tier polling cadences (5-min UptimeRobot, 3-min BetterStack) plus the 3-consecutive-failure rule put the absolute floor at the values shown above. The 3-consecutive rule trades latency for noise-suppression — alerting on a single transient blip would page operators on every Railway deploy window or JWKS-refresh hiccup. Operators with strict sub-5-minute SLOs need either a paid polling tier or self-hosted Kuma.
+
+### 27.4 Step-by-step runbook (per DEC-1=C, both services + self-host)
+
+#### 27.4.A UptimeRobot Free setup
+
+> *[!] Verify against UptimeRobot UI at run-time before executing — UI specifics may shift; verify the friendly-name field exists in current dashboard layout.*
+
+1. Sign up at [https://uptimerobot.com/signUp](https://uptimerobot.com/signUp).
+2. Verify the email (one-time link).
+3. Dashboard → **+ Add New Monitor**.
+4. **Monitor Type:** HTTP(s).
+5. **Friendly Name:** `iabconnect-beta-api-health-ready` (or fork equivalent).
+6. **URL:** `https://api.<beta-host>/health/ready` (substitute the actual Railway-assigned host from [§5.1](#51-api-service)).
+7. **Monitoring Interval:** 5 minutes (free tier minimum).
+8. **Alert Contacts To Notify:** the operator's email contact (create the contact first if needed under My Settings → Alert Contacts).
+9. Save. Confirm monitor flips to `Up` within ~5 minutes.
+
+Alternative API-first creation: `POST https://api.uptimerobot.com/v2/newMonitor` with body params `api_key=<MAIN_KEY>&friendly_name=<NAME>&url=<URL>&type=1&interval=300`. *[!] Verify against [UptimeRobot API docs](https://uptimerobot.com/api/) before scripting.*
+
+#### 27.4.B BetterStack Uptime Free setup
+
+> *[!] Verify against BetterStack UI at run-time before executing.*
+
+1. Sign up at [https://betterstack.com/uptime](https://betterstack.com/uptime).
+2. Verify the email.
+3. Monitors → Create monitor.
+4. **URL:** `https://api.<beta-host>/health/ready`.
+5. **Check frequency:** Every 3 minutes.
+6. **Notification preferences:** email-only (Beta default; PagerDuty/Slack can be enabled later).
+7. Save.
+
+Alternative API-first creation: `POST https://uptime.betterstack.com/api/v2/monitors`. *[!] Verify against [BetterStack Uptime API docs](https://betterstack.com/docs/uptime/api/list-existing-monitors/) before scripting.*
+
+#### 27.4.C Uptime Kuma self-hosted (optional, full-sovereignty operators)
+
+Reference: [Uptime Kuma installation](https://github.com/louislam/uptime-kuma#%EF%B8%8F-installation). Bring-your-own-VPS; Docker Compose installation; the dashboard URL becomes operator-owned. Out of scope for this story's runbook (the OSS-fork story is "here is the self-host pointer; configure per your hosting choice").
+
+### 27.5 Alert email format (sample)
+
+UptimeRobot sample alert: subject `Monitor is DOWN: iabconnect-beta-api-health-ready` · body lists monitor name, URL, time of detection, error returned by `/health/ready` (typically `503` body or connection-refused). Recovery email subject: `Monitor is UP: iabconnect-beta-api-health-ready`. *[!] Verify the exact wording against received emails during the fire drill (§27.8).*
+
+### 27.6 Monitor dashboard URL (fill in after walkthrough)
+
+Monitor dashboard URL: `___` *(operator fills in during walkthrough; added here once available)*. After the walkthrough captures the dashboard URL, paste the link here AND in RUNBOOK-beta.md (when E18 produces it).
+
+### 27.7 Failure tree
+
+| Symptom | Likely cause | Diagnose | Fix |
+|---|---|---|---|
+| Monitor shows `Up` but operator reports the site is down | Monitor URL mismatch OR site outage is at a different surface (frontend, not API) | Confirm monitor URL is exactly `https://api.<beta-host>/health/ready`; run `curl https://api.<beta-host>/health/ready` from operator's own machine | Add a second monitor for `https://web.<beta-host>/api/health` (separate surface — see [§9 Health probes](#9-health-probes)) |
+| Monitor shows `Down` but operator confirms the site is up | Monitor probe IP blocked by Railway edge OR regional probe-network issue OR cold-start within first 30s of a fresh deploy hits the probe | Open per-incident view in monitor dashboard → check per-probe-location timings; check Railway healthcheck timeout (`api` is 60s per [§9.1](#91-per-service-healthcheckpath)) | If pattern repeats, increase Railway healthcheck timeout OR enable multiple probe locations in the monitor's settings |
+| Alert email not received but dashboard shows `Down` | Email-contact verification incomplete OR alert went to spam | Re-verify the email-contact from initial setup (UptimeRobot My Settings → Alert Contacts → check status) | Resend verification link; whitelist `noreply@uptimerobot.com` / `notifications@betterstackhq.com` |
+| Both monitors disagree (UptimeRobot `Up`, BetterStack `Down` or vice versa) | Regional probe-network issue OR transient Railway edge issue | Open per-probe-location timings in each monitor's incident view; if both agree the site was unreachable from ≥2 probe locations for ≥3 consecutive polls, treat as real outage | Investigate Railway service Deploy Logs around the disagreement window |
+| Monitor configuration drift (URL, interval, or contact silently changed) | Operator UI change; no audit trail | Cross-check monitor settings against this Section 27.4 step list at each operator handover | Re-apply the canonical settings; consider a JSON export (UptimeRobot CSV export; BetterStack API GET) as part of the RUNBOOK |
+
+### 27.8 Fire drill (per E17-S4 DEC-3=A; matches AC-9)
+
+> Step-by-step deliberate outage to validate alert latency end-to-end.
+
+1. Note current time `T0` (UTC).
+2. Railway dashboard → `api` service → Settings → **Stop** (not "Restart" — restart resolves in ~90s, too fast for a 3-consecutive-failure rule).
+3. Wait the configured detection-latency floor + 5-minute buffer:
+    - UptimeRobot Free: 20 minutes
+    - BetterStack Free: 15 minutes
+4. Confirm: alert email received in operator inbox AND monitor dashboard shows `Down` AND incident-start time matches `T0 + first-probe-after-T0`.
+5. Railway dashboard → `api` service → Settings → **Start**.
+6. Wait ≤1 polling cycle for the monitor to flip back to `Up`.
+7. Confirm recovery email received.
+8. Record total alert latency in walkthrough notes.
+9. If latency exceeds the §27.3 documented floor by >50%, capture probe-location details for follow-up.
+
+**Alternative methods** if the operator cannot stop the service for organizational reasons:
+- Change Railway healthcheck path to a 404 path (e.g. `/does-not-exist`) — Railway marks unhealthy, monitor sees 503/404. More invasive (changes service config). Restore the path after the drill.
+- (Advanced — only during a planned maintenance window) Stop the private `postgres-app` service to drive `/health/ready` to 503 organically. Most realistic but blocks in-flight requests.
+
+### 27.9 Live-deploy verification (deferred per A47)
+
+Queued for the Wave-8/9 unified walkthrough:
+
+- (Q1) `[!]` UptimeRobot account created, email verified.
+- (Q2) `[!]` UptimeRobot monitor created (URL + 5-min cadence + alert contact + DEC-2=A 3-consecutive rule explicitly configured).
+- (Q3) `[!]` UptimeRobot alert-contact email verification handshake complete.
+- (Q4) `[!]` BetterStack account created (per DEC-1=C secondary), monitor configured at 3-min cadence.
+- (Q5) `[!]` BetterStack alert-contact email verification handshake complete.
+- (Q6) `[!]` Monitor dashboard URL captured into §27.6 + (when available) into RUNBOOK-beta.md.
+- (Q7) `[!]` Fire drill executed per §27.8 steps 1-9 → alert email received → recovery email received → latency recorded.
+- (Q8) `[!]` Latency comparison: actual alert latency vs. documented floor in §27.3 (UptimeRobot ~15-20 min / BetterStack ~9-12 min). If actual is >50% above floor, capture probe-location details for follow-up.
+
+---
+
 ## Appendix: secrets-in-repo guard
 
 The dev-agent ran the following greps at story-close and confirmed no operational Railway

@@ -1,5 +1,181 @@
 # generated: 2026-05-12
-# last_updated: 2026-06-02 (Epic-14 CLOSED — Security and Secrets Management. Single autonomous-mode
+# last_updated: 2026-06-05 (bmad-create-story BULK REFRESH for entire Epic-18 (Beta Test Preparation and
+#   Operations Documentation): COMPLETE. All 4 stub files (e18-s1..s4, previously 19-line generate-stubs.sh
+#   output) replaced with comprehensive dev-ready stories per A34 (bulk spec-refresh at epic start when N≥3
+#   stories in one session). Per user directive "für den ganzen nächsten epic. stoiers müssen sauber
+#   geschrieben werden, es handelt sich nicht mehr um einen mvp" (2026-06-05), scope is post-MVP-comprehensive.
+#   **Critical refresh findings (the "already-ships" pattern, mirroring E14-S2 + E17-S1/S2):** (1) e18-s3
+#   (BETA banner) ALREADY SHIPS — frontend/src/components/navigation/BetaBanner.tsx (112 lines, "use client",
+#   sessionStorage dismiss, renders on NEXT_PUBLIC_ENV_LABEL=beta case-insensitive, bg-orange-500) + an
+#   11-test BetaBanner.test.tsx + integration in app/layout.tsx + full NEXT_PUBLIC_ENV_LABEL wiring
+#   (Dockerfile ARG+ENV / build-images.yml branch-scope / .env.example). The AC-literal divergences are all
+#   compliant-as-shipped: i18n key `beta.bannerMessage` (de.json byte-equals the AC-mandated German string
+#   "Beta — Daten können jederzeit zurückgesetzt werden" — hardcoding would VIOLATE the next-intl rule);
+#   `navigation/` subfolder is the chrome-component convention; orange-500 is the established banner fill.
+#   Story shifts to verification + 3 regression-coverage gaps (orange-bg assertion, de.json string parity via
+#   A51, layout-integration code-audit). DEC-1=A (accept shipped; do NOT regress to literal AC). DEC-2=A
+#   (extend jsdom test + add pure-Node parity test per A46). (2) e18-s4 (feedback channel) PARTIALLY SHIPS —
+#   the banner already constructs+renders the feedback link (NEXT_PUBLIC_FEEDBACK_URL || sourceUrl +
+#   /issues/new?template=beta-feedback.md, both env vars wired); the ONE real gap is the missing
+#   .github/ISSUE_TEMPLATE/beta-feedback.md file (.github/ has no ISSUE_TEMPLATE/ dir at all). Story = create
+#   the classic .md template + a filename-parity test (A51/A31: banner URL `template=beta-feedback.md` ↔ the
+#   actual filename) + optional config.yml. DEC-1=A (GitHub Issues, the committed transport; not mailto —
+#   mailto would regress the shipped banner). DEC-2=A (classic .md to match the shipped URL; do NOT switch to
+#   a .yml form). (3) e18-s1 (RUNBOOK-beta.md) is GENUINE net-new — file absent; target path is
+#   _bmad-output/implementation-artifacts/RUNBOOK-beta.md (NOT docs/, per SCP line 629 + epics line 1799).
+#   A38 doc-bundle ANCHOR: E19-S1 (custom-domain) + E19-S3 (NFR gate) append sections to it, so E18-S1 lays
+#   the complete skeleton + two marked E19 stub sections now. DEC-1=A (incident-first index that cross-links
+#   docs/14's existing deploy §10 / rollback §11.4 / restore §15.5 / health §9 / first-admin §16 / Keycloak
+#   recovery §11.2 procedures rather than re-pasting — honours E15-S4 DEC-1=A + the A38 write-once rule; owns
+#   the Symptoms/Diagnose/Fix/Verify incident playbooks docs/14 lacks). DEC-2=A (author all 7 documented
+#   incidents not just the 5 mandatory, given post-MVP). A40: railway/pg_restore/kc.sh commands cross-linked
+#   from docs/14's already-A40-corrected forms or marked [!]; A45: postgresql-client-17 IS in backend
+#   Dockerfile (restore reachable); decrypt is C# BackupEncryption (AES-256-GCM nonce/tag), NOT openssl.
+#   (4) e18-s2 (BETA-TESTER-GUIDE.md, German ≤2pp) is GENUINE net-new — file absent. **Highest-risk surface
+#   = the Mailtrap email-verification caveat:** the beta realm has registrationAllowed=true +
+#   registrationEmailAsUsername=true + verifyEmail=true + resetPasswordAllowed=true, so testers self-register
+#   BUT the verification email lands in the Mailtrap SANDBOX (ADR-018), not the tester's real inbox — the
+#   guide MUST state this truthfully (an "check your inbox" promise would strand every tester; A42 category-4).
+#   DEC-1=A (self-registration + one honest maintainer-pre-verify coordination step, cross-linking docs/14
+#   §16/§5.3). DEC-2=A (standalone Markdown; no in-app help UI — out of Beta scope). German-language
+#   exception to document_output_language=English noted (audience is German Verein testers per ADR-018).
+#   **Cross-cutting findings:** (a) Recommended dev-story sequence within Wave-9: E18-S1 (RUNBOOK) → E18-S3
+#   (banner verify) → E18-S4 (feedback template) → E18-S2 (tester guide LAST, since it references the settled
+#   banner label + feedback template). (b) A31 invariants: de.json `beta.bannerMessage` ↔ AC German string
+#   (E18-S3 AC-3); layout.tsx ↔ BetaBanner mount (E18-S3 AC-5); banner URL `template=beta-feedback.md` ↔
+#   issue-template filename (E18-S4 AC-3); guide feedback wording ↔ shipped banner+template (E18-S2 soft). (c)
+#   A47 escape applied uniformly: each story carries 1 `[!]` live-walkthrough item (E18-S1 AC-10 peer
+#   read-through+live-fire drill; E18-S2 AC-8 pilot signup+finance+event; E18-S3 AC-8 live visual check;
+#   E18-S4 AC-7 end-to-end click flow) deferred to the unified Wave-9 walkthrough. (d) Zero production-code
+#   change across the epic: E18-S3/S4 add only tests + a GitHub template; E18-S1/S2 are pure docs. **Status
+#   transitions:** epic-18 backlog → in-progress; e18-s1/s2/s3/s4 backlog → ready-for-dev. Sprint state:
+#   E1-E3 + E9-E17 + E20 all done (12 epics closed) + E18 in-progress (4 ready-for-dev). E19 backlog
+#   (Wave-10); E4-E8 deferred backlog (pre-Beta-pivot). NEXT per workflow + project memory
+#   feedback_session_pacing_dev_cycles + A34: recommend committing this 4-story bulk-context refresh +
+#   sprint-status update and starting bmad-dev-story for e18-s1 (Wave-9 opener) in a fresh session. The 4
+#   dev-story runs are recommended as separate sessions per feedback_session_pacing_dev_cycles, in the order
+#   above. NOTE: the `[!]` Wave-9 walkthrough items across E18 + the carried-forward E14/E16/E17 deferred
+#   walkthroughs all require a GREEN Beta deploy — Harry must execute the live-Beta prerequisites before the
+#   unified walkthrough session can close them.) ## Previously: 2026-06-02 (Epic-17 CLOSED — Monitoring, Logging, and Health Checks. Single autonomous-mode
+#   session delivered all 3 stories (E17-S1/S2/S4; E17-S3 was already absorbed by E13-S4) + epic-boundary
+#   code review (3-layer adversarial) + retrospective per user directive "implementiere das ganze epic 17
+#   mit den stories. höre erst auf wenn alle stories geamcht sind und führe danach das retro aus. nicht
+#   stoppen bis es durch ist. berücksichtige dabei das es sich nicht um ein mvp handelt." (2026-06-02).
+#   A41 escape applied to all 7 DEC-Needed surfaces (S1 DEC-1/DEC-2 + S2 DEC-1/DEC-2/DEC-3 + S4 DEC-1/
+#   DEC-2/DEC-3) with (a)/(b)/(c) Debug Log per A43; A47 escape applied uniformly to 14 live-walkthrough
+#   [!] items (queued for unified Wave-8/9 walkthrough). **Epic summary:** entire epic is verification +
+#   documentation (zero production code change). (1) backend/tests/IabConnect.Api.Tests/Logging/
+#   ConsoleOnlySerilogConfigurationTests.cs (~170 lines, 5 tests) + BootstrapSerilogConfigurationTests.cs
+#   (~97 lines, 3 tests) covering Beta+Base Console-only + Development File-sink preservation +
+#   non-Development overlay enumeration guard + bootstrap-logger Console-only + Testing-branch no-File +
+#   Dockerfile no-logs + docs-vs-code A31 layering parity + docs/14 Section 25 (~110 lines, 6 subsections).
+#   (2) backend/tests/IabConnect.Api.Tests/Middleware/CorrelationIdMiddlewareTests.cs (~157 lines, 5 tests)
+#   + Logging/RequestLoggingPipelineTests.cs (~250 lines, 7 tests) covering middleware behavior +
+#   pipeline-registration ordering + UseSerilogRequestLogging registration + ExceptionHandlingMiddleware
+#   LogContext preservation + per-request property continuity (AC-6) + concurrent-request AsyncLocal
+#   isolation (AC-7) + log-level configuration (A36 + E1: parallel Logging:LogLevel tree) + A31 docs/14
+#   Section 26 invariant + docs/14 Section 26 (~140 lines, 8 subsections including operator workflows
+#   A/B/C, sample Railway JSON entry, failure tree). (3) backend/tests/IabConnect.Api.Tests/HealthChecks/
+#   HealthReadyEndpointTests.cs (~190 lines, 5 tests) covering /health/ready mapping + rate-limit-exemption
+#   + no-authorization + response-writer status propagation + A31 path-parity across docs/14 Sections 9+23+27
+#   + A31 rate-limit-exemption + unauthenticated documentation parity + docs/14 Section 27 (~290 lines,
+#   9 subsections: comparison table + UptimeRobot/BetterStack/Kuma runbooks per DEC-1=C +
+#   polling-latency-floor table per DEC-2=A + fire-drill steps per DEC-3=A). **Quality gates:** dotnet
+#   build 0 warnings 0 errors; backend test suite 2050 → **2075** green (+25 new for E17). **Epic-boundary
+#   code review** (Blind Hunter + Edge Case Hunter + Acceptance Auditor, 3-layer adversarial per
+#   feedback_bmad_workflow hybrid CR+ER policy) produced 39 unique findings → **14 patches APPLIED**:
+#   P1 story Status footer corrections (all 3); P2 docs/14 §25.6+§26.8+§27.9 checkbox-convention from
+#   `- [ ]` to `- (QN) [!]` per A30; P3 §27.4.A anchor #51-api-service-variables → #51-api-service;
+#   P4 §27.1 §23.4 wrong cite → §23 whole-section; P5/E2 AC-5 test populated InMemoryCollection +
+#   chained AddEnvironmentVariables (was theatre); P8 E17-S1 refresh-note Select-String/docker-inspect
+#   → ConvertFrom-Json/Select-Object (matches shipped); P11 §27.6 heading "(AC-8 placeholder)" sprint-
+#   leakage → operator-facing; P12 §27.3 Reconciliation-note SCP+DEC-2 leakage → operator-facing
+#   "Why not sub-5-minute detection" reframe; E1 AC-5 added Logging:LogLevel parallel tree assertions
+#   (3 keys covering Microsoft.AspNetCore + MEL adapter surface); E3 HealthReady auth test fragile
+#   IndexOf(");") walker → paren-balance walking + positive .DisableRateLimiting() anti-regression;
+#   A1 Quality-Gates AC-1 row updated to cite _AC1 + _AC1b together (TestCorrelator probe is the
+#   canonical LogContext push proof); A6 AC-9 4-sub-item enumeration (a/b/c/d alert/dashboard/recovery/
+#   latency); A7 AC-6 5-sub-item enumeration (a/b/c/d/e account/monitor/cadence/contact/3-consecutive-rule);
+#   A9 E17-S2 A52 "N/A" refresh claim → cross-story verification reference; A10 E17-S1 Task 5.3 [ ]
+#   → [!] (deferred to E19 per A30 three-state). 14 findings deferred to deferred-work.md as
+#   E17-FT-1..E17-FT-14; 11 dismissed (cosmetic/theoretical/scope-out — P7/P9/P10/A2/A11/A12/E8/E12/P6).
+#   Build re-ran clean; full backend suite 2075/2075 green; targeted E17 filter 25/25 green.
+#   **Epic-17 retrospective:** doc saved at _bmad-output/implementation-artifacts/epic-17-retro-2026-06-02.md.
+#   3 new action items A53-A55 promoted to project-context.md under Story Authoring & Dev-Story Execution
+#   Rules: A53 canonical A36 test shape requires POPULATED InMemoryCollection + chained
+#   AddEnvironmentVariables (empty-dict-no-env is theatre); A54 A29 AC-Subitem Completion Check extends
+#   to deferred-pending-beta-green rows (multi-sub-item walkthrough ACs produce N rows not 1);
+#   A55 A52 endpoint-pattern verification re-runs at Quality-Gates close (ACs can refine to name
+#   endpoints between refresh and close). A28-A52 carry forward. **Status transitions:**
+#   e17-s1/s2/s4 review → done; epic-17 in-progress → done; epic-17-retrospective optional → done.
+#   Sprint state: E1-E3 + E9-E17 + E20 all done (12 epics closed); E18-E19 backlog (Wave-9/10);
+#   E4-E8 deferred backlog (pre-Beta-pivot). **NEXT per workflow.on_complete:** next in-progress
+#   epic with ready-for-dev stories = NONE; per SCP-2026-05-15 §6 wave order, Wave-9 = E18 Beta Test
+#   Preparation and Operations Documentation (4 stories — RUNBOOK-beta + tester onboarding guide +
+#   BETA banner in UI + feedback channel). Per project memory feedback_session_pacing_dev_cycles +
+#   A34, recommend committing this 3-story bulk + epic-boundary review + retro + project-context.md
+#   A53-A55 update + deferred-work.md +14 and starting bmad-create-story for entire E18 in a fresh
+#   session.) ## Previously: 2026-06-02 (bmad-create-story BULK REFRESH for entire Epic-17 (Monitoring, Logging,
+#   and Health Checks): COMPLETE. All 3 remaining stub files (e17-s1, e17-s2, e17-s4 — e17-s3
+#   already absorbed by e13-s4 done 2026-06-01) replaced with comprehensive dev-ready stories per A34
+#   (bulk spec-refresh at epic start when N≥3 stories in one session). Per user directive
+#   "das ganze nächste Epic durcharbeiten, so das es ready ist. wichtig es handelt sich nicht mehr
+#   um ein mvp" (2026-06-02), scope is post-MVP-comprehensive rather than Beta-minimum. **Refresh
+#   deltas vs. 2026-05-15 stubs:** (1) e17-s1 grew to ~500 lines, 11 ACs, 6 Tasks. Critical finding:
+#   the literal AC text ("appsettings.Beta.json overrides Serilog:WriteTo to contain only the Console
+#   sink") is ALREADY SHIPPING — appsettings.Beta.json:1-5 is Console-only; base appsettings.json:9-20
+#   is Console-only; appsettings.Development.json:23-34 has the File sink. Story scope shifts to
+#   regression-test coverage (5 new code-audit tests asserting layering matrix + bootstrap-logger +
+#   Dockerfile filesystem hygiene) + docs/14 Section 25 doc-bundle + A31 doc-vs-code invariant test
+#   (AC-9 reads docs/14 Section 25 + JSON files and asserts parity). DEC-1 test mechanism recommends
+#   A (direct-artifact-read per A51/A49). DEC-2 Production overlay recommends B (skip — Production
+#   inherits base; document in §25.2). (2) e17-s2 grew to ~520 lines, 12 ACs, 8 Tasks. Same critical
+#   finding: CorrelationIdMiddleware.cs:14-26 already pushes via LogContext + echoes X-Correlation-Id
+#   header + generates 32-char hex GUID; DependencyInjection.cs:300-301 registers it before
+#   ExceptionHandlingMiddleware + line 326 UseSerilogRequestLogging; appsettings.json:9-17 has the
+#   spec'd log levels. Story scope = 12 regression tests (5 in CorrelationIdMiddlewareTests for
+#   middleware behavior + 7 in RequestLoggingPipelineTests for pipeline-registration + per-request
+#   continuity + concurrent-request isolation + log-level configuration + A31 invariant) +
+#   docs/14 Section 26 doc-bundle. Uses Serilog.Sinks.TestCorrelator 4.0.0 already added in E14-S5;
+#   sidesteps A49 Serilog-re-entrancy via per-fixture LoggerConfiguration. A36 InMemoryCollection
+#   pattern applied to AC-5 log-level test (CI env-var leakage defense). DEC-1 recommends A
+#   (TestCorrelator). DEC-2 recommends A (parallel Task with explicit AsyncLocal). DEC-3 recommends A
+#   (minimum literal scope; defer request-log enrichment with User+ClientIp to future). (3) e17-s4
+#   grew to ~610 lines, 10 ACs, 4 Tasks — focused on docs+walkthrough since the actual external
+#   monitor configuration cannot happen from a dev-agent sandbox. **CRITICAL spec inconsistency
+#   surfaced**: SCP AC-2 says "A simulated 2-minute outage triggers an email alert" but ADR-017 says
+#   "polls every 5 minutes and alerts on three consecutive failures" — math says 3×5min = ~15-20min
+#   detection floor, so 2-minute outage cannot trip the rule. DEC-2 surfaces 4 options for
+#   resolution; A=relax AC-2 to align with ADR-017's free-tier reality (~15-20 min floor for
+#   UptimeRobot Free / ~9-12 min for BetterStack Free) RECOMMENDED. DEC-1 surfaces 3 options for
+#   which monitor service to canonicalize; C=document both UptimeRobot + BetterStack + Uptime-Kuma
+#   side-by-side RECOMMENDED per post-MVP OSS-fork-friendly posture. DEC-3 surfaces 3 options for
+#   live-fire-drill methodology; A=Railway stop/start service RECOMMENDED. A52 verification
+#   confirmed /health/ready exists at DependencyInjection.cs:395-399 with .DisableRateLimiting()
+#   per E14-S4 P3 + no .RequireAuthorization. 6 [!] live-walkthrough ACs (AC-6/7/8/9) deferred per
+#   A47 to Wave-8/9 unified walkthrough. **Cross-cutting findings:** (a) Three docs/14 sections
+#   gain content during E17: Section 25 (E17-S1) + Section 26 (E17-S2) + Section 27 (E17-S4), all
+#   inserted BETWEEN existing Section 24 (E14-S5) and Appendix per A38 doc-bundle. (b) A49 Serilog
+#   re-entrancy constraint steers every runtime-test temptation toward code-audit alternatives —
+#   all three stories explicitly call out the A49 sidestep. (c) A47 escape uniformly applied:
+#   E17-S1 has 3 [!] items (AC-11 sub-items); E17-S2 has 3 [!] items (AC-12 sub-items); E17-S4
+#   has 6 [!] items (AC-6/7/8/9 sub-items). Unified walkthrough surface at Wave-8/9 close. (d)
+#   Cross-story A31 invariants: E17-S1's layering matrix (docs↔JSON files) + E17-S2's CorrelationId
+#   contract (header-name ↔ property-name ↔ log-levels ↔ docs) + E17-S4's /health/ready path parity
+#   (code↔§9↔§23↔§27). (e) A52 endpoint-pattern verification confirmed /health/ready exists +
+#   rate-limit-exempt + unauthenticated at refresh-time; SCP/spec→reality parity confirmed for E17-S4
+#   (the spec divergence is the AC-2 latency claim per DEC-2, not an endpoint-existence gap).
+#   **Status transitions:** epic-17 backlog → in-progress; e17-s1 backlog → ready-for-dev;
+#   e17-s2 backlog → ready-for-dev; e17-s4 backlog → ready-for-dev. Sprint state: E1-E3 + E9-E16 +
+#   E20 all done + E17 in-progress (3 ready-for-dev). E18-E19 + E4-E8 still backlog (E18-E19
+#   queued for Wave-9/10; E4-E8 are the deferred pre-Beta-pivot backlog). NEXT per
+#   workflow.on_complete + project memory feedback_session_pacing_dev_cycles + A34: recommend
+#   committing this 3-story bulk-context refresh + sprint-status update and starting bmad-dev-story
+#   for e17-s1 in a fresh session. After e17-s1 close, dev-story can run for e17-s2 + e17-s4 in
+#   any order (no story-internal sequencing constraints — all 3 are independent given the soft
+#   docs/14 section-ordering convention can be resolved at story-close by reading whichever
+#   section anchors are present). Per project memory feedback_session_pacing_dev_cycles, recommend
+#   separate sessions per dev-story.) ## Previously: 2026-06-02 (Epic-14 CLOSED — Security and Secrets Management. Single autonomous-mode
 #   session delivered all 5 stories + epic-boundary code review + retrospective per user directive
 #   "implementiere alle stories von e14. ohne stopp bis alles implementiert ist. danach kannst du
 #   die retro durchfürhen. es handelt sich nicht mehr um einen mvp." (2026-06-02). A41 escape applied
@@ -766,18 +942,18 @@ development_status:
   e14-s5-audit-logs-for-sensitive-data: done
   epic-14-retrospective: done
 
-  epic-17: backlog
-  e17-s1-restrict-serilog-to-console-in-containers: backlog
-  e17-s2-validate-structured-logs-with-correlation-id: backlog
+  epic-17: done
+  e17-s1-restrict-serilog-to-console-in-containers: done
+  e17-s2-validate-structured-logs-with-correlation-id: done
   e17-s3-add-frontend-api-health-endpoint: done  # absorbed-by-e13-s4 (DEC-1=A 2026-06-01)
-  e17-s4-add-external-uptime-monitoring: backlog
-  epic-17-retrospective: optional
+  e17-s4-add-external-uptime-monitoring: done
+  epic-17-retrospective: done
 
-  epic-18: backlog
-  e18-s1-author-runbook-beta: backlog
-  e18-s2-author-beta-tester-onboarding-guide: backlog
-  e18-s3-add-beta-banner-in-ui: backlog
-  e18-s4-add-feedback-channel: backlog
+  epic-18: in-progress
+  e18-s1-author-runbook-beta: ready-for-dev
+  e18-s2-author-beta-tester-onboarding-guide: ready-for-dev
+  e18-s3-add-beta-banner-in-ui: ready-for-dev
+  e18-s4-add-feedback-channel: ready-for-dev
   epic-18-retrospective: optional
 
   epic-19: backlog
