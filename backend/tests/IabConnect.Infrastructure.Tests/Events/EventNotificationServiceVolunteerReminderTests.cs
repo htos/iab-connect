@@ -41,6 +41,8 @@ public sealed class EventNotificationServiceVolunteerReminderTests
             _emailSender.Object,
             Options.Create(_smtp),
             settingsRepository.Object,
+            Mock.Of<IabConnect.Application.Finance.IInvoiceRepository>(),
+            Mock.Of<IabConnect.Application.Finance.IFinanceProfileRepository>(),
             NullLogger<EventNotificationService>.Instance);
     }
 

@@ -58,6 +58,9 @@ public sealed class EventFeeEndpointTests
             .AddPolicy("RequireEventFeeManager", p => p.RequireRole("admin", "vorstand", "event-manager", "kassier"));
         builder.Services.AddSingleton<ISender, FakeSender>();
         builder.Services.AddSingleton<ISecurityAuditLogger, FakeSecurityAuditLogger>();
+        // REQ-022 (E4-S3): the public fee-categories endpoint resolves these directly.
+        builder.Services.AddSingleton(Moq.Mock.Of<IabConnect.Domain.Events.IEventRepository>());
+        builder.Services.AddSingleton(Moq.Mock.Of<IabConnect.Domain.Events.IEventFeeCategoryRepository>());
 
         var app = builder.Build();
         app.MapEventFeeEndpoints();

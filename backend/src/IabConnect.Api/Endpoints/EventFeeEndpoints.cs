@@ -1,8 +1,10 @@
 using System.Security.Claims;
+using IabConnect.Api.Authorization;
 using IabConnect.Application.Authorization;
 using IabConnect.Application.Events.Fees;
 using IabConnect.Application.Events.Fees.Commands;
 using IabConnect.Application.Events.Fees.Queries;
+using IabConnect.Domain.Events;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -62,7 +64,39 @@ public static class EventFeeEndpoints
             .Produces(StatusCodes.Status403Forbidden)
             .Produces(StatusCodes.Status404NotFound);
 
+        // REQ-022 (E4-S3): PUBLIC, read-only list of the fee categories a public visitor can pick
+        // when registering — active, available now, applicable to non-members (Everyone/PublicOnly).
+        // AllowAnonymous like the public RSVP endpoint; gated by the public_view + events modules.
+        endpoints.MapGet("/api/v1/events/public/{eventId:guid}/fee-categories", GetPublicFeeCategories)
+            .AllowAnonymous()
+            .RequireModule("public_view")
+            .RequireModule("events")
+            .WithTags("Event Fee Categories")
+            .WithName("GetPublicEventFeeCategories")
+            .Produces<IReadOnlyList<PublicFeeCategoryDto>>()
+            .Produces(StatusCodes.Status404NotFound);
+
         return endpoints;
+    }
+
+    private static async Task<IResult> GetPublicFeeCategories(
+        Guid eventId,
+        IEventRepository eventRepository,
+        IEventFeeCategoryRepository feeCategoryRepository,
+        CancellationToken ct)
+    {
+        var evt = await eventRepository.GetByIdAsync(eventId);
+        if (evt is null || evt.Visibility != EventVisibility.Public || evt.Status != EventStatus.Published)
+            return Results.NotFound(new { message = "Event not found" });
+
+        var now = DateTime.UtcNow;
+        var categories = await feeCategoryRepository.GetByEventIdAsync(eventId, includeInactive: false, ct);
+        var applicable = categories
+            .Where(c => c.IsAvailableAt(now) && c.AppliesTo(isMember: false))
+            .Select(PublicFeeCategoryDto.FromEntity)
+            .ToList();
+
+        return Results.Ok(applicable);
     }
 
     private static async Task<IResult> GetFeeCategories(
@@ -179,6 +213,13 @@ public static class EventFeeEndpoints
 }
 
 // ---------- Request DTOs ----------
+
+/// <summary>REQ-022 (E4-S3): public-facing fee category projection (no audit/availability internals).</summary>
+public sealed record PublicFeeCategoryDto(Guid Id, string Name, string? Description, decimal Amount, string Currency)
+{
+    public static PublicFeeCategoryDto FromEntity(EventFeeCategory c) =>
+        new(c.Id, c.Name, c.Description, c.Amount, c.Currency);
+}
 
 public record CreateFeeCategoryRequest(
     string Name,

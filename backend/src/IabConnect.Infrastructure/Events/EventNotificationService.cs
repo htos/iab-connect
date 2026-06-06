@@ -2,8 +2,10 @@ using System.Globalization;
 using System.Net;
 using IabConnect.Application.Common;
 using IabConnect.Application.Events;
+using IabConnect.Application.Finance;
 using IabConnect.Domain.Events;
 using IabConnect.Domain.Events.Volunteers;
+using IabConnect.Domain.Finance;
 using IabConnect.Domain.Members;
 using IabConnect.Infrastructure.Email;
 using Microsoft.Extensions.Logging;
@@ -20,17 +22,23 @@ public sealed class EventNotificationService : IEventNotificationService
     private readonly IEmailSender _emailSender;
     private readonly SmtpSettings _smtpSettings;
     private readonly ISystemSettingsRepository _settingsRepository;
+    private readonly IInvoiceRepository _invoiceRepository;
+    private readonly IFinanceProfileRepository _financeProfileRepository;
     private readonly ILogger<EventNotificationService> _logger;
 
     public EventNotificationService(
         IEmailSender emailSender,
         IOptions<SmtpSettings> smtpSettings,
         ISystemSettingsRepository settingsRepository,
+        IInvoiceRepository invoiceRepository,
+        IFinanceProfileRepository financeProfileRepository,
         ILogger<EventNotificationService> logger)
     {
         _emailSender = emailSender;
         _smtpSettings = smtpSettings.Value;
         _settingsRepository = settingsRepository;
+        _invoiceRepository = invoiceRepository;
+        _financeProfileRepository = financeProfileRepository;
         _logger = logger;
     }
 
@@ -66,8 +74,13 @@ public sealed class EventNotificationService : IEventNotificationService
     {
         var appName = (await _settingsRepository.GetSettingsAsync(ct)).ApplicationName;
         var subject = $"Registration Confirmed – {evt.Title}";
-        var html = BuildRegistrationConfirmationHtml(registration, evt, appName);
-        var plain = BuildRegistrationConfirmationPlain(registration, evt);
+
+        // REQ-022 (E4-S3 / AC-2): enrich the confirmation with fee + offline payment instructions
+        // when this registration raised a finance invoice (E4-S2). Looked up, never recomputed.
+        var paid = await BuildPaymentInfoAsync(registration, ct);
+
+        var html = BuildRegistrationConfirmationHtml(registration, evt, appName, paid);
+        var plain = BuildRegistrationConfirmationPlain(registration, evt, paid);
 
         await SendEmailAsync(registration.ParticipantEmail, subject, html, plain, ct);
 
@@ -442,8 +455,48 @@ Please arrive on time. Thanks for volunteering!
 
     // --- Registration Confirmation ---
 
-    private static string BuildRegistrationConfirmationHtml(EventRegistration registration, Event evt, string appName)
+    /// <summary>
+    /// REQ-022 (E4-S3 / AC-2): payment info for the confirmation email, looked up from the linked
+    /// invoice (E4-S2). Returns null for free registrations (no invoice) and for cancelled invoices.
+    /// </summary>
+    private sealed record PaidEmailInfo(string Amount, string InvoiceNumber, string? BankName, string? BankIban);
+
+    private async Task<PaidEmailInfo?> BuildPaymentInfoAsync(EventRegistration registration, CancellationToken ct)
     {
+        var invoice = await _invoiceRepository.GetByEventRegistrationIdAsync(registration.Id, ct);
+        if (invoice is null || invoice.Status == InvoiceStatus.Cancelled || invoice.Total <= 0)
+            return null;
+
+        var profile = await _financeProfileRepository.GetActiveProfileAsync(ct);
+        var currency = profile?.Currency.ToString() ?? "CHF";
+        var amount = $"{currency} {invoice.Total.ToString("N2", CultureInfo.InvariantCulture)}";
+        return new PaidEmailInfo(amount, invoice.InvoiceNumber, profile?.BankName, profile?.BankIban);
+    }
+
+    private static string BuildPaymentSectionHtml(PaidEmailInfo paid)
+    {
+        var bankLine = !string.IsNullOrWhiteSpace(paid.BankIban)
+            ? $@"<p style=""color: #4B5563;"">Please pay by bank transfer to{(string.IsNullOrWhiteSpace(paid.BankName) ? "" : $" {WebUtility.HtmlEncode(paid.BankName)},")} IBAN <strong>{WebUtility.HtmlEncode(paid.BankIban)}</strong>, quoting invoice {WebUtility.HtmlEncode(paid.InvoiceNumber)}, or pay at the event.</p>"
+            : "<p style=\"color: #4B5563;\">You will receive an invoice with payment instructions, or you can pay at the event.</p>";
+        return $@"
+                    <div style=""margin: 20px 0; padding: 16px; background-color: #FFF7ED; border: 1px solid #FED7AA; border-radius: 8px;"">
+                        <p style=""color: #9A3412; font-weight: bold; margin: 0 0 8px 0;"">Fee: {WebUtility.HtmlEncode(paid.Amount)} — payment pending</p>
+                        <p style=""color: #4B5563; margin: 0 0 8px 0;"">Invoice {WebUtility.HtmlEncode(paid.InvoiceNumber)}.</p>
+                        {bankLine}
+                    </div>";
+    }
+
+    private static string BuildPaymentSectionPlain(PaidEmailInfo paid)
+    {
+        var bankLine = !string.IsNullOrWhiteSpace(paid.BankIban)
+            ? $"Please pay by bank transfer to{(string.IsNullOrWhiteSpace(paid.BankName) ? "" : $" {paid.BankName},")} IBAN {paid.BankIban}, quoting invoice {paid.InvoiceNumber}, or pay at the event."
+            : "You will receive an invoice with payment instructions, or you can pay at the event.";
+        return $"\n\nFee: {paid.Amount} — payment pending\nInvoice {paid.InvoiceNumber}.\n{bankLine}";
+    }
+
+    private static string BuildRegistrationConfirmationHtml(EventRegistration registration, Event evt, string appName, PaidEmailInfo? paid)
+    {
+        var paymentSection = paid is null ? "" : BuildPaymentSectionHtml(paid);
         return $"""
             <!DOCTYPE html>
             <html>
@@ -476,6 +529,7 @@ Please arrive on time. Thanks for volunteering!
                             <td style="padding: 12px; border: 1px solid #E5E7EB;">{registration.NumberOfGuests}</td>
                         </tr>
                     </table>
+                    {paymentSection}
                     <p style="color: #4B5563;">
                         We look forward to seeing you there!
                     </p>
@@ -488,8 +542,9 @@ Please arrive on time. Thanks for volunteering!
             """;
     }
 
-    private static string BuildRegistrationConfirmationPlain(EventRegistration registration, Event evt)
+    private static string BuildRegistrationConfirmationPlain(EventRegistration registration, Event evt, PaidEmailInfo? paid)
     {
+        var paymentSection = paid is null ? "" : BuildPaymentSectionPlain(paid);
         return $"""
             Registration Confirmed
 
@@ -500,7 +555,7 @@ Please arrive on time. Thanks for volunteering!
             Event: {evt.Title}
             Date: {FormatDateTime(evt.StartDate)}
             Location: {evt.Location}
-            Guests: {registration.NumberOfGuests}
+            Guests: {registration.NumberOfGuests}{paymentSection}
 
             We look forward to seeing you there!
 

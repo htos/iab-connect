@@ -32,6 +32,15 @@ public record EventRegistrationDto
     public bool IsActive { get; init; }
     public bool IsCheckedIn { get; init; }
 
+    // REQ-022 (E4-S3): payment state derived from the linked finance invoice (E4-S2). Populated
+    // only where the roster/admin view needs it; defaults to "None"/null for ordinary projections.
+    /// <summary>"Paid" / "Pending" / "None" — derived from the linked invoice status.</summary>
+    public string PaymentStatus { get; init; } = "None";
+    public decimal? AmountDue { get; init; }
+    public string? Currency { get; init; }
+    public Guid? InvoiceId { get; init; }
+    public string? InvoiceNumber { get; init; }
+
     /// <summary>
     /// Maps an <see cref="EventRegistration"/> aggregate to its DTO projection.
     /// </summary>

@@ -1124,7 +1124,7 @@ development_status:
   epic-4: in-progress
   e4-s1-add-event-fee-configuration: review
   e4-s2-connect-paid-registration-to-finance: review
-  e4-s3-add-paid-registration-ui: ready-for-dev
+  e4-s3-add-paid-registration-ui: review
   epic-4-retrospective: optional
 
   epic-5: backlog

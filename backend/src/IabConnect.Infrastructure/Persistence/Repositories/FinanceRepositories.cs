@@ -359,6 +359,31 @@ public sealed class InvoiceRepository : IInvoiceRepository
             .FirstOrDefaultAsync(i => i.Id == id, ct);
     }
 
+    // REQ-022 (E4-S3): the (non-deleted) invoice linked to a paid event registration, if any.
+    public async Task<Invoice?> GetByEventRegistrationIdAsync(Guid eventRegistrationId, CancellationToken ct = default)
+    {
+        return await _context.Invoices
+            .AsNoTracking()
+            .FirstOrDefaultAsync(i => i.EventRegistrationId == eventRegistrationId, ct);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, Invoice>> GetByEventRegistrationIdsAsync(
+        IReadOnlyCollection<Guid> eventRegistrationIds, CancellationToken ct = default)
+    {
+        if (eventRegistrationIds.Count == 0)
+            return new Dictionary<Guid, Invoice>();
+
+        var invoices = await _context.Invoices
+            .AsNoTracking()
+            .Where(i => i.EventRegistrationId != null && eventRegistrationIds.Contains(i.EventRegistrationId.Value))
+            .ToListAsync(ct);
+
+        // One invoice per registration (the coordinator raises exactly one); last-wins is harmless.
+        return invoices
+            .GroupBy(i => i.EventRegistrationId!.Value)
+            .ToDictionary(g => g.Key, g => g.First());
+    }
+
     public async Task<List<Invoice>> GetArchivedAsync(CancellationToken ct = default)
     {
         return await _context.Invoices

@@ -3,8 +3,10 @@ using IabConnect.Application.Common;
 using IabConnect.Application.Events;
 using IabConnect.Application.Events.CheckIn;
 using IabConnect.Application.Events.PaidRegistration;
+using IabConnect.Application.Finance;
 using IabConnect.Domain.Common;
 using IabConnect.Domain.Events;
+using IabConnect.Domain.Finance;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -418,6 +420,8 @@ public static class EventRegistrationEndpoints
     private static async Task<IResult> GetRegistrations(
         Guid eventId,
         IEventRegistrationRepository registrationRepository,
+        IInvoiceRepository invoiceRepository,
+        IFinanceProfileRepository financeProfileRepository,
         RegistrationStatus? status = null,
         bool? isWaitlisted = null,
         string? searchTerm = null,
@@ -434,9 +438,33 @@ public static class EventRegistrationEndpoints
         var (items, totalCount) = await registrationRepository.GetPagedAsync(
             eventId, filter, page, pageSize);
 
+        // REQ-022 (E4-S3): enrich the roster with the linked-invoice payment status (E4-S2).
+        var ids = items.Select(r => r.Id).ToList();
+        var invoices = await invoiceRepository.GetByEventRegistrationIdsAsync(ids);
+        string? currency = null;
+        if (invoices.Count > 0)
+            currency = (await financeProfileRepository.GetActiveProfileAsync())?.Currency.ToString();
+
+        var dtos = items.Select(r =>
+        {
+            var dto = MapToDto(r);
+            if (invoices.TryGetValue(r.Id, out var inv) && inv.Status != InvoiceStatus.Cancelled)
+            {
+                dto = dto with
+                {
+                    PaymentStatus = inv.Status == InvoiceStatus.Paid ? "Paid" : "Pending",
+                    AmountDue = inv.Total,
+                    Currency = currency,
+                    InvoiceId = inv.Id,
+                    InvoiceNumber = inv.InvoiceNumber,
+                };
+            }
+            return dto;
+        }).ToList();
+
         return Results.Ok(new PagedResult<EventRegistrationDto>
         {
-            Items = items.Select(MapToDto).ToList(),
+            Items = dtos,
             TotalCount = totalCount,
             Page = page,
             PageSize = pageSize,

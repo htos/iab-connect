@@ -5,8 +5,18 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
+import { formatCurrency } from "@/lib/utils";
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+
+/** REQ-022 (E4-S3): public fee category for the registration page. */
+interface PublicFeeCategory {
+  id: string;
+  name: string;
+  description?: string | null;
+  amount: number;
+  currency: string;
+}
 
 interface PublicEventDto {
   id: string;
@@ -64,12 +74,15 @@ export default function PublicEventDetailPage() {
     numberOfGuests: 1,
     specialRequirements: "",
   });
+  const [feeCategories, setFeeCategories] = useState<PublicFeeCategory[]>([]);
+  const [selectedFeeId, setSelectedFeeId] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [registrationResult, setRegistrationResult] = useState<{
     isWaitlisted: boolean;
     waitlistPosition?: number;
+    paidFee?: PublicFeeCategory | null;
   } | null>(null);
 
   useEffect(() => {
@@ -81,6 +94,20 @@ export default function PublicEventDetailPage() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data: PublicEventDto = await res.json();
         setEvent(data);
+        // REQ-022 (E4-S3): load applicable fee categories (best-effort; absence = free event /
+        // finance module disabled → no paid registration offered).
+        try {
+          const feeRes = await fetch(
+            `${baseUrl}/api/v1/events/public/${id}/fee-categories`
+          );
+          if (feeRes.ok) {
+            const fees: PublicFeeCategory[] = await feeRes.json();
+            setFeeCategories(fees);
+            if (fees.length === 1) setSelectedFeeId(fees[0].id);
+          }
+        } catch {
+          /* fee categories are optional; ignore load failure */
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : t("fetchError"));
       } finally {
@@ -102,12 +129,13 @@ export default function PublicEventDetailPage() {
   };
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
     setForm((prev) => ({
       ...prev,
-      [name]: name === "numberOfGuests" ? Math.max(1, parseInt(value) || 1) : value,
+      [name]:
+        name === "numberOfGuests" ? Math.max(1, parseInt(value) || 1) : value,
     }));
   };
 
@@ -129,17 +157,23 @@ export default function PublicEventDetailPage() {
             phone: form.participantPhone || undefined,
             numberOfGuests: form.numberOfGuests,
             specialRequirements: form.specialRequirements || undefined,
+            feeCategoryId: selectedFeeId || undefined,
           }),
-        },
+        }
       );
       if (!res.ok) {
         const body = await res.text();
         throw new Error(body || `HTTP ${res.status}`);
       }
       const data = await res.json();
+      const paidFee =
+        !data.isWaitlisted && selectedFeeId
+          ? (feeCategories.find((f) => f.id === selectedFeeId) ?? null)
+          : null;
       setRegistrationResult({
         isWaitlisted: data.isWaitlisted,
         waitlistPosition: data.waitlistPosition,
+        paidFee,
       });
       setSubmitSuccess(true);
       setForm({
@@ -151,7 +185,7 @@ export default function PublicEventDetailPage() {
       });
     } catch (err) {
       setSubmitError(
-        err instanceof Error ? err.message : t("registrationError"),
+        err instanceof Error ? err.message : t("registrationError")
       );
     } finally {
       setSubmitting(false);
@@ -463,7 +497,7 @@ export default function PublicEventDetailPage() {
               <h2 className="text-lg font-semibold text-gray-900">
                 {t("description")}
               </h2>
-              <div className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-gray-700">
+              <div className="mt-3 text-sm leading-relaxed whitespace-pre-wrap text-gray-700">
                 {event.description}
               </div>
             </div>
@@ -480,11 +514,13 @@ export default function PublicEventDetailPage() {
                     {t("registrationClosed")}
                   </div>
                 ) : submitSuccess ? (
-                  <div className={`mt-4 rounded-lg border p-6 text-center ${
-                    registrationResult?.isWaitlisted
-                      ? "border-yellow-200 bg-yellow-50"
-                      : "border-green-200 bg-green-50"
-                  }`}>
+                  <div
+                    className={`mt-4 rounded-lg border p-6 text-center ${
+                      registrationResult?.isWaitlisted
+                        ? "border-yellow-200 bg-yellow-50"
+                        : "border-green-200 bg-green-50"
+                    }`}
+                  >
                     <svg
                       className={`mx-auto h-10 w-10 ${
                         registrationResult?.isWaitlisted
@@ -513,10 +549,14 @@ export default function PublicEventDetailPage() {
                     {registrationResult?.isWaitlisted ? (
                       <>
                         <p className="mt-3 font-medium text-yellow-800">
-                          {t("registration.waitlistSuccess", { position: registrationResult.waitlistPosition ?? 0 })}
+                          {t("registration.waitlistSuccess", {
+                            position: registrationResult.waitlistPosition ?? 0,
+                          })}
                         </p>
                         <p className="mt-1 text-sm text-yellow-700">
-                          {t("registration.waitlistPosition", { position: registrationResult.waitlistPosition ?? 0 })}
+                          {t("registration.waitlistPosition", {
+                            position: registrationResult.waitlistPosition ?? 0,
+                          })}
                         </p>
                       </>
                     ) : (
@@ -527,6 +567,21 @@ export default function PublicEventDetailPage() {
                         <p className="mt-1 text-sm text-green-700">
                           {t("registrationSuccessDetail")}
                         </p>
+                        {registrationResult?.paidFee && (
+                          <div className="mt-3 rounded-lg border border-orange-200 bg-orange-50 p-3 text-left">
+                            <p className="text-sm font-medium text-orange-900">
+                              {t("fee.amountDue", {
+                                amount: formatCurrency(
+                                  registrationResult.paidFee.amount,
+                                  registrationResult.paidFee.currency
+                                ),
+                              })}
+                            </p>
+                            <p className="mt-1 text-sm text-orange-800">
+                              {t("fee.paymentPendingNotice")}
+                            </p>
+                          </div>
+                        )}
                       </>
                     )}
                   </div>
@@ -553,7 +608,7 @@ export default function PublicEventDetailPage() {
                           required
                           value={form.participantName}
                           onChange={handleChange}
-                          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none"
                         />
                       </div>
                       <div>
@@ -570,7 +625,7 @@ export default function PublicEventDetailPage() {
                           required
                           value={form.participantEmail}
                           onChange={handleChange}
-                          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none"
                         />
                       </div>
                     </div>
@@ -589,7 +644,7 @@ export default function PublicEventDetailPage() {
                           name="participantPhone"
                           value={form.participantPhone}
                           onChange={handleChange}
-                          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none"
                         />
                       </div>
                       <div>
@@ -606,7 +661,7 @@ export default function PublicEventDetailPage() {
                           min={1}
                           value={form.numberOfGuests}
                           onChange={handleChange}
-                          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none"
                         />
                       </div>
                     </div>
@@ -624,9 +679,55 @@ export default function PublicEventDetailPage() {
                         rows={3}
                         value={form.specialRequirements}
                         onChange={handleChange}
-                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none"
                       />
                     </div>
+
+                    {/* REQ-022 (E4-S3): fee category selection + payment-pending notice */}
+                    {feeCategories.length > 0 && (
+                      <div className="rounded-lg border border-orange-200 bg-orange-50 p-4">
+                        <p className="text-sm font-medium text-orange-900">
+                          {t("fee.sectionTitle")}
+                        </p>
+                        {feeCategories.length === 1 ? (
+                          <p className="mt-1 text-sm text-orange-800">
+                            {feeCategories[0].name} —{" "}
+                            {formatCurrency(
+                              feeCategories[0].amount,
+                              feeCategories[0].currency
+                            )}
+                          </p>
+                        ) : (
+                          <fieldset className="mt-2 space-y-2">
+                            <legend className="sr-only">
+                              {t("fee.choose")}
+                            </legend>
+                            {feeCategories.map((fee) => (
+                              <label
+                                key={fee.id}
+                                className="flex items-center gap-2 text-sm text-orange-900"
+                              >
+                                <input
+                                  type="radio"
+                                  name="feeCategory"
+                                  value={fee.id}
+                                  checked={selectedFeeId === fee.id}
+                                  onChange={() => setSelectedFeeId(fee.id)}
+                                  className="text-orange-600 focus:ring-orange-500"
+                                />
+                                <span>
+                                  {fee.name} —{" "}
+                                  {formatCurrency(fee.amount, fee.currency)}
+                                </span>
+                              </label>
+                            ))}
+                          </fieldset>
+                        )}
+                        <p className="mt-2 text-xs text-orange-700">
+                          {t("fee.paymentPendingNotice")}
+                        </p>
+                      </div>
+                    )}
 
                     <button
                       type="submit"
@@ -675,7 +776,7 @@ export default function PublicEventDetailPage() {
                     day: "2-digit",
                     month: "long",
                     year: "numeric",
-                  },
+                  }
                 )}
               </p>
             )}

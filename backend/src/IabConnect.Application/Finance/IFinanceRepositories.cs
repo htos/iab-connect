@@ -56,6 +56,11 @@ public interface IInvoiceRepository
     Task<List<Invoice>> GetOpenItemsAsync(CancellationToken ct = default);
     Task<string> GetNextInvoiceNumberAsync(CancellationToken ct = default);
     Task<List<Invoice>> GetArchivedAsync(CancellationToken ct = default);
+
+    // REQ-022 (E4-S3): look up invoices linked to event registrations (paid registration, E4-S2).
+    Task<Invoice?> GetByEventRegistrationIdAsync(Guid eventRegistrationId, CancellationToken ct = default);
+    Task<IReadOnlyDictionary<Guid, Invoice>> GetByEventRegistrationIdsAsync(
+        IReadOnlyCollection<Guid> eventRegistrationIds, CancellationToken ct = default);
 }
 
 /// <summary>

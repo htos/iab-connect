@@ -323,7 +323,16 @@ export interface EventRegistrationDto {
   qrCodeToken: string;
   isActive: boolean;
   isCheckedIn: boolean;
+  // REQ-022 (E4-S3): payment state derived from the linked finance invoice (E4-S2).
+  paymentStatus?: PaymentStatus;
+  amountDue?: number | null;
+  currency?: string | null;
+  invoiceId?: string | null;
+  invoiceNumber?: string | null;
 }
+
+/** REQ-022 (E4-S3): payment state for a registration; byte-matches the backend-derived value. */
+export type PaymentStatus = 'Paid' | 'Pending' | 'None';
 
 export type RegistrationStatus =
   | 'Pending'
@@ -351,6 +360,9 @@ export interface RegisterPublicRequest {
   phone?: string;
   numberOfGuests?: number;
   specialRequirements?: string;
+  // REQ-022 (E4-S3): the chosen fee category for a paid event (optional; auto-resolved server-side
+  // when exactly one applicable category exists).
+  feeCategoryId?: string;
 }
 
 export interface RegisterMemberRequest {
@@ -360,6 +372,7 @@ export interface RegisterMemberRequest {
   memberId?: string;
   numberOfGuests?: number;
   specialRequirements?: string;
+  feeCategoryId?: string;
 }
 
 export interface UpdateRegistrationRequest {
@@ -800,6 +813,25 @@ export interface SaveFeeCategoryRequest {
   availableFrom?: string | null;
   availableUntil?: string | null;
   maxQuantity?: number | null;
+}
+
+/**
+ * REQ-022 (E4-S3): public-facing fee category (no audit/availability internals). Returned by the
+ * anonymous public endpoint for the registration page.
+ */
+export interface PublicFeeCategoryDto {
+  id: string;
+  name: string;
+  description?: string | null;
+  amount: number;
+  currency: string;
+}
+
+/** REQ-022 (E4-S3): the fee categories a public visitor can pick when registering. */
+export async function getPublicEventFeeCategories(
+  eventId: string
+): Promise<ApiResult<PublicFeeCategoryDto[]>> {
+  return apiGet<PublicFeeCategoryDto[]>(`/events/public/${eventId}/fee-categories`);
 }
 
 export async function getEventFeeCategories(

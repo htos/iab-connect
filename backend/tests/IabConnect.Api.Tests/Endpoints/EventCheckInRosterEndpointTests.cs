@@ -104,6 +104,8 @@ public sealed class EventCheckInRosterEndpointTests
         builder.Services.AddSingleton(Moq.Mock.Of<IEventFeeCategoryRepository>());
         builder.Services.AddSingleton(Moq.Mock.Of<IModuleSettingsService>());
         builder.Services.AddSingleton(Moq.Mock.Of<IPaidRegistrationService>());
+        builder.Services.AddSingleton(Moq.Mock.Of<IabConnect.Application.Finance.IInvoiceRepository>());
+        builder.Services.AddSingleton(Moq.Mock.Of<IabConnect.Application.Finance.IFinanceProfileRepository>());
         builder.Services.AddDbContext<ApplicationDbContext>(options =>
             options.UseInMemoryDatabase($"checkin-roster-{routePattern}"));
 
