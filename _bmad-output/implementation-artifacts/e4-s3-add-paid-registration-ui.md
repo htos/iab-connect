@@ -1,6 +1,6 @@
 # Story 4.3: Add Paid Registration UI
 
-Status: review
+Status: done
 
 ## Refresh Notes (2026-06-06, Epic-4 bulk-refresh per A34, post-MVP scope)
 

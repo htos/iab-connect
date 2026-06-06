@@ -1,6 +1,6 @@
 # Story 4.1: Add Event Fee Configuration
 
-Status: review
+Status: done
 
 ## Refresh Notes (2026-06-06, Epic-4 bulk-refresh per A34, post-MVP scope)
 

@@ -1121,11 +1121,11 @@ development_status:
   # from day one, and E14-S4 (rate-limiting baseline) is already done so external
   # API routes inherit the rate-limit policy. (E4's own prerequisites — E10 +
   # E14-S4 — were likewise satisfied before resuming.)
-  epic-4: in-progress
-  e4-s1-add-event-fee-configuration: review
-  e4-s2-connect-paid-registration-to-finance: review
-  e4-s3-add-paid-registration-ui: review
-  epic-4-retrospective: optional
+  epic-4: done
+  e4-s1-add-event-fee-configuration: done
+  e4-s2-connect-paid-registration-to-finance: done
+  e4-s3-add-paid-registration-ui: done
+  epic-4-retrospective: done
 
   epic-5: backlog
   e5-s1-add-automation-definition-model-and-api: backlog
