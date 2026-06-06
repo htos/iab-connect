@@ -1093,6 +1093,52 @@
         "descriptionTooLong": "Description cannot exceed 1000 characters.",
         "notesTooLong": "Notes cannot exceed 1000 characters."
       }
+    },
+    "fees": {
+      "pageTitle": "Attendance Fees",
+      "pageDescription": "Manage fee categories for paid registration",
+      "manageFees": "Fees",
+      "backToEvent": "Back to event",
+      "newCategory": "New fee category",
+      "editCategory": "Edit fee category",
+      "dialogDescription": "Set the name, amount, currency, and availability of the fee.",
+      "name": "Name",
+      "amount": "Amount",
+      "currency": "Currency",
+      "applicability": "Applies to",
+      "availability": "Availability",
+      "availableFrom": "Available from (optional)",
+      "availableUntil": "Available until (optional)",
+      "alwaysAvailable": "Always available",
+      "maxQuantity": "Max quantity (optional)",
+      "description": "Description (optional)",
+      "pricePreview": "Preview: {price}",
+      "applicabilityOptions": {
+        "Everyone": "Everyone",
+        "MembersOnly": "Members only",
+        "PublicOnly": "Public only"
+      },
+      "noCategories": "No fee categories yet. Without a category, registration is free.",
+      "edit": "Edit",
+      "deactivate": "Deactivate",
+      "retired": "Retired",
+      "confirmDeactivate": "Deactivate this fee category? Existing registrations are unaffected.",
+      "permissionDenied": "You do not have permission to manage fees.",
+      "loadFailed": "Could not load the fee categories.",
+      "saveFailed": "Save failed.",
+      "save": "Save",
+      "cancel": "Cancel",
+      "validation": {
+        "nameRequired": "Name is required.",
+        "nameTooLong": "Name cannot exceed 100 characters.",
+        "amountInvalid": "Please enter a valid amount.",
+        "amountMin": "Amount cannot be negative.",
+        "amountDecimals": "Amount cannot have more than 2 decimal places.",
+        "currencyInvalid": "Please choose a valid currency.",
+        "maxQuantityMin": "Max quantity must be at least 1.",
+        "untilAfterFrom": "The end must be after the start.",
+        "descriptionTooLong": "Description cannot exceed 500 characters."
+      }
     }
   },
   "emailCampaigns": {

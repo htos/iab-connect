@@ -1,6 +1,6 @@
 # Story 4.1: Add Event Fee Configuration
 
-Status: in-progress
+Status: review
 
 ## Refresh Notes (2026-06-06, Epic-4 bulk-refresh per A34, post-MVP scope)
 
@@ -110,24 +110,24 @@ so that **the event carries a structured, authoritative description of what each
 
 **Task 5 — Frontend: fee-config admin form + DTO (AC-10, AC-11)**
 
-- [ ] **5.1** Extend the event DTO(s) in `frontend/src/lib/services/events.ts` with `feeCategories` (typed; enum string values byte-match backend). Add the typed API calls for add/update/deactivate (or fold into the event create/update payload — match how the admin form already saves the event).
-- [ ] **5.2** Add the fee-categories sub-section to the event create/edit admin form (RHF + Zod `buildSchema(t)`, shared `ui/*` components, orange actions, `formatCurrency` preview).
-- [ ] **5.3** Add de/en i18n keys (parity); no hi.json.
+- [x] **5.1** Extended `frontend/src/lib/services/events.ts` with `EventFeeCategoryDto`, `FeeApplicability` (PascalCase union byte-matching backend), `FEE_CURRENCIES`/`FeeCurrency`, `SaveFeeCategoryRequest`, and typed API calls (`getEventFeeCategories` / `createEventFeeCategory` / `updateEventFeeCategory` / `deactivateEventFeeCategory`). **DEC-5 (dev-time):** fee categories are a sub-resource keyed by an existing `eventId`, so they are managed on a dedicated page (mirroring the volunteers sub-resource pattern), NOT folded into the event create form (which has no id yet).
+- [x] **5.2** Added the fee-category management page `frontend/src/app/(dashboard)/events/[id]/fees/page.tsx` (RHF + Zod `buildFeeSchema(t)` in a Radix dialog mirroring the volunteer-shift form, shared `ui/*`, orange actions, `formatCurrency(amount, currency)` in the table). Added a "Fees" link in the event-detail action bar. Extended `formatCurrency` in `lib/utils.ts` with an optional `currency` arg (default CHF, backward-compatible; AC-11 white-label).
+- [x] **5.3** Added `events.fees` de/en i18n keys (40 keys each, parity verified); no hi.json.
 
 **Task 6 — Tests (AC-9)**
 
-- [ ] **6.1** Domain unit tests (entity + Event methods).
-- [ ] **6.2** Validator tests (AC-3 rules).
-- [ ] **6.3** Testcontainers PostgreSQL integration test (round-trip + filtered-unique index + child actually persists).
-- [ ] **6.4** API authorization + `Module:events`-disabled tests.
-- [ ] **6.5** Frontend Vitest test for the fee-config form (validation states, add/remove rows) — `// @vitest-environment jsdom` + `afterEach(cleanup)` per A35/A46 since it `render()`s.
-- [ ] **6.6** `cd backend && dotnet test` green; frontend `npx eslint`/`prettier --check` on changed files + `vitest run` green (A58).
+- [x] **6.1** Domain unit tests (entity + Event methods). _(backend; done in prior session)_
+- [x] **6.2** Validator tests (AC-3 rules). _(backend)_
+- [x] **6.3** Testcontainers PostgreSQL integration test (round-trip + filtered-unique index + child actually persists). _(backend)_
+- [x] **6.4** API authorization + `Module:events`-disabled tests. _(backend)_
+- [x] **6.5** Frontend Vitest test `events/[id]/fees/page.test.tsx` (list render incl. retired, empty state, create-dialog zod validation, successful create, deactivate) — `// @vitest-environment jsdom` + `afterEach(cleanup)`. 5 tests green.
+- [x] **6.6** `cd backend && dotnet test` green (prior session); frontend `npx eslint`/`prettier --check` on changed files clean + `vitest run` 179/179 green (A58; pre-existing repo-wide prettier drift in `events.ts` recorded, untouched lines).
 
 **Task 7 — Quality-Gates Closing + Dev Agent Record (AC-12)**
 
-- [ ] **7.1** Build the QGT table per A29 (every AC sub-item).
-- [ ] **7.2** Record A43 (a)/(b)/(c) for each resolved DEC.
-- [ ] **7.3** Flip Status: ready-for-dev → in-progress → review.
+- [x] **7.1** QGT table populated below (every AC sub-item).
+- [x] **7.2** A43 (a)/(b)/(c) recorded for DEC-1..DEC-4 (prior session) + DEC-5 (this session) in Debug Log.
+- [x] **7.3** Status flipped: ready-for-dev → in-progress → review.
 
 ## Dev Notes
 
@@ -203,24 +203,25 @@ If the dev-story session pre-declares autonomous mode, auto-pick DEC-1=A, DEC-2=
 
 | AC | Sub-item | Status | Evidence anchor |
 |----|----------|--------|-----------------|
-| AC-1 | Event owns 0..N `EventFeeCategory` via aggregate methods | _pending_ | `Event.cs` Add/Update/Deactivate |
-| AC-2 | Category fields (name/amount/currency/applicability/window/active) | _pending_ | `EventFeeCategory.cs` |
-| AC-2 | `Amount` precision `(18,2)` (Finance parity) | _pending_ | `EventFeeCategoryConfiguration.cs` |
-| AC-3 | Validator: name/amount/decimals/window/enum/dupe-name | _pending_ | validator + tests |
-| AC-3 | Domain guards (defense in depth) | _pending_ | `EventFeeCategory.cs` / `Event.cs` |
-| AC-4 | Authorization policy (DEC-4) | _pending_ | `DependencyInjection.cs` |
-| AC-5 | Audit on create/update/deactivate | _pending_ | endpoint audit calls |
-| AC-6 | Free events + `Event.Cost`/`IsFree` unchanged | _pending_ | existing event tests green |
-| AC-7 | `Module:events` gate (no Finance gate) | _pending_ | route-group declaration |
-| AC-8 | EF config + filtered-unique index + child persists | _pending_ | config + integration test |
-| AC-8 | Migration `AddEventFeeCategories` | _pending_ | Migrations/ |
-| AC-9 | Domain unit tests | _pending_ | tests |
-| AC-9 | Validator tests | _pending_ | tests |
-| AC-9 | Testcontainers integration test | _pending_ | tests |
-| AC-9 | API authorization + module-disabled tests | _pending_ | tests |
-| AC-10 | Event DTO + admin fee-config form | _pending_ | `events.ts` + admin page |
-| AC-11 | de/en i18n parity, no hi.json | _pending_ | messages/de.json + en.json |
-| AC-12 | This table populated; A58 changed-file gates | _pending_ | Task 7.1 |
+| AC-1 | Event owns 0..N `EventFeeCategory` via aggregate methods | ✅ | `EventFeeCategory.Create/Update/Deactivate` + repo (DEC-3 standalone entity) |
+| AC-2 | Category fields (name/amount/currency/applicability/window/active) | ✅ | `EventFeeCategory.cs` |
+| AC-2 | `Amount` precision `(18,2)` (Finance parity) | ✅ | `EventFeeCategoryConfiguration.cs` |
+| AC-3 | Validator: name/amount/decimals/window/enum/dupe-name | ✅ | `CreateEventFeeCategoryCommandValidator` + tests |
+| AC-3 | Domain guards (defense in depth) | ✅ | `EventFeeCategory.cs` invariant guards |
+| AC-4 | Authorization policy (DEC-4) | ✅ | `RequireEventFeeManager` in `DependencyInjection.cs` |
+| AC-5 | Audit on create/update/deactivate | ✅ | `EventFeeEndpoints` `ISecurityAuditLogger.LogAccessGranted` |
+| AC-6 | Free events + `Event.Cost`/`IsFree` unchanged | ✅ | `Event.cs` cost surface untouched; existing tests green |
+| AC-7 | `Module:events` gate (no Finance gate) | ✅ | `EventFeeEndpoints` group `.RequireAuthorization("Module:events")` |
+| AC-8 | EF config + filtered-unique index + child persists | ✅ | config + Testcontainers test (4 passed) |
+| AC-8 | Migration `AddEventFeeCategories` | ✅ | `20260606083251_AddEventFeeCategories` |
+| AC-9 | Domain unit tests | ✅ | Application.Tests Fee filter 66 passed |
+| AC-9 | Validator tests | ✅ | included in 66 passed |
+| AC-9 | Testcontainers integration test | ✅ | Infrastructure.Tests Fee 4 passed |
+| AC-9 | API authorization + module-disabled tests | ✅ | Api.Tests Fee 14 passed |
+| AC-9 | Frontend Vitest (fee-config form) | ✅ | `fees/page.test.tsx` 5 passed |
+| AC-10 | Event fee DTO + admin fee-config form | ✅ | `events.ts` + `events/[id]/fees/page.tsx` + detail-page link (DEC-5: dedicated sub-resource page) |
+| AC-11 | de/en i18n parity, no hi.json | ✅ | `events.fees` 40 keys de==en; `formatCurrency(amount,currency)` (no literal CHF) |
+| AC-12 | This table populated; A58 changed-file gates | ✅ | eslint/tsc/prettier clean on changed files; full vitest 179/179 |
 
 ## Dev Agent Record
 
@@ -271,13 +272,34 @@ DEC-4: Authorization policy
 (b) Rationale: story recommendation A; matches the AC literally; one-line AddPolicy.
 (c) Consequence: new policy in DependencyInjection.cs; all 4 fee endpoints gate on it +
     Module:events (NO Module:finance — that lands in E4-S2).
+
+DEC-5: Frontend home for fee config (NEW, this session) — dedicated sub-resource page
+(a) The fee-config UI lives on a dedicated page events/[id]/fees/page.tsx (mirroring the
+    volunteers sub-resource management page), reached from a "Fees" link in the event-detail
+    action bar — NOT folded into the event create/edit form as AC-10's literal text suggests.
+(b) Rationale: the backend fee API is a sub-resource keyed by an EXISTING eventId
+    (/api/v1/events/{eventId}/fee-categories), consistent with DEC-3's volunteer-pattern pivot.
+    The event create form has no id yet, so it structurally cannot host the sub-resource CRUD.
+    The volunteers page is the established precedent for exactly this shape (RHF+Zod dialog +
+    sub-resource service calls). The event-detail action bar is the natural entry point.
+(c) Consequence: new page + detail-page link; formatCurrency gained an optional currency arg
+    (default CHF, backward-compatible) so amounts render per-category currency without a
+    hardcoded "CHF" literal (AC-11 white-label). Admin authoring surface for fee categories
+    (AC-10) is satisfied by the page; the public/registrant rendering remains E4-S3.
 ```
 
 ### Completion Notes List
 
-**⚠️ STORY PARTIALLY COMPLETE — backend done + verified; frontend (Task 5) + final frontend gate (Task 7) PENDING. Status held at `in-progress` (NOT `review`).**
+**✅ STORY COMPLETE — backend + frontend done + verified. Status: `review`.**
 
-**Backend — DONE + VERIFIED (Tasks 0, 1, 2, 3, 4, 6.1–6.4, 6.6-backend):**
+**Frontend — DONE + VERIFIED (Tasks 5, 6.5, 6.6-frontend, 7), this session:**
+- `events.ts`: `EventFeeCategoryDto`, `FeeApplicability` union (byte-matches backend PascalCase), `FEE_CURRENCIES`/`FeeCurrency`, `SaveFeeCategoryRequest`, + 4 typed API calls.
+- `lib/utils.ts`: `formatCurrency(amount, currency='CHF')` — optional currency arg, backward-compatible (AC-11 white-label, no hardcoded CHF literal in components).
+- NEW page `events/[id]/fees/page.tsx`: RHF+Zod create/edit dialog (mirrors volunteer-shift form), active+retired table, soft-retire (deactivate) action, Zurich wall-clock conversion for availability windows. Entry via a "Fees" link in the event-detail action bar (DEC-5).
+- i18n: `events.fees` block in de.json + en.json (40 keys each, parity verified). No hi.json.
+- **Tests green:** `fees/page.test.tsx` 5 passed (list incl. retired, empty state, create-dialog zod validation, successful create, deactivate). Full frontend suite **179/179** (was 174). eslint + tsc clean on changed files; prettier clean on new files + utils.ts (events.ts carries pre-existing repo-wide drift per A58 — untouched lines).
+
+**Backend — DONE + VERIFIED (Tasks 0, 1, 2, 3, 4, 6.1–6.4, 6.6-backend; prior session):**
 - New domain entity `EventFeeCategory` (+ `FeeApplicability` enum) with invariant guards, soft-retire (`Deactivate`/`Reactivate`), `IsAvailableAt`/`AppliesTo` helpers. `Event.cs` Cost surface untouched (AC-6).
 - `IEventFeeCategoryRepository` + EF-backed `EventFeeCategoryRepository`; `EventFeeCategoryConfiguration` (Amount `(18,2)`, enum string conversion, FK cascade, `ix_event_id`, filtered-unique `ux (event_id,name) WHERE is_active`, check `amount >= 0`); DbSet on `ApplicationDbContext`.
 - Migration `20260606083251_AddEventFeeCategories` (reviewed — table/precision/check/FK/indexes correct).
@@ -286,10 +308,7 @@ DEC-4: Authorization policy
 - DI: repository registered (Infrastructure); `RequireEventFeeManager` policy added (Api); endpoints mapped (EndpointMapper).
 - **Tests green:** Application.Tests Fee filter **66 passed** (domain + validator + handler); Api.Tests Fee **14 passed** (auth/module metadata); Infrastructure.Tests Fee **4 passed** (Testcontainers PostgreSQL: round-trip, filtered-unique index reject-dup/allow-retired-reuse, case-insensitive active-name). Build 0W/0E.
 
-**PENDING (next dev-story continuation):**
-- Task 5 (AC-10/AC-11): frontend fee-config sub-form on the event create/edit admin page + `events.ts` DTO/API + de/en i18n keys.
-- Task 6.5: frontend Vitest for the fee-config form.
-- Task 7: A58 changed-file frontend gates + flip Status → review + QGT table population.
+**PENDING:** none — all tasks complete; story moved to `review`.
 
 ### File List
 
@@ -318,9 +337,18 @@ MODIFIED:
 - `backend/src/IabConnect.Api/DependencyInjection.cs` (+ RequireEventFeeManager policy)
 - `backend/src/IabConnect.Api/Endpoints/EndpointMapper.cs` (+ MapEventFeeEndpoints)
 
-PENDING (frontend): `frontend/src/lib/services/events.ts`, the event create/edit admin page, `frontend/messages/de.json` + `en.json`, a new Vitest test.
+NEW (frontend, this session):
+- `frontend/src/app/(dashboard)/events/[id]/fees/page.tsx`
+- `frontend/src/app/(dashboard)/events/[id]/fees/page.test.tsx`
+
+MODIFIED (frontend, this session):
+- `frontend/src/lib/services/events.ts` (fee DTO/types + 4 API calls)
+- `frontend/src/lib/utils.ts` (`formatCurrency` optional currency arg)
+- `frontend/src/app/(dashboard)/events/[id]/page.tsx` (Fees link in action bar)
+- `frontend/messages/de.json` + `frontend/messages/en.json` (`events.fees` block)
 
 ### Change Log
 
 - 2026-06-06: Story refreshed from pre-pivot stub to dev-ready in the Epic-4 A34 bulk pass; post-MVP scope; A56 spike documented the existing `Event.Cost` surface and the net-new `EventFeeCategory` model; DEC-1..DEC-4 surfaced with recommendations.
 - 2026-06-06: Backend implemented + verified (domain, persistence, MediatR commands/query, API, migration, tests all green). DEC-1=A, DEC-2 pivoted A→B (ISO-string currency for module decoupling), DEC-3 pivoted to the Volunteer MediatR sub-resource pattern, DEC-4=A. Frontend (Task 5/6.5/7) pending — Status held `in-progress`.
+- 2026-06-06: Frontend implemented + verified (fee-category management page mirroring the volunteers sub-resource pattern, events.ts DTO/API, formatCurrency currency arg, de/en i18n, detail-page link). DEC-5=A (dedicated sub-resource page, not the create form — the fee API is eventId-keyed). Vitest 5/5 green, full suite 179/179, eslint/tsc/prettier clean on changed files. All tasks complete; Status → `review`.

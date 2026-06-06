@@ -757,3 +757,87 @@ export function getRegistrationStatusColor(
       return 'outline';
   }
 }
+
+// ============================================
+// REQ-022 (E4-S1): Event fee categories
+// ============================================
+
+/**
+ * Who a fee category applies to. String values byte-match the backend `FeeApplicability` enum
+ * (PascalCase) so the value round-trips without mapping.
+ */
+export type FeeApplicability = 'Everyone' | 'MembersOnly' | 'PublicOnly';
+
+/**
+ * Currencies a fee may be priced in. Mirrors the backend `FeeCurrencies.Supported` set
+ * (CHF / EUR) — kept as ISO-4217 codes so `formatCurrency(amount, currency)` renders the
+ * correct symbol per white-label deployment.
+ */
+export const FEE_CURRENCIES = ['CHF', 'EUR'] as const;
+export type FeeCurrency = (typeof FEE_CURRENCIES)[number];
+
+export interface EventFeeCategoryDto {
+  id: string;
+  eventId: string;
+  name: string;
+  description?: string | null;
+  amount: number;
+  currency: string;
+  applicability: FeeApplicability;
+  availableFrom?: string | null;
+  availableUntil?: string | null;
+  maxQuantity?: number | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface SaveFeeCategoryRequest {
+  name: string;
+  description?: string | null;
+  amount: number;
+  currency: string;
+  applicability: FeeApplicability;
+  availableFrom?: string | null;
+  availableUntil?: string | null;
+  maxQuantity?: number | null;
+}
+
+export async function getEventFeeCategories(
+  eventId: string,
+  options?: { includeInactive?: boolean }
+): Promise<ApiResult<EventFeeCategoryDto[]>> {
+  const params = new URLSearchParams();
+  if (options?.includeInactive === false) params.set('includeInactive', 'false');
+  const qs = params.toString();
+  return apiGet<EventFeeCategoryDto[]>(
+    `/events/${eventId}/fee-categories/${qs ? `?${qs}` : ''}`
+  );
+}
+
+export async function createEventFeeCategory(
+  eventId: string,
+  request: SaveFeeCategoryRequest
+): Promise<ApiResult<EventFeeCategoryDto>> {
+  return apiPost<EventFeeCategoryDto>(`/events/${eventId}/fee-categories/`, request);
+}
+
+export async function updateEventFeeCategory(
+  eventId: string,
+  categoryId: string,
+  request: SaveFeeCategoryRequest
+): Promise<ApiResult<EventFeeCategoryDto>> {
+  return apiPut<EventFeeCategoryDto>(
+    `/events/${eventId}/fee-categories/${categoryId}`,
+    request
+  );
+}
+
+export async function deactivateEventFeeCategory(
+  eventId: string,
+  categoryId: string
+): Promise<ApiResult<EventFeeCategoryDto>> {
+  return apiPost<EventFeeCategoryDto>(
+    `/events/${eventId}/fee-categories/${categoryId}/deactivate`,
+    {}
+  );
+}

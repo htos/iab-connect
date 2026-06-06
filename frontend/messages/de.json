@@ -1094,6 +1094,52 @@
         "descriptionTooLong": "Beschreibung darf höchstens 1000 Zeichen lang sein.",
         "notesTooLong": "Notizen dürfen höchstens 1000 Zeichen lang sein."
       }
+    },
+    "fees": {
+      "pageTitle": "Teilnahmegebühren",
+      "pageDescription": "Gebührenkategorien für die kostenpflichtige Anmeldung verwalten",
+      "manageFees": "Gebühren",
+      "backToEvent": "Zurück zum Event",
+      "newCategory": "Neue Gebührenkategorie",
+      "editCategory": "Gebührenkategorie bearbeiten",
+      "dialogDescription": "Lege Name, Betrag, Währung und Gültigkeit der Gebühr fest.",
+      "name": "Name",
+      "amount": "Betrag",
+      "currency": "Währung",
+      "applicability": "Gültig für",
+      "availability": "Verfügbarkeit",
+      "availableFrom": "Verfügbar ab (optional)",
+      "availableUntil": "Verfügbar bis (optional)",
+      "alwaysAvailable": "Immer verfügbar",
+      "maxQuantity": "Max. Anzahl (optional)",
+      "description": "Beschreibung (optional)",
+      "pricePreview": "Vorschau: {price}",
+      "applicabilityOptions": {
+        "Everyone": "Alle",
+        "MembersOnly": "Nur Mitglieder",
+        "PublicOnly": "Nur Öffentlichkeit"
+      },
+      "noCategories": "Noch keine Gebührenkategorien. Ohne Kategorie ist die Anmeldung kostenlos.",
+      "edit": "Bearbeiten",
+      "deactivate": "Deaktivieren",
+      "retired": "Zurückgezogen",
+      "confirmDeactivate": "Diese Gebührenkategorie wirklich deaktivieren? Bestehende Anmeldungen bleiben unberührt.",
+      "permissionDenied": "Du hast keine Berechtigung, Gebühren zu verwalten.",
+      "loadFailed": "Die Gebührenkategorien konnten nicht geladen werden.",
+      "saveFailed": "Speichern fehlgeschlagen.",
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "validation": {
+        "nameRequired": "Name ist erforderlich.",
+        "nameTooLong": "Name darf höchstens 100 Zeichen lang sein.",
+        "amountInvalid": "Bitte gib einen gültigen Betrag ein.",
+        "amountMin": "Der Betrag darf nicht negativ sein.",
+        "amountDecimals": "Der Betrag darf höchstens 2 Dezimalstellen haben.",
+        "currencyInvalid": "Bitte wähle eine gültige Währung.",
+        "maxQuantityMin": "Die maximale Anzahl muss mindestens 1 sein.",
+        "untilAfterFrom": "Das Ende muss nach dem Beginn liegen.",
+        "descriptionTooLong": "Beschreibung darf höchstens 500 Zeichen lang sein."
+      }
     }
   },
   "emailCampaigns": {
