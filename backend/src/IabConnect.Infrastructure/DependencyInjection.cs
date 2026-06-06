@@ -258,6 +258,10 @@ public static class DependencyInjection
         services.AddScoped<IabConnect.Application.Events.IEventRegistrationCancellationService,
             Events.EventRegistrationCancellationService>();
 
+        // REQ-022 (E4-S2): atomic cross-module paid-registration coordinator (registration + invoice)
+        services.AddScoped<IabConnect.Application.Events.PaidRegistration.IPaidRegistrationService,
+            Events.PaidRegistrationService>();
+
         // REQ-034: Document Storage (RustFS via S3 SDK)
         services.Configure<DocumentStorageSettings>(configuration.GetSection(DocumentStorageSettings.SectionName));
         var storageSettings = configuration.GetSection(DocumentStorageSettings.SectionName).Get<DocumentStorageSettings>()

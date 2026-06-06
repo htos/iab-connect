@@ -3,8 +3,10 @@ using System.Security.Claims;
 using FluentAssertions;
 using IabConnect.Api.Endpoints;
 using IabConnect.Application.Authorization;
+using IabConnect.Application.Common;
 using IabConnect.Application.Events;
 using IabConnect.Application.Events.CheckIn;
+using IabConnect.Application.Events.PaidRegistration;
 using IabConnect.Domain.Events;
 using IabConnect.Domain.Events.Volunteers;
 using IabConnect.Domain.Members;
@@ -98,6 +100,10 @@ public sealed class EventCheckInRosterEndpointTests
         // H-S2-5 (Epic-3-retro §9): the CancelRegistration endpoint in this Map call now
         // depends on the transactional cancellation service.
         builder.Services.AddSingleton<IEventRegistrationCancellationService, FakeEventRegistrationCancellationService>();
+        // REQ-022 (E4-S2): register handlers also take these services for the paid branch.
+        builder.Services.AddSingleton(Moq.Mock.Of<IEventFeeCategoryRepository>());
+        builder.Services.AddSingleton(Moq.Mock.Of<IModuleSettingsService>());
+        builder.Services.AddSingleton(Moq.Mock.Of<IPaidRegistrationService>());
         builder.Services.AddDbContext<ApplicationDbContext>(options =>
             options.UseInMemoryDatabase($"checkin-roster-{routePattern}"));
 

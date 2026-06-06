@@ -2,8 +2,10 @@ using System.Security.Claims;
 using FluentAssertions;
 using IabConnect.Api.Endpoints;
 using IabConnect.Application.Authorization;
+using IabConnect.Application.Common;
 using IabConnect.Application.Events;
 using IabConnect.Application.Events.CheckIn;
+using IabConnect.Application.Events.PaidRegistration;
 using IabConnect.Domain.Events;
 using IabConnect.Domain.Events.Volunteers;
 using IabConnect.Domain.Members;
@@ -70,6 +72,10 @@ public sealed class EventCheckInEndpointTests
         builder.Services.AddSingleton<ISender, FakeSender>();
         builder.Services.AddSingleton<ISecurityAuditLogger, FakeSecurityAuditLogger>();
         builder.Services.AddSingleton<IEventRegistrationCancellationService, FakeEventRegistrationCancellationService>();
+        // REQ-022 (E4-S2): the register handlers now also take these services for the paid branch.
+        builder.Services.AddSingleton(Moq.Mock.Of<IEventFeeCategoryRepository>());
+        builder.Services.AddSingleton(Moq.Mock.Of<IModuleSettingsService>());
+        builder.Services.AddSingleton(Moq.Mock.Of<IPaidRegistrationService>());
         builder.Services.AddDbContext<ApplicationDbContext>(options =>
             options.UseInMemoryDatabase($"checkin-{routePattern}"));
 

@@ -1123,7 +1123,7 @@ development_status:
   # E14-S4 — were likewise satisfied before resuming.)
   epic-4: in-progress
   e4-s1-add-event-fee-configuration: review
-  e4-s2-connect-paid-registration-to-finance: ready-for-dev
+  e4-s2-connect-paid-registration-to-finance: review
   e4-s3-add-paid-registration-ui: ready-for-dev
   epic-4-retrospective: optional
 
