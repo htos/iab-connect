@@ -753,3 +753,74 @@ Patched Quality-Gates row cites `_AC1 + _AC1b` together; structurally cleaner fi
 - E12 (HealthReady regex lookahead) — added `.DisableRateLimiting()` positive assertion at the end mitigates the regex-ordering edge case.
 - P6 (Section 26.4 sample curl path) — `/api/v1/members` is an illustrative repro example; a fork operator substitutes their own route.
 - P9 line-count + P10 class-naming are pure cosmetic.
+
+---
+
+## Deferred from: code review of Epic-4 (Event Monetization, REQ-022) (2026-06-06)
+
+3-layer adversarial epic-boundary review (Blind Hunter + Edge Case Hunter + Acceptance Auditor) over the full E4 code diff (36 code files, ~3250 insertions). **2 boundary patches APPLIED** (not deferred):
+- **P1** — `PaidRegistrationService` + `EventRegistrationCancellationService`: wrapped the POST-COMMIT audit `LogActionAsync` in try/catch. The registration+invoice (or cancellation) is already durably committed before the audit fires, so an audit-sink failure must not surface as a 500 — which would invite a client retry that double-registers/double-invoices (the public/member endpoints dedup by email/user → 409, but a 500 path is still a hazard).
+- **P2** — public fee-categories endpoint (`EventFeeEndpoints.GetPublicFeeCategories`): added `.RequireModule("finance")` so when Finance is disabled the page receives NO fee categories and gracefully falls through to free registration, instead of offering a fee the paid branch then rejects with 403 (S3 AC-8 consistent degradation).
+
+Build + targeted suites re-ran green after patches (Api 226, Infra PaidRegistration+cancellation 11, email 9).
+
+### E4-FT-1: Waitlist promotion never raises an invoice for paid events [HIGH]
+
+[Source: Blind Hunter + Edge Case Hunter, 2026-06-06 — known follow-up acknowledged in E4-S2 completion notes]
+
+Neither the manual `PromoteFromWaitlist` endpoint nor the cancellation-driven promotion in `EventRegistrationCancellationService` calls `IPaidRegistrationService` — a waitlisted registrant on a PAID event who is later promoted becomes `Confirmed` with **no invoice and no payment-pending email**. `TryHandlePaidRegistrationAsync` deliberately skips waitlisted (`registration.IsWaitlisted → return null`) with the comment "no invoice until they are promoted," but the promotion paths were never wired to raise one. **Action when picked up:** on promotion of a paid event registration, resolve the applicable fee category and raise the invoice via the coordinator (within the promotion transaction); resolve the "which category" question (a straight-to-waitlist registration carried no `feeCategoryId`). Trigger: before paid events use the waitlist in anger.
+
+### E4-FT-2: Member-registration fee/payment UI is missing — only the public path was built [HIGH]
+
+[Source: Acceptance Auditor (S3 AC-1/AC-3) + Edge Case Hunter, 2026-06-06]
+
+S3 AC-1 requires the *member* registration surface to render applicable fee categories (Everyone/MembersOnly) and AC-3 the member-facing paid/pending states; only the anonymous public page was built (it fetches the public endpoint hard-coded to `AppliesTo(isMember:false)` → Everyone/PublicOnly only). The backend `RegisterMember` resolves `isMember:true` categories and will return `400 FeeCategorySelectionRequired` for a multi-tier member event — a state no UI provides a selector for, so member registration of such events is unfulfillable; a single MembersOnly tier auto-charges with no fee shown. S3 QGT marks AC-1/AC-3 ✅ — that **overstates coverage** (Completion Notes acknowledge the deferral, but the ✅ should be downgraded). **Action when picked up:** add a member-scoped fee read path (member-applicable endpoint or fees on the member event DTO) + a fee selector on the member registration surface; correct the S3 QGT. Note: S1 AC-4 gates the admin GET fee-categories to `RequireEventFeeManager`, so plain members have no read path today (the data-layer half of this gap).
+
+### E4-FT-3: `EventFeeCategory.MaxQuantity` (per-category sales cap) is never enforced [MED]
+
+[Source: Blind Hunter + Edge Case Hunter, 2026-06-06]
+
+`MaxQuantity` is collected, validated (`>=1`), persisted, exposed on the DTO, and editable in the admin form — but never checked at registration time. A category capped at N can be sold to a registration with `NumberOfGuests > N` and oversold without limit across registrations. The field is currently decorative. **Action when picked up:** enforce the cap in `TryHandlePaidRegistrationAsync`/coordinator (sum sold quantity for the category vs `MaxQuantity`, reject/waitlist on overflow). Trigger: when capped tiers (early-bird, limited seats) are actually used.
+
+### E4-FT-4: Currency-mismatch reject is skipped when there is no active FinanceProfile [MED]
+
+[Source: Blind Hunter + Edge Case Hunter, 2026-06-06]
+
+`PaidRegistrationService` guards `if (profile is not null && profile.Currency != feeCategory.Currency) throw`. With no active profile (Finance enabled but unconfigured — reachable), the guard is bypassed: a EUR fee proceeds, the invoice carries no per-row currency, `GetNextInvoiceNumberAsync` uses the sentinel profile id, and downstream display falls back to CHF — a EUR fee shown/"billed" as CHF. **Action when picked up:** require an active FinanceProfile for paid registration (clean reject when absent) OR persist the currency on the invoice. Trigger: multi-currency / first Finance-enabled-but-unconfigured deployment.
+
+### E4-FT-5: Roster payment stat cards are page-scoped but presented as event-wide totals [MED]
+
+[Source: Edge Case Hunter, 2026-06-06]
+
+`registrations/page.tsx` computes `paymentSummary` (paid/pending counts + amounts) from the loaded page only (`pageSize = 20`), but the cards read as event totals (`amountPaid`/`amountOwed`). For any event with >20 paid registrations the "amount owed" figure silently undercounts. The backend `GetRegistrations` only enriches the current page, so no event-wide payment total is available to the UI. **Action when picked up:** add an event-wide payment aggregate (extend the statistics endpoint) and bind the cards to it, or relabel the cards to "this page." Trigger: events with >20 paid registrations.
+
+### E4-FT-6: Roster/email currency derived from the current active profile, not the invoice [MED]
+
+[Source: Blind Hunter + Edge Case Hunter, 2026-06-06 — architectural]
+
+Both the roster (`GetRegistrations`) and the email (`BuildPaymentInfoAsync`) label amounts with the *current* active `FinanceProfile.Currency`, not the currency in force when the invoice was raised. Root cause: `Invoice` has no per-row currency. If the profile currency ever changes, historical paid-registration amounts relabel (numeric total unchanged). **Action when picked up:** persist currency on `Invoice` (or the registration link) and read it back. Trigger: any currency change / multi-currency support (couples with E4-FT-4).
+
+### E4-FT-7: AC-8 `Module:finance`-off paid-branch 403 has no end-to-end test [MED]
+
+[Source: Acceptance Auditor (S2 AC-8), 2026-06-06 — honestly marked [~] in the S2 QGT]
+
+The in-handler `IsEnabledAsync(ModuleKeys.Finance) → 403` guard (and now the P2 public-endpoint finance gate) is verified by build + DI-harness wiring, but no WebApplicationFactory test exercises a disabled-Finance paid registration returning 403 while the free branch still works. **Action when picked up:** add a WAF integration test toggling the Finance module. Trigger: next API integration-test pass.
+
+### E4-FT-8: Zero-amount fee category produces an inconsistent cross-surface state [MED]
+
+[Source: Edge Case Hunter, 2026-06-06]
+
+`Amount = 0` is allowed by the validator. A chosen zero-amount category creates a real (Total 0) invoice → roster shows "Pending / CHF 0.00", the public success banner shows "Amount due: CHF 0.00 — payment pending", but the confirmation email suppresses the payment section (`invoice.Total <= 0`). **Action when picked up:** decide the semantics — treat a zero-amount applicable category as the free path (no invoice), or render zero consistently across all three surfaces. Trigger: if zero-priced "register but track" tiers are wanted.
+
+### E4-FT-9: Low-severity polish cluster [LOW]
+
+[Source: Blind Hunter + Edge Case Hunter, 2026-06-06]
+
+Batch for a future hygiene pass: (a) frontend `decimalPlaces` mis-detects exponential-notation amounts (`String(1e-7)` has no `.`) so the >2-decimal client zod check is bypassable for extreme magnitudes — backend `decimal.Round` still catches it (defense-in-depth only); (b) `EventFeeCategoryRepository.ActiveNameExistsAsync` is case-insensitive but the DB filtered-unique index on `(event_id, name)` is case-sensitive — concurrent "adult"/"Adult" creates can both pass (TOCTOU); (c) `EventFeeCategory.IsAvailableAt` upper bound is inclusive (`[from, until]`) — unstated semantic; (d) the fees-form zod availability-window refine compares local-input strings while the server compares converted UTC — can disagree across a DST boundary; (e) `getEventFeeCategories(includeInactive:true)` never writes the query param (relies on backend default `true`) — fragile contract; (f) a fee category deactivated/expired mid-session surfaces the raw backend 400 string verbatim on submit.
+
+### Dismissed findings (not deferred) — Epic-4 review
+
+- **Soft-deleted Draft invoice mislabeled on the roster/email** (Blind, Med) — `InvoiceConfiguration` declares `HasQueryFilter(i => !i.IsDeleted)`, so `GetByEventRegistrationId(s)Async` (querying `_context.Invoices`; AsNoTracking does not disable the filter) already exclude soft-deleted invoices. Non-issue.
+- **No idempotency → duplicate submits double-invoice** (Blind, Med) — the public (`ExistsByEmailAsync`) and member (`ExistsAsync(eventId,userId)`) handlers already return 409 on a duplicate, blocking re-registration before the coordinator runs.
+- **Member-via-public `isMember` mismatch applies MembersOnly to a non-member** (Blind, Med) — `RegisterMember` requires `MemberId` for the non-waitlist (paid) branch, so `isMember:true` always pairs with a present `MemberId` → `RecipientType.Member`; paths are consistent. (The real member gap is E4-FT-2.)
+- **DEC-3 Infrastructure-coordinator pivot, S1 standalone-entity pivot, DEC-2 ISO-string currency, regression guards (Event.Cost/RecipientType untouched), i18n parity/no-hi.json, invoice-derived email** — Acceptance Auditor confirmed all acceptable-as-built and documented; the `Amount (18,2)` ↔ InvoiceItem precision parity holds.

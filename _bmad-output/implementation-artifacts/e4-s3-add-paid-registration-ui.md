@@ -268,3 +268,13 @@ MODIFIED (frontend):
 
 - 2026-06-06: Story refreshed from pre-pivot stub to dev-ready in the Epic-4 A34 bulk pass; post-MVP scope; A56 spike documented the existing registration page / roster / formatter / email builder to extend; net-new = fee-category select + payment-state UI + payment column/stats + email enrichment + `formatCurrency` currency arg; DEC-1/DEC-2 surfaced with recommendations; no-PSP scoping made explicit.
 - 2026-06-06: Implemented + verified (Epic-4 closer). Public fee endpoint + roster payment merge + email enrichment (backend); public-page fee section + roster payment column/stats + events.ts DTO (frontend); de/en i18n. DEC-1=A, DEC-2=A (formatCurrency from E4-S1). 7 frontend + 2 backend tests added; full suites green. Status → `review`.
+
+## Review Findings (Epic-4 boundary code review, 2026-06-06)
+
+3-layer adversarial review; full detail in `deferred-work.md`. S3-relevant:
+- [x] [Review][Patch] **P2 APPLIED** — public fee-categories endpoint gated on `Module:finance` so a Finance-off deployment serves no fees and degrades to free registration instead of offering a fee the paid branch 403s (AC-8 consistency).
+- [x] [Review][Defer] **Member-registration fee/payment UI missing** — only the public path was built; multi-tier member events are unfulfillable via UI; **AC-1/AC-3 ✅ in the QGT OVERSTATE coverage** — treat as in-progress for those ACs — **E4-FT-2 [HIGH]**.
+- [x] [Review][Defer] Roster payment stat cards are page-scoped but presented as event-wide totals (undercounts for >20 paid regs) — **E4-FT-5 [MED]**.
+- [x] [Review][Defer] Zero-amount fee category → CHF 0.00 invoice + "payment pending" UI but email suppresses it (cross-surface inconsistency) — **E4-FT-8 [MED]**.
+- [x] [Review][Defer] Stale-fee-mid-session surfaces raw backend 400; `decimalPlaces` exp-notation — **E4-FT-9 [LOW]**.
+- Acceptance Auditor confirmed `formatCurrency(amount,currency)` is used in all new components (no hardcoded CHF), i18n de/en parity holds (no hi.json), and the paid email is invoice-derived (not recomputed) with the free email unchanged.

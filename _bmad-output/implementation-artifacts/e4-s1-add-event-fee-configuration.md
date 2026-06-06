@@ -352,3 +352,13 @@ MODIFIED (frontend, this session):
 - 2026-06-06: Story refreshed from pre-pivot stub to dev-ready in the Epic-4 A34 bulk pass; post-MVP scope; A56 spike documented the existing `Event.Cost` surface and the net-new `EventFeeCategory` model; DEC-1..DEC-4 surfaced with recommendations.
 - 2026-06-06: Backend implemented + verified (domain, persistence, MediatR commands/query, API, migration, tests all green). DEC-1=A, DEC-2 pivoted A→B (ISO-string currency for module decoupling), DEC-3 pivoted to the Volunteer MediatR sub-resource pattern, DEC-4=A. Frontend (Task 5/6.5/7) pending — Status held `in-progress`.
 - 2026-06-06: Frontend implemented + verified (fee-category management page mirroring the volunteers sub-resource pattern, events.ts DTO/API, formatCurrency currency arg, de/en i18n, detail-page link). DEC-5=A (dedicated sub-resource page, not the create form — the fee API is eventId-keyed). Vitest 5/5 green, full suite 179/179, eslint/tsc/prettier clean on changed files. All tasks complete; Status → `review`.
+
+## Review Findings (Epic-4 boundary code review, 2026-06-06)
+
+3-layer adversarial review; full detail in `deferred-work.md` → "Deferred from: code review of Epic-4". S1-relevant items (all LOW, deferred as **E4-FT-9** polish cluster):
+- [x] [Review][Defer] `ActiveNameExistsAsync` case-insensitive vs case-sensitive DB index (TOCTOU on "adult"/"Adult") — E4-FT-9(b)
+- [x] [Review][Defer] `IsAvailableAt` inclusive upper bound `[from, until]` — unstated semantic — E4-FT-9(c)
+- [x] [Review][Defer] fees-form zod window check (local strings) vs server (UTC) can disagree across DST — E4-FT-9(d)
+- [x] [Review][Defer] `getEventFeeCategories(includeInactive:true)` never writes the param (fragile contract) — E4-FT-9(e)
+- [x] [Review][Defer] `decimalPlaces` exponential-notation client bypass (backend catches) — E4-FT-9(a)
+- Acceptance Auditor confirmed the DEC-1 standalone-entity + DEC-2 ISO-string-currency pivots and the AC-6/RecipientType regression guards as acceptable-as-built & documented; `Amount (18,2)` ↔ InvoiceItem parity holds.

@@ -85,16 +85,24 @@ public sealed class EventRegistrationCancellationService : IEventRegistrationCan
         await _context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        // AC-9: audit the invoice disposition after the cancellation commits (best-effort).
+        // AC-9: audit the invoice disposition after the cancellation commits (best-effort — the
+        // cancellation is already committed, so an audit-sink failure must not fail the request).
         if (invoiceForAudit is not null && invoiceDisposition is not null)
         {
-            await _auditService.LogActionAsync(
-                AuditEventType.FinanceStatusChanged,
-                $"Event-registration cancellation: {invoiceDisposition}",
-                entityType: "Invoice",
-                entityId: invoiceForAudit.Id.ToString(),
-                details: $"registrationId={registrationId}; eventId={eventId}",
-                ct: cancellationToken);
+            try
+            {
+                await _auditService.LogActionAsync(
+                    AuditEventType.FinanceStatusChanged,
+                    $"Event-registration cancellation: {invoiceDisposition}",
+                    entityType: "Invoice",
+                    entityId: invoiceForAudit.Id.ToString(),
+                    details: $"registrationId={registrationId}; eventId={eventId}",
+                    ct: cancellationToken);
+            }
+            catch
+            {
+                /* committed already — audit failure must not fail the cancellation */
+            }
         }
 
         return CancelRegistrationResult.Cancelled(registration, promoted, evt);

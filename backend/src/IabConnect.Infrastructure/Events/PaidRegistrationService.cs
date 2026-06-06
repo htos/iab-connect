@@ -111,13 +111,23 @@ public sealed class PaidRegistrationService : IPaidRegistrationService
         await transaction.CommitAsync(cancellationToken);
 
         // AC-9: audit the finance creation AND its registration origin (reconstructable end-to-end).
-        await _auditService.LogActionAsync(
-            AuditEventType.FinanceCreated,
-            $"Invoice '{invoice.InvoiceNumber}' raised for paid event registration ({invoice.Total:N2})",
-            entityType: "Invoice",
-            entityId: invoice.Id.ToString(),
-            details: $"eventId={registration.EventId}; registrationId={registration.Id}; feeCategoryId={feeCategory.Id}",
-            ct: cancellationToken);
+        // Best-effort: the registration + invoice are already durably committed, so a failure in the
+        // audit sink must NOT surface as an error to the caller (which would invite a retry that
+        // double-registers + double-invoices). Code review E4-FT (boundary patch).
+        try
+        {
+            await _auditService.LogActionAsync(
+                AuditEventType.FinanceCreated,
+                $"Invoice '{invoice.InvoiceNumber}' raised for paid event registration ({invoice.Total:N2})",
+                entityType: "Invoice",
+                entityId: invoice.Id.ToString(),
+                details: $"eventId={registration.EventId}; registrationId={registration.Id}; feeCategoryId={feeCategory.Id}",
+                ct: cancellationToken);
+        }
+        catch
+        {
+            /* committed already — audit failure must not fail the registration */
+        }
 
         return new PaidRegistrationResult(registration, invoice.Id, invoice.InvoiceNumber);
     }

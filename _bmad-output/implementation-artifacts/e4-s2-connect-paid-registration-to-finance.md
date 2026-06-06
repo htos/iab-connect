@@ -330,3 +330,14 @@ MODIFIED:
 
 - 2026-06-06: Story refreshed from pre-pivot stub to dev-ready in the Epic-4 A34 bulk pass; post-MVP scope; A56 spike documented the existing Finance create/cancel machinery to reuse and the net-new registration↔invoice link + atomic coordinator; DEC-1..DEC-7 surfaced with recommendations; no-PSP scoping made explicit.
 - 2026-06-06: Backend implemented + verified. Invoice link + atomic `PaidRegistrationService` coordinator + registration-endpoint paid branch (Module:finance gate + fee-category resolution) + cancellation invoice disposition. DEC-1/2/4/5/6/7=A; **DEC-3 pivoted** to an Infrastructure coordinator service (atomicity + layer constraint); **DEC-8 added** (fee-category selection rule). Tests: 8 new Testcontainers + regression suites green. AC-8 HTTP module-gate test deferred to epic-boundary review. Status → `review`.
+
+## Review Findings (Epic-4 boundary code review, 2026-06-06)
+
+3-layer adversarial review; full detail in `deferred-work.md`. S2-relevant:
+- [x] [Review][Patch] **P1 APPLIED** — post-commit audit `LogActionAsync` wrapped in try/catch in `PaidRegistrationService` + `EventRegistrationCancellationService` (a committed registration/cancellation must not 500 on an audit-sink failure → avoids retry double-registration).
+- [x] [Review][Defer] Waitlist promotion never raises an invoice for paid events (manual + cancellation-driven promotion) — **E4-FT-1 [HIGH]** (known follow-up).
+- [x] [Review][Defer] `MaxQuantity` per-category cap never enforced at registration — **E4-FT-3 [MED]**.
+- [x] [Review][Defer] Currency-mismatch reject skipped when no active FinanceProfile — **E4-FT-4 [MED]**.
+- [x] [Review][Defer] Roster/email currency from current profile, not the invoice (Invoice has no per-row currency) — **E4-FT-6 [MED]**.
+- [x] [Review][Defer] `Module:finance`-off paid-branch 403 has no end-to-end WAF test — **E4-FT-7 [MED]** (AC-8 [~]).
+- Dismissed: idempotency double-register (existing email/user dedup → 409), soft-deleted-invoice mislabel (global `!IsDeleted` query filter), member-via-public `isMember` mismatch (RegisterMember requires MemberId on the paid branch), DEC-3 pivot (acceptable + documented; atomicity verified by the rollback tests).

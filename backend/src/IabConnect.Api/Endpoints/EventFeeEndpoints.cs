@@ -71,6 +71,10 @@ public static class EventFeeEndpoints
             .AllowAnonymous()
             .RequireModule("public_view")
             .RequireModule("events")
+            // Code review E4-FT (AC-8): also gate on the Finance module so that when Finance is
+            // disabled the page is served NO fee categories and gracefully falls through to free
+            // registration, instead of offering a fee the paid branch will then 403.
+            .RequireModule("finance")
             .WithTags("Event Fee Categories")
             .WithName("GetPublicEventFeeCategories")
             .Produces<IReadOnlyList<PublicFeeCategoryDto>>()
