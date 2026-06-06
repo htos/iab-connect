@@ -1,5 +1,43 @@
 # generated: 2026-05-12
-# last_updated: 2026-06-05 (Epic-19 CLOSED — Production Readiness Preparation (Wave-10). Single autonomous-mode
+# last_updated: 2026-06-06 (bmad-create-story BULK REFRESH for entire Epic-4 (Event Monetization, REQ-022):
+#   COMPLETE. **First deferred-backlog epic resumed** after all 14 Beta-pivot epics (E9-E20) closed. Per user
+#   directive "nächstes epic angehen. alle stories vom nächsten epic durchgehen und implementiert ready stellen.
+#   wichtig es handelt sich nicht mehr um einen MVP." (2026-06-06), scope is post-MVP-comprehensive. **Gate note
+#   surfaced + user-overridden:** epics-and-stories.md L99 gates "E4-E8 resume only after the Beta validation
+#   completes", and the unified Wave-9/10 live-[!]-walkthrough (E14/E16/E17/E18/E19) is still OUTSTANDING pending
+#   Harry's GREEN Beta deploy — i.e. Beta validation is NOT formally complete. User was shown this via AskUserQuestion
+#   and chose "E4 jetzt bulk-refreshen" (resume now, accept the open gate). All 3 stories refreshed from 2026-05-12
+#   pre-pivot stubs (placeholder ACs, stale e1-s1/REQ-017 context) to comprehensive dev-ready per A34. **Epic shape —
+#   backend feature + cross-module finance integration + frontend; NOT docs-only like E14-E19.** **A56
+#   existing-implementation spike findings (load-bearing):** (1) e4-s1 (fee config) — `Event.Cost` (decimal? 10,2) +
+#   `CostDescription` + `IsFree` computed + `UpdateCost()` ALREADY SHIP (Event.cs:56-58,217); the AC's "one or more
+#   fee categories w/ amount+currency+availability+member/public applicability" is a MODEL UPGRADE → new
+#   `EventFeeCategory` child entity on the Event aggregate (Amount 18,2 to match Finance), keep legacy Cost for
+#   backward-compat (DEC-1=A recommended). DEC-2 currency=reuse FinanceCurrency CHF/EUR defaulted from active
+#   FinanceProfile; DEC-3 follow Events repository-direct CRUD convention (NOT MediatR); DEC-4 new
+#   RequireEventFeeManager policy (Admin+Vorstand+EventManager+Kassier per AC literal). (2) e4-s2 (registration→finance)
+#   HARDEST — entire Invoice machinery exists + must be REUSED not rebuilt (Invoice.Create/AddItemWithTax/
+#   GetNextInvoiceNumberAsync/MarkAsSent/Cancel/SoftDelete, CreateInvoiceCommandHandler fiscal-check+UnitOfWork+audit,
+#   IUnitOfWork.SaveChangesAsync = atomicity primitive over single ApplicationDbContext). Net-new = (a) nullable
+#   `Invoice.EventRegistrationId` link (DEC-2=A; NO new RecipientType — guests=Other), (b) MediatR
+#   CreatePaidRegistrationCommand coordinator creating registration+invoice in ONE SaveChangesAsync (DEC-3=A; AC-3
+#   rollback is load-bearing), (c) cancellation wiring Draft→soft-delete / Sent→Cancel(reason) / Paid→flag+manual
+#   refund (DEC-5=A finance compliance), (d) paid-branch requires Module:finance (DEC-7=A per ADR-008 L237; E10-S5
+#   owns toggle rule). DEC-4=Draft initial status. **NO PAYMENT GATEWAY exists** → "paid" = raise receivable, collect
+#   offline, Kassier reconciles (scoping decision across all 3 stories). (3) e4-s3 (paid-reg UI) — public reg page +
+#   admin roster + formatCurrency(de-CH CHF) ALREADY SHIP; net-new = fee-category select (DEC-1=A radio when multi) +
+#   payment-pending states + roster payment column/stats + confirmation-email enrichment (BACKEND
+#   EventNotificationService builder) + formatCurrency(amount,currency="CHF") extension (DEC-2=A white-label/EUR).
+#   hi.json does NOT exist → de/en parity only (A56). **Cross-cutting:** (a) dev-story order S1→S2→S3 (HARD: S2
+#   consumes S1's EventFeeCategory; S3 renders S1 categories + S2 payment status). (b) Amount precision parity
+#   EventFeeCategory.Amount(18,2) ↔ InvoiceItem (A31). (c) Module enforcement: fee config = Module:events only; paid
+#   registration = Module:events + Module:finance. (d) Each story carries a Decision-Needed block w/ recommended
+#   options for A41/A32 dev-story resolution. **Status transitions:** epic-4 backlog → in-progress; e4-s1/s2/s3
+#   backlog → ready-for-dev. Sprint state: E1-E3 + E9-E20 done (14 epics); E4 in-progress (3 ready-for-dev); E5-E8
+#   deferred backlog (pre-Beta-pivot). NEXT per workflow + feedback_session_pacing_dev_cycles + A34: recommend
+#   committing this 3-story bulk-context refresh + sprint-status update and starting bmad-dev-story for e4-s1 in a
+#   fresh session. NOTE: the carried-forward E14/E16/E17/E18/E19 live-[!] Beta-walkthrough queue remains OUTSTANDING
+#   (Harry's green-Beta prerequisites) — independent of E4 feature dev.) ## Previously: 2026-06-05 (Epic-19 CLOSED — Production Readiness Preparation (Wave-10). Single autonomous-mode
 #   session delivered all 4 stories + epic-boundary code review + retrospective per user directive "alle stories
 #   von diesem epic umsetzen ohne stopp bis sie implementiert sind. danach review und retro durchführen."
 #   (2026-06-05). All 8 DEC-Needed surfaces (2/story) auto-resolved via A41 with (a)/(b)/(c) Debug Logs (A43);
@@ -1067,21 +1105,26 @@ development_status:
   e19-s4-document-postal-smtp-migration-plan: done
   epic-19-retrospective: done
 
-  # === DEFERRED backlog — pre-Beta-pivot work (resumes after Beta validation) ===
+  # === DEFERRED backlog — pre-Beta-pivot work (E5-E8; E4 RESUMED 2026-06-06) ===
   # Epics 4-8 were consciously reset to 'backlog' on 2026-05-14 because the
   # generic-platform initiative (E9 + E10) preempted them. SCP-2026-05-15
   # extended this hold: E11-E20 (Beta + OSS) now preempt E4-E8 as well.
-  # Story files for many E4-E8 stories already exist on disk from the pre-pivot
-  # planning pass, but they are intentionally HELD at backlog and NOT
-  # auto-upgraded to ready-for-dev — the pivot decisions outrank file-presence
-  # detection. When E4-E8 resume, E10 must already be done (it is) so the
-  # external API route group (E8) is covered by module enforcement from day
-  # one, and E14-S4 (rate-limiting baseline) must already be done so external
-  # API routes inherit the rate-limit policy.
-  epic-4: backlog
-  e4-s1-add-event-fee-configuration: backlog
-  e4-s2-connect-paid-registration-to-finance: backlog
-  e4-s3-add-paid-registration-ui: backlog
+  # **E4 (Event Monetization) was RESUMED on 2026-06-06** (moved up to the done
+  # block above as in-progress) per explicit user directive, after all 14
+  # Beta-pivot epics (E9-E20) closed — the user chose to resume E4 now via
+  # AskUserQuestion despite epics-and-stories.md L99's "resume only after Beta
+  # validation completes" gate still being open (the unified E14/E16/E17/E18/E19
+  # live-[!] walkthrough is OUTSTANDING pending Harry's green-Beta deploy). E5-E8
+  # remain HELD at backlog and NOT auto-upgraded to ready-for-dev — the pivot
+  # decisions outrank file-presence detection. When E5-E8 resume, E10 is already
+  # done so the external API route group (E8) is covered by module enforcement
+  # from day one, and E14-S4 (rate-limiting baseline) is already done so external
+  # API routes inherit the rate-limit policy. (E4's own prerequisites — E10 +
+  # E14-S4 — were likewise satisfied before resuming.)
+  epic-4: in-progress
+  e4-s1-add-event-fee-configuration: in-progress
+  e4-s2-connect-paid-registration-to-finance: ready-for-dev
+  e4-s3-add-paid-registration-ui: ready-for-dev
   epic-4-retrospective: optional
 
   epic-5: backlog

@@ -36,6 +36,9 @@ public sealed class ApplicationDbContext : DbContext
     public DbSet<Event> Events => Set<Event>();
     public DbSet<EventRegistration> EventRegistrations => Set<EventRegistration>();
 
+    // REQ-022 (E4-S1): Event fee categories (paid registration)
+    public DbSet<EventFeeCategory> EventFeeCategories => Set<EventFeeCategory>();
+
     // REQ-024 (E3.S3): Volunteer planning
     public DbSet<EventVolunteerRole> EventVolunteerRoles => Set<EventVolunteerRole>();
     public DbSet<EventVolunteerShift> EventVolunteerShifts => Set<EventVolunteerShift>();

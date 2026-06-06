@@ -213,6 +213,10 @@ public static class DependencyInjection
             // codebase.
             .AddPolicy("RequireEventStaffOrMember", policy =>
                 policy.RequireRole(Roles.Admin, Roles.Vorstand, Roles.Member, Roles.EventManager))
+            // REQ-022 (E4-S1): fee configuration is gated to "Event Manager or Kassier" per the
+            // AC, i.e. event-staff (admin/vorstand/event-manager) PLUS the treasurer (kassier).
+            .AddPolicy("RequireEventFeeManager", policy =>
+                policy.RequireRole(Roles.Admin, Roles.Vorstand, Roles.EventManager, Roles.Kassier))
             .AddPolicy("RequireFinanceRead", policy =>
                 policy.RequireRole(Roles.Admin, Roles.Kassier, Roles.Auditor))
             .AddPolicy("RequireFinanceWrite", policy =>

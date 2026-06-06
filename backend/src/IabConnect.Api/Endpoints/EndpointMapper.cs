@@ -26,6 +26,7 @@ public static class EndpointMapper
         app.MapEventEndpoints(); // REQ-019: Eventverwaltung (uses EventEndpoints.cs)
         app.MapEventRegistrationEndpoints(); // REQ-020: Event-Anmeldung / RSVP
         app.MapEventVolunteerEndpoints(); // REQ-024 (E3.S3): Volunteer planning (roles, shifts, assignments)
+        app.MapEventFeeEndpoints(); // REQ-022 (E4-S1): Event fee categories (paid registration)
         app.MapEmailCampaignEndpoints(); // REQ-026: E-Mail-Kampagnen
         app.MapEmailTemplateEndpoints(); // REQ-027: Email Template Editor
         app.MapSettingsEndpoints(); // REQ-059: System Settings

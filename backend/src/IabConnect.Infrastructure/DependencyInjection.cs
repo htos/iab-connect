@@ -75,6 +75,7 @@ public static class DependencyInjection
         services.AddScoped<IDeletionRequestRepository, DeletionRequestRepository>();
         services.AddScoped<IEventRepository, EventRepository>();
         services.AddScoped<IEventRegistrationRepository, EventRegistrationRepository>();
+        services.AddScoped<IEventFeeCategoryRepository, EventFeeCategoryRepository>(); // REQ-022 (E4-S1)
 
         // REQ-024 (E3.S4): TimeProvider for testable time in the reminder service
         services.AddSingleton(TimeProvider.System);
