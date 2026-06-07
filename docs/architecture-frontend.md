@@ -386,5 +386,35 @@ succeeds. Not run: Playwright E2E (needs live services).
 
 ---
 
+## Architecture Enforcement (E21-S5)
+
+Added: 2026-06-07. The import-direction boundaries above are enforced statically
+in [`frontend/eslint.config.mjs`](../frontend/eslint.config.mjs) via ESLint core
+`no-restricted-imports`, scoped per zone with flat-config `files` blocks:
+
+- `src/components/ui/**` must not import from `@/features` or `@/app` (leaf
+  primitive layer).
+- `src/lib/**` must not import from `@/app` or `@/features` (leaf infrastructure).
+- `src/features/**` must not import another feature via the `@/features` alias
+  (use relative imports within a feature; cross-feature coupling needs an explicit
+  `// eslint-disable-next-line no-restricted-imports` with a reason).
+
+Scope (per the E21-S5 guardrail "highest-value, lowest-false-positive subset"):
+the rules cover the three highest-risk directions and match the `@/`-alias
+convention; relative cross-zone imports are not the convention here and are not
+covered. The wider direction set in "Target Import Direction" can be tightened
+later if drift appears. `src/` is clean against these rules today (the only
+standing `npm run lint` errors are pre-existing and unrelated, in
+`src/app/members/segments/page.tsx`).
+
+**Static boundary vs runtime behaviour test.** These ESLint rules are *static
+architecture boundaries* (which module may import which). They are deliberately
+distinct from [`frontend/e2e/module-enforcement.spec.ts`](../frontend/e2e/module-enforcement.spec.ts),
+which is a *runtime Playwright behaviour test* asserting module-enablement
+gating (UX rewrite + backend 403). Do not conflate the two: the E2E test is not
+an import-boundary check, and the ESLint rules are not a behaviour check.
+
+---
+
 Generated using BMAD Method `document-project` workflow.
 

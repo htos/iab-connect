@@ -1355,6 +1355,6 @@ development_status:
   e21-s1-frontend-target-state-architecture-and-boundary-decisions: review
   e21-s2-suppliers-list-characterization-tests: review
   e21-s3-suppliers-list-feature-slice-pilot-refactor: review  # 2026-06-07: pilot refactor complete
-  e21-s4-i18n-parity-suppliers-keys-in-hi-json: ready-for-dev  # parallel, no dep
-  e21-s5-architecture-boundary-enforcement: backlog  # promote when S3 done
+  e21-s4-i18n-parity-suppliers-keys-in-hi-json: review  # parallel, no dep
+  e21-s5-architecture-boundary-enforcement: review  # 2026-06-07: boundary enforcement complete
   epic-21-retrospective: optional

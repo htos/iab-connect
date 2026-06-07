@@ -1,6 +1,6 @@
 # Story E21.S5: Architecture Boundary Enforcement
 
-Status: drafted
+Status: review
 
 Depends on: E21-S3 (the `features/` direction must be proven by the pilot first).
 
@@ -22,13 +22,15 @@ so that the feature-slice architecture does not erode after the pilot.
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Confirm the rule set from E21-S1 (AC: 1)
-- [ ] Task 1: Implement enforcement (AC: 1, 2)
-  - [ ] Prefer ESLint `no-restricted-imports`/`import/no-restricted-paths`; add a Node/Vitest scan only if ESLint can't express a needed rule.
-  - [ ] Run against full `src/`; record/fix or scope any pre-existing violation.
-- [ ] Task 2: Document + distinguish (AC: 3)
-- [ ] Task 3: Prove it (AC: 4)
-  - [ ] Add a temporary bad import → lint/test fails → revert. `npm run lint` green on real `src/`.
+- [x] Task 0: Confirm the rule set from E21-S1 (AC: 1)
+  - [x] Took the 3 highest-value, lowest-false-positive directions from the E21-S1 "Target Import Direction": ui↛features/app, lib↛app/features, feature↛feature.
+- [x] Task 1: Implement enforcement (AC: 1, 2)
+  - [x] ESLint core `no-restricted-imports` (no new dependency) in three zone-scoped flat-config `files` blocks in `frontend/eslint.config.mjs`. (eslint-plugin-import is only transitively present via eslint-config-next; core `no-restricted-imports` is the AC-suggested, robust choice.)
+  - [x] Ran against full `src/`: the three zones (`components/ui`, `lib`, `features`) are clean — no pre-existing boundary violations. The only standing `npm run lint` errors are pre-existing and unrelated (`src/app/members/segments/page.tsx`, `react-hooks/set-state-in-effect`), documented per A58; my rules add zero new errors.
+- [x] Task 2: Document + distinguish (AC: 3)
+  - [x] Added an "Architecture Enforcement" section to `docs/architecture-frontend.md` that explains the static rules AND explicitly distinguishes them from `e2e/module-enforcement.spec.ts` (runtime behaviour test, left intact).
+- [x] Task 3: Prove it (AC: 4)
+  - [x] Added a temporary bad-import probe to each zone → all 3 failed with the correct `no-restricted-imports` boundary message → probes reverted. `npm run lint` on real `src/` introduces no new errors (boundary zones clean).
 
 ## Dev Notes
 
@@ -65,12 +67,35 @@ Out of scope: refactoring code to satisfy ambitious rules (only the minimum to l
 
 ### Agent Model Used
 
+claude-opus-4-8[1m] (Claude Opus 4.8, 1M context) via bmad-dev-story.
+
 ### Debug Log References
+
+**Tooling choice.** ESLint core `no-restricted-imports` (zone-scoped via flat-config `files` blocks) instead of `import/no-restricted-paths` — `eslint-plugin-import` is only transitively available via `eslint-config-next` (not a direct dep), so relying on it for our own rule block would be fragile; core `no-restricted-imports` needs no dependency and is exactly what AC-1 suggests. Patterns target the `@/` alias (the repo convention); relative cross-zone imports are not the convention and are intentionally out of the low-false-positive subset (documented).
+
+**Clean-landing verification.** Grepped `components/ui`, `lib`, `features` for the forbidden alias imports before adding rules — all clean (the feature slice uses relative imports internally; ui imports only `lib/utils`/radix; lib imports no app/features). So the rules land green without any refactor.
+
+**Proof (AC-4).** Temporary probe files (`__boundary_probe`) in each zone with a forbidden import all errored with the correct boundary message (ui→features, lib→app, feature→feature), then were deleted. The standing 2 lint errors in `members/segments/page.tsx` are pre-existing/unrelated (A58) and unchanged by this story.
 
 ### Completion Notes List
 
+Static import-boundary enforcement; the final E21 foundation story. Config + docs only, no app code changed.
+
+- ✅ AC-1: `no-restricted-imports` rules added for the 3 minimum directions — `components/ui ↛ features|app`, `lib ↛ app|features`, `feature ↛ feature` — in `frontend/eslint.config.mjs`.
+- ✅ AC-2: rules do not block the existing codebase — the three zones are already clean; no code change needed. Pre-existing unrelated lint errors documented (A58), not silently failed.
+- ✅ AC-3: `e2e/module-enforcement.spec.ts` left intact and explicitly distinguished in `docs/architecture-frontend.md` (static boundary vs runtime behaviour test).
+- ✅ AC-4: an intentional bad import demonstrably fails in each zone (3 probes); the boundary rules add zero new `npm run lint` errors on HEAD (boundary zones green).
+
+Gate: boundary zones lint-clean; 3 intentional-violation probes failed as expected; full `vitest run` 246/246; prettier clean on `eslint.config.mjs`. tsc unaffected.
+
 ### File List
+
+- `frontend/eslint.config.mjs` (modified — three zone-scoped `no-restricted-imports` boundary blocks)
+- `docs/architecture-frontend.md` (modified — "Architecture Enforcement" section)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (modified — e21-s5 backlog → in-progress → review)
+- `_bmad-output/implementation-artifacts/e21-s5-architecture-boundary-enforcement.md` (modified — this story file)
 
 ## Change Log
 
 - 2026-06-07: Story created (import-boundary enforcement); status drafted pending pilot.
+- 2026-06-07: Added static feature-slice import-boundary enforcement to `frontend/eslint.config.mjs` (ESLint `no-restricted-imports`, 3 zone-scoped rules: ui↛features/app, lib↛app/features, feature↛feature). Codebase already clean (no refactor); intentional bad imports fail in all 3 zones; pre-existing unrelated lint errors untouched (A58). Documented + distinguished from the E2E module-enforcement test in `docs/architecture-frontend.md`. Full suite 246/246. Status → review.
