@@ -2,8 +2,6 @@ export type SponsorStatus = "Prospect" | "Active" | "Paused" | "Ended";
 
 export type SponsorTier = "Bronze" | "Silver" | "Gold" | "Platinum";
 
-export type SupplierStatus = "Prospect" | "Active" | "Paused" | "Ended";
-
 export type ContractLinkType = "Document" | "Invoice" | "Event";
 
 // === Sponsor ===
@@ -93,61 +91,7 @@ export interface UpdateSponsorRequest {
 }
 
 // === Supplier ===
-
-export interface SupplierListDto {
-  id: string;
-  companyName: string;
-  contactPerson: string | null;
-  email: string | null;
-  phone: string | null;
-  status: SupplierStatus;
-  category: string | null;
-  linkCount: number;
-}
-
-export interface SupplierDetailDto {
-  id: string;
-  companyName: string;
-  contactPerson: string | null;
-  email: string | null;
-  phone: string | null;
-  website: string | null;
-  street: string | null;
-  city: string | null;
-  postalCode: string | null;
-  country: string | null;
-  status: SupplierStatus;
-  category: string | null;
-  notes: string | null;
-  contractLinks: ContractLinkDto[];
-  createdAt: string;
-  updatedAt: string | null;
-}
-
-export interface CreateSupplierRequest {
-  companyName: string;
-  contactPerson?: string;
-  email?: string;
-  phone?: string;
-  website?: string;
-  street?: string;
-  city?: string;
-  postalCode?: string;
-  country?: string;
-  category?: string;
-  notes?: string;
-}
-
-export interface UpdateSupplierRequest {
-  companyName: string;
-  contactPerson?: string;
-  email?: string;
-  phone?: string;
-  website?: string;
-  street?: string;
-  city?: string;
-  postalCode?: string;
-  country?: string;
-  category?: string;
-  notes?: string;
-}
+// Supplier-specific types moved to the suppliers feature slice (E21-S3):
+// `@/features/suppliers/types/supplier.types`. Shared `ContractLink*` and the
+// Sponsor types stay here. The supplier detail/new/edit pages import from the
+// feature module.

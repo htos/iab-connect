@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import type { CreateSupplierRequest } from "@/types/sponsors";
+import type { CreateSupplierRequest } from "@/features/suppliers/types/supplier.types";
 
 export default function NewSupplierPage() {
   const { isAuthenticated, isLoading: authLoading, isAdmin } = useAuth();

@@ -1,2 +1,65 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
+
+/*
+ * Design-system semantic token layer (E21-S1 / Gate 2 foundation).
+ *
+ * The shadcn-style primitives under src/components/ui (button, badge, checkbox,
+ * dialog, select, alert, card, ...) reference semantic token classes such as
+ * `bg-primary`, `bg-background`, `text-muted-foreground`, `ring-ring`. Those
+ * tokens were never defined in this project, so Tailwind v4 emitted no colour
+ * for them and the token-based primitives rendered without their intended
+ * colours. This block defines the missing tokens so the existing primitives
+ * work and feature slices (starting with the Suppliers pilot, E21-S3) can adopt
+ * Badge variants / semantic tokens instead of hard-coded brand colours.
+ *
+ * - `--primary` / `--ring` are mapped to the brand orange (orange-600) per
+ *   docs/13_frontend_design_standards.md.
+ * - Radius/spacing tokens are intentionally NOT overridden, so existing
+ *   `rounded-md`/`rounded-lg`/`rounded-xl` usages keep their current values.
+ * - Light theme only; no dark variant is introduced (the app has no theme
+ *   toggle today). A `.dark { ... }` block is the documented future extension.
+ */
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+  --primary: 24.6 95% 53.1%; /* orange-600 — brand primary */
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 24.6 95% 53.1%; /* orange-600 — brand focus ring */
+}
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+}

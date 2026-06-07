@@ -9,7 +9,10 @@ import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import type { SupplierDetailDto, SupplierStatus } from "@/types/sponsors";
+import type {
+  SupplierDetailDto,
+  SupplierStatus,
+} from "@/features/suppliers/types/supplier.types";
 
 const statusStyles: Record<SupplierStatus, string> = {
   Prospect: "bg-blue-100 text-blue-800",
