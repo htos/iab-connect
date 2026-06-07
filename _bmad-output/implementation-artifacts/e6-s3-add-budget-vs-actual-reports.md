@@ -1,6 +1,6 @@
 # Story E6.S3: Add Budget vs Actual Reports
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -22,33 +22,33 @@ so that I can track project/event financial performance against plan.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 0 — Spike & decisions (AC: 1, 3, 4)**
-  - [ ] Confirm S1 shipped the `Budget` entity + `IBudgetRepository` + `GetByFiscalPeriodAsync` (project-context A62 — verify the sibling story actually delivered the surface this report consumes; if S1 named it differently, adapt).
-  - [ ] Resolve DEC-1 (actuals source), DEC-2 (period vs year rollup — must match S1's `Budget` keying), DEC-3 (authz, already resolved), DEC-4 (export format). Record (a)/(b)/(c) Debug Log per A41/A43 if autonomous, else AskUserQuestion.
-  - [ ] Read [accounting-reports/page.tsx](../../frontend/src/app/finance/accounting-reports/page.tsx) (the layout template) and [Application/Finance/Exports/Queries/ExportJournalQueryHandler](../../backend/src/IabConnect.Application/Finance/Exports/Queries/) (the export template).
-- [ ] **Task 1 — Application: Soll/Ist read-model query (AC: 1, 3)**
-  - [ ] Add `backend/src/IabConnect.Application/Finance/Budgets/Queries/GetBudgetVsActualQuery.cs`: `record GetBudgetVsActualQuery(Guid FiscalPeriodId, Guid? ActivityAreaId) : IRequest<BudgetVsActualReportDto>` (add `int? Year` if DEC-2 = year rollup).
-  - [ ] `BudgetVsActualReportDto` = period identity + `IReadOnlyList<BudgetVsActualRow>`; `BudgetVsActualRow(Guid ActivityAreaId, string ActivityAreaCode, string ActivityAreaName, decimal Budget, decimal Actual, decimal Variance, decimal VariancePercent, string Currency)`.
-  - [ ] Handler: load the `FiscalPeriod` (for `StartDate`/`EndDate` bounds + name); load `Budget` rows for the period (`IBudgetRepository.GetByFiscalPeriodAsync`); compute **actuals as a server-side SQL `GroupBy` projection** over the chosen actuals source filtered by `ActivityAreaId != null` + `Date` within `[StartDate, EndDate]` (and soft-delete filter applies automatically). **Do not load full entity graphs** (architecture: "use query/read model … avoid loading unnecessary object graphs"). Full-outer-merge budgets and actuals by `ActivityAreaId` so areas with only one side still appear. `VariancePercent` guards divide-by-zero (budget 0 → 0% or null per DEC).
-  - [ ] No audit needed for the read query itself (reads aren't audited elsewhere); the **export** is audited (Task 3).
-- [ ] **Task 2 — API: report endpoint (AC: 2, 3)**
-  - [ ] Add `GET /api/v1/finance/budgets/budget-vs-actual` (query params `fiscalPeriodId`, optional `activityAreaId`/`year`) to `BudgetEndpoints` (from S1) or a `FinanceReportEndpoints` group — `.RequireAuthorization("Module:finance")` + `RequireFinanceRead`, thin `sender.Send(...)`, `WithName/Summary/Description` (REQ-044). Register in [EndpointMapper.cs](../../backend/src/IabConnect.Api/Endpoints/EndpointMapper.cs) if a new group.
-- [ ] **Task 3 — API/Application: export (AC: 4)**
-  - [ ] Add `ExportBudgetVsActualQuery : IRequest<ExportFileResult>` + handler building CSV via `StringBuilder` + `EscapeCsv` (header: `CostCenterCode;CostCenterName;FiscalPeriod;Budget;Actual;Variance;VariancePercent;Currency`), `Encoding.UTF8.GetBytes`, return `new ExportFileResult(bytes, "text/csv", "budget-vs-actual_<period>.csv")`. Audit `FinanceExported`. Mirror [ExportJournalQueryHandler](../../backend/src/IabConnect.Application/Finance/Exports/Queries/).
-  - [ ] Expose `GET /api/v1/finance/exports/budget-vs-actual` in [FinanceExportEndpoints.cs](../../backend/src/IabConnect.Api/Endpoints/FinanceExportEndpoints.cs) → `RequireFinanceRead` + `Module:finance`, `Results.File(result.Content, result.ContentType, result.FileName)`.
-- [ ] **Task 4 — Frontend: report page (AC: 1, 3, 4, 5)**
-  - [ ] Add `frontend/src/app/finance/budget-vs-actual/page.tsx` (or `/finance/accounting-reports/budget-vs-actual`). **Mirror** [accounting-reports/page.tsx](../../frontend/src/app/finance/accounting-reports/page.tsx): `useAuth().canReadFinance` gate (redirect/return null otherwise); filter bar (fiscal period `<Select>` required + cost center `<Select>` optional); "Generate" + "Export CSV" buttons (orange-600); styled results table (`bg-white rounded-xl shadow-sm` + `min-w-full divide-y divide-gray-200`) with Budget/Actual/Variance/Variance% columns via `formatCurrency`; loading/empty/error states.
-  - [ ] Variance visual cue (e.g. red text for over-budget / unfavorable variance) using existing color tokens — no new blue.
-  - [ ] Typed API wrapper in `frontend/src/lib/api/budgets.ts` (extend S1's) for the report + export endpoints.
-  - [ ] next-intl keys under `finance` (e.g. `finance.budgetVsActual.*`: title, soll, ist, variance, variancePercent, period, costCenter, allCostCenters, exportCsv, noData) in de.json + en.json with parity (A51). Use the German finance terms (Soll/Ist) consistent with the existing `finance.accounting` namespace.
-- [ ] **Task 5 — Tests (AC: all)**
-  - [ ] Application/query tests (the load-bearing calculation proof): budget-only area (actual 0, variance = budget, 100% under), actual-only area (budget 0, variance negative, divide-by-zero guarded), both present (variance + % correct), area outside the period excluded, soft-deleted records excluded, records with `ActivityAreaId = null` excluded. Prefer Testcontainers PostgreSQL for the GroupBy-in-SQL behavior; pure unit tests acceptable for the merge/variance math.
-  - [ ] API authorization test: `RequireFinanceRead` + `Module:finance` on report + export routes; **register new DI services in finance endpoint-metadata harnesses** (A63).
-  - [ ] Export test: CSV header + a representative row + audit call.
-  - [ ] Frontend Vitest/Testing Library: permission gate + filter + table render + export trigger. Stable `useTranslations` mock (A64); `afterEach(cleanup)` + jsdom (A35/A46). Scoped eslint/prettier + full `vitest run` (A58).
-- [ ] **Task 6 — Quality gates & closing checklist (AC: all)**
-  - [ ] `dotnet test` from `backend` green; `npm run typecheck` + scoped lint/format + `vitest run` green.
-  - [ ] AC-Subitem Completion Check (A29) with per-AC evidence in Completion Notes.
+- [x] **Task 0 — Spike & decisions (AC: 1, 3, 4)**
+  - [x] Confirm S1 shipped the `Budget` entity + `IBudgetRepository` + `GetByFiscalPeriodAsync` (project-context A62 — verify the sibling story actually delivered the surface this report consumes; if S1 named it differently, adapt).
+  - [x] Resolve DEC-1 (actuals source), DEC-2 (period vs year rollup — must match S1's `Budget` keying), DEC-3 (authz, already resolved), DEC-4 (export format). Record (a)/(b)/(c) Debug Log per A41/A43 if autonomous, else AskUserQuestion.
+  - [x] Read [accounting-reports/page.tsx](../../frontend/src/app/finance/accounting-reports/page.tsx) (the layout template) and [Application/Finance/Exports/Queries/ExportJournalQueryHandler](../../backend/src/IabConnect.Application/Finance/Exports/Queries/) (the export template).
+- [x] **Task 1 — Application: Soll/Ist read-model query (AC: 1, 3)**
+  - [x] Add `backend/src/IabConnect.Application/Finance/Budgets/Queries/GetBudgetVsActualQuery.cs`: `record GetBudgetVsActualQuery(Guid FiscalPeriodId, Guid? ActivityAreaId) : IRequest<BudgetVsActualReportDto>` (add `int? Year` if DEC-2 = year rollup).
+  - [x] `BudgetVsActualReportDto` = period identity + `IReadOnlyList<BudgetVsActualRow>`; `BudgetVsActualRow(Guid ActivityAreaId, string ActivityAreaCode, string ActivityAreaName, decimal Budget, decimal Actual, decimal Variance, decimal VariancePercent, string Currency)`.
+  - [x] Handler: load the `FiscalPeriod` (for `StartDate`/`EndDate` bounds + name); load `Budget` rows for the period (`IBudgetRepository.GetByFiscalPeriodAsync`); compute **actuals as a server-side SQL `GroupBy` projection** over the chosen actuals source filtered by `ActivityAreaId != null` + `Date` within `[StartDate, EndDate]` (and soft-delete filter applies automatically). **Do not load full entity graphs** (architecture: "use query/read model … avoid loading unnecessary object graphs"). Full-outer-merge budgets and actuals by `ActivityAreaId` so areas with only one side still appear. `VariancePercent` guards divide-by-zero (budget 0 → 0% or null per DEC).
+  - [x] No audit needed for the read query itself (reads aren't audited elsewhere); the **export** is audited (Task 3).
+- [x] **Task 2 — API: report endpoint (AC: 2, 3)**
+  - [x] Add `GET /api/v1/finance/budgets/budget-vs-actual` (query params `fiscalPeriodId`, optional `activityAreaId`/`year`) to `BudgetEndpoints` (from S1) or a `FinanceReportEndpoints` group — `.RequireAuthorization("Module:finance")` + `RequireFinanceRead`, thin `sender.Send(...)`, `WithName/Summary/Description` (REQ-044). Register in [EndpointMapper.cs](../../backend/src/IabConnect.Api/Endpoints/EndpointMapper.cs) if a new group.
+- [x] **Task 3 — API/Application: export (AC: 4)**
+  - [x] Add `ExportBudgetVsActualQuery : IRequest<ExportFileResult>` + handler building CSV via `StringBuilder` + `EscapeCsv` (header: `CostCenterCode;CostCenterName;FiscalPeriod;Budget;Actual;Variance;VariancePercent;Currency`), `Encoding.UTF8.GetBytes`, return `new ExportFileResult(bytes, "text/csv", "budget-vs-actual_<period>.csv")`. Audit `FinanceExported`. Mirror [ExportJournalQueryHandler](../../backend/src/IabConnect.Application/Finance/Exports/Queries/).
+  - [x] Expose `GET /api/v1/finance/exports/budget-vs-actual` in [FinanceExportEndpoints.cs](../../backend/src/IabConnect.Api/Endpoints/FinanceExportEndpoints.cs) → `RequireFinanceRead` + `Module:finance`, `Results.File(result.Content, result.ContentType, result.FileName)`.
+- [x] **Task 4 — Frontend: report page (AC: 1, 3, 4, 5)**
+  - [x] Add `frontend/src/app/finance/budget-vs-actual/page.tsx` (or `/finance/accounting-reports/budget-vs-actual`). **Mirror** [accounting-reports/page.tsx](../../frontend/src/app/finance/accounting-reports/page.tsx): `useAuth().canReadFinance` gate (redirect/return null otherwise); filter bar (fiscal period `<Select>` required + cost center `<Select>` optional); "Generate" + "Export CSV" buttons (orange-600); styled results table (`bg-white rounded-xl shadow-sm` + `min-w-full divide-y divide-gray-200`) with Budget/Actual/Variance/Variance% columns via `formatCurrency`; loading/empty/error states.
+  - [x] Variance visual cue (e.g. red text for over-budget / unfavorable variance) using existing color tokens — no new blue.
+  - [x] Typed API wrapper in `frontend/src/lib/api/budgets.ts` (extend S1's) for the report + export endpoints.
+  - [x] next-intl keys under `finance` (e.g. `finance.budgetVsActual.*`: title, soll, ist, variance, variancePercent, period, costCenter, allCostCenters, exportCsv, noData) in de.json + en.json with parity (A51). Use the German finance terms (Soll/Ist) consistent with the existing `finance.accounting` namespace.
+- [x] **Task 5 — Tests (AC: all)**
+  - [x] Application/query tests (the load-bearing calculation proof): budget-only area (actual 0, variance = budget, 100% under), actual-only area (budget 0, variance negative, divide-by-zero guarded), both present (variance + % correct), area outside the period excluded, soft-deleted records excluded, records with `ActivityAreaId = null` excluded. Prefer Testcontainers PostgreSQL for the GroupBy-in-SQL behavior; pure unit tests acceptable for the merge/variance math.
+  - [x] API authorization test: `RequireFinanceRead` + `Module:finance` on report + export routes; **register new DI services in finance endpoint-metadata harnesses** (A63).
+  - [x] Export test: CSV header + a representative row + audit call.
+  - [x] Frontend Vitest/Testing Library: permission gate + filter + table render + export trigger. Stable `useTranslations` mock (A64); `afterEach(cleanup)` + jsdom (A35/A46). Scoped eslint/prettier + full `vitest run` (A58).
+- [x] **Task 6 — Quality gates & closing checklist (AC: all)**
+  - [x] `dotnet test` from `backend` green; `npm run typecheck` + scoped lint/format + `vitest run` green.
+  - [x] AC-Subitem Completion Check (A29) with per-AC evidence in Completion Notes.
 
 ## Dev Notes
 
@@ -118,20 +118,61 @@ so that I can track project/event financial performance against plan.
 
 ### Agent Model Used
 
-_To be filled by dev agent._
+claude-opus-4-8 (1M context) — autonomous dev-story run (Epic-6 bulk).
 
 ### Debug Log References
 
-_To be filled during implementation._
+**Task 0 — sibling-surface verification (A62):** S1 shipped `Budget` + `IBudgetRepository.GetByFiscalPeriodAsync` (confirmed by reading the S1 files). S2 verified the `ActivityAreaId` actuals association. Both consumed surfaces exist — no adaptation needed.
+
+**A41/A43 autonomous-mode Decision resolutions** (user pre-declared autonomous mode — verbatim: _"alle stories von epic 6 umsetzen. nicht stoppen bis alle stories umgesetzt sind. danach review und retro durchführen. beachte es ist kein mvp mehr"_):
+- **DEC-1 (actuals source).** (a) Option **(a) `Transaction`** chosen. (b) Rationale: story recommendation (a); user autonomous quote; SimpleCash is the default accounting mode and the existing journal/VAT CSV exports are Transaction-based — simplest correct v1, no double-count. (c) Consequence: **concrete v1 behavior (A68): Ist = net cost = Σ(Expense amounts) − Σ(Income amounts) of Transactions tagged to the cost center within the period.** `InvoiceItem` is NOT also summed (would double-count if invoices are booked as transactions). DoubleEntry installations would use `JournalEntryLine` (documented future enhancement).
+- **DEC-2 (period vs year).** (a) Option **(a) key by `FiscalPeriodId`** chosen. (b) Rationale: matches S1's `Budget` keying (S1-DEC-3) + AC-1 "fiscal period"; user autonomous quote. (c) Consequence: report filters by `fiscalPeriodId` (required) + optional `activityAreaId`; no year rollup (S1 doesn't key by year, so AC-3's conditional year filter is out of scope).
+- **DEC-3 (authz).** RESOLVED in spec: `RequireFinanceRead` + `Module:finance`; Vorstand excluded.
+- **DEC-4 (export).** (a) Option **(a) CSV** via `ExportFileResult` + `Results.File`, audited `FinanceExported`. PDF deferred.
+
+**Variance convention:** `Variance = Budget − Actual` (positive = under budget/favorable; the frontend shows negative variance in red). `VariancePercent = Budget == 0 ? 0 : round(Variance/Budget*100, 2)` — divide-by-zero guard returns 0% (an actual-only cost center with no plan has no meaningful %).
+
+**Architecture compliance:** actuals summed via a **server-side `GroupBy` → SQL `SUM(CASE WHEN type='Expense' THEN amount ELSE -amount END)`** in `TransactionRepository.GetActualsByActivityAreaAsync` (NOT load-then-sum-in-memory — the story's deliberate improvement over the existing in-memory export handlers). The read query is not audited; only the export is (`FinanceExported`).
 
 ### Completion Notes List
 
-_To be filled during implementation._
+**AC-Subitem Completion Check (A29):**
+- **AC-1 (report content):** ✅ covered. Per cost center: Budget/Actual/Variance/Variance%/currency + period & cost-center identity. **Full-outer merge** (budget-only AND actual-only areas both appear) — proven by the Testcontainers test (EVT both, MBR budget-only, ADM actual-only → 3 rows).
+- **AC-2 (authorization):** ✅ covered. Report route + export route both `RequireFinanceRead` + `Module:finance` (6 endpoint-metadata assertions across BudgetEndpointTests + FinanceExportEndpointTests). Vorstand excluded.
+- **AC-3 (filterable):** ✅ covered. Required `fiscalPeriodId` + optional `activityAreaId` (scoped-to-one-area path tested). Year rollup N/A (DEC-2 = period keying).
+- **AC-4 (export):** ✅ covered. `ExportBudgetVsActualQuery` → CSV via `ExportFileResult`/`Results.File`, header `CostCenterCode;CostCenterName;FiscalPeriod;Budget;Actual;Variance;VariancePercent;Currency`, audited `FinanceExported` (entityType "Budget"). Unknown period → null → 404 (tested).
+- **AC-5 (UI):** ✅ covered. `/finance/budget-vs-actual` page mirrors the accounting-reports layout: filter bar (period required + cost-center optional) + Generate + Export CSV (orange-600), styled results table via `formatCurrency`, negative-variance red cue (no new blue), loading/empty/error/permission states; next-intl `budgetVsActual.*` de/en parity.
+
+**Concrete v1 behavior statement (A68):** the QGT marks AC-1 ✅ on the basis that **Ist = net cost of Transactions tagged to the cost center within the period** (Expense positive, Income negative). This is the actual shipped behavior, NOT the aspirational "all finance records" — DoubleEntry `JournalEntryLine` actuals are a documented future enhancement.
+
+**New tests:** `BudgetVsActualReportTests` (3 Testcontainers — the load-bearing calc proof: outer-merge + variance math + period/soft-delete/null-area exclusions + scoped-to-one-area + unknown-period-null), `ExportBudgetVsActualTests` (2 — CSV header+row+audit, null-period no-audit), `BudgetEndpointTests` (+report route to read+module theories), `FinanceExportEndpointTests` (2 — export route policies), `budget-vs-actual/page.test.tsx` (2 — permission gate + generate/render/export). **Quality gates:** backend full suite **2254 green** (App 1536 / Api 249 / Infra 469); `dotnet build` 0/0; frontend full Vitest **207 green**; `tsc --noEmit` clean; scoped eslint + prettier clean on all changed files (A58). **A63:** report/export endpoint handlers inject only `ISender` — metadata harnesses needed no extra registration. No new migration (consumes S1 table + existing `ActivityAreaId` columns).
 
 ### File List
 
-_To be filled during implementation._
+**Backend — new:**
+- `backend/src/IabConnect.Application/Finance/Budgets/Queries/GetBudgetVsActualQuery.cs`
+- `backend/src/IabConnect.Application/Finance/Budgets/Queries/GetBudgetVsActualQueryHandler.cs`
+- `backend/src/IabConnect.Application/Finance/Budgets/Queries/ExportBudgetVsActualQuery.cs` (+ handler in same file)
+- `backend/tests/IabConnect.Infrastructure.Tests/Repositories/BudgetVsActualReportTests.cs`
+- `backend/tests/IabConnect.Application.Tests/Finance/Budgets/ExportBudgetVsActualTests.cs`
+- `backend/tests/IabConnect.Api.Tests/Endpoints/FinanceExportEndpointTests.cs`
+
+**Backend — modified:**
+- `backend/src/IabConnect.Application/Finance/IFinanceRepositories.cs` (added `ActivityAreaActual` record + `ITransactionRepository.GetActualsByActivityAreaAsync`)
+- `backend/src/IabConnect.Infrastructure/Persistence/Repositories/FinanceRepositories.cs` (implemented `GetActualsByActivityAreaAsync` — server-side GroupBy)
+- `backend/src/IabConnect.Api/Endpoints/BudgetEndpoints.cs` (added `GET /budget-vs-actual` report route + handler)
+- `backend/src/IabConnect.Api/Endpoints/FinanceExportEndpoints.cs` (added `GET /exports/budget-vs-actual` + handler)
+- `backend/tests/IabConnect.Api.Tests/Endpoints/BudgetEndpointTests.cs` (report route added to read + module-gate theories)
+
+**Frontend — new:**
+- `frontend/src/app/finance/budget-vs-actual/page.tsx`
+- `frontend/src/app/finance/budget-vs-actual/page.test.tsx`
+
+**Frontend — modified:**
+- `frontend/src/lib/api/budgets.ts` (added `BudgetVsActualReport`/`Row` types + report/export endpoint constants)
+- `frontend/messages/de.json` + `frontend/messages/en.json` (added `budgetVsActual.*` namespace, de/en parity)
 
 ## Change Log
 
 - 2026-06-07: Story refreshed from the 2026-05-12 pre-pivot stub to a comprehensive dev-ready spec. Reframed on the resolved epic model (cost center = ActivityArea; Soll from S1 `Budget`, Ist summed by `ActivityAreaId`); read-only report + CSV export + reporting UI. Marked ready-for-dev.
+- 2026-06-07: Implemented (autonomous dev-story). Read-model Soll/Ist query (server-side SQL `GroupBy` net-cost actuals + full-outer merge + variance math), CSV export (audited `FinanceExported`), report + export endpoints (RequireFinanceRead + Module:finance), and the `/finance/budget-vs-actual` reporting UI (period+cost-center filters, Generate/Export CSV, red negative-variance cue, de/en). DEC-1/2/4 auto-resolved (a)/(a)/(a) per A41/A43; concrete v1 actuals behavior stated per A68. Backend 2254 tests green; frontend 207 Vitest green. Status → review.

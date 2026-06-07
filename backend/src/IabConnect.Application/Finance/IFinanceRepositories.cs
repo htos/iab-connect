@@ -28,6 +28,12 @@ public interface ICategoryRepository
 }
 
 /// <summary>
+/// REQ-044 (E6-S3): server-side aggregation result — actual (Ist) net cost per cost center.
+/// Net cost = sum(Expense amounts) − sum(Income amounts) for transactions tagged to the area.
+/// </summary>
+public sealed record ActivityAreaActual(Guid ActivityAreaId, decimal Actual);
+
+/// <summary>
 /// REQ-038: Repository for financial transactions (Buchungen)
 /// </summary>
 public interface ITransactionRepository
@@ -39,6 +45,14 @@ public interface ITransactionRepository
     Task DeleteAsync(Guid id, CancellationToken ct = default);
     Task<(decimal totalIncome, decimal totalExpense)> GetSummaryAsync(DateTime? from = null, DateTime? to = null, CancellationToken ct = default);
     Task<List<Transaction>> GetArchivedAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// REQ-044 (E6-S3): server-side <c>GroupBy</c> of net cost (Expense − Income) per cost center
+    /// (ActivityArea) for transactions dated within <paramref name="fromInclusive"/>..<paramref name="toInclusive"/>.
+    /// Transactions with a null ActivityAreaId are excluded; the soft-delete query filter applies.
+    /// </summary>
+    Task<IReadOnlyList<ActivityAreaActual>> GetActualsByActivityAreaAsync(
+        DateTime fromInclusive, DateTime toInclusive, Guid? activityAreaId, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -188,6 +202,20 @@ public interface IActivityAreaRepository
     Task<ActivityArea?> GetByCodeAsync(string code, CancellationToken ct = default);
     Task AddAsync(ActivityArea area, CancellationToken ct = default);
     Task UpdateAsync(ActivityArea area, CancellationToken ct = default);
+    Task DeleteAsync(Guid id, CancellationToken ct = default);
+}
+
+/// <summary>
+/// REQ-044 (E6-S1): Repository for budgets (planned amount per ActivityArea per FiscalPeriod)
+/// </summary>
+public interface IBudgetRepository
+{
+    Task<List<Budget>> GetAllAsync(CancellationToken ct = default);
+    Task<Budget?> GetByIdAsync(Guid id, CancellationToken ct = default);
+    Task<Budget?> GetByActivityAreaAndPeriodAsync(Guid activityAreaId, Guid fiscalPeriodId, CancellationToken ct = default);
+    Task<List<Budget>> GetByFiscalPeriodAsync(Guid fiscalPeriodId, CancellationToken ct = default);
+    Task AddAsync(Budget budget, CancellationToken ct = default);
+    Task UpdateAsync(Budget budget, CancellationToken ct = default);
     Task DeleteAsync(Guid id, CancellationToken ct = default);
 }
 

@@ -52,6 +52,7 @@ public static class EndpointMapper
         app.MapExpenseClaimEndpoints(); // REQ-067: Expense Claims
         app.MapInvoiceTemplateEndpoints(); // REQ-064: Invoice Templates
         app.MapActivityAreaEndpoints(); // REQ-068: Activity Areas
+        app.MapBudgetEndpoints(); // REQ-044 (E6-S1): Finance Planning — Budgets
         app.MapDashboardEndpoints(); // Finance Dashboard overview
         app.MapArchiveEndpoints(); // REQ-070: Archive/Retention
 

@@ -82,6 +82,9 @@ public sealed class ApplicationDbContext : DbContext
     public DbSet<ActivityArea> ActivityAreas => Set<ActivityArea>();
     public DbSet<InvoiceNumberCounter> InvoiceNumberCounters => Set<InvoiceNumberCounter>();
 
+    // REQ-044 (E6-S1): Finance planning — budget per cost center per fiscal period
+    public DbSet<Budget> Budgets => Set<Budget>();
+
     // REQ-074..085: Double-Entry Bookkeeping
     public DbSet<LedgerAccount> LedgerAccounts => Set<LedgerAccount>();
     public DbSet<JournalEntry> JournalEntries => Set<JournalEntry>();

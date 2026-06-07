@@ -839,3 +839,15 @@ Batch for a future hygiene pass: (a) frontend `decimalPlaces` mis-detects expone
 - **`ChannelPreferenceEndpoints.GetUserId` uses `FindFirst("sub")`** (Blind, Med) — correct on this project: `MapInboundClaims=false` preserves `sub`; the shared `GetUserId()` + `PrivacyEndpoints` read it the same way. False positive (no project context).
 - **`MemberJoined` welcomes the whole active segment on activation** (Blind, Med) — accepted v1 semantics: once-ever per recipient, bounded, non-repeating. Real event-binding is E5-FT-1.
 - **Channel-preference GET advertises availability without consent** (Blind, Med) — by design: channel preference (medium) is orthogonal to per-journey consent (purpose); the card shows provider availability, the send path applies consent.
+
+## Epic-6 (Finance Planning) — deferred follow-ups (from epic-6-boundary-review-2026-06-07)
+
+- **E6-FT-1** — Mode-aware actuals source for the budget-vs-actual (Soll/Ist) report. S3-DEC-1 v1 sums actuals from `Transaction` only (correct for the default/Beta `SimpleCash` mode). For `DoubleEntry`-mode installations, spend is booked via `JournalEntryLine`; add a mode-aware actuals path (Transaction in SimpleCash, JournalEntryLine in DoubleEntry) so the report is non-zero there. Until then a DoubleEntry installation sees actuals = 0 (disclosed v1 boundary; the report UI could also surface a "SimpleCash actuals only" note).
+- **E6-FT-2** — Map a concurrent duplicate-budget insert to 409 instead of 500. `CreateBudgetCommandHandler` pre-checks uniqueness then inserts; two concurrent creates for the same `(ActivityAreaId, FiscalPeriodId)` both pass the pre-check and the second trips the filtered-unique-index → `DbUpdateException` → 500. Translate the unique-violation to a clean 409 at the repository/Infrastructure boundary (not in the Application handler — keep EF Core out of Application).
+- **E6-FT-3** — Budget-currency vs profile-currency consistency in the Soll/Ist report. The report labels each row with the budget's stored currency while actuals are implicitly in the active `FinanceProfile` currency. Latent while the module is single-currency (budgets default to the profile currency); harden by either pinning budgets to the profile currency or converting/flagging mixed-currency rows.
+
+### Dismissed findings (not deferred) — Epic-6 review
+- **Budget double-save** (repo AddAsync + handler UnitOfWork) — mirrors the canonical `AccountRepository`; second save is a no-op. Non-issue.
+- **Budget FK OnDelete.Restrict** — `ActivityArea` soft-deletes + `FiscalPeriod` is not hard-deleted, so the FK is never violated; Restrict correctly prevents orphaning a budget.
+- **N+1 area lookup in the report handler** — bounded by cost-centers-per-period (single digits); acceptable.
+- **JournalEntryLine edit round-trip** — `JournalEntryLineDto` exposes `ActivityAreaId` (+ `MapToDto`), so the new journal-line selector preserves an existing line's cost center on edit. Verified, no data-loss.

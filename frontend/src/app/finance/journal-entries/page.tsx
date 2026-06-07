@@ -14,6 +14,13 @@ import type {
   TaxCode,
 } from "@/types/finance";
 
+interface ActivityArea {
+  id: string;
+  name: string;
+  code: string;
+  isActive: boolean;
+}
+
 interface LineForm {
   ledgerAccountId: string;
   debitAmount: number;
@@ -62,6 +69,7 @@ export default function JournalEntriesPage() {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [ledgerAccounts, setLedgerAccounts] = useState<LedgerAccount[]>([]);
   const [taxCodes, setTaxCodes] = useState<TaxCode[]>([]);
+  const [activityAreas, setActivityAreas] = useState<ActivityArea[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<JournalEntryStatus | "">("");
@@ -139,6 +147,15 @@ export default function JournalEntriesPage() {
     }
   }, []);
 
+  // REQ-044 (E6-S2): cost-center (ActivityArea) selector for journal lines (DoubleEntry actuals).
+  const fetchActivityAreas = useCallback(async () => {
+    const res = await apiRef.current.get("/api/v1/finance/activity-areas");
+    if (!res.error) {
+      const body = res.data as { items?: ActivityArea[] };
+      setActivityAreas((body.items ?? []).filter((a) => a.isActive));
+    }
+  }, []);
+
   useEffect(() => {
     if (!canReadFinance) {
       router.replace("/");
@@ -148,8 +165,17 @@ export default function JournalEntriesPage() {
       fetchEntries();
       fetchLedgerAccounts();
       fetchTaxCodes();
+      fetchActivityAreas();
     }
-  }, [canReadFinance, router, fetchEntries, fetchLedgerAccounts, fetchTaxCodes, modeChecked]);
+  }, [
+    canReadFinance,
+    router,
+    fetchEntries,
+    fetchLedgerAccounts,
+    fetchTaxCodes,
+    fetchActivityAreas,
+    modeChecked,
+  ]);
 
   const openCreate = () => {
     setEditingId(null);
@@ -535,6 +561,7 @@ export default function JournalEntriesPage() {
                         <th className="pb-2 text-right font-medium">{ta("debitAmount")}</th>
                         <th className="pb-2 text-right font-medium">{ta("creditAmount")}</th>
                         <th className="pb-2 font-medium">{ta("taxCode")}</th>
+                        <th className="pb-2 font-medium">{t("activityArea")}</th>
                         <th className="pb-2 w-8"></th>
                       </tr>
                     </thead>
@@ -585,6 +612,20 @@ export default function JournalEntriesPage() {
                               {taxCodes.filter((tc) => tc.isActive).map((tc) => (
                                 <option key={tc.id} value={tc.id}>
                                   {tc.code} ({tc.rate}%)
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="py-2 pr-2">
+                            <select
+                              value={line.activityAreaId ?? ""}
+                              onChange={(e) => updateLine(idx, { activityAreaId: e.target.value || null })}
+                              className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                            >
+                              <option value="">{t("noActivityArea")}</option>
+                              {activityAreas.map((a) => (
+                                <option key={a.id} value={a.id}>
+                                  {a.code} – {a.name}
                                 </option>
                               ))}
                             </select>

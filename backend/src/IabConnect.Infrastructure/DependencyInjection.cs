@@ -150,6 +150,9 @@ public static class DependencyInjection
         services.AddScoped<IInvoiceTemplateRepository, InvoiceTemplateRepository>();
         services.AddScoped<IActivityAreaRepository, ActivityAreaRepository>();
 
+        // REQ-044 (E6-S1): Finance planning — budget repository
+        services.AddScoped<IBudgetRepository, BudgetRepository>();
+
         // REQ-031..033: Sponsors & Suppliers repositories
         services.AddScoped<ISponsorRepository, SponsorRepository>();
         services.AddScoped<ISupplierRepository, SupplierRepository>();

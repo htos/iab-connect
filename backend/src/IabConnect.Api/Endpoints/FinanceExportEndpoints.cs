@@ -33,6 +33,13 @@ public static class FinanceExportEndpoints
             .WithSummary("Export VAT summary as CSV")
             .WithDescription("REQ-062: Exports VAT summary grouped by tax code for a date range. Audited.");
 
+        // REQ-044 (E6-S3): budget-vs-actual (Soll/Ist) report export
+        group.MapGet("/budget-vs-actual", ExportBudgetVsActual)
+            .RequireAuthorization("RequireFinanceRead")
+            .WithName("ExportBudgetVsActual")
+            .WithSummary("Export budget-vs-actual report as CSV")
+            .WithDescription("REQ-044: Exports the Soll/Ist report for a fiscal period as CSV. Audited.");
+
         // REQ-073: pain.001 ISO 20022 payment export
         group.MapPost("/pain001", ExportPain001)
             .RequireAuthorization("RequireFinanceWrite")
@@ -65,6 +72,16 @@ public static class FinanceExportEndpoints
     {
         var result = await sender.Send(new ExportVatSummaryQuery(from, to), ct);
         return Results.File(result.Content, result.ContentType, result.FileName);
+    }
+
+    private static async Task<IResult> ExportBudgetVsActual(
+        ISender sender, Guid fiscalPeriodId, Guid? activityAreaId, CancellationToken ct)
+    {
+        var result = await sender.Send(
+            new IabConnect.Application.Finance.Budgets.Queries.ExportBudgetVsActualQuery(fiscalPeriodId, activityAreaId), ct);
+        return result is null
+            ? Results.NotFound(new { Message = "Fiscal period not found." })
+            : Results.File(result.Content, result.ContentType, result.FileName);
     }
 
     private static async Task<IResult> ExportPain001(

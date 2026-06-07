@@ -208,6 +208,28 @@ public sealed class TransactionRepository : ITransactionRepository
             .OrderByDescending(t => t.ArchivedAt)
             .ToListAsync(ct);
     }
+
+    public async Task<IReadOnlyList<ActivityAreaActual>> GetActualsByActivityAreaAsync(
+        DateTime fromInclusive, DateTime toInclusive, Guid? activityAreaId, CancellationToken ct = default)
+    {
+        var from = DateTime.SpecifyKind(fromInclusive, DateTimeKind.Utc);
+        var to = DateTime.SpecifyKind(toInclusive, DateTimeKind.Utc);
+
+        var query = _context.Transactions
+            .Where(t => t.ActivityAreaId != null && t.Date >= from && t.Date <= to);
+
+        if (activityAreaId.HasValue)
+            query = query.Where(t => t.ActivityAreaId == activityAreaId.Value);
+
+        // Server-side GroupBy → SQL SUM(CASE WHEN type = 'Expense' THEN amount ELSE -amount END).
+        // Net cost: Expense increases the actual, Income reduces it. Soft-delete filter applies.
+        return await query
+            .GroupBy(t => t.ActivityAreaId!.Value)
+            .Select(g => new ActivityAreaActual(
+                g.Key,
+                g.Sum(t => t.Type == TransactionType.Expense ? t.Amount : -t.Amount)))
+            .ToListAsync(ct);
+    }
 }
 
 /// <summary>
@@ -945,6 +967,70 @@ public sealed class ActivityAreaRepository : IActivityAreaRepository
         if (area is not null)
         {
             area.SoftDelete();
+            await _context.SaveChangesAsync(ct);
+        }
+    }
+}
+
+/// <summary>
+/// REQ-044 (E6-S1): Budget repository implementation
+/// </summary>
+public sealed class BudgetRepository : IBudgetRepository
+{
+    private readonly ApplicationDbContext _context;
+
+    public BudgetRepository(ApplicationDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<List<Budget>> GetAllAsync(CancellationToken ct = default)
+    {
+        return await _context.Budgets
+            .AsNoTracking()
+            .OrderByDescending(b => b.CreatedAt)
+            .ToListAsync(ct);
+    }
+
+    public async Task<Budget?> GetByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        return await _context.Budgets
+            .FirstOrDefaultAsync(b => b.Id == id, ct);
+    }
+
+    public async Task<Budget?> GetByActivityAreaAndPeriodAsync(Guid activityAreaId, Guid fiscalPeriodId, CancellationToken ct = default)
+    {
+        return await _context.Budgets
+            .AsNoTracking()
+            .FirstOrDefaultAsync(b => b.ActivityAreaId == activityAreaId && b.FiscalPeriodId == fiscalPeriodId, ct);
+    }
+
+    public async Task<List<Budget>> GetByFiscalPeriodAsync(Guid fiscalPeriodId, CancellationToken ct = default)
+    {
+        return await _context.Budgets
+            .AsNoTracking()
+            .Where(b => b.FiscalPeriodId == fiscalPeriodId)
+            .ToListAsync(ct);
+    }
+
+    public async Task AddAsync(Budget budget, CancellationToken ct = default)
+    {
+        await _context.Budgets.AddAsync(budget, ct);
+        await _context.SaveChangesAsync(ct);
+    }
+
+    public async Task UpdateAsync(Budget budget, CancellationToken ct = default)
+    {
+        _context.Budgets.Update(budget);
+        await _context.SaveChangesAsync(ct);
+    }
+
+    public async Task DeleteAsync(Guid id, CancellationToken ct = default)
+    {
+        var budget = await _context.Budgets.FindAsync([id], ct);
+        if (budget is not null)
+        {
+            budget.SoftDelete();
             await _context.SaveChangesAsync(ct);
         }
     }

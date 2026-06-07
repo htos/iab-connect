@@ -1,6 +1,6 @@
 # Story E6.S1: Add Cost Center and Budget Model
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -22,39 +22,39 @@ so that event/project costs can be planned and later compared against actuals.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 0 — Spike & decision confirmation (AC: all)**
-  - [ ] Re-read [ActivityArea.cs](../../backend/src/IabConnect.Domain/Finance/ActivityArea.cs), its EF configuration, repository (`ActivityAreaRepository` in [FinanceRepositories.cs](../../backend/src/IabConnect.Infrastructure/Persistence/Repositories/FinanceRepositories.cs)), endpoints, and the `/finance/settings/activity-areas` page to confirm cost-center CRUD already satisfies AC-1. Record in Debug Log: "AC-1 satisfied by ActivityArea — verify-only".
-  - [ ] Confirm DEC-1 (reuse ActivityArea), DEC-2 (entity name), DEC-3 (FiscalPeriod keying), DEC-4 (currency source), DEC-5 (authz) per the Decision-Needed block. If user pre-declared autonomous mode, record the (a)/(b)/(c) Debug Log per project-context A41/A43; otherwise surface via AskUserQuestion.
-  - [ ] Read [CreateAccountCommandHandler.cs](../../backend/src/IabConnect.Application/Finance/Accounts/Commands/CreateAccountCommandHandler.cs) + `CreateAccountCommand` + `CreateAccountCommandValidator` + `AccountConfiguration.cs` + `AccountRepository` as the canonical single-aggregate CRUD template to mirror.
-- [ ] **Task 1 — Domain: `Budget` entity (AC: 2, 3, 5)**
-  - [ ] Add `backend/src/IabConnect.Domain/Finance/Budget.cs`: `Entity, ISoftDeletable`. Properties (all `private set`): `ActivityAreaId` (Guid), `FiscalPeriodId` (Guid), `Amount` (decimal), `Currency` (`FinanceCurrency` enum), `Notes` (string?), `CreatedAt`/`UpdatedAt` (DateTimeOffset), `CreatedBy`/`UpdatedBy` (string?), plus `IsDeleted`/`DeletedAt`/`DeletedBy`. Private ctor + `static Create(...)` factory + `Update(...)` + `SoftDelete(string?)`/`Restore()` mirroring [ActivityArea.cs](../../backend/src/IabConnect.Domain/Finance/ActivityArea.cs):26-70.
-  - [ ] Factory invariants: throw on `Amount < 0`; normalize/trim `Notes`. Keep cross-entity existence checks (ActivityArea/FiscalPeriod exist, uniqueness, locked-period) out of the entity — they belong in the handler/validator (existence) and handler (locked-period), matching the Invoice precedent.
-- [ ] **Task 2 — Infrastructure: EF config + migration + repository (AC: 4, 5)**
-  - [ ] Add `backend/src/IabConnect.Infrastructure/Persistence/Configurations/BudgetConfiguration.cs` (`IEntityTypeConfiguration<Budget>`): `ToTable("budgets")`; `Id` `ValueGeneratedNever`; `Amount` `.HasPrecision(18, 2)`; `Currency` `.HasConversion<string>().HasMaxLength(10)`; FK relationships to `ActivityArea` and `FiscalPeriod` (`OnDelete(DeleteBehavior.Restrict)` — never cascade-delete budgets when a period/area is removed); `builder.HasQueryFilter(b => !b.IsDeleted)`; **unique filtered index** `ix_budgets_activity_area_fiscal_period_unique` on `(activity_area_id, fiscal_period_id)` `HasFilter("is_deleted = false")`; `builder.Ignore(b => b.DomainEvents)`. Snake_case all columns. Mirror [AccountConfiguration.cs](../../backend/src/IabConnect.Infrastructure/Persistence/Configurations/AccountConfiguration.cs) + [FinanceProfileConfiguration.cs](../../backend/src/IabConnect.Infrastructure/Persistence/Configurations/FinanceProfileConfiguration.cs):117-124 (filtered unique index pattern).
-  - [ ] Add `public DbSet<Budget> Budgets => Set<Budget>();` to [ApplicationDbContext.cs](../../backend/src/IabConnect.Infrastructure/Persistence/ApplicationDbContext.cs) in the Finance section (after line ~83). `ApplyConfigurationsFromAssembly` auto-discovers the config.
-  - [ ] Add `IBudgetRepository` to the Application finance repository interfaces file (alongside `IActivityAreaRepository`) and implement `BudgetRepository` in [FinanceRepositories.cs](../../backend/src/IabConnect.Infrastructure/Persistence/Repositories/FinanceRepositories.cs) mirroring `AccountRepository`: `GetAllAsync(ct)` / `GetByIdAsync` / `GetByActivityAreaAndPeriodAsync(Guid areaId, Guid periodId, ct)` (for the uniqueness pre-check) / `GetByFiscalPeriodAsync(Guid periodId, ct)` / `AddAsync` / `UpdateAsync` / `DeleteAsync` (soft-delete). All `async` + `CancellationToken`, `.AsNoTracking()` on reads.
-  - [ ] Register `services.AddScoped<IBudgetRepository, BudgetRepository>();` in [Infrastructure/DependencyInjection.cs](../../backend/src/IabConnect.Infrastructure/DependencyInjection.cs) in the finance repos block (~line 133-151).
-  - [ ] Generate the migration: `dotnet ef migrations add AddBudgetModel --project src/IabConnect.Infrastructure --startup-project src/IabConnect.Api` (run from `backend/`). Verify it only adds the `budgets` table + index and touches the snapshot; no edits to existing finance tables.
-- [ ] **Task 3 — Application: MediatR commands/queries + validators (AC: 2, 3, 4)**
-  - [ ] `backend/src/IabConnect.Application/Finance/Budgets/` with: `Commands/CreateBudgetCommand(+Handler+Validator)`, `Commands/UpdateBudgetCommand(+Handler+Validator)`, `Commands/DeleteBudgetCommand(+Handler)`, `Queries/GetBudgetsQuery(+Handler)` (filter by optional `ActivityAreaId`/`FiscalPeriodId`/`Year`), `Queries/BudgetDto`.
-  - [ ] Handlers mirror [CreateAccountCommandHandler.cs](../../backend/src/IabConnect.Application/Finance/Accounts/Commands/CreateAccountCommandHandler.cs): inject `IBudgetRepository` + `IUnitOfWork` + `IAuditService` (+ `IActivityAreaRepository`, `IFiscalPeriodRepository` for existence checks). Sequence: validate existence → **locked-period guard** (`IFiscalPeriodService.EnsurePeriodNotLockedAsync(period.StartDate, ct)` or load the period and check `IsMutationAllowed`) → uniqueness pre-check via `GetByActivityAreaAndPeriodAsync` → `repo.AddAsync` → `unitOfWork.SaveChangesAsync` → `auditService.LogActionAsync(FinanceCreated, ..., entityType: "Budget", entityId: budget.Id.ToString(), ct: ct)`.
-  - [ ] Validators mirror `CreateAccountCommandValidator`: `Amount` `>= 0`; `ActivityAreaId`/`FiscalPeriodId` `NotEmpty`; `Currency` `.Must(Enum.TryParse<FinanceCurrency>)`; `UserName` `NotEmpty`. (Existence + uniqueness + locked-period are handler-level rules, not validator rules, matching the Invoice precedent.)
-- [ ] **Task 4 — API: endpoints (AC: 4)**
-  - [ ] Add `backend/src/IabConnect.Api/Endpoints/BudgetEndpoints.cs` with `MapBudgetEndpoints(this IEndpointRouteBuilder routes)`: group `/api/v1/finance/budgets`, `.WithTags("Finance - Budgets")`, `.RequireAuthorization("Module:finance")`. `GET /` + `GET /{id:guid}` → `RequireFinanceRead`; `POST /`, `PUT /{id:guid}`, `DELETE /{id:guid}` → `RequireFinanceWrite`. Thin handlers `sender.Send(...)`; `WithName`/`WithSummary`/`WithDescription` (cite REQ-044). Mirror [PaymentEndpoints.cs](../../backend/src/IabConnect.Api/Endpoints/PaymentEndpoints.cs).
-  - [ ] Register the group in [EndpointMapper.cs](../../backend/src/IabConnect.Api/Endpoints/EndpointMapper.cs) where the other finance endpoint groups are mapped.
-- [ ] **Task 5 — Frontend: budget management UI (AC: 1 verify, 2, 3)**
-  - [ ] Add typed API wrapper `frontend/src/lib/api/budgets.ts` (DTOs + enum-as-PascalCase) following the `useApiClient()` convention in [transactions/page.tsx](../../frontend/src/app/finance/transactions/page.tsx) and `frontend/src/lib/api/members.ts`.
-  - [ ] Add `frontend/src/app/finance/budgets/page.tsx` (or `/finance/settings/budgets`): standard authenticated layout `<main className="min-h-[calc(100vh-4rem)] p-4 md:p-8 bg-gray-50">` + `max-w-7xl`; `useAuth()` gate (`canReadFinance` to view, `canWriteFinance` for create/edit/delete buttons); search/filter (by cost center + period/year) above the table; create/edit `<Dialog>` with `<Select>` for ActivityArea (active only) + `<Select>` for FiscalPeriod + money `<Input>` for Amount; `refreshKey`/`useCallback` fetch + re-fetch after mutation (mirror [transactions/page.tsx](../../frontend/src/app/finance/transactions/page.tsx):244-291). Orange-600 primary actions, lucide icons, no blue.
-  - [ ] Add next-intl keys under the `finance` namespace in **both** `frontend/messages/de.json` and `en.json` (e.g. `finance.budgets.*`). No hardcoded UI strings. Keep de/en parity (A51).
-- [ ] **Task 6 — Tests (AC: all)**
-  - [ ] Application unit tests (xUnit v3 + FluentAssertions): `Budget.Create` rejects negative amount; validators (amount/currency/required); handler audit call. (`backend/tests/IabConnect.Application.Tests/Finance/Budgets/`)
-  - [ ] Infrastructure integration tests (Testcontainers PostgreSQL): `BudgetRepository` round-trip; the unique filtered index rejects a second active budget for the same `(area, period)`; soft-deleted budget is excluded by the query filter and does **not** block re-insert. (`backend/tests/IabConnect.Infrastructure.Tests/`)
-  - [ ] API authorization tests: `RequireFinanceRead`/`RequireFinanceWrite`/`Module:finance` on the new routes. **Register `IBudgetRepository` (+ any new injected services) in every endpoint-metadata test harness that maps finance groups** (project-context A63) to avoid "Failure to infer parameters".
-  - [ ] Frontend Vitest/Testing Library test for the budgets page (permission gating + form). Mock `useTranslations` to return a **stable** function (A64); add `afterEach(cleanup)` + `// @vitest-environment jsdom` (A35/A46).
-  - [ ] Gate frontend changes on `npx eslint <changed>` + `npx prettier --check <changed>` + full `vitest run` (A58 — repo-wide lint/format is pre-drifted).
-- [ ] **Task 7 — Quality gates & closing checklist (AC: all)**
-  - [ ] `dotnet test` from `backend` green; migration applies clean. `npm run typecheck` + scoped lint/format + vitest green.
-  - [ ] AC-Subitem Completion Check (A29): list each AC's status (covered/deferred/N/A) with evidence in Completion Notes.
+- [x] **Task 0 — Spike & decision confirmation (AC: all)**
+  - [x] Re-read [ActivityArea.cs](../../backend/src/IabConnect.Domain/Finance/ActivityArea.cs), its EF configuration, repository (`ActivityAreaRepository` in [FinanceRepositories.cs](../../backend/src/IabConnect.Infrastructure/Persistence/Repositories/FinanceRepositories.cs)), endpoints, and the `/finance/settings/activity-areas` page to confirm cost-center CRUD already satisfies AC-1. Record in Debug Log: "AC-1 satisfied by ActivityArea — verify-only".
+  - [x] Confirm DEC-1 (reuse ActivityArea), DEC-2 (entity name), DEC-3 (FiscalPeriod keying), DEC-4 (currency source), DEC-5 (authz) per the Decision-Needed block. If user pre-declared autonomous mode, record the (a)/(b)/(c) Debug Log per project-context A41/A43; otherwise surface via AskUserQuestion.
+  - [x] Read [CreateAccountCommandHandler.cs](../../backend/src/IabConnect.Application/Finance/Accounts/Commands/CreateAccountCommandHandler.cs) + `CreateAccountCommand` + `CreateAccountCommandValidator` + `AccountConfiguration.cs` + `AccountRepository` as the canonical single-aggregate CRUD template to mirror.
+- [x] **Task 1 — Domain: `Budget` entity (AC: 2, 3, 5)**
+  - [x] Add `backend/src/IabConnect.Domain/Finance/Budget.cs`: `Entity, ISoftDeletable`. Properties (all `private set`): `ActivityAreaId` (Guid), `FiscalPeriodId` (Guid), `Amount` (decimal), `Currency` (`FinanceCurrency` enum), `Notes` (string?), `CreatedAt`/`UpdatedAt` (DateTimeOffset), `CreatedBy`/`UpdatedBy` (string?), plus `IsDeleted`/`DeletedAt`/`DeletedBy`. Private ctor + `static Create(...)` factory + `Update(...)` + `SoftDelete(string?)`/`Restore()` mirroring [ActivityArea.cs](../../backend/src/IabConnect.Domain/Finance/ActivityArea.cs):26-70.
+  - [x] Factory invariants: throw on `Amount < 0`; normalize/trim `Notes`. Keep cross-entity existence checks (ActivityArea/FiscalPeriod exist, uniqueness, locked-period) out of the entity — they belong in the handler/validator (existence) and handler (locked-period), matching the Invoice precedent.
+- [x] **Task 2 — Infrastructure: EF config + migration + repository (AC: 4, 5)**
+  - [x] Add `backend/src/IabConnect.Infrastructure/Persistence/Configurations/BudgetConfiguration.cs` (`IEntityTypeConfiguration<Budget>`): `ToTable("budgets")`; `Id` `ValueGeneratedNever`; `Amount` `.HasPrecision(18, 2)`; `Currency` `.HasConversion<string>().HasMaxLength(10)`; FK relationships to `ActivityArea` and `FiscalPeriod` (`OnDelete(DeleteBehavior.Restrict)` — never cascade-delete budgets when a period/area is removed); `builder.HasQueryFilter(b => !b.IsDeleted)`; **unique filtered index** `ix_budgets_activity_area_fiscal_period_unique` on `(activity_area_id, fiscal_period_id)` `HasFilter("is_deleted = false")`; `builder.Ignore(b => b.DomainEvents)`. Snake_case all columns. Mirror [AccountConfiguration.cs](../../backend/src/IabConnect.Infrastructure/Persistence/Configurations/AccountConfiguration.cs) + [FinanceProfileConfiguration.cs](../../backend/src/IabConnect.Infrastructure/Persistence/Configurations/FinanceProfileConfiguration.cs):117-124 (filtered unique index pattern).
+  - [x] Add `public DbSet<Budget> Budgets => Set<Budget>();` to [ApplicationDbContext.cs](../../backend/src/IabConnect.Infrastructure/Persistence/ApplicationDbContext.cs) in the Finance section (after line ~83). `ApplyConfigurationsFromAssembly` auto-discovers the config.
+  - [x] Add `IBudgetRepository` to the Application finance repository interfaces file (alongside `IActivityAreaRepository`) and implement `BudgetRepository` in [FinanceRepositories.cs](../../backend/src/IabConnect.Infrastructure/Persistence/Repositories/FinanceRepositories.cs) mirroring `AccountRepository`: `GetAllAsync(ct)` / `GetByIdAsync` / `GetByActivityAreaAndPeriodAsync(Guid areaId, Guid periodId, ct)` (for the uniqueness pre-check) / `GetByFiscalPeriodAsync(Guid periodId, ct)` / `AddAsync` / `UpdateAsync` / `DeleteAsync` (soft-delete). All `async` + `CancellationToken`, `.AsNoTracking()` on reads.
+  - [x] Register `services.AddScoped<IBudgetRepository, BudgetRepository>();` in [Infrastructure/DependencyInjection.cs](../../backend/src/IabConnect.Infrastructure/DependencyInjection.cs) in the finance repos block (~line 133-151).
+  - [x] Generate the migration: `dotnet ef migrations add AddBudgetModel --project src/IabConnect.Infrastructure --startup-project src/IabConnect.Api` (run from `backend/`). Verify it only adds the `budgets` table + index and touches the snapshot; no edits to existing finance tables.
+- [x] **Task 3 — Application: MediatR commands/queries + validators (AC: 2, 3, 4)**
+  - [x] `backend/src/IabConnect.Application/Finance/Budgets/` with: `Commands/CreateBudgetCommand(+Handler+Validator)`, `Commands/UpdateBudgetCommand(+Handler+Validator)`, `Commands/DeleteBudgetCommand(+Handler)`, `Queries/GetBudgetsQuery(+Handler)` (filter by optional `ActivityAreaId`/`FiscalPeriodId`/`Year`), `Queries/BudgetDto`.
+  - [x] Handlers mirror [CreateAccountCommandHandler.cs](../../backend/src/IabConnect.Application/Finance/Accounts/Commands/CreateAccountCommandHandler.cs): inject `IBudgetRepository` + `IUnitOfWork` + `IAuditService` (+ `IActivityAreaRepository`, `IFiscalPeriodRepository` for existence checks). Sequence: validate existence → **locked-period guard** (`IFiscalPeriodService.EnsurePeriodNotLockedAsync(period.StartDate, ct)` or load the period and check `IsMutationAllowed`) → uniqueness pre-check via `GetByActivityAreaAndPeriodAsync` → `repo.AddAsync` → `unitOfWork.SaveChangesAsync` → `auditService.LogActionAsync(FinanceCreated, ..., entityType: "Budget", entityId: budget.Id.ToString(), ct: ct)`.
+  - [x] Validators mirror `CreateAccountCommandValidator`: `Amount` `>= 0`; `ActivityAreaId`/`FiscalPeriodId` `NotEmpty`; `Currency` `.Must(Enum.TryParse<FinanceCurrency>)`; `UserName` `NotEmpty`. (Existence + uniqueness + locked-period are handler-level rules, not validator rules, matching the Invoice precedent.)
+- [x] **Task 4 — API: endpoints (AC: 4)**
+  - [x] Add `backend/src/IabConnect.Api/Endpoints/BudgetEndpoints.cs` with `MapBudgetEndpoints(this IEndpointRouteBuilder routes)`: group `/api/v1/finance/budgets`, `.WithTags("Finance - Budgets")`, `.RequireAuthorization("Module:finance")`. `GET /` + `GET /{id:guid}` → `RequireFinanceRead`; `POST /`, `PUT /{id:guid}`, `DELETE /{id:guid}` → `RequireFinanceWrite`. Thin handlers `sender.Send(...)`; `WithName`/`WithSummary`/`WithDescription` (cite REQ-044). Mirror [PaymentEndpoints.cs](../../backend/src/IabConnect.Api/Endpoints/PaymentEndpoints.cs).
+  - [x] Register the group in [EndpointMapper.cs](../../backend/src/IabConnect.Api/Endpoints/EndpointMapper.cs) where the other finance endpoint groups are mapped.
+- [x] **Task 5 — Frontend: budget management UI (AC: 1 verify, 2, 3)**
+  - [x] Add typed API wrapper `frontend/src/lib/api/budgets.ts` (DTOs + enum-as-PascalCase) following the `useApiClient()` convention in [transactions/page.tsx](../../frontend/src/app/finance/transactions/page.tsx) and `frontend/src/lib/api/members.ts`.
+  - [x] Add `frontend/src/app/finance/budgets/page.tsx` (or `/finance/settings/budgets`): standard authenticated layout `<main className="min-h-[calc(100vh-4rem)] p-4 md:p-8 bg-gray-50">` + `max-w-7xl`; `useAuth()` gate (`canReadFinance` to view, `canWriteFinance` for create/edit/delete buttons); search/filter (by cost center + period/year) above the table; create/edit `<Dialog>` with `<Select>` for ActivityArea (active only) + `<Select>` for FiscalPeriod + money `<Input>` for Amount; `refreshKey`/`useCallback` fetch + re-fetch after mutation (mirror [transactions/page.tsx](../../frontend/src/app/finance/transactions/page.tsx):244-291). Orange-600 primary actions, lucide icons, no blue.
+  - [x] Add next-intl keys under the `finance` namespace in **both** `frontend/messages/de.json` and `en.json` (e.g. `finance.budgets.*`). No hardcoded UI strings. Keep de/en parity (A51).
+- [x] **Task 6 — Tests (AC: all)**
+  - [x] Application unit tests (xUnit v3 + FluentAssertions): `Budget.Create` rejects negative amount; validators (amount/currency/required); handler audit call. (`backend/tests/IabConnect.Application.Tests/Finance/Budgets/`)
+  - [x] Infrastructure integration tests (Testcontainers PostgreSQL): `BudgetRepository` round-trip; the unique filtered index rejects a second active budget for the same `(area, period)`; soft-deleted budget is excluded by the query filter and does **not** block re-insert. (`backend/tests/IabConnect.Infrastructure.Tests/`)
+  - [x] API authorization tests: `RequireFinanceRead`/`RequireFinanceWrite`/`Module:finance` on the new routes. **Register `IBudgetRepository` (+ any new injected services) in every endpoint-metadata test harness that maps finance groups** (project-context A63) to avoid "Failure to infer parameters".
+  - [x] Frontend Vitest/Testing Library test for the budgets page (permission gating + form). Mock `useTranslations` to return a **stable** function (A64); add `afterEach(cleanup)` + `// @vitest-environment jsdom` (A35/A46).
+  - [x] Gate frontend changes on `npx eslint <changed>` + `npx prettier --check <changed>` + full `vitest run` (A58 — repo-wide lint/format is pre-drifted).
+- [x] **Task 7 — Quality gates & closing checklist (AC: all)**
+  - [x] `dotnet test` from `backend` green; migration applies clean. `npm run typecheck` + scoped lint/format + vitest green.
+  - [x] AC-Subitem Completion Check (A29): list each AC's status (covered/deferred/N/A) with evidence in Completion Notes.
 
 ## Dev Notes
 
@@ -136,20 +136,68 @@ The single most important fact for this epic: **`ActivityArea` (REQ-068) is the 
 
 ### Agent Model Used
 
-_To be filled by dev agent._
+claude-opus-4-8 (1M context) — autonomous dev-story run (Epic-6 bulk).
 
 ### Debug Log References
 
-_To be filled during implementation._
+**Task 0 spike confirmation:**
+- AC-1 satisfied by `ActivityArea` — verify-only. Re-read [ActivityArea.cs](../../backend/src/IabConnect.Domain/Finance/ActivityArea.cs) (Code/Name/Color/IsActive/soft-delete), `ActivityAreaRepository` (FinanceRepositories.cs:898-951), `/finance/settings/activity-areas` page. Cost-center CRUD (create/edit/`IsActive=false`=deactivate/soft-delete) all present; the existing surface was NOT touched. Canonical CRUD template = `Account*` (handler shape: `repo.AddAsync` + `IUnitOfWork.SaveChangesAsync` + `IAuditService.LogActionAsync`).
+
+**A41/A43 autonomous-mode Decision resolutions** (user pre-declared autonomous mode — verbatim: _"alle stories von epic 6 umsetzen. nicht stoppen bis alle stories umgesetzt sind. danach review und retro durchführen. beachte es ist kein mvp mehr"_):
+- **DEC-2 (Budget entity name).** (a) Option **(a) `Budget`** chosen. (b) Rationale: story recommendation (a); user autonomous-mode quote above; no `CostCenter` type exists so `CostCenterBudget` would be a misnomer — `Budget` keyed by `ActivityAreaId` reads cleanly. (c) Consequence: entity/table/DTO all named `Budget`/`budgets`/`BudgetDto`.
+- **DEC-3 (granularity / keying).** (a) Option **(a) key by `FiscalPeriodId`** chosen. (b) Rationale: story recommendation (a, AC fidelity — "by fiscal period"); user autonomous-mode quote; gives exact StartDate/EndDate bounds for S3 Soll/Ist + reuses the locked-period mechanism for free. (c) Consequence: AC-2/AC-3 covered at period granularity; the locked-period guard reuses `FiscalPeriod.IsMutationAllowed`; S3 joins on `FiscalPeriodId`.
+- **DEC-4 (currency source).** (a) Option **(a) default from active `FinanceProfile.Currency`, store snapshot** chosen. (b) Rationale: story recommendation (a); user autonomous-mode quote; matches how Payment thresholds resolve currency, keeps Soll/Ist currency-consistent. (c) Consequence: command `Currency` is optional; handler resolves `request.Currency ?? activeProfile.Currency ?? CHF` and snapshots onto the entity; AC-2 currency column covered.
+- DEC-1 (reuse ActivityArea) + DEC-5 (existing finance policies) were pre-resolved in the spec; no re-decision needed.
+
+**Exception→HTTP mapping** (verified in `ExceptionHandlingMiddleware`): `KeyNotFoundException`→404 (missing area/period), `InvalidOperationException`→409 (inactive area / locked period / duplicate pair), `ValidationException`/`ArgumentException`→400.
 
 ### Completion Notes List
 
-_To be filled during implementation._
+**AC-Subitem Completion Check (A29):**
+- **AC-1 (cost-center CRUD — verify-only):** ✅ covered. `ActivityArea` surface confirmed unchanged; no regression. (project-context A56 existing-implementation pattern.)
+- **AC-2 (budget by fiscal period — net new):** ✅ covered. `Budget(ActivityAreaId, FiscalPeriodId, Amount, Currency)` entity + create/update/delete + GET list/by-id. Edit changes amount/currency/notes (the pairing is immutable — delete+recreate to re-key).
+- **AC-3 (validation):** ✅ covered — missing/inactive area → 404/409; missing period → 404; duplicate active `(area, period)` → 409 (pre-check) AND DB filtered-unique-index (defence in depth, proven by Testcontainers test); negative amount → 400 (validator) + domain guard (zero allowed); locked period on create/update/delete → 409.
+- **AC-4 (authz + audit):** ✅ covered — GET `RequireFinanceRead`, write `RequireFinanceWrite`, group `Module:finance` (8 endpoint-metadata assertions); every create/update/delete writes `IAuditService.LogActionAsync` with `entityType:"Budget"` + `FinanceCreated/Updated/Deleted`.
+- **AC-5 (persistence):** ✅ covered — migration `20260607084312_AddBudgetModel` adds only `budgets` (snake_case, `amount numeric(18,2)`, `currency` enum-as-string, soft-delete query filter, filtered unique index `ix_budgets_activity_area_fiscal_period_unique` ON `is_deleted = false`, FK Restrict to areas + periods) + snapshot regenerated; no existing finance table touched; no record forced to carry a budget.
+
+**Quality gates:** backend full suite **2242 green** (Application 1534 incl. +17 Budget, Api 245 incl. +8 BudgetEndpoint, Infrastructure 463 incl. +4 BudgetRepository Testcontainers); `dotnet build` 0 warnings/0 errors; migration applies clean. Frontend: budgets page Vitest **3/3 green**; `tsc --noEmit` clean; scoped `eslint` clean + `prettier --check` clean on all changed files (A58 — repo-wide drift is pre-existing, not introduced).
+
+**A61 N/A:** single-aggregate write (no multi-aggregate atomic coordinator needed). **A63:** `BudgetEndpoints` handlers inject only `ISender`, so the metadata harness needs no extra service registration. **A64:** budgets page test mocks `useTranslations` with a stable translator. **A69 N/A:** `Budget.Currency` uses the Domain-level `FinanceCurrency` enum (already in Domain) — no string-storage workaround.
 
 ### File List
 
-_To be filled during implementation._
+**Backend — new:**
+- `backend/src/IabConnect.Domain/Finance/Budget.cs`
+- `backend/src/IabConnect.Infrastructure/Persistence/Configurations/BudgetConfiguration.cs`
+- `backend/src/IabConnect.Infrastructure/Migrations/20260607084312_AddBudgetModel.cs` (+ `.Designer.cs`)
+- `backend/src/IabConnect.Application/Finance/Budgets/Queries/BudgetDto.cs`
+- `backend/src/IabConnect.Application/Finance/Budgets/Queries/GetBudgetsQueryHandler.cs`
+- `backend/src/IabConnect.Application/Finance/Budgets/Queries/GetBudgetByIdQueryHandler.cs`
+- `backend/src/IabConnect.Application/Finance/Budgets/Commands/CreateBudgetCommand.cs` (+ `Handler` + `Validator`)
+- `backend/src/IabConnect.Application/Finance/Budgets/Commands/UpdateBudgetCommand.cs` (+ `Handler` + `Validator`)
+- `backend/src/IabConnect.Application/Finance/Budgets/Commands/DeleteBudgetCommand.cs` (+ `Handler`)
+- `backend/src/IabConnect.Api/Endpoints/BudgetEndpoints.cs`
+- `backend/tests/IabConnect.Application.Tests/Finance/Budgets/BudgetTests.cs`
+- `backend/tests/IabConnect.Infrastructure.Tests/Repositories/BudgetRepositoryTests.cs`
+- `backend/tests/IabConnect.Api.Tests/Endpoints/BudgetEndpointTests.cs`
+
+**Backend — modified:**
+- `backend/src/IabConnect.Application/Finance/IFinanceRepositories.cs` (added `IBudgetRepository`)
+- `backend/src/IabConnect.Infrastructure/Persistence/Repositories/FinanceRepositories.cs` (added `BudgetRepository`)
+- `backend/src/IabConnect.Infrastructure/Persistence/ApplicationDbContext.cs` (added `Budgets` DbSet)
+- `backend/src/IabConnect.Infrastructure/DependencyInjection.cs` (registered `BudgetRepository`)
+- `backend/src/IabConnect.Api/Endpoints/EndpointMapper.cs` (mapped `MapBudgetEndpoints`)
+- `backend/src/IabConnect.Infrastructure/Migrations/ApplicationDbContextModelSnapshot.cs` (regenerated)
+
+**Frontend — new:**
+- `frontend/src/lib/api/budgets.ts`
+- `frontend/src/app/finance/budgets/page.tsx`
+- `frontend/src/app/finance/budgets/page.test.tsx`
+
+**Frontend — modified:**
+- `frontend/messages/de.json` + `frontend/messages/en.json` (added `budgets.*` namespace + `finance.backToFinance`)
 
 ## Change Log
 
 - 2026-06-07: Story refreshed from the 2026-05-12 pre-pivot stub to a comprehensive dev-ready spec. Reframed per resolved DEC-1 (reuse `ActivityArea` as cost center; build only the `Budget` entity) and DEC-5 (existing finance policies). Marked ready-for-dev.
+- 2026-06-07: Implemented (autonomous dev-story). Net-new `Budget` aggregate (Domain entity + EF config + filtered-unique-index migration + repository), full Application CQRS slice (create/update/delete + list/by-id, FluentValidation, existence/locked-period/uniqueness guards, currency-from-active-profile default), `BudgetEndpoints` (Module:finance + RequireFinanceRead/Write, audited), and the `/finance/budgets` management UI (cost-center + period selects, filters, orange primary, de/en i18n). DEC-2/3/4 auto-resolved (a)/(a)/(a) per A41/A43. Backend 2242 tests green; frontend budgets page 3/3 green + scoped lint/format clean. Status → review.

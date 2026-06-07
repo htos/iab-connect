@@ -1207,11 +1207,11 @@ development_status:
   e5-s5-add-user-channel-preferences: done
   epic-5-retrospective: done
 
-  epic-6: in-progress
-  e6-s1-add-cost-center-and-budget-model: ready-for-dev
-  e6-s2-associate-finance-records-with-cost-centers: ready-for-dev
-  e6-s3-add-budget-vs-actual-reports: ready-for-dev
-  epic-6-retrospective: optional
+  epic-6: done
+  e6-s1-add-cost-center-and-budget-model: done
+  e6-s2-associate-finance-records-with-cost-centers: done
+  e6-s3-add-budget-vs-actual-reports: done
+  epic-6-retrospective: done
 
   epic-7: backlog
   e7-s1-define-accessibility-baseline-and-audit-critical-pages: backlog
