@@ -2050,6 +2050,137 @@ Tests/evidence:
 
 - A trigger-push to `beta` produces three new GHCR images with the expected tags and OCI labels; an anonymous `docker pull ghcr.io/htos/iabc-api:beta` succeeds from outside CI.
 
+## Epic E21: Frontend Brownfield Refactoring (Feature-Slice Architecture)
+
+Requirements: Technical initiative (no REQ) — grounded in `docs/frontend-refactoring-gate1-analysis.md` (Gate-1 as-is analysis, 2026-06-07). Source: user-authored "Frontend Brownfield Refactoring Prompt".
+
+Goal: Incrementally restructure the frontend into a maintainable, testable, themeable feature-slice architecture (`src/features/<feature>/`) WITHOUT a big-bang rewrite. Establish a durable target-state + boundary rules, prove them on the Suppliers list page as the reference pilot, then repeat the pattern feature-by-feature with review. Preserve all existing functionality, routes, auth behaviour, API contracts, i18n keys, and tests.
+
+Conflict priority (applies to every story): (1) preserve existing functionality; (2) never overwrite foreign uncommitted changes; (3) do not break routes, API contracts, auth, i18n, or existing tests; (4) stay within the story scope; (5) improve architecture; (6) improve styling/theming. When a clean solution raises risk to (1)-(3), choose the lower-risk incremental option and document the residual debt.
+
+Epic-wide hard constraints: no backend/route/API-contract changes; no route-group moves (recommend only); no global token sweep; no new external UI library; no duplicate UI primitives; no test removal; no cosmetic mass changes; DoD uses `npm run typecheck` + `npm run lint` + `npm test -- --run` only — never `npm run format` (the prettier-tailwind plugin re-sorts classes repo-wide).
+
+### Story E21-S1: Frontend target-state architecture and boundary decisions (Gate 2)
+
+As a frontend architect, I want a durable target-state architecture with explicit boundary rules and the open decisions resolved, so that every subsequent migration follows one agreed pattern instead of improvising.
+
+Requirements: Tech-initiative; resolves Open Questions 1-8 of `docs/frontend-refactoring-gate1-analysis.md`.
+
+Acceptance criteria:
+
+- `docs/architecture-frontend.md` is extended (not replaced) with a "Target-State (Feature-Slice) Architecture" section covering: the `src/features/<feature>/{api,components,hooks,schemas,types}` layout, the target import direction, and the 21 architecture rules from the source prompt adapted to verified project reality.
+- A single HTTP-client contract is chosen from the three that exist today (`lib/api-client.ts` class / `useApiClient` hook in `lib/auth.ts` / `lib/services/api.ts` functions); the decision records the standard return shape, token strategy, base-URL handling, and the migration direction (with compatibility shims for the other two until empty).
+- TanStack Query is confirmed as the official server-state strategy (provider already mounted in `app/providers.tsx`, zero current usages); a query-key + cache-invalidation convention is documented. Suppliers (E21-S3) is the first adopter.
+- The theming decision is recorded: semantic tokens already exist (shadcn vars in `globals.css`, Tailwind v4 `@theme`); rule = adoption in feature pages, NOT a system-wide colour sweep. Status colours (Prospect/Active/Paused/Ended) map to Badge variants or tokens (decide).
+- The auth model is documented: security boundary (backend 403 + `RequireModule`) vs UX guard (middleware module-gate, page/layout redirects); `useRequireAuth` is the canonical guard.
+- A route-group recommendation is documented (why only `events` sits under `(dashboard)`; whether a shared protected group is warranted) — recommendation ONLY, no route moves.
+- No production code behaviour changes in this story (docs/decisions + optional non-behavioural scaffolding only).
+
+Architecture notes:
+
+- Consumes the Gate-1 analysis; this story IS the "Gate 2 / Brownfield Zielbild" of the source prompt. Decisions feed directly into E21-S3.
+
+Tests/evidence:
+
+- Peer review confirms each of the 8 Open Questions has a recorded decision; `tsc`/`lint`/`test` remain green (no behavioural change).
+
+### Story E21-S2: Suppliers list page — characterization tests (regression net)
+
+As a developer about to refactor a page with no tests, I want a characterization test suite that pins the current observable behaviour first, so that the E21-S3 refactor is provably behaviour-preserving.
+
+Requirements: Tech-initiative; addresses Gate-1 Critical Finding CF-5 (no Suppliers test exists).
+
+Acceptance criteria:
+
+- New `*.test.tsx` co-located with the suppliers list covers the current behaviour of `frontend/src/app/suppliers/page.tsx`: admin-only access (redirect for non-admin/unauthenticated), supplier load, server-side status filter, client-side search, loading/error/empty states, table render, detail/edit links, delete-dialog open, delete action, and list refresh after delete.
+- Tests follow project harness conventions (`// @vitest-environment jsdom`, `afterEach(cleanup)`, stable `useTranslations` mock, mocked `useApiClient`/`useAuth`).
+- Tests pass against the CURRENT (un-refactored) implementation — they are the green baseline E21-S3 must keep green.
+- No production code changed in this story (test-only).
+
+Architecture notes:
+
+- Pure additive safety net. Blocks E21-S3. Mirrors the ATDD step recommended in the Gate-1 pilot ordering.
+
+Tests/evidence:
+
+- `vitest run` shows the new suppliers tests passing against `main`/`beta` HEAD before any refactor commit.
+
+### Story E21-S3: Suppliers list page — feature-slice pilot refactor (Gate 3)
+
+As a maintainer, I want the Suppliers list page refactored into the feature-slice pattern, so that it becomes the reference template for migrating every other feature.
+
+Requirements: Tech-initiative; the "Pilot: Suppliers List Page" of the source prompt. Depends on E21-S1 (decisions) and E21-S2 (safety net).
+
+Acceptance criteria (behaviour preserved — all E21-S2 tests stay green):
+
+- Route `/suppliers`, admin/auth access, supplier load, status filter, search, loading/error/empty states, table, detail link, edit link, delete dialog, delete action, list-refresh-after-delete, and i18n texts all work exactly as before.
+
+Acceptance criteria (improvements):
+
+- `src/app/suppliers/page.tsx` is a thin entry (no `"use client"`) rendering a `features/suppliers` content component.
+- A `features/suppliers/` slice exists: `api/` (encapsulated URLs, chosen client contract from E21-S1), `components/` (page-content, filter-bar, table, status-badge, delete-dialog composing the EXISTING `components/ui/alert-dialog.tsx`), `hooks/` (`use-suppliers` via TanStack `useQuery`, `use-delete-supplier` via `useMutation` + list invalidation), `types/` (Supplier-specific types; shared `ContractLink*` stay in `types/`).
+- Delete has a pending/disabled state; the hand-rolled overlay dialog is replaced by the accessible Radix primitive.
+- Status badge is extracted; no new hard-coded brand colours in feature components; `startTransition` around fetching is removed.
+- No new `any`, no new hard-coded user-facing strings, no new direct API URL in `page.tsx`, no duplicate UI primitive created.
+
+Architecture notes:
+
+- First TanStack Query adopter and first `src/features/` slice. Type relocation must keep `ContractLink*`/Sponsor types in place to avoid a Sponsors ripple. Produces a short architecture note (what was introduced, what stays, rule for new work, next-page recipe).
+
+Tests/evidence:
+
+- All E21-S2 characterization tests green post-refactor; `tsc`/`lint`/`test` green; i18n parity test green (see E21-S4 for the `hi.json` baseline).
+
+### Story E21-S4: i18n parity — add Suppliers keys to `hi.json`
+
+As a Hindi-locale user, I want the Suppliers screens translated, so that the locale is complete and the parity test reflects reality.
+
+Requirements: Tech-initiative; addresses Gate-1 inconsistency (suppliers.* keys present in `en.json`/`de.json`, absent in `hi.json`).
+
+Acceptance criteria:
+
+- The `suppliers.*` key set is added to `frontend/messages/hi.json` at full parity with `en.json`/`de.json`.
+- `frontend/messages/messages.parity.test.ts` passes; the prior baseline (pass/fail) is recorded so it is clear whether this fixes a pre-existing red or fills a tolerated gap.
+- No key renames/removals in any locale.
+
+Architecture notes:
+
+- Pre-existing debt, independent of the pilot — can run in parallel with E21-S2/S3.
+
+Tests/evidence:
+
+- `vitest run messages.parity.test.ts` green; before/after key counts per locale recorded.
+
+### Story E21-S5: Architecture boundary enforcement
+
+As a maintainer, I want the target import boundaries enforced automatically, so that the feature-slice architecture does not erode after the pilot.
+
+Requirements: Tech-initiative; the "Architecture Enforcement" section of the source prompt.
+
+Acceptance criteria:
+
+- A low-false-positive enforcement is added for the import direction from E21-S1: ESLint `no-restricted-imports` (and/or a small Vitest/Node boundary test) covering at minimum: `components/ui` must not import from `features`; `lib` must not import from `app`/`features`; `features/<a>` must not deep-couple to `features/<b>`.
+- The rules do NOT block the existing codebase (either currently clean or scoped to new paths); any pre-existing violation is documented, not silently failed.
+- `e2e/module-enforcement.spec.ts` is left intact and is explicitly distinguished from these static import rules.
+
+Architecture notes:
+
+- Added AFTER the pilot proves the `features/` direction (depends on E21-S3). Keep it incremental.
+
+Tests/evidence:
+
+- An intentional bad import fails lint/test; the current `src/` passes; CI/lint stays green on HEAD.
+
+### Migration Program (E22+) — the rest of `frontend/`
+
+E21 deliberately covers ONLY the foundation, the Suppliers pilot, and boundary enforcement. The full frontend (97 `page.tsx` files across ~13 domains) is migrated by a **program of follow-on epics (E22+)** that are authored AFTER the Suppliers pilot (E21-S3) closes, so their stories inherit a proven recipe rather than provisional "follow the pilot" ACs.
+
+The complete domain map, page counts, proposed per-domain epics, sequencing waves, and cross-cutting cleanup (component relocation, app shell, legacy HTTP-client retirement) live in:
+
+`_bmad-output/planning-artifacts/frontend-refactoring-roadmap.md`
+
+When E21-S3 is done, run `bmad-create-epics-and-stories` against that roadmap to materialise E22+ with grounded ACs. (The earlier S6–S9 sponsor/member/event/finance stub stories were superseded by this roadmap and removed.)
+
 ## Release and Sprint Guidance
 
 Per the 2026-05-14 generic white-label pivot (OD-3, resolved), Epics E9 then E10 are the active focus and preempt the waves below. Epics E4–E8 were reset to backlog and resume after E9/E10, with E10 sequenced before E8 so the external API route group is covered by module enforcement. Detailed resequencing is handled by `bmad-sprint-planning`.
