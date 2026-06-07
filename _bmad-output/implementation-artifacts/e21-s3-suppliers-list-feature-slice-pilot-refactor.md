@@ -1,6 +1,6 @@
 # Story E21.S3: Suppliers List Page — Feature-Slice Pilot Refactor (Gate 3)
 
-Status: review
+Status: done
 
 Depends on: E21-S1 (architecture decisions DEC-1/DEC-2), E21-S2 (characterization tests green).
 

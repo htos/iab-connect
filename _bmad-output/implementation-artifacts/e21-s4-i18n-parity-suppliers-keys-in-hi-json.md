@@ -1,6 +1,6 @@
 # Story E21.S4: i18n Parity — Add Suppliers Keys to `hi.json`
 
-Status: review
+Status: done
 
 ## Story
 

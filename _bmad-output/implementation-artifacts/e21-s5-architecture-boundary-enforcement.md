@@ -1,6 +1,6 @@
 # Story E21.S5: Architecture Boundary Enforcement
 
-Status: review
+Status: done
 
 Depends on: E21-S3 (the `features/` direction must be proven by the pilot first).
 

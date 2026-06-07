@@ -1,6 +1,6 @@
 # Story E21.S2: Suppliers List Page — Characterization Tests (Regression Net)
 
-Status: review
+Status: done
 
 ## Story
 
