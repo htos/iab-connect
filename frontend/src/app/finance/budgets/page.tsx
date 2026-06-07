@@ -510,6 +510,7 @@ export default function BudgetsPage() {
                 </h2>
                 <button
                   onClick={closeDialog}
+                  aria-label={tc("close")}
                   className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
                 >
                   <XIcon className="h-5 w-5" />

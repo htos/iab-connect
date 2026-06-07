@@ -1,0 +1,47 @@
+{
+  "language": {
+    "select": "भाषा",
+    "en": "English",
+    "de": "Deutsch",
+    "hi": "हिन्दी"
+  },
+  "common": {
+    "loading": "लोड हो रहा है...",
+    "error": "त्रुटि",
+    "save": "सहेजें",
+    "saving": "सहेजा जा रहा है...",
+    "cancel": "रद्द करें",
+    "close": "बंद करें",
+    "delete": "हटाएं",
+    "edit": "संपादित करें",
+    "back": "वापस",
+    "search": "खोजें",
+    "filter": "फ़िल्टर",
+    "all": "सभी",
+    "noResults": "कोई परिणाम नहीं",
+    "tryAgain": "पुनः प्रयास करें",
+    "yes": "हाँ",
+    "no": "नहीं",
+    "confirm": "पुष्टि करें",
+    "actions": "कार्रवाइयाँ",
+    "details": "विवरण",
+    "name": "नाम",
+    "previous": "पिछला",
+    "next": "अगला",
+    "refresh": "ताज़ा करें",
+    "dismiss": "खारिज करें"
+  },
+  "nav": {
+    "dashboard": "डैशबोर्ड",
+    "myProfile": "मेरी प्रोफ़ाइल",
+    "members": "सदस्य",
+    "events": "कार्यक्रम",
+    "documents": "दस्तावेज़",
+    "communication": "संचार",
+    "finance": "वित्त",
+    "reports": "रिपोर्ट",
+    "users": "उपयोगकर्ता",
+    "admin": "प्रशासन",
+    "toggleSidebar": "साइडबार टॉगल करें"
+  }
+}

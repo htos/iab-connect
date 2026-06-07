@@ -18,10 +18,12 @@ interface PublicBlogPostDto {
   tags: string[];
   publishedAt: string;
   imageUrl?: string;
+  contentLanguage?: string;
 }
 
 export default function PublicBlogPage() {
   const t = useTranslations('publicBlog');
+  const tLang = useTranslations('language');
 
   const [posts, setPosts] = useState<PublicBlogPostDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -164,6 +166,12 @@ export default function PublicBlogPage() {
                   <span className="rounded-full bg-orange-100 px-3 py-0.5 text-xs font-medium text-orange-700">
                     {post.category}
                   </span>
+                  {/* REQ-055 (E7-S4): content-language badge (only when set) */}
+                  {post.contentLanguage && (
+                    <span className="rounded-full bg-gray-100 px-3 py-0.5 text-xs font-medium text-gray-600">
+                      {tLang(post.contentLanguage)}
+                    </span>
+                  )}
                   <span className="text-xs text-gray-400">{formatDate(post.publishedAt)}</span>
                 </div>
                 <h2 className="mb-2 text-xl font-semibold text-gray-900 group-hover:text-orange-600 transition-colors">

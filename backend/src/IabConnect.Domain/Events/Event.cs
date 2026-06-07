@@ -57,6 +57,9 @@ public sealed class Event : Entity
     public string? CostDescription { get; private set; }
     public bool IsFree => !Cost.HasValue || Cost.Value == 0;
 
+    // Content language (ISO 639-1, e.g. "de"/"en"/"hi"; null = organization default) — REQ-055 (E7-S4)
+    public string? ContentLanguage { get; private set; }
+
     // Audit
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
@@ -221,6 +224,17 @@ public sealed class Event : Entity
 
         Cost = cost;
         CostDescription = costDescription?.Trim();
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Sets the content language (ISO 639-1, e.g. "de"/"en"/"hi"; null = use the
+    /// organization default). Validated against the supported set at the write
+    /// boundary (REQ-055, E7-S4); an unsupported code throws.
+    /// </summary>
+    public void SetContentLanguage(string? contentLanguage)
+    {
+        ContentLanguage = ContentLanguages.Normalize(contentLanguage);
         UpdatedAt = DateTime.UtcNow;
     }
 

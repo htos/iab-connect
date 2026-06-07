@@ -26,6 +26,9 @@ public sealed class BlogPostConfiguration : IEntityTypeConfiguration<BlogPost>
         builder.Property(b => b.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(b => b.PublishedAt).HasColumnName("published_at");
 
+        // REQ-055 (E7-S4): optional content language (ISO 639-1; null = default)
+        builder.Property(b => b.ContentLanguage).HasColumnName("content_language").HasMaxLength(10);
+
         // Audit fields
         builder.Property(b => b.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(b => b.CreatedBy).HasColumnName("created_by");

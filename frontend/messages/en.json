@@ -6,6 +6,7 @@
     "save": "Save",
     "saving": "Saving...",
     "cancel": "Cancel",
+    "close": "Close",
     "delete": "Delete",
     "edit": "Edit",
     "back": "Back",
@@ -448,7 +449,8 @@
   "language": {
     "select": "Language",
     "en": "English",
-    "de": "Deutsch"
+    "de": "Deutsch",
+    "hi": "हिन्दी"
   },
   "users": {
     "backToAdmin": "Back to Admin",
@@ -744,6 +746,8 @@
     "filterByStatus": "Status",
     "allCategories": "All Categories",
     "allStatuses": "All Statuses",
+    "gridView": "Grid view",
+    "listView": "List view",
     "showPastEvents": "Show past events",
     "editEvent": "Edit Event",
     "new": {
@@ -752,7 +756,8 @@
     },
     "edit": {
       "title": "Edit Event",
-      "subtitle": "Modify the event details."
+      "subtitle": "Modify the event details.",
+      "editEvent": "Edit Event"
     },
     "detail": {
       "description": "Description",
@@ -786,6 +791,8 @@
       "description": "Description",
       "descriptionPlaceholder": "Detailed description of the event...",
       "category": "Category",
+      "contentLanguage": "Content Language",
+      "contentLanguageDefault": "Default (organization language)",
       "visibility": "Visibility",
       "tags": "Tags (comma separated)",
       "tagsPlaceholder": "e.g. Festival, Culture, Family",

@@ -1,175 +1,193 @@
 # Story E7.S1: Define Accessibility Baseline and Audit Critical Pages
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
 As a product team,
-I want an explicit accessibility baseline,
-so that new and touched pages meet basic usability expectations.
+I want an explicit, written accessibility baseline plus an audit of the critical pages from the PRD journeys,
+so that new and touched pages meet a known WCAG 2.2 AA usability bar and the highest-impact gaps become a tracked work list.
 
 ## Acceptance Criteria
 
-1. Given the product team has the required permission and prerequisite data exists, when an explicit accessibility baseline, then accessibility checklist covers keyboard navigation, labels, focus, icon names, contrast, and validation messages.
-2. Given the page is loaded in desktop and mobile layouts, when the relevant state is displayed, then critical pages from PRD journeys are audited.
-3. Given the page is loaded in desktop and mobile layouts, when the relevant state is displayed, then findings are tracked by page/flow and severity.
-4. Given the page is loaded in desktop and mobile layouts, when the relevant state is displayed, then high-impact issues on touched pages are fixed or explicitly deferred.
-5. Given valid inputs and existing system constraints, when this story behavior is exercised, then manual or automated evidence is recorded.
+1. A written accessibility baseline checklist exists as a durable project doc and covers, at minimum: keyboard navigation, programmatic form labels, visible focus states, icon-only-control accessible names, color contrast (text + primary actions + status badges + alerts), validation-message association, and "status not by color alone". (REQ-056; `ux-design.md:532-541`; `prd.md:420-426`)
+2. The critical pages derived from the 8 PRD user journeys (`prd.md:93-156`) are audited against the checklist in both desktop and mobile layouts; the audited page set is enumerated explicitly (not "all 94 pages").
+3. Findings are tracked in a table keyed by page/flow and assigned a severity (High / Medium / Low) plus a status (fixed / deferred-to-E7-S2 / accepted).
+4. High-impact issues that are cheap, local fixes on a touched/audited page are fixed in this story; systematic shared-component issues are explicitly deferred to E7-S2 with a one-line pointer per finding (E7-S2 consumes this audit as its work list).
+5. Manual or automated accessibility evidence is recorded for each audited page (keyboard walk, axe/Lighthouse where run, or a `[!]` manual-verify marker where the check requires a live browser session the dev-agent cannot drive).
 
 ## Tasks / Subtasks
 
-- [ ] Confirm scope, existing code, and acceptance evidence (AC: all)
-  - [ ] Inspect every expected file listed in Dev Notes before implementation and preserve existing behavior.
-  - [ ] Record any product/provider decision that blocks implementation before changing code.
-- [ ] Implement frontend/user-facing slice (AC: relevant UI criteria)
-  - [ ] Use shared components, standard page layout, orange primary actions, lucide icons where applicable, and typed API wrappers.
-  - [ ] Add next-intl keys to frontend/messages/de.json and frontend/messages/en.json for all user-visible text.
-  - [ ] Cover loading, empty, error, permission-denied, validation, success, and responsive states where the UI is touched.
-- [ ] Add tests and manual validation evidence (AC: all)
-  - [ ] Add focused backend unit/integration/API tests for business rules, authorization, persistence, and sensitive edge cases.
-  - [ ] Add frontend tests for forms/rendering/permission states where UI is touched.
-  - [ ] Document manual validation for browser, Keycloak, provider, event-day, MailHog, finance, accessibility, or webhook behavior as applicable.
-- [ ] Update operational docs or requirement evidence when behavior changes (AC: all)
+- [x] Task 0: Spike — confirm scope and existing artifacts (AC: 1, 2)
+  - [x] Confirmed NO accessibility doc exists under `docs/` (only `01_requirements.md` + the CSV match the term, as requirement text). Confirmed next free doc number is `16` (`docs/15_multichannel_messaging.md` is the highest).
+  - [x] Read `prd.md:420-426` (REQ-056 ACs) + `ux-design.md:522-546` (Accessibility Baseline checklist, 8 items incl. "loading/error not keyboard traps"). Used as source of truth for AC-1.
+  - [x] Resolved Decision-Needed DEC-1 = Option A (see Debug Log).
+- [x] Task 1: Author the accessibility baseline checklist doc (AC: 1)
+  - [x] Created `docs/16_accessibility_audit_checklist.md` (2-digit prefix, `##` sections, LF, final newline).
+  - [x] Section A "Baseline (WCAG 2.2 AA target)" enumerates the 8 `ux-design.md:532-541` items mapped to the REQ-056 ACs (`prd.md:420-426`), each with a "how to verify" note.
+  - [x] Documented the three-state checkbox convention in `docs/16` AND added it to `docs/07_dos_donts.md` (was absent — A28/A30).
+- [x] Task 2: Enumerate and audit the critical pages (AC: 2, 3, 5)
+  - [x] Section B "Critical Pages Audit" enumerates 12 audited pages (route-reconciled: no `/privacy/*` route → audited within `/profile`; no `/public` landing page → `/public/events/[id]` as the public flow; dashboard entry = app root `page.tsx`). Each row: route, file, A3/A4/A5/A6 result, severity, status, evidence.
+  - [x] Walked the static-detectable checklist per page with `file:line` anchors. Live-only checks (keyboard, runtime focus, contrast, keyboard-trap) marked `[!] manual-verify` in the Live-walkthrough queue (Q1–Q6) — not a false `[x]` (A47).
+- [x] Task 3: Fix cheap local high-impact issues; defer the rest (AC: 4)
+  - [x] Applied page-local fixes on audited pages: `aria-label` on members-list search/status/type filters (`members/page.tsx:273,281,295`, reusing existing keys); `aria-label` on events-list search/category/status filters (`events/page.tsx:278,288,309`); `aria-label`+`aria-pressed` on events grid/list view-toggle buttons (`events/page.tsx:324,332`, new `events.gridView`/`events.listView` keys in de+en). No hardcoded strings.
+  - [x] Shared-component findings (Input aria/focus, Dialog close i18n, Select/Textarea/Checkbox association, budgets:511 close button) recorded in `docs/16` with status `deferred-to-E7-S2` + `file:line` pointers — the E7-S2 work list.
+- [x] Task 4: Add an accessibility section to the design standards (AC: 1)
+  - [x] Added "Accessibility" section to `docs/13_frontend_design_standards.md` (icon-only accessible-name pattern, design-system focus token, form label + `aria-describedby`/`aria-invalid`, status-not-by-color, keyboard/focus-trap), cross-linked to `docs/16`; added TOC entry + a11y row to the New-Pages checklist.
+- [x] Task 5: Quality gates + reread-as-a-stranger pass (AC: all)
+  - [x] A29 AC-Subitem Completion Check below (one row per page/finding, A54).
+  - [x] A42 reread-as-a-stranger pass on `docs/16` (route-vs-reality reconciled in-doc; no pre-filled live-status; anchors verified against source; no sprint-tracking leakage; A45/A57 N/A — no shell-command/binary content).
+  - [x] Frontend gate (A58, changed files): `tsc --noEmit` clean; `eslint` clean on both changed pages; `vitest run` 207/207 pass (36 files) at S1 close, zero regressions. **Prettier note (post-boundary-review):** the touched pages (`events/page.tsx`, `members/page.tsx`) were already prettier-drifted at HEAD; an initial `prettier --write` was reverted in the Epic-7 boundary review (P1 — it reformatted whole pre-drifted files), and only the logical `aria-label` lines were re-applied, leaving the pre-existing drift intact (A58/A72). See `epic-7-boundary-review-2026-06-07.md`.
+  - [x] Updated `docs/10_requirements_status.md` REQ-056 row → `In Bearbeitung`.
 
 ## Dev Notes
 
-### Sprint Plan Context
+### Refresh Notes (A56 existing-implementation spike, 2026-06-07)
 
-- Multi-epic sprint-plan order: 26.
-- Requirement(s): REQ-056.
-- Epic goal: Establish quality baselines for accessibility and multilingual operation across touched flows.
-- This story is prepared from `_bmad-output/implementation-artifacts/sprint-plan.md`; do not start coding from the epic summary alone.
+This story was bulk-refreshed from a 2026-05-12 pre-pivot stub (placeholder ACs, stale MFA/Keycloak/Hangfire "Latest Technical Context") to a comprehensive dev-ready spec. Spike findings that shape scope:
+
+- **No accessibility artifact exists.** No `docs/*accessibility*|*a11y*|*wcag*` file; `docs/07_dos_donts.md` and `docs/13_frontend_design_standards.md` contain **zero** accessibility guidance. The checklist doc is genuinely net-new. Next doc number is **16** (`docs/15_multichannel_messaging.md` is the current highest).
+- **Source-of-truth for the checklist already exists in planning artifacts** — `ux-design.md:532-541` (8 checklist items) and `prd.md:420-426` (REQ-056's 6 ACs). AC-1 is a transcription+operationalization job, not an invention job.
+- **This is a doc-bundle anchor (A38).** E7-S2's fixes point their evidence back at this doc's audit table; do not have E7-S2 re-audit. Write the audit once here.
+- **The audit feeds E7-S2.** The spike already surfaced concrete shared-component gaps (see "Known Findings to Confirm" below) — the audit should confirm/expand these, and they belong to E7-S2, not here.
+
+### Known Findings to Confirm During the Audit (seed list — confirm + expand, then route to E7-S2)
+
+- Icon-only button with **no accessible name**: `frontend/src/app/finance/budgets/page.tsx:511` (close `XIcon` button — no `aria-label`/`sr-only`/`title`). High severity. → E7-S2 / local fix candidate.
+- `Input` error text is **not associated** with the field: `frontend/src/components/ui/input.tsx:34` renders `<p>{error}</p>` with no `aria-describedby` + no `aria-invalid` on the `<input>`. Medium-High. → E7-S2 (shared).
+- `Input` focus ring is the **outlier**: `input.tsx:27` uses `focus:ring-1 focus:ring-indigo-500` (indigo, thin) vs. the design-system `focus-visible:ring-2 focus-visible:ring-ring` used by `button.tsx:7`, `badge`, `select`, `textarea`, `checkbox`, `tabs`. Indigo is not a brand token (brand is orange). Medium. → E7-S2 (shared).
+- Dialog close uses a **hardcoded** `sr-only` "Close": `frontend/src/components/ui/dialog.tsx:~49` — violates the next-intl no-hardcoded-text rule. Low-Medium. → E7-S2 (shared, i18n the accessible name).
+- `Select` / `Textarea` / `Checkbox` (`frontend/src/components/ui/*`) have **no label-association wrapper** (unlike `Input`). Medium. → E7-S2 (shared).
+
+### Critical Page Inventory (journey-mapped audit scope — AC-2)
+
+Audit this enumerated set (≈14 pages), grouped by the 8 PRD journeys (`prd.md:93-156`). Do NOT audit all 94 `page.tsx` files.
+
+| # | Page route | PRD journey |
+|---|-----------|-------------|
+| 1 | `/auth/login` | All (auth entry; keyboard-critical) |
+| 2 | `/(dashboard)` | All (entry point) |
+| 3 | `/members` (list) | Admin onboards member |
+| 4 | `/members/new` + `/members/[id]/edit` (forms) | Admin onboards member |
+| 5 | `/events` (list) | Event lifecycle |
+| 6 | `/events/new` + `/events/[id]/edit` (forms) | Event lifecycle |
+| 7 | `/events/[id]/check-in` (mobile-critical) | Event lifecycle |
+| 8 | `/finance/invoices/new` (complex form) | Treasurer invoice workflow |
+| 9 | `/admin/settings` (branding + modules) | Admin configures platform |
+| 10 | `/communication/email-campaigns/new` | Communication campaign |
+| 11 | `/public` (landing) | Public visibility |
+| 12 | `/public/events/[id]` (anonymous registration form) | Event lifecycle (public) |
+| 13 | `/profile` (self-service) | Member self-service |
+| 14 | `/privacy/export` + `/privacy/delete` (confirmation dialogs) | Privacy export/deletion |
 
 ### Scope Boundaries
 
 In scope:
 
-- Add docs/checklist under planning or project docs if needed.
-- Use existing components before one-off fixes.
+- The net-new `docs/16_accessibility_audit_checklist.md` (baseline + audit table + evidence).
+- An "Accessibility" section added to `docs/13_frontend_design_standards.md`.
+- Three-state-checkbox convention added to `docs/07_dos_donts.md`.
+- Cheap, page-local high-impact fixes on audited pages (with i18n keys for any new text).
+- `docs/10_requirements_status.md` REQ-056 status update.
 
 Out of scope:
 
-- Large UI refactors not tied to audit findings
-
-### Existing Code To Inspect Before Editing
-
-- docs accessibility checklist/audit artifact
-- critical page audit notes
-- tracked findings by severity
-- manual/automated evidence
-
-Additional module context:
-
-- docs/13_frontend_design_standards.md
-- docs/07_dos_donts.md
-- frontend/src/components/ui
-- frontend/src/components/navigation
-- frontend/src/i18n
-- frontend/messages/de.json
-- frontend/messages/en.json
-- frontend/src/app
+- Systematic shared-component accessibility fixes → **E7-S2** (this story produces that work list).
+- Large UI refactors not tied to a tracked audit finding.
+- Hindi/localization work → E7-S3/E7-S4.
 
 ### Architecture Guardrails
 
-- Keep the modular monolith and Clean Architecture boundaries: Domain for business rules, Application for commands/queries/validators, Infrastructure for EF/Keycloak/provider implementations, API for Minimal API endpoints.
-- Backend authorization policies are mandatory for protected operations. Frontend role checks are UX only and never the security boundary.
-- Use MediatR commands/queries and FluentValidation for workflow behavior. Keep endpoints thin and pass CancellationToken through async calls.
-- EF Core schema changes require migrations under backend/src/IabConnect.Infrastructure/Migrations; do not make manual database changes.
-- Frontend UI must use Next.js App Router patterns, shared UI components, next-intl keys, orange primary actions, and the standard authenticated page layout.
-- Sensitive changes must preserve audit, privacy, retention, and finance compliance rules where applicable.
-
-Story-specific risks:
-
-- Do not introduce hardcoded user-facing text while expanding languages.
-- Backend enum contract values stay untranslated PascalCase values.
-- Accessibility fixes should improve shared components first and avoid one-off visual drift.
-
-### Implementation Guidance
-
-- Prefer extending existing module patterns over creating new parallel services, routes, or UI primitives.
-- Keep request/response DTOs explicit at API/Application boundaries; never expose EF entities directly to frontend or external API responses.
-- Preserve current behavior for existing member, event, finance, communication, identity, and public routes unless an acceptance criterion explicitly changes it.
-- Add audit/security logs for create/update/delete, revocation, merge, finance, provider, webhook, and access-denied behavior where this story touches sensitive operations.
-- Keep provider-dependent behavior disabled, documented, or behind configuration until credentials, scopes, signing policy, and whitelist decisions are available.
+- This story is documentation + a small number of page-local frontend fixes. No backend, Domain, Application, EF, or migration changes.
+- Any new user-visible text (accessible names, labels) MUST use next-intl keys in `frontend/messages/de.json` + `frontend/messages/en.json` — never hardcoded German/English strings (project rule; the dialog "Close" finding is exactly this anti-pattern).
+- Frontend changes follow `docs/13_frontend_design_standards.md` layout/colour conventions (orange-600 primary; no blue).
+- Do not regress shipped behaviour: Radix primitives (Select/Checkbox/Dialog/Tabs/DropdownMenu) already provide native ARIA — confirm, don't replace.
 
 ### Testing Requirements
 
-Required planned evidence from source story:
+- Manual keyboard walk per audited page (`Tab`/`Shift+Tab`/`Enter`/`Escape`/arrow keys); record pass/fail in the audit evidence cell.
+- Automated checks where the dev-agent can run them headlessly (e.g. an axe-core assertion inside a Vitest+jsdom test, or a Playwright + `@axe-core/playwright` scan) — otherwise mark `[!] manual-verify`.
+- For any Task-3 code change: `npx eslint <changed-files>` + `npx prettier --check <changed-files>` + `vitest run` (A58 changed-files gate; repo-wide is pre-drifted).
+- Frontend Vitest tests that call Testing-Library `render()` must include `import { cleanup } from "@testing-library/react"; afterEach(cleanup);` + `// @vitest-environment jsdom` (A35/A46). Pure-Node tests (reading a doc/JSON + asserting) do NOT need cleanup.
 
-- Manual keyboard checks.
-- Component tests where practical.
-- Playwright checks for critical flows where useful.
+### Decision-Needed (resolve at Task 0 per A32/A41)
 
-Concrete test guidance:
-
-- Backend: xUnit v3, FluentAssertions, Moq only for external boundaries; Testcontainers PostgreSQL for repository/persistence behavior.
-- API: authorization, routing, serialization, response contracts, rate/scope behavior where applicable.
-- Frontend: Vitest/Testing Library for shared controls/forms/rendering/permission states; Playwright or manual browser validation for critical flows.
-- Manual: capture browser, Keycloak, provider, event-day, MailHog, finance, accessibility, or webhook validation notes where automated coverage cannot prove behavior.
-
-Minimum verification before marking implementation complete:
-
-- Backend: run focused tests for changed handlers/services/repositories/endpoints, then `dotnet test` from `backend` when local infrastructure permits.
-- Frontend: run `npm run typecheck`, `npm run lint`, and relevant Vitest/Playwright tests from `frontend` when UI changes are made.
-
-### Previous Story Intelligence
-
-- No previous story in this epic. Use project-context and existing code as the baseline.
-
-- Recent git context before this planning pass: `feat(REQ-017): Segmentierung & Verteiler - vollständige Implementierung`; reuse established member segment, audit, and communication patterns where relevant.
-- `e1-s1-configure-role-based-mfa-policy.md` is already `in-progress` with a review finding requiring live Keycloak MFA validation; do not close or overwrite it from this story.
-
-### Latest Technical Context
-
-- Keycloak current server administration guide documents OTP, WebAuthn/passkeys, and recovery codes as 2FA options; use infra/docker-compose.yml as the implementation version source of truth. https://www.keycloak.org/docs/latest/server_admin/index.html
-- ASP.NET Core 10 policy authorization remains the official pattern for requirement/handler based access control. https://learn.microsoft.com/en-us/aspnet/core/security/authorization/policies?view=aspnetcore-10.0
-- Next.js 16 App Router docs are the framework reference for routes, server/client components, and route handlers. https://nextjs.org/docs/app
-- EF Core migrations should be generated from model changes and tracked in source control. https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/
-- Hangfire background jobs persist work and need idempotent handlers because retries/at-least-once execution are expected. https://docs.hangfire.io/
-- WCAG 2.2 is the baseline accessibility reference for labels, focus, contrast, keyboard operation, and error identification. https://www.w3.org/TR/wcag/
+- **DEC-1 — E7-S1 fix boundary (AC-4).** How much fixing happens in this audit story vs. E7-S2?
+  - (A, recommended) **Audit + doc + page-local quick wins only.** Fix only cheap, non-shared, page-local issues on audited pages; route every shared-component finding to E7-S2 with a pointer. Keeps this story a clean baseline+audit deliverable and gives E7-S2 a concrete work list (matches AC-4's "fixed OR explicitly deferred"). Rationale: the spike shows the highest-impact gaps (Input aria-*, focus token, dialog i18n) are shared-component changes that belong together in E7-S2; splitting them across two stories risks visual drift.
+  - (B) Fix everything found here. Rejected: collapses E7-S2 into E7-S1 and makes the audit/fix boundary unreviewable.
+  - (C) Audit only, defer ALL fixes (including page-local) to E7-S2. Rejected: AC-4 explicitly wants high-impact touched-page issues fixed or deferred — leaving trivial local wins undone is busywork deferral.
 
 ### Project Structure Notes
 
-- Backend source: `backend/src/IabConnect.Domain`, `backend/src/IabConnect.Application`, `backend/src/IabConnect.Infrastructure`, `backend/src/IabConnect.Api`.
-- Backend tests: `backend/tests/IabConnect.Application.Tests`, `backend/tests/IabConnect.Infrastructure.Tests`, `backend/tests/IabConnect.Api.Tests`.
-- Frontend source: `frontend/src/app`, `frontend/src/components`, `frontend/src/lib/api` or `frontend/src/lib/services`, `frontend/messages`.
-- Infrastructure/config: `infra/docker-compose.yml`, `infra/keycloak/realms/iabconnect-realm.json` where identity behavior changes.
-- Documentation/evidence: `docs/` for durable project documentation; `_bmad-output/implementation-artifacts` for story execution records.
+- Docs: `docs/16_accessibility_audit_checklist.md` (new), `docs/13_frontend_design_standards.md` (+Accessibility section), `docs/07_dos_donts.md` (+three-state convention), `docs/10_requirements_status.md` (REQ-056 status).
+- Frontend (if Task 3 fixes): `frontend/src/app/**` audited pages; `frontend/messages/{de,en}.json` for any new accessible-name keys.
+- Evidence/records: this story file + `docs/16`.
 
 ### References
 
-- _bmad-output/implementation-artifacts/sprint-plan.md
-- _bmad-output/planning-artifacts/epics-and-stories.md
-- _bmad-output/planning-artifacts/prd.md
-- _bmad-output/planning-artifacts/architecture.md
-- _bmad-output/project-context.md
-- docs/13_frontend_design_standards.md
-- docs/07_dos_donts.md
+- `_bmad-output/planning-artifacts/prd.md:93-156` (8 critical journeys), `prd.md:420-426` (REQ-056 ACs)
+- `_bmad-output/planning-artifacts/ux-design.md:522-546` (Accessibility Baseline checklist)
+- `_bmad-output/planning-artifacts/epics-and-stories.md:757-780` (E7-S1 source)
+- `_bmad-output/project-context.md` (A28/A30 three-state checkbox, A38 doc-bundle, A42 reread, A47 `[!]` queue, A56 spike, A58 changed-files gate)
+- `docs/13_frontend_design_standards.md`, `docs/07_dos_donts.md`
+- WCAG 2.2 AA — https://www.w3.org/TR/WCAG22/
 
 ## Validation Notes
 
-- Create-story validation completed on 2026-05-12 for `e7-s1-define-accessibility-baseline-and-audit-critical-pages`.
-- Checklist coverage: acceptance criteria, source paths, authorization/audit/privacy/finance impact, migration need, tests, manual validation, i18n/accessibility states where relevant.
-- Remaining implementation risk: code-level inspection may split this story further if existing module coupling or provider decisions make the scope too large.
+- Bulk-refreshed 2026-06-07 from the 2026-05-12 stub as part of the full Epic-7 dev-ready preparation (A34). Placeholder ACs + stale "Latest Technical Context" replaced with spike-grounded content.
+- Checklist coverage: ACs are concrete + testable; source paths verified against the codebase; no auth/finance/migration impact (docs + page-local fixes only); i18n rule enforced for any new text; manual-evidence + three-state convention applied.
+- Remaining risk: the audit may surface more shared-component findings than the seed list — all route to E7-S2; this story stays bounded to baseline + audit + local quick wins.
 
 ## Dev Agent Record
 
 ### Agent Model Used
 
-_To be filled by dev agent._
+claude-opus-4-8[1m] (Claude Opus 4.8, 1M context) — autonomous Epic-7 dev-story run.
 
 ### Debug Log References
 
-_To be filled during implementation._
+**DEC-1 resolution (A41/A43 autonomous-mode escape — (a)/(b)/(c)):**
+
+- (a) **Option chosen:** A — Audit + doc + page-local quick wins only; route shared-component findings to E7-S2.
+- (b) **Rationale:** (1) story recommendation is Option A; (2) user pre-declared autonomous mode verbatim: *"das ganze epic 7 umsetzen ohen stop bis alle stories implementiert ist. danach standardmässig review und retro durchführen"*; (3) downstream architecture — the highest-impact gaps (Input `aria-*`, focus token, dialog i18n) are shared-component changes that belong together in E7-S2; splitting them across two stories risks visual drift. All three A41 preconditions hold (autonomous-mode declared, story has a recommended option, this (a)/(b)/(c) record exists).
+- (c) **Consequence chain:** AC-4 "cheap local fixes" → covered (members + events list filters/toggles fixed in-story); AC-4 "systematic shared issues deferred" → covered via `docs/16` `deferred-to-E7-S2` rows; the budgets:511 close button stays E7-S2 (not in the 12-page audit inventory). Live-browser checks (AC-1 keyboard, AC-4 contrast, keyboard-traps) flip to `deferred / [!] manual-verify` (Q1–Q6), not `covered`.
+
+**A56 verify-not-trust catch:** the static-audit subagent reported `invoices/new/page.tsx:582` delete button as missing an accessible name; re-reading the source showed `title={t("removeItem")}` at line 587 — it IS accessible. Recorded as compliant (no fix), avoiding a regressive "fix".
+
+**Route reconciliation (A52/A55 at dev time):** the inventory's `/privacy/export`, `/privacy/delete`, `(dashboard)` root, and `/public` landing routes do not exist as named — GDPR self-service lives in `/profile`, dashboard entry is the app root `page.tsx`, and the public surface is sub-pages. Audited the real routes; documented the reconciliation in `docs/16` Section B.
 
 ### Completion Notes List
 
-_To be filled during implementation._
+**A29 AC-Subitem Completion Check (per-AC, A54 — one row per page/finding):**
+
+- **AC-1 (written baseline checklist):** ✅ covered — `docs/16` Section A, 8 baseline items mapped to the 6 REQ-056 ACs, each with how-to-verify; three-state convention documented (docs/16 + docs/07); accessibility section added to docs/13.
+- **AC-2 (critical pages audited, set enumerated):** ✅ covered — 12 journey-mapped pages enumerated + statically audited; explicitly NOT all ~94 pages. Live keyboard/desktop+mobile walk → `[!]` Q1/Q2.
+- **AC-3 (findings table keyed by page/flow with severity + status):** ✅ covered — Section B table (per-page) + shared-component deferred table; severities High/Medium/Low; statuses fixed / accepted / `deferred-to-E7-S2`.
+- **AC-4 (cheap local fixes done; shared deferred with pointer):** ✅ covered — members + events list filter/toggle fixes applied; 5 shared findings deferred to E7-S2 with `file:line`.
+- **AC-5 (accessibility evidence per page):** ✅ covered for static evidence; live evidence (axe/Lighthouse/keyboard) recorded as `[!] manual-verify` Q1–Q6 (dev-agent cannot drive a browser — A47).
+
+**Manual-verify queue (surfaced for the live walkthrough):** Q1 keyboard nav, Q2 runtime visible focus, Q3 runtime validation-association, Q4 colour contrast (axe/Lighthouse), Q5 keyboard traps in custom modals, Q6 custom-modal focus management. See `docs/16` → Live-walkthrough queue.
+
+**Quality gates:** `tsc --noEmit` clean; `eslint` clean on changed pages; `vitest run` 207/207 pass, 0 regressions. Prettier: modified pages left at pre-existing drift (A58/A72); initial `prettier --write` churn reverted in the boundary review (P1). No backend/auth/migration impact.
 
 ### File List
 
-_To be filled during implementation._
+**New:**
+- `docs/16_accessibility_audit_checklist.md` — accessibility baseline + critical-pages audit (A38 doc-bundle anchor; E7-S2 work list).
+
+**Modified (docs):**
+- `docs/07_dos_donts.md` — added three-state manual-verify checkbox convention.
+- `docs/13_frontend_design_standards.md` — added Accessibility section + TOC entry + a11y row in New-Pages checklist.
+- `docs/10_requirements_status.md` — REQ-056 → In Bearbeitung.
+
+**Modified (frontend, page-local fixes):**
+- `frontend/src/app/(dashboard)/events/page.tsx` — `aria-label` on search/category/status filters; `aria-label`+`aria-pressed` on grid/list view-toggle buttons.
+- `frontend/src/app/members/page.tsx` — `aria-label` on search/status/type filters.
+- `frontend/messages/en.json` — new keys `events.gridView`, `events.listView`.
+- `frontend/messages/de.json` — new keys `events.gridView`, `events.listView`.
 
 ## Change Log
 
 - 2026-05-12: Story created from multi-epic sprint plan and marked ready for development.
+- 2026-06-07: Bulk-refreshed to comprehensive dev-ready spec (A34) — real ACs, A56 spike findings, critical-page inventory, DEC-1, A38 doc-bundle anchor, quality-gate tasks.
+- 2026-06-07: Implemented (autonomous Epic-7 run) — authored `docs/16` baseline+audit; added three-state convention to docs/07; added Accessibility section to docs/13; page-local a11y fixes on members + events lists; REQ-056 status updated. DEC-1=A. Gates green (tsc/eslint clean; vitest 207/207; prettier drift pre-existing). Status → review.

@@ -233,3 +233,24 @@ public static EventVolunteerShift Create(..., DateTime startsAt, DateTime endsAt
 ```
 
 Established call sites to mirror: `Event.Create` / `Event.UpdateSchedule` / `Event.UpdateRegistrationSettings`, `EventVolunteerShift.Create` / `UpdateDetails`, `EventVolunteerAssignment.MarkReminderSent`. Do **not** re-implement with a bare `DateTime.SpecifyKind(...)` — the older Finance-module pattern (`Payment`, `Transaction`) only handles `Unspecified` and mishandles `Local`; `DateTimeUtcGuard.EnsureUtc` handles all three `Kind` cases. New E4 fee/finance entities that carry caller-supplied dates must adopt the guard.
+
+## Three-State Manual-Verify Checkbox Convention (Epic-7 / Accessibility)
+
+When a checklist, story task, or audit-evidence cell records a check that a dev-agent
+**cannot** complete because it needs a live browser, screen reader, or stood-up
+infrastructure, use the explicit three-state convention instead of a binary `[x]`/`[ ]`:
+
+- `[x]` — **dev-verified**: confirmed by the dev-agent (static code inspection, a passing
+  automated/headless test, a `dotnet test`/`vitest` assertion).
+- `[!]` — **needs human verify**: requires a live browser interaction (real keyboard
+  tab-order, visible focus rendering, measured colour contrast, screen-reader
+  announcement), a manual smoke, or infrastructure the dev-agent cannot drive. A `[!]`
+  item is **not** a false `[x]` — it is a tracked human-verification queue item.
+- `[ ]` — **pending**: not yet checked.
+
+**Why:** review-tracking and the Beta/release gate must be able to see the
+human-verification queue. Marking a browser-only accessibility check `[x]` because the
+attribute exists in source overstates coverage — the attribute presence is `[x]`, but the
+*rendered* behaviour is `[!]`. The convention is applied in
+`docs/16_accessibility_audit_checklist.md` (the WCAG 2.2 AA audit) and is the standard for
+any manual-verify-bound task across stories.

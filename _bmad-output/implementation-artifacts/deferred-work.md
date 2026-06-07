@@ -851,3 +851,7 @@ Batch for a future hygiene pass: (a) frontend `decimalPlaces` mis-detects expone
 - **Budget FK OnDelete.Restrict** — `ActivityArea` soft-deletes + `FiscalPeriod` is not hard-deleted, so the FK is never violated; Restrict correctly prevents orphaning a budget.
 - **N+1 area lookup in the report handler** — bounded by cost-centers-per-period (single digits); acceptable.
 - **JournalEntryLine edit round-trip** — `JournalEntryLineDto` exposes `ActivityAreaId` (+ `MapToDto`), so the new journal-line selector preserves an existing line's cost center on edit. Verified, no data-loss.
+
+## Epic-7 (Accessibility & Localization) — deferred follow-ups
+
+- **E7-FT-1** — Net-new Blog admin UI with a content-language select. E7-S4 added `ContentLanguage` to `BlogPost` (domain/EF/migration/DTOs) and exposes it via the admin API + the public blog page, but there is no `(dashboard)/blog` admin frontend (blog is API-only), so the blog content language is currently only settable via the admin API. Building a blog admin UI is out of scope for "add language metadata" (DEC-1=A, A65 multi-surface honesty). When a blog admin UI is built, add a content-language `<select>` mirroring the event forms.

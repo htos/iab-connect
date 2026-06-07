@@ -38,6 +38,7 @@ export interface EventDto {
   cost?: number;
   costDescription?: string;
   isFree: boolean;
+  contentLanguage?: string; // REQ-055 (E7-S4): ISO 639-1 content language; undefined = default
   createdAt: string;
   updatedAt?: string;
   publishedAt?: string;
@@ -109,6 +110,7 @@ export interface CreateEventRequest {
   contactPhone?: string;
   cost?: number;
   costDescription?: string;
+  contentLanguage?: string; // REQ-055 (E7-S4): ISO 639-1 (de/en/hi) or empty for default
 }
 
 export interface UpdateEventRequest extends CreateEventRequest {}

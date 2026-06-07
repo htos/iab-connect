@@ -37,6 +37,7 @@ interface UpdateEventRequest {
   contactPhone?: string;
   cost?: number;
   costDescription?: string;
+  contentLanguage?: string;
 }
 
 interface EditEventPageProps {
@@ -47,6 +48,7 @@ export default function EditEventPage({ params }: EditEventPageProps) {
   const resolvedParams = use(params);
   const t = useTranslations('events');
   const tCommon = useTranslations('common');
+  const tLang = useTranslations('language');
   const router = useRouter();
   const { accessToken, isVorstand, isAdmin } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -78,6 +80,7 @@ export default function EditEventPage({ params }: EditEventPageProps) {
     contactPhone: '',
     cost: undefined,
     costDescription: '',
+    contentLanguage: '',
   });
 
   const [tagsInput, setTagsInput] = useState('');
@@ -131,6 +134,7 @@ export default function EditEventPage({ params }: EditEventPageProps) {
           contactPhone: event.contactPhone || '',
           cost: event.cost,
           costDescription: event.costDescription || '',
+          contentLanguage: event.contentLanguage || '',
         });
 
         setTagsInput((event.tags || []).join(', '));
@@ -188,6 +192,7 @@ export default function EditEventPage({ params }: EditEventPageProps) {
             contactPhone: event.contactPhone || '',
             cost: event.cost,
             costDescription: event.costDescription || '',
+            contentLanguage: event.contentLanguage || '',
           });
 
           setTagsInput((event.tags || []).join(', '));
@@ -457,6 +462,28 @@ export default function EditEventPage({ params }: EditEventPageProps) {
                       <option value={EventCategory.Workshop}>{t('category.workshop')}</option>
                       <option value={EventCategory.Festival}>{t('category.festival')}</option>
                       <option value={EventCategory.Other}>{t('category.other')}</option>
+                    </select>
+                  </div>
+
+                  {/* REQ-055 (E7-S4): optional content language */}
+                  <div>
+                    <label
+                      htmlFor="contentLanguage"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                      {t('form.contentLanguage')}
+                    </label>
+                    <select
+                      id="contentLanguage"
+                      name="contentLanguage"
+                      value={formData.contentLanguage ?? ''}
+                      onChange={handleInputChange}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition-colors bg-white"
+                    >
+                      <option value="">{t('form.contentLanguageDefault')}</option>
+                      <option value="de">{tLang('de')}</option>
+                      <option value="en">{tLang('en')}</option>
+                      <option value="hi">{tLang('hi')}</option>
                     </select>
                   </div>
 

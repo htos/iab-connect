@@ -6,6 +6,7 @@
     "save": "Speichern",
     "saving": "Speichern...",
     "cancel": "Abbrechen",
+    "close": "Schließen",
     "delete": "Löschen",
     "edit": "Bearbeiten",
     "back": "Zurück",
@@ -448,7 +449,8 @@
   "language": {
     "select": "Sprache",
     "en": "English",
-    "de": "Deutsch"
+    "de": "Deutsch",
+    "hi": "हिन्दी"
   },
   "users": {
     "backToAdmin": "Zurück zur Administration",
@@ -744,6 +746,8 @@
     "filterByStatus": "Status",
     "allCategories": "Alle Kategorien",
     "allStatuses": "Alle Status",
+    "gridView": "Rasteransicht",
+    "listView": "Listenansicht",
     "showPastEvents": "Vergangene Events anzeigen",
     "editEvent": "Event bearbeiten",
     "new": {
@@ -787,6 +791,8 @@
       "description": "Beschreibung",
       "descriptionPlaceholder": "Ausführliche Beschreibung des Events...",
       "category": "Kategorie",
+      "contentLanguage": "Inhaltssprache",
+      "contentLanguageDefault": "Standard (Organisationssprache)",
       "visibility": "Sichtbarkeit",
       "tags": "Tags (kommagetrennt)",
       "tagsPlaceholder": "z.B. Festival, Kultur, Familie",

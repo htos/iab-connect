@@ -273,6 +273,7 @@ export default function MembersPage() {
               <input
                 type="text"
                 placeholder={t("members.searchPlaceholder")}
+                aria-label={t("members.searchPlaceholder")}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
@@ -284,6 +285,7 @@ export default function MembersPage() {
                 setStatusFilter(e.target.value as MembershipStatus | "");
                 setPage(1);
               }}
+              aria-label={t("members.allStatuses")}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
             >
               <option value="">{t("members.allStatuses")}</option>
@@ -298,6 +300,7 @@ export default function MembersPage() {
                 setTypeFilter(e.target.value as MembershipType | "");
                 setPage(1);
               }}
+              aria-label={t("members.allTypes")}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
             >
               <option value="">{t("members.allTypes")}</option>

@@ -12,6 +12,11 @@ const SelectGroup = SelectPrimitive.Group;
 
 const SelectValue = SelectPrimitive.Value;
 
+// Accessibility caller contract (E7-S2 / REQ-056): Radix supplies the select's
+// ARIA roles/keyboard behaviour, but the trigger needs an accessible NAME. The
+// caller MUST pass a `<label htmlFor>` wired via `id`, an `aria-label`, or an
+// `aria-labelledby` (next-intl key, never a hardcoded string). Focus ring uses the
+// design-system token. See docs/16 + docs/13 Accessibility.
 const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>

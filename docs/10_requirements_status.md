@@ -444,20 +444,20 @@ TicketLink:
 Notizen: Logging & Monitoring implementiert. Backend: CorrelationIdMiddleware (X-Correlation-Id Header + Serilog LogContext), DatabaseHealthCheck (PostgreSQL), KeycloakHealthCheck (OIDC). Health Endpoints: /health (basic), /health/ready (tagged JSON), /health/detail (admin-only, vollständiger Report). Serilog File Sink mit Rolling Interval (logs/iabconnect-.log). Frontend: Admin Health-Seite mit Echtzeit-Status, Auto-Refresh (30s), Dienst-Karten. 9 Tests (5 Middleware + 4 Integration).
 
 ID: REQ-055
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: In Bearbeitung
+StatusSeit: 2026 06 07
+Owner: Implementation Agent
+SprintOderRelease: Epic-7 (E7-S3, E7-S4)
 TicketLink:
-Notizen:
+Notizen: E7-S3 — Hindi (hi) als dritte UI-Sprache auf inkrementellem Erweiterungspfad verdrahtet (Locale-Listen + Lockstep-Test, sichere Fallback-Logik via Deep-Merge auf englische Basis, hi.json-Seed, Sprachumschalter, NEXT_LOCALE-Cookie); DE/EN-Parität-Bug (events.edit.editEvent) behoben + globaler Paritätstest ergänzt. E7-S4 — optionale Inhaltssprache (ISO 639-1, de/en/hi) auf Event + BlogPost: Domain (ContentLanguages.Normalize Write-Boundary), EF-Mapping + additive Migration AddContentLanguageMetadata (nullable, datenerhaltend), DTOs (inkl. öffentliche Endpoints), Event-Admin-Select + öffentliche Sprach-Badges (Events + Blog). Blog-Admin-UI bewusst zurückgestellt (kein bestehendes Blog-Admin-UI; DEC-1=A, A65). Auth unverändert (RequireVorstand bzw. + Module:communication). Tests: 20 Domain + 4 Testcontainers-Migration + 40 Event/Blog-API + Frontend-Badge.
 
 ID: REQ-056
-Status: Backlog
-StatusSeit: 2026 01 30
-Owner:
-SprintOderRelease:
+Status: In Bearbeitung
+StatusSeit: 2026 06 07
+Owner: Implementation Agent
+SprintOderRelease: Epic-7 (E7-S1, E7-S2)
 TicketLink:
-Notizen:
+Notizen: E7-S1 — Accessibility-Baseline (WCAG 2.2 AA) als docs/16_accessibility_audit_checklist.md erstellt; 12 kritische Seiten (PRD-Journeys) statisch auditiert; Accessibility-Abschnitt in docs/13 + Drei-Zustands-Checkbox-Konvention in docs/07 ergänzt. Page-local Quick-Wins gefixt: aria-label für Members- und Events-Listen-Filter, aria-label+aria-pressed für Events-View-Toggles. Shared-Component-Findings (Input aria/Focus, Dialog-Close-i18n) an E7-S2 delegiert; Live-Browser-Checks (Tastatur, Kontrast, Fokus-Trap) als [!] manual-verify in der Walkthrough-Queue.
 
 ID: REQ-057
 Status: Done

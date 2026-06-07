@@ -34,6 +34,7 @@ interface PublicEventDto {
   cost?: number;
   costDescription?: string;
   isFree: boolean;
+  contentLanguage?: string;
   hasStarted: boolean;
   hasEnded: boolean;
   isRegistrationOpen: boolean;
@@ -41,6 +42,7 @@ interface PublicEventDto {
 
 export default function PublicEventsPage() {
   const t = useTranslations("publicEvents");
+  const tLang = useTranslations("language");
   const [events, setEvents] = useState<PublicEventDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +68,7 @@ export default function PublicEventsPage() {
 
   const categories = useMemo(
     () => Array.from(new Set(events.map((e) => e.category).filter(Boolean))),
-    [events],
+    [events]
   );
 
   const filteredEvents = useMemo(() => {
@@ -110,13 +112,13 @@ export default function PublicEventsPage() {
               placeholder={t("searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm shadow-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+              className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm shadow-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none"
             />
           </div>
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm shadow-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm shadow-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none"
           >
             <option value="">{t("allCategories")}</option>
             {categories.map((cat) => (
@@ -223,13 +225,19 @@ export default function PublicEventsPage() {
                   )}
                   {/* Category badge */}
                   {event.category && (
-                    <span className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-gray-800">
+                    <span className="absolute top-3 left-3 rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-gray-800">
                       {event.category}
+                    </span>
+                  )}
+                  {/* REQ-055 (E7-S4): content-language badge (only when set) */}
+                  {event.contentLanguage && (
+                    <span className="absolute bottom-3 left-3 rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-gray-700">
+                      {tLang(event.contentLanguage)}
                     </span>
                   )}
                   {/* Free/cost badge */}
                   <span
-                    className={`absolute right-3 top-3 rounded-full px-3 py-1 text-xs font-medium ${
+                    className={`absolute top-3 right-3 rounded-full px-3 py-1 text-xs font-medium ${
                       event.isFree
                         ? "bg-green-100 text-green-800"
                         : "bg-orange-100 text-orange-800"

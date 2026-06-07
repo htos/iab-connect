@@ -1,5 +1,56 @@
 # generated: 2026-05-12
-# last_updated: 2026-06-06 (Epic-5 CLOSED — Communication Automation (REQ-028 + REQ-030). Single
+# last_updated: 2026-06-07 (bmad-create-story BULK REFRESH for entire Epic-7 (Accessibility and
+#   Localization, REQ-056 + REQ-055): COMPLETE. **Fourth deferred-backlog epic resumed** (after E4
+#   Event Monetization, E5 Communication Automation, E6 Finance Planning all closed). Per user directive
+#   "das nächste epic komplett durchgehen und alle stories vorbereiten zum implementieren." (2026-06-07),
+#   scope is post-MVP-comprehensive. Gate posture identical to E4/E5/E6: epics-and-stories.md L99
+#   "resume only after Beta validation completes" still open (carried-forward E14/E16/E17/E18/E19 live-[!]
+#   Beta-walkthrough OUTSTANDING pending Harry's GREEN Beta deploy); user continued down the deferred
+#   backlog — gate overridden as before. All 4 stories refreshed from 2026-05-12 pre-pivot stubs
+#   (placeholder "Given X, when <story-statement-verbatim>, then..." ACs, stale e1-s1/MFA/Keycloak/Hangfire
+#   "Latest Technical Context") to comprehensive dev-ready per A34, with parallel-subagent A56
+#   existing-implementation spikes across all 4 surfaces. **Epic shape — almost entirely FRONTEND + docs
+#   (E7-S1/S2/S3 frontend; E7-S4 the only backend slice). NOT a build-from-scratch epic: the i18n infra,
+#   the shared UI library, and the two content entities all already ship → stories are
+#   verify+extend+document, not greenfield.** **A56 spike findings (load-bearing):** (1) e7-s1 (a11y
+#   baseline+audit) — NO accessibility doc exists anywhere (docs/07 + docs/13 have ZERO a11y guidance);
+#   net-new docs/16_accessibility_audit_checklist.md (docs/00..15 exist, 15 is highest). Checklist source
+#   = ux-design.md:532-541 (8 items) + prd.md:420-426 (REQ-056 ACs) — transcribe, don't invent.
+#   docs/16 is the A38 doc-bundle anchor; E7-S2 consumes its audit table. Audit scope = ~14 journey-mapped
+#   critical pages (prd.md:93-156), NOT all 94 page.tsx. (2) e7-s2 (shared-component a11y) — the UI library
+#   already ships + is mostly accessible (Radix primitives, Button forwards aria-label via ...props, focus
+#   mostly consistent). Real gaps: Input has no aria-describedby/aria-invalid + uses outlier indigo-500
+#   focus ring (input.tsx:27 vs the design-system ring-ring); dialog.tsx close button has HARDCODED sr-only
+#   "Close" (i18n violation); a real icon-only violation at finance/budgets/page.tsx:511 (no accessible
+#   name). NO components/ui/* unit tests exist → net-new component a11y test harness. Verify-not-rewrite
+#   (A56). (3) e7-s3 (Hindi expansion PATH) — cookie-based next-intl v4.8.1 (NO [locale] route segment);
+#   locales=["en","de"] DUPLICATED in i18n/request.ts:4 + index.ts:6; NO hi.json; NO fallback handler
+#   configured (so AC-3 "fall back safely" needs an explicit getMessageFallback — not free in v4); DE/EN
+#   parity BUG (events.edit.editEvent in de.json only, 2503 vs 2502 keys) + NO global parity test. **Load-
+#   bearing scope: this is the expansion PATH (wire hi + seed file + safe fallback + switcher + parity
+#   guard), NOT a full ~2500-key Hindi translation (DEC-1=A).** Backend enums are PascalCase contract
+#   values → zero backend change. (4) e7-s4 (content language metadata) — the ONLY backend slice. Exactly
+#   TWO public content aggregates exist: Event (Event.cs) + BlogPost (BlogPost.cs); NO News/CMS/Page entity
+#   (that's why AC says "where applicable"). Neither has a language field. Precedent = InvoiceTemplate.cs:33
+#   string Language="en" (ISO 639-1) → nullable string, not a new enum (DEC-2=A). Auth reuse: Events
+#   RequireVorstand, Blog RequireVorstand+Module:communication — NO new permission (AC-4). **A65 multi-
+#   surface trap: Event admin UI exists but Blog admin UI does NOT (blog is API-only) → DEC-1=A scopes blog
+#   to data-model + API + public-display, defers a net-new blog admin UI; QGT must mark blog-admin deferred
+#   not ✅.** Additive nullable column + one migration after 20260607084312_AddBudgetModel (AC-5 data-
+#   preserving). **Cross-cutting:** (a) dev-story order S1→S2 HARD (S2 consumes S1's docs/16 audit table,
+#   A38/A62); S3 + S4 are independent of each other + of S1/S2 (S4 may reference S3's hi locale for its
+#   value set but doesn't depend on it). (b) Each story carries a Decision-Needed block (DEC-1..3) w/
+#   recommended options for A41/A32 dev-story resolution + A43 (a)/(b)/(c) template. (c) Frontend stories
+#   carry A35/A46 (cleanup only for render() tests), A64 (stable useTranslations), A58 (changed-files
+#   lint/format gate — repo ~2543 prettier-drifted). (d) Pure-Node i18n parity tests get NO jsdom/cleanup
+#   (A46). (e) E7-S4 carries A61/A63 (backend), A69 (cross-layer enum avoided via string), A71 (public
+#   language filter degrades visibly not silently to zero). **Status transitions:** epic-7 backlog →
+#   in-progress; e7-s1..s4 backlog → ready-for-dev. Sprint state: E1-E3 + E9-E20 + E4 + E5 + E6 done (17
+#   epics closed); E7 in-progress (4 ready-for-dev); E8 deferred backlog (pre-Beta-pivot). NEXT per workflow
+#   + feedback_session_pacing_dev_cycles + A34: recommend committing this 4-story bulk-context refresh +
+#   sprint-status update and starting bmad-dev-story for e7-s1 in a fresh session (S1→S2 ordered; S3/S4
+#   independent). NOTE: the carried-forward E14/E16/E17/E18/E19 live-[!] Beta-walkthrough queue remains
+#   OUTSTANDING (Harry's green-Beta prerequisites) — independent of E7 feature dev.) ## Previously: 2026-06-06 (Epic-5 CLOSED — Communication Automation (REQ-028 + REQ-030). Single
 #   autonomous-mode session delivered all 5 stories (S1 AutomationDefinition+MediatR API+shared
 #   IRecipientResolutionService → S2 AutomationExecution engine+Hangfire dispatch+idempotency → S3
 #   management UI → S4 multi-channel IMessageChannelSender/dispatcher abstraction (email default,
@@ -1213,12 +1264,12 @@ development_status:
   e6-s3-add-budget-vs-actual-reports: done
   epic-6-retrospective: done
 
-  epic-7: backlog
-  e7-s1-define-accessibility-baseline-and-audit-critical-pages: backlog
-  e7-s2-improve-shared-component-accessibility: backlog
-  e7-s3-add-hindi-translation-expansion-path: backlog
-  e7-s4-add-content-language-metadata-where-needed: backlog
-  epic-7-retrospective: optional
+  epic-7: done
+  e7-s1-define-accessibility-baseline-and-audit-critical-pages: done
+  e7-s2-improve-shared-component-accessibility: done
+  e7-s3-add-hindi-translation-expansion-path: done
+  e7-s4-add-content-language-metadata-where-needed: done
+  epic-7-retrospective: done
 
   epic-8: backlog
   e8-s1-add-api-credentials-and-scopes: backlog

@@ -18,6 +18,9 @@ public sealed class BlogPost : AggregateRoot
     public BlogPostStatus Status { get; private set; }
     public DateTime? PublishedAt { get; private set; }
 
+    // Content language (ISO 639-1, e.g. "de"/"en"/"hi"; null = organization default) — REQ-055 (E7-S4)
+    public string? ContentLanguage { get; private set; }
+
     private BlogPost() : base() { }
 
     public static BlogPost Create(
@@ -61,6 +64,16 @@ public sealed class BlogPost : AggregateRoot
         Tags = tags ?? [];
         ImageUrl = imageUrl;
         SetUpdated(updatedBy);
+    }
+
+    /// <summary>
+    /// Sets the content language (ISO 639-1, e.g. "de"/"en"/"hi"; null = use the
+    /// organization default). Validated against the supported set at the write
+    /// boundary (REQ-055, E7-S4); an unsupported code throws.
+    /// </summary>
+    public void SetContentLanguage(string? contentLanguage)
+    {
+        ContentLanguage = ContentLanguages.Normalize(contentLanguage);
     }
 
     public void Publish(Guid userId)

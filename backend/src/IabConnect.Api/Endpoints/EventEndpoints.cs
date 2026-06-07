@@ -513,6 +513,9 @@ public static class EventEndpoints
             evt.UpdateCost(request.Cost, request.CostDescription);
         }
 
+        // REQ-055 (E7-S4): optional content language (validated at the write boundary)
+        evt.SetContentLanguage(request.ContentLanguage);
+
         await eventRepository.AddAsync(evt, ct);
         await dbContext.SaveChangesAsync(ct);
 
@@ -573,6 +576,9 @@ public static class EventEndpoints
 
         // Update cost
         evt.UpdateCost(request.Cost, request.CostDescription);
+
+        // REQ-055 (E7-S4): optional content language (validated at the write boundary)
+        evt.SetContentLanguage(request.ContentLanguage);
 
         eventRepository.Update(evt);
         await dbContext.SaveChangesAsync(ct);
@@ -738,7 +744,8 @@ public static class EventEndpoints
         evt.CancellationReason,
         evt.HasStarted,
         evt.HasEnded,
-        evt.IsRegistrationOpen
+        evt.IsRegistrationOpen,
+        evt.ContentLanguage
     );
 }
 
@@ -782,7 +789,8 @@ public sealed record EventDto(
     string? CancellationReason,
     bool HasStarted,
     bool HasEnded,
-    bool IsRegistrationOpen
+    bool IsRegistrationOpen,
+    string? ContentLanguage
 );
 
 public sealed record CreateEventRequest(
@@ -809,7 +817,8 @@ public sealed record CreateEventRequest(
     string? ContactEmail = null,
     string? ContactPhone = null,
     decimal? Cost = null,
-    string? CostDescription = null
+    string? CostDescription = null,
+    string? ContentLanguage = null
 );
 
 public sealed record UpdateEventRequest(
@@ -835,7 +844,8 @@ public sealed record UpdateEventRequest(
     string? ContactEmail = null,
     string? ContactPhone = null,
     decimal? Cost = null,
-    string? CostDescription = null
+    string? CostDescription = null,
+    string? ContentLanguage = null
 );
 
 public sealed record CancelEventRequest(string? Reason);

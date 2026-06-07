@@ -278,6 +278,7 @@ export default function EventsPage() {
               <input
                 type="text"
                 placeholder={t('searchPlaceholder')}
+                aria-label={t('searchPlaceholder')}
                 value={searchTerm}
                 onChange={handleSearch}
                 className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition-colors"
@@ -288,6 +289,7 @@ export default function EventsPage() {
             <select
               value={categoryFilter}
               onChange={handleCategoryFilter}
+              aria-label={t('allCategories')}
               className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition-colors bg-white"
             >
               <option value="">{t('allCategories')}</option>
@@ -309,6 +311,7 @@ export default function EventsPage() {
               <select
                 value={statusFilter}
                 onChange={handleStatusFilter}
+                aria-label={t('allStatuses')}
                 className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition-colors bg-white"
               >
                 <option value="">{t('allStatuses')}</option>
@@ -323,6 +326,8 @@ export default function EventsPage() {
             <div className="flex items-center gap-1 rounded-lg border border-gray-300 p-1">
               <button
                 onClick={() => setViewMode('grid')}
+                aria-label={t('gridView')}
+                aria-pressed={viewMode === 'grid'}
                 className={`rounded p-1.5 ${viewMode === 'grid' ? 'bg-orange-100 text-orange-600' : 'text-gray-500 hover:text-gray-700'}`}
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -331,6 +336,8 @@ export default function EventsPage() {
               </button>
               <button
                 onClick={() => setViewMode('list')}
+                aria-label={t('listView')}
+                aria-pressed={viewMode === 'list'}
                 className={`rounded p-1.5 ${viewMode === 'list' ? 'bg-orange-100 text-orange-600' : 'text-gray-500 hover:text-gray-700'}`}
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
