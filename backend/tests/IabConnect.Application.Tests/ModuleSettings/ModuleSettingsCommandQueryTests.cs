@@ -32,7 +32,7 @@ public sealed class ModuleSettingsCommandQueryTests
 
         var result = await handler.Handle(new GetModuleSettingsQuery(), TestContext.Current.CancellationToken);
 
-        result.Should().HaveCount(7);
+        result.Should().HaveCount(8); // REQ-058 (E8-S1): + the "api" module key
         result.Select(d => d.ModuleKey).Should().BeEquivalentTo(ModuleKeys.All);
         result.Should().OnlyContain(d => d.Enabled);
     }

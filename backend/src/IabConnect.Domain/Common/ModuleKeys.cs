@@ -25,6 +25,13 @@ public static class ModuleKeys
     public const string PublicView = "public_view";
 
     /// <summary>
+    /// REQ-058 (E8-S1): the external integration surface (external read API + webhooks). Gates the
+    /// consumer routes only (<c>.RequireAuthorization("Module:api")</c>) — never the admin
+    /// credential/webhook-management endpoints, which would self-lock an admin out of re-enabling it.
+    /// </summary>
+    public const string Api = "api";
+
+    /// <summary>
     /// All module keys, in canonical order. Used by the seed migration and by callers that
     /// need to enumerate or validate the full set of modules.
     /// </summary>
@@ -37,5 +44,6 @@ public static class ModuleKeys
         Finance,
         Partners,
         PublicView,
+        Api,
     ];
 }

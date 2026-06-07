@@ -68,6 +68,10 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
                 // `IsNullOrWhiteSpace(...)` guard to return "unknown" deterministically.
                 ["BUILD_SHA"] = string.Empty,
                 ["BUILD_DATE"] = string.Empty,
+                // REQ-058 (E8-S2): a low external-API per-credential limit so the over-limit (429)
+                // test is deterministic. Partitioned on the ApiClient id, so only a test that bursts
+                // >5 requests with one credential trips it; single-call external tests are unaffected.
+                ["RateLimiting:ExternalApiPermitLimit"] = "5",
             });
         });
 
@@ -110,6 +114,13 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
             services.AddSingleton<TestModuleSettingsService>();
             services.AddSingleton<IModuleSettingsService>(
                 sp => sp.GetRequiredService<TestModuleSettingsService>());
+
+            // REQ-058 (E8-S3): recording webhook-dispatch double so trigger tests can assert the
+            // write path emitted the expected event + payload, without performing delivery.
+            services.RemoveAll<IabConnect.Application.Integration.IWebhookDispatchService>();
+            services.AddSingleton<TestWebhookDispatchService>();
+            services.AddSingleton<IabConnect.Application.Integration.IWebhookDispatchService>(
+                sp => sp.GetRequiredService<TestWebhookDispatchService>());
         });
     }
 }

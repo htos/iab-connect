@@ -31,6 +31,16 @@ public sealed class RateLimitingOptions
     /// <summary>Sliding-window duration in seconds. Default 60 (one minute).</summary>
     public int WindowSeconds { get; set; } = 60;
 
+    /// <summary>
+    /// REQ-058 (E8-S2): external API requests per minute per API credential. Default 300 — a
+    /// distinct, lower quota than first-party authenticated users (600), partitioned on the
+    /// <c>ApiClient</c> id so one integration cannot exhaust another's budget.
+    /// </summary>
+    public int ExternalApiPermitLimit { get; set; } = 300;
+
     /// <summary>Named policy key for the strict-identity policy.</summary>
     public const string StrictPolicyName = "strict-identity";
+
+    /// <summary>REQ-058 (E8-S2): named policy key for the external API per-credential limiter.</summary>
+    public const string ExternalApiPolicyName = "external-api";
 }

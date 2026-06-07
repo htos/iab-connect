@@ -438,6 +438,7 @@ public static class EventEndpoints
         IEventRepository eventRepository,
         IAuthorizationService authService,
         ApplicationDbContext dbContext,
+        IabConnect.Application.Integration.IWebhookDispatchService webhookDispatch,
         CancellationToken ct)
     {
         var currentUserId = authService.GetCurrentUserId(httpContext.User);
@@ -518,6 +519,13 @@ public static class EventEndpoints
 
         await eventRepository.AddAsync(evt, ct);
         await dbContext.SaveChangesAsync(ct);
+
+        // REQ-058 (E8-S3): emit the event.created webhook AFTER the commit. Best-effort + out-of-band
+        // (the dispatch service never throws back into this write path); payload is integration-safe (no PII).
+        await webhookDispatch.EmitAsync(
+            IabConnect.Domain.Integration.WebhookEventTypes.EventCreated,
+            new { eventId = evt.Id, title = evt.Title, startDate = evt.StartDate, endDate = evt.EndDate, visibility = evt.Visibility.ToString() },
+            ct);
 
         return Results.Created($"/api/v1/events/{evt.Id}", MapToDto(evt));
     }

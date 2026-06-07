@@ -94,6 +94,25 @@ public static class RateLimiterRegistration
                         });
                 });
 
+            // REQ-058 (E8-S2): named policy for the external API. Partitions on the ApiClient id
+            // (NameIdentifier claim set by the S1 ApiKey handler) so each integration has its own
+            // per-credential quota, distinct from the first-party authenticated bucket.
+            rateLimiterOptions.AddPolicy(RateLimitingOptions.ExternalApiPolicyName,
+                httpContext =>
+                {
+                    var optionsMonitor = httpContext.RequestServices.GetRequiredService<IOptionsMonitor<RateLimitingOptions>>();
+                    var opts = optionsMonitor.CurrentValue;
+                    var clientId = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "unknown-client";
+                    return RateLimitPartition.GetFixedWindowLimiter("external:" + clientId,
+                        _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = opts.ExternalApiPermitLimit,
+                            Window = TimeSpan.FromSeconds(opts.WindowSeconds),
+                            QueueLimit = 0,
+                            AutoReplenishment = true,
+                        });
+                });
+
             rateLimiterOptions.OnRejected = async (context, ct) =>
             {
                 // Edge-1: if another middleware already started writing the response, we

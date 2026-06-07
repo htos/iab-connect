@@ -130,6 +130,44 @@ public static class DependencyInjection
         // REQ-087 (E10-S1): Module settings — per-module enablement state
         services.AddScoped<IModuleSettingsRepository, ModuleSettingsRepository>();
 
+        // REQ-058 (E8-S1): External API credentials — repository, token-safe hashing, pepper.
+        services.Configure<Integration.ApiKeyOptions>(
+            configuration.GetSection(Integration.ApiKeyOptions.SectionName));
+        services.AddScoped<IabConnect.Domain.Integration.IApiClientRepository,
+            Persistence.Repositories.ApiClientRepository>();
+        services.AddSingleton<IabConnect.Application.Integration.IApiKeyHashingService,
+            Integration.ApiKeyHashingService>();
+
+        // REQ-058 (E8-S3): webhook subscriptions — repository, secret encryption, HMAC signing,
+        // and the write-path dispatch seam (E8-S4 fills delivery).
+        services.Configure<Integration.WebhookOptions>(
+            configuration.GetSection(Integration.WebhookOptions.SectionName));
+        services.AddScoped<IabConnect.Domain.Integration.IWebhookSubscriptionRepository,
+            Persistence.Repositories.WebhookSubscriptionRepository>();
+        services.AddSingleton<IabConnect.Application.Integration.IWebhookSecretService,
+            Integration.WebhookSecretService>();
+        services.AddSingleton<IabConnect.Application.Integration.IWebhookSignatureService,
+            Integration.WebhookSignatureService>();
+        services.AddScoped<IabConnect.Application.Integration.IWebhookDispatchService,
+            Integration.WebhookDispatchService>();
+
+        // REQ-058 (E8-S4): webhook delivery — history repo, Hangfire one-off delivery job + enqueuer,
+        // the delivery service, and a named HttpClient with a short timeout (SSRF-guarded outbound POST).
+        services.Configure<Integration.WebhookDeliveryOptions>(
+            configuration.GetSection(Integration.WebhookDeliveryOptions.SectionName));
+        services.AddScoped<IabConnect.Domain.Integration.IWebhookDeliveryRepository,
+            Persistence.Repositories.WebhookDeliveryRepository>();
+        services.AddScoped<IabConnect.Application.Integration.IWebhookDeliveryService,
+            Integration.WebhookDeliveryService>();
+        services.AddSingleton<IabConnect.Application.Integration.IWebhookDeliveryEnqueuer,
+            Integration.WebhookDeliveryEnqueuer>();
+        services.AddScoped<Integration.WebhookDeliveryJob>();
+        services.AddHttpClient(Integration.WebhookDeliveryService.HttpClientName, (sp, client) =>
+        {
+            var opts = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<Integration.WebhookDeliveryOptions>>().Value;
+            client.Timeout = TimeSpan.FromSeconds(opts.HttpTimeoutSeconds);
+        });
+
         // REQ-038..045: Finance repositories
         services.AddScoped<IAccountRepository, AccountRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();

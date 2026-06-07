@@ -1,5 +1,67 @@
 # generated: 2026-05-12
-# last_updated: 2026-06-07 (bmad-create-story BULK REFRESH for entire Epic-7 (Accessibility and
+# last_updated: 2026-06-07 (bmad-create-story BULK REFRESH for entire Epic-8 (External Integration
+#   Surface — REQ-058 API / Webhooks): COMPLETE. **The LAST remaining deferred-backlog epic resumed**
+#   (E4 Event Monetization, E5 Communication Automation, E6 Finance Planning, E7 Accessibility &
+#   Localization all closed; E8 was the final held pre-Beta-pivot epic). Per user directive "nun epic 8
+#   alles so vorbereiten dass es danach umgesetzt werden kann. das bedeutet alle stories ready machen"
+#   (2026-06-07), scope is post-MVP-comprehensive. Gate posture identical to E4/E5/E6/E7:
+#   epics-and-stories.md L99 "resume only after Beta validation completes" still open (carried-forward
+#   E14/E16/E17/E18/E19 live-[!] Beta-walkthrough OUTSTANDING pending Harry's GREEN Beta deploy); user
+#   continued down the deferred backlog to its end — gate overridden as before. All 4 stories refreshed
+#   from 2026-05-12 pre-pivot stubs (placeholder "Given valid inputs..." ACs, stale e1-s1/MFA/Keycloak
+#   "Latest Technical Context") to comprehensive dev-ready per A34, with parallel-subagent A56
+#   existing-implementation spikes across all 4 surfaces. **Epic shape — GENUINE GREENFIELD BUILD epic
+#   (the most build-heavy of the deferred backlog), almost entirely BACKEND. NO ApiClient/ApiScope/
+#   WebhookSubscription/WebhookDelivery/HMAC-signing/external-API code exists anywhere in backend/src →
+#   stories are build, not verify+extend (unlike E7). Architecture has a dedicated REQ-058 section
+#   (architecture.md:739-758) + PRD ACs (prd.md:428-435).** **A56 spike findings (load-bearing):**
+#   (1) e8-s1 (credentials+scopes) — auth is Keycloak JWT-bearer ONLY (DependencyInjection.cs:177-207);
+#   external API needs a NEW second AuthenticationHandler scheme "ApiKey" (template = TestAuthHandler.cs:20
+#   + TestWebApplicationFactory.cs:103-105), applied per-group via AuthenticationSchemes="ApiKey", NOT
+#   changing the default. Token-safe secret REUSES Member.RegenerateCalendarToken/HashCalendarToken
+#   (Member.cs:160-207: RandomNumberGenerator.GetBytes(32) + HMAC-SHA256(pepper, SHA256) + show-once +
+#   store-hash-only) + FixedTimeEquals (UnsubscribeTokenService.cs:55). Scopes via a NEW Scope: prefix on
+#   the single PermissionPolicyProvider (PermissionAuthorizationHandler.cs:68-112, mirrors Module: handler).
+#   NEW "api" module key in ModuleKeys.cs + seed row (gate consumer routes ONLY — self-lockout caveat
+#   ModuleSettingsEndpoints.cs:8-15). Admin CRUD+audit template = CustomRoleEndpoints.cs. Rate-limit
+#   baseline (E14-S4) global limiter free + strict-identity named policy. DEC-1..4. (2) e8-s2 (read API) —
+#   NO external/versioned surface today; NEW /api/v1/external group (EndpointMapper.cs:10-88). Paging
+#   reuses PagedResult<T> + PaginationHelper (page/pageSize/sort/filter). **CRITICAL: must NOT reuse
+#   EventDto (leaks ContactEmail/Phone/Organizer to anon, EventEndpoints.cs:754) or MemberDto (Email/Phone);
+#   follow the Blog two-DTO precedent BlogEndpoints.cs:241-247 → NEW External*Dto whitelists.** v1 = published
+#   Events + Blog only (low-risk); members/finance/docs EXCLUDED. Contract docs hand-written + Swagger dev-only.
+#   DEC-1..5. (3) e8-s3 (webhooks+signing) — **VERIFIED domain events collected but NEVER dispatched
+#   (Entity.cs:10-31 + ApplicationDbContext.cs:124 Ignore<DomainEvent>, no MediatR publish) → NO event bus →
+#   webhooks triggered by DIRECT post-commit write-path calls to a new IWebhookDispatchService (mirrors
+#   PaidRegistrationService.cs:117-130), same constraint E5-S2 hit.** v1 triggers: event.created =
+#   EventEndpoints.cs:435 (inline handler), payment.received = Invoice.MarkAsPaid via finance MediatR
+#   handlers (asymmetry: events inline, finance CQRS). HMAC signing X-Webhook-Signature: sha256=hex(HMAC)
+#   reuses UnsubscribeTokenService/Member idiom. Secret-storage TENSION (receiver needs raw secret) → DEC-2
+#   one-way-show-once vs encrypted-reversible. Admin UI clones communication/automations scaffold; de/en/hi
+#   all exist + parity test. Defines the seam S4 fills. DEC-1..4. (4) e8-s4 (delivery+retry+history) —
+#   clone the E5 AutomationExecution engine: one-off BackgroundJob.Enqueue (EmailCampaignJobService.cs:44)
+#   NOT recurring → **A44 RecurringJobIds_AreGloballyUnique stays HaveCount(7), UNTOUCHED**; job template
+#   AutomationDispatchJob.cs ([AutomaticRetry(5)], NO DisableConcurrentExecution for per-delivery); claim-
+#   before-send (A66/A67) reference AutomationExecutionService.cs:112-142 + unique date-free DedupKey;
+#   persistence chain clone (entity→config→repo→migration→Testcontainers); admin history UI = admin/audit/
+#   page.tsx; NET-NEW disable-on-failure policy (auto-pause, EmailCampaign guarded-transition style) + SSRF
+#   guard (no precedent, named HttpClient "webhooks" short timeout); payload redaction AC-5. DEC-1..4.
+#   **Cross-cutting:** (a) dev-story order S1→S2→S3→S4 HARD: S2 consumes S1's ApiKey-scheme/Scope:-policy/
+#   Module:api seam; S3 reuses S1 admin/hashing + defines IWebhookDispatchService; S4 fills S3's seam. Each
+#   story Task 0 verifies the prior seam SHIPPED (A62 — a sibling DEC is not a delivered contract). (b) Each
+#   carries a Decision-Needed block (DEC-1..N) w/ recommended options for A41/A32 dev-story resolution + A43
+#   (a)/(b)/(c). (c) Frontend stories (S1/S3/S4 admin UIs) carry A35/A46, A64 stable useTranslations, A58/A72
+#   changed-files gate (no prettier --write on pre-drifted), de/en/hi parity. (d) Backend carries A63 (register
+#   new DI services in endpoint-metadata harnesses), A66/A67 (claim-before-send + date-free key), A68/A71
+#   (v1 disable policy degrades to LESS not WRONG). (e) Security guardrails: never persist/log raw secret;
+#   FixedTimeEquals on verify; new scheme additive (NoResult when header absent, no JWT regression); whitelist
+#   DTOs; SSRF block. **Status transitions:** epic-8 backlog → in-progress; e8-s1..s4 backlog → ready-for-dev.
+#   Sprint state: E1-E3 + E9-E20 + E4 + E5 + E6 + E7 done (18 epics closed); E8 in-progress (4 ready-for-dev) —
+#   **ALL deferred-backlog epics now resumed; E8 is the final one.** NEXT per workflow +
+#   feedback_session_pacing_dev_cycles + A34: recommend committing this 4-story bulk-context refresh +
+#   sprint-status update and starting bmad-dev-story for e8-s1 in a fresh session (S1→S2→S3→S4 HARD-ordered).
+#   NOTE: the carried-forward E14/E16/E17/E18/E19 live-[!] Beta-walkthrough queue remains OUTSTANDING
+#   (Harry's green-Beta prerequisites) — independent of E8 feature dev.) ## Previously: 2026-06-07 (bmad-create-story BULK REFRESH for entire Epic-7 (Accessibility and
 #   Localization, REQ-056 + REQ-055): COMPLETE. **Fourth deferred-backlog epic resumed** (after E4
 #   Event Monetization, E5 Communication Automation, E6 Finance Planning all closed). Per user directive
 #   "das nächste epic komplett durchgehen und alle stories vorbereiten zum implementieren." (2026-06-07),
@@ -1271,9 +1333,9 @@ development_status:
   e7-s4-add-content-language-metadata-where-needed: done
   epic-7-retrospective: done
 
-  epic-8: backlog
-  e8-s1-add-api-credentials-and-scopes: backlog
-  e8-s2-add-read-api-endpoints: backlog
-  e8-s3-add-webhook-subscriptions-and-signing: backlog
-  e8-s4-add-webhook-delivery-retry-and-history: backlog
-  epic-8-retrospective: optional
+  epic-8: done
+  e8-s1-add-api-credentials-and-scopes: done
+  e8-s2-add-read-api-endpoints: done
+  e8-s3-add-webhook-subscriptions-and-signing: done
+  e8-s4-add-webhook-delivery-retry-and-history: done
+  epic-8-retrospective: done

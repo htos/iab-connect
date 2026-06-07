@@ -11,6 +11,7 @@ using IabConnect.Domain.Privacy;
 using IabConnect.Domain.Blog;
 using IabConnect.Domain.Sponsors;
 using IabConnect.Domain.Operations;
+using IabConnect.Domain.Integration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
@@ -62,6 +63,15 @@ public sealed class ApplicationDbContext : DbContext
 
     // REQ-087 (E10-S1): per-module enablement state
     public DbSet<ModuleSetting> ModuleSettings => Set<ModuleSetting>();
+
+    // REQ-058 (E8-S1): external API credentials
+    public DbSet<ApiClient> ApiClients => Set<ApiClient>();
+
+    // REQ-058 (E8-S3): webhook subscriptions
+    public DbSet<WebhookSubscription> WebhookSubscriptions => Set<WebhookSubscription>();
+
+    // REQ-058 (E8-S4): webhook delivery history
+    public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
 
     // Finance (REQ-038..045)
     public DbSet<Account> Accounts => Set<Account>();

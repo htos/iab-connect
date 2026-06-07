@@ -1,7 +1,9 @@
 using IabConnect.Application.Audit;
 using IabConnect.Application.Common;
+using IabConnect.Application.Integration;
 using IabConnect.Domain.Audit;
 using IabConnect.Domain.Finance;
+using IabConnect.Domain.Integration;
 using MediatR;
 
 namespace IabConnect.Application.Finance.Payments.Commands;
@@ -14,6 +16,7 @@ public sealed class MarkPaymentAsPaidCommandHandler : IRequestHandler<MarkPaymen
     private readonly IAuditService _auditService;
     private readonly IFiscalPeriodService _fiscalPeriodService;
     private readonly IAutoBookingService _autoBookingService;
+    private readonly IWebhookDispatchService _webhookDispatch;
 
     public MarkPaymentAsPaidCommandHandler(
         IPaymentRepository paymentRepository,
@@ -21,7 +24,8 @@ public sealed class MarkPaymentAsPaidCommandHandler : IRequestHandler<MarkPaymen
         IUnitOfWork unitOfWork,
         IAuditService auditService,
         IFiscalPeriodService fiscalPeriodService,
-        IAutoBookingService autoBookingService)
+        IAutoBookingService autoBookingService,
+        IWebhookDispatchService webhookDispatch)
     {
         _paymentRepository = paymentRepository;
         _financeProfileRepository = financeProfileRepository;
@@ -29,6 +33,7 @@ public sealed class MarkPaymentAsPaidCommandHandler : IRequestHandler<MarkPaymen
         _auditService = auditService;
         _fiscalPeriodService = fiscalPeriodService;
         _autoBookingService = autoBookingService;
+        _webhookDispatch = webhookDispatch;
     }
 
     public async Task<Unit> Handle(MarkPaymentAsPaidCommand request, CancellationToken ct)
@@ -69,6 +74,13 @@ public sealed class MarkPaymentAsPaidCommandHandler : IRequestHandler<MarkPaymen
             entityType: "Payment",
             entityId: payment.Id.ToString(),
             ct: ct);
+
+        // REQ-058 (E8-S3): emit payment.received AFTER the commit + audit. Best-effort + out-of-band
+        // (never rolls back the payment write); payload is integration-safe (ids + amount, no PII).
+        await _webhookDispatch.EmitAsync(
+            WebhookEventTypes.PaymentReceived,
+            new { paymentId = payment.Id, amount = payment.Amount, date = payment.Date, status = payment.Status.ToString() },
+            ct);
 
         return Unit.Value;
     }

@@ -15,6 +15,7 @@ public static class EndpointMapper
         app.MapRegistrationEndpoints(); // Public registration
         app.MapUnsubscribeEndpoints(); // REQ-029: Newsletter unsubscribe
         app.MapAboutEndpoints(); // REQ-089 AC-5 (E20-S3): AGPL §13 source-disclosure
+        app.MapExternalApiEndpoints(); // REQ-058 (E8-S2): external integration read API (ApiKey + scope + Module:api)
 
         // Module Endpoints - REQ-001: Identity first
         api.MapIdentityEndpoints();
@@ -34,6 +35,8 @@ public static class EndpointMapper
         app.MapSettingsEndpoints(); // REQ-059: System Settings
         app.MapModuleSettingsEndpoints(); // REQ-087 (E10-S2): Module enablement configuration
         app.MapCustomRoleEndpoints(); // REQ-003: Custom Roles
+        app.MapApiClientEndpoints(); // REQ-058 (E8-S1): External API credential management (admin)
+        app.MapWebhookEndpoints(); // REQ-058 (E8-S3): Webhook subscription management (admin)
         app.MapDocumentEndpoints(); // REQ-034..037: Documents
 
         // REQ-038-044: Finance module endpoints

@@ -43,11 +43,11 @@ public sealed class ModuleSettingsMigrationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Migration_Seeds_SevenEnabledModules()
+    public async Task Migration_Seeds_AllEnabledModules()
     {
         var all = await _repository.GetAllAsync(TestContext.Current.CancellationToken);
 
-        all.Should().HaveCount(7);
+        all.Should().HaveCount(8); // REQ-058 (E8-S1): AddApiClients seeds the 8th "api" module row
         all.Select(m => m.ModuleKey).Should().BeEquivalentTo(ModuleKeys.All);
         all.Should().OnlyContain(m => m.Enabled, "the seed is behaviour-preserving — every module starts enabled");
     }

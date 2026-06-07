@@ -204,7 +204,14 @@ public static class DependencyInjection
                         return Task.CompletedTask;
                     }
                 };
-            });
+            })
+            // REQ-058 (E8-S1, DEC-1=A): a SECOND named authentication scheme for the external API.
+            // Applied per-route-group via AuthenticationSchemes="ApiKey" (E8-S2/S3); the default
+            // scheme stays JWT bearer, so every existing first-party endpoint is unaffected. The
+            // handler returns NoResult when the X-Api-Key header is absent (no JWT regression).
+            .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions,
+                Authentication.ApiKeyAuthenticationHandler>(
+                Authentication.ApiKeyDefaults.SchemeName, _ => { });
 
         // Authorization policies based on roles. Role-name strings come from the Roles
         // single-source-of-truth (Epic-3-retro §9 / R3-Defer-5).
@@ -242,6 +249,11 @@ public static class DependencyInjection
         // REQ-004: Permission-based authorization handler
         services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
         services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+
+        // REQ-058 (E8-S1): scope-based authorization handler for the external API. Stateless
+        // (depends only on ILogger), so Singleton like the permission handler. PermissionPolicyProvider
+        // above also serves the "Scope:" prefix.
+        services.AddSingleton<IAuthorizationHandler, ScopeAuthorizationHandler>();
 
         // REQ-087 (E10-S3): module-enforcement handler. Registered Scoped — unlike the
         // Singleton permission handler — because it resolves the scoped IModuleSettingsService

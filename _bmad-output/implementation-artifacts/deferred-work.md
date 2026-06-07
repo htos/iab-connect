@@ -855,3 +855,10 @@ Batch for a future hygiene pass: (a) frontend `decimalPlaces` mis-detects expone
 ## Epic-7 (Accessibility & Localization) — deferred follow-ups
 
 - **E7-FT-1** — Net-new Blog admin UI with a content-language select. E7-S4 added `ContentLanguage` to `BlogPost` (domain/EF/migration/DTOs) and exposes it via the admin API + the public blog page, but there is no `(dashboard)/blog` admin frontend (blog is API-only), so the blog content language is currently only settable via the admin API. Building a blog admin UI is out of scope for "add language metadata" (DEC-1=A, A65 multi-surface honesty). When a blog admin UI is built, add a content-language `<select>` mirroring the event forms.
+
+## Epic-8 (External API & Webhooks, REQ-058) — deferred follow-ups
+
+- **E8-FT-1** (Low) — `WebhookDeliveryService` calls `subscription.RecordFailure` per *retry attempt*, so the auto-pause threshold (default 15) counts attempts rather than distinct failed events. Safe (a persistently-down receiver pauses sooner) but the threshold semantics could be documented/tuned, or counted per-delivery instead of per-attempt.
+- **E8-FT-2** (Low) — The SSRF guard fails-closed on a DNS-resolution exception and does NOT rethrow (no Hangfire retry), so a transient DNS outage permanently fails that delivery. Safe-by-default; a transient-vs-confirmed distinction (retry on resolution error, block only on a confirmed private result) would improve availability (see A75).
+- **E8-FT-3** (Low) — `payment.received` is wired only on `MarkPaymentAsPaidCommandHandler` (A68 degrade-to-less). Other paid transitions (`CreatePaymentCommandHandler`, bank-import match → `Invoice.MarkAsPaid`) are candidate future hooks once a real consumer needs them.
+- **E8-FT-4** (Low) — The external read API exposes only FUTURE published events (`GetPublicEventsAsync` bounds `EndDate >= now`), matching the public calendar. A `from`/`to` query parameter could surface past events for integrations that need history.

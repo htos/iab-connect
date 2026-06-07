@@ -111,3 +111,4 @@ docker-compose.override.yml
 # ───────────────────────────────────────────────
 *.lscache
 .claude/worktrees/
+docs/frontend-brownfield-refactoring-prompt.md
