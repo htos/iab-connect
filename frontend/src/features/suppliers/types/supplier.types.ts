@@ -1,7 +1,7 @@
 // Supplier-specific types for the suppliers feature slice (E21-S3 pilot).
 // Shared cross-domain types (ContractLink*, Sponsor*) deliberately stay in
 // `@/types/sponsors` to avoid a Sponsors ripple (Gate-1 §7 + risk row).
-import type { ContractLinkDto } from "@/types/sponsors";
+import type { ContractLinkDto, ContractLinkType } from "@/types/sponsors";
 
 export type SupplierStatus = "Prospect" | "Active" | "Paused" | "Ended";
 
@@ -61,4 +61,11 @@ export interface UpdateSupplierRequest {
   country?: string;
   category?: string;
   notes?: string;
+}
+
+// Inline contract-link CRUD payload on the supplier detail page (E22-S4).
+export interface AddLinkRequest {
+  linkType: ContractLinkType;
+  targetId: string;
+  description: string | null;
 }

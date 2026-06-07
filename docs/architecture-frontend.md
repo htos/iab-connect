@@ -376,13 +376,64 @@ components}`; (3) move feature-specific types, leave shared types in `src/types`
 
 **Open tech debt (deferred, not pilot scope):** inline admin redirect not yet on
 `useRequireAuth` (Gate-1 Q8 — different redirect targets need their own check);
-full relocation of the remaining Supplier types waits until the detail/new/edit
-pages migrate; richer semantic status tokens (success/warning/info) for the Badge
-are a future theming add-on; boundary enforcement is E21-S5.
+~~full relocation of the remaining Supplier types waits until the detail/new/edit
+pages migrate~~ — **DONE in E22-S4**: the Suppliers detail/new/edit pages were
+migrated into the slice (the first real consumer of the E22-S3 form sub-recipe),
+so the Suppliers feature is now fully migrated; richer semantic status tokens
+(success/warning/info) for the Badge are a future theming add-on; boundary
+enforcement is E21-S5.
 
 **Tests:** `tsc` clean; `eslint` clean on changed files; full Vitest 246/246
 (10 characterization + 5 status-badge new), i18n parity green; `next build`
 succeeds. Not run: Playwright E2E (needs live services).
+
+---
+
+## Form Sub-Recipe (E22-S3)
+
+Added: 2026-06-07. The Sponsors new/edit pages are the first migrated **form**
+pages and define the form mechanism every later domain epic (E23+) inherits.
+Written once here; later epics point back rather than restate (A38).
+
+**Mechanism (DEC-1 = React Hook Form + Zod):**
+
+- A feature-local Zod schema (`features/<f>/schemas/<f>.schema.ts`) is the single
+  source of field shape + validation. Required fields mirror the page's prior
+  HTML5 `required`; optional fields stay plain strings unless a real format rule
+  is intended (don't silently add `.email()`/`.url()` — that changes behaviour,
+  A79). The required message is a next-intl key, rendered via
+  `t(errors.<field>.message)`.
+- One shared `<FeatureForm>` component (`"use client"`) wired with
+  `useForm({ resolver: zodResolver(schema), defaultValues })` + `{...register}`,
+  rendered as `<form noValidate onSubmit={handleSubmit(onSubmit)}>`. It is reused
+  by BOTH the new and the edit composition roots — props: `defaultValues`,
+  `onSubmit`, `submitLabel` (i18n key), `pending`, `errorMessage`.
+- **New vs Edit prefill:** the new root passes empty defaults; the edit root
+  loads via the get-by-id query (`use-<f>`) and renders the form ONLY after the
+  data settles, so the loaded values become the form `defaultValues` (the old
+  GET→setFormData prefill, with no `reset()` plumbing).
+
+**Mutations + cache (DEC-2 = full TanStack on detail):**
+
+- create/update are `useMutation`s that throw on API error (so the shared form's
+  `errorMessage` banner shows `mutation.error.message`) and invalidate the list
+  (and detail, for update) on success; the redirect to the list stays in the
+  composition root's `onSuccess`.
+- The detail page's status change + inline package/link CRUD are `useMutation`s
+  that write the endpoint's returned DTO straight into the detail query cache via
+  `setQueryData(<f>Keys.detail(id), data)` — preserving the god-page's "the
+  mutation response updates the view, no extra GET" semantics (A79). A 404 on the
+  detail query throws a typed sentinel so the dedicated not-found message renders.
+
+**Behaviour-preservation contract:** the only deliberate change is HTML5
+`required` → Zod `required`; same fields, same redirect, same API-error banner.
+The pre-refactor characterization suite (the E22-S1 net for Sponsors) stays green
+throughout — the only test-harness change permitted is wrapping renders in a
+`QueryClientProvider` (retry:false) once a page becomes a TanStack consumer.
+
+**Tests:** `tsc`/`eslint`(changed)/`prettier --check`(new)/full Vitest/i18n
+parity green; `next build` succeeds. A focused `<FeatureForm>` test pins the new
+Zod required-validation (blocks submit) the manual form did not enforce.
 
 ---
 
