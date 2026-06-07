@@ -50,7 +50,10 @@ export function SuppliersPageContent() {
   } = useSuppliers(statusFilter, isAuthenticated && isAdmin);
   const deleteMutation = useDeleteSupplier();
 
-  const errorMessage = error?.message ?? deleteMutation.error?.message ?? null;
+  // Delete error takes precedence over a stale list-query error (matches the old
+  // god-page, where a failed delete's setError overwrote the banner). The mutation
+  // error is cleared on the next filter/search interaction below.
+  const errorMessage = deleteMutation.error?.message ?? error?.message ?? null;
 
   const handleConfirmDelete = () => {
     if (!deleteTarget) return;
@@ -101,9 +104,15 @@ export function SuppliersPageContent() {
 
         <SuppliersFilterBar
           searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
+          onSearchChange={(value) => {
+            if (deleteMutation.error) deleteMutation.reset();
+            setSearchTerm(value);
+          }}
           statusFilter={statusFilter}
-          onStatusChange={setStatusFilter}
+          onStatusChange={(value) => {
+            if (deleteMutation.error) deleteMutation.reset();
+            setStatusFilter(value);
+          }}
         />
 
         {errorMessage && (

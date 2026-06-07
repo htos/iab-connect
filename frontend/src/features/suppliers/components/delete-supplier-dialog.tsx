@@ -9,6 +9,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { buttonVariants } from "@/components/ui/button";
 
 interface DeleteSupplierDialogProps {
   // The supplier pending deletion; null closes the dialog (controlled).
@@ -52,6 +53,7 @@ export function DeleteSupplierDialog({
             {t("common.cancel")}
           </AlertDialogCancel>
           <AlertDialogAction
+            className={buttonVariants({ variant: "destructive" })}
             disabled={pending}
             onClick={(e) => {
               // keep the dialog open during the in-flight delete; the parent

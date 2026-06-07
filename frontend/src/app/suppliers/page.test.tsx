@@ -269,4 +269,37 @@ describe("SuppliersPage — characterization (current behaviour)", () => {
       expect(apiGet.mock.calls.length).toBeGreaterThan(getCallsBeforeDelete)
     );
   });
+
+  it("surfaces a failed delete in the error banner and clears it on the next filter change (P3 regression)", async () => {
+    apiGet.mockResolvedValue({
+      data: [SUPPLIERS[0]],
+      error: null,
+      status: 200,
+    });
+    apiDelete.mockResolvedValue({
+      data: null,
+      error: "Delete failed",
+      status: 500,
+    });
+
+    renderPage();
+    await screen.findByText("Alpha GmbH");
+
+    fireEvent.click(screen.getByRole("button", { name: "common.delete" }));
+    const deleteButtons = await screen.findAllByRole("button", {
+      name: "common.delete",
+    });
+    fireEvent.click(deleteButtons[deleteButtons.length - 1]);
+
+    // delete error is visible (not swallowed)
+    expect(await screen.findByText("Delete failed")).toBeInTheDocument();
+
+    // changing the status filter clears the stale delete error
+    fireEvent.change(screen.getByRole("combobox"), {
+      target: { value: "Active" },
+    });
+    await waitFor(() =>
+      expect(screen.queryByText("Delete failed")).not.toBeInTheDocument()
+    );
+  });
 });

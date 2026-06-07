@@ -27,7 +27,7 @@
   --card-foreground: 222.2 84% 4.9%;
   --popover: 0 0% 100%;
   --popover-foreground: 222.2 84% 4.9%;
-  --primary: 24.6 95% 53.1%; /* orange-600 — brand primary */
+  --primary: 20.5 90.2% 48.2%; /* orange-600 (#ea580c) — brand primary */
   --primary-foreground: 0 0% 100%;
   --secondary: 210 40% 96.1%;
   --secondary-foreground: 222.2 47.4% 11.2%;
@@ -39,7 +39,7 @@
   --destructive-foreground: 0 0% 98%;
   --border: 214.3 31.8% 91.4%;
   --input: 214.3 31.8% 91.4%;
-  --ring: 24.6 95% 53.1%; /* orange-600 — brand focus ring */
+  --ring: 20.5 90.2% 48.2%; /* orange-600 (#ea580c) — brand focus ring */
 }
 
 @theme inline {

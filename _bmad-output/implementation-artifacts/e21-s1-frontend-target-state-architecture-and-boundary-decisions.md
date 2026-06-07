@@ -116,3 +116,11 @@ Decisions-only Gate-2 story; the deliverable is documentation + one foundation s
 
 - 2026-06-07: Story created from the Frontend Brownfield Refactoring prompt (Gate 2) and the Gate-1 analysis; marked ready.
 - 2026-06-07: Implemented Gate-2 decisions. Extended `docs/architecture-frontend.md` with the Target-State (Feature-Slice) Architecture section + 21 adapted rules + DEC-1 (HTTP-client = hook contract, option A) + DEC-2 (theming = introduce token layer + Badge variants, option A) + server-state, auth-model, and route-group recommendation. Corrected the false "tokens already exist" premise and introduced the missing shadcn semantic token layer in `frontend/src/app/globals.css`. Quality gate: tsc clean, vitest 231/231, next build exit 0, token utilities now compile. Status → review.
+
+## Senior Developer Review (AI) — Epic E21 Boundary (2026-06-07)
+
+3-layer adversarial review (Blind Hunter / Edge Case Hunter / Acceptance Auditor) over the full E21 diff. Outcome: **Changes Requested** — 1 patch owned here.
+
+### Review Follow-ups (AI)
+
+- [x] [Review][Patch][Med] P1 — RESOLVED 2026-06-07: `--primary`/`--ring` set to `20.5 90.2% 48.2%` (= #ea580c, orange-600); verified present in compiled CSS. Brand token value was orange-500, not orange-600. `frontend/src/app/globals.css` `--primary`/`--ring` = `24.6 95% 53.1%` (= #f97316, Tailwind orange-500), but the inline comment, DEC-2, and `docs/13_frontend_design_standards.md` all require orange-600 (#ea580c). High-leverage — this is the foundation token the whole E22–E31 program inherits. Fix: set `--primary` and `--ring` to `20.5 90.2% 48.2%` (= #ea580c). [frontend/src/app/globals.css]

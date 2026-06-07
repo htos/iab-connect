@@ -99,3 +99,11 @@ Gate: boundary zones lint-clean; 3 intentional-violation probes failed as expect
 
 - 2026-06-07: Story created (import-boundary enforcement); status drafted pending pilot.
 - 2026-06-07: Added static feature-slice import-boundary enforcement to `frontend/eslint.config.mjs` (ESLint `no-restricted-imports`, 3 zone-scoped rules: ui↛features/app, lib↛app/features, feature↛feature). Codebase already clean (no refactor); intentional bad imports fail in all 3 zones; pre-existing unrelated lint errors untouched (A58). Documented + distinguished from the E2E module-enforcement test in `docs/architecture-frontend.md`. Full suite 246/246. Status → review.
+
+## Senior Developer Review (AI) — Epic E21 Boundary (2026-06-07)
+
+3-layer adversarial review over the full E21 diff. Outcome: **Approved with deferral** — 1 defer owned here.
+
+### Review Follow-ups (AI)
+
+- [x] [Review][Defer] D2 — ESLint boundary rules match only the `@/` alias; relative cross-zone imports (`../../features/...`) are not caught. Documented as intentional scope in `docs/architecture-frontend.md`; add relative-path patterns in a later hardening pass. [frontend/eslint.config.mjs]
