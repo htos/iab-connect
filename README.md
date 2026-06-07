@@ -5,7 +5,7 @@
 <h1 align="center">IAB Connect</h1>
 
 <p align="center">
-  <strong>A Modern Member Management & Communication Platform for the Indian Association Berne</strong>
+  <strong>A Modern Member Management & Communication Platform for the Associations and small Starups </strong>
 </p>
 
 <p align="center">
