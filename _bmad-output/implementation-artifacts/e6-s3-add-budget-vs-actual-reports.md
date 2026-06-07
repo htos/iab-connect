@@ -2,157 +2,117 @@
 
 Status: ready-for-dev
 
+<!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
+
 ## Story
 
-As a Vorstand or Kassier,
-I want budget vs actual reports by cost center,
-so that I can track project/event financial performance.
+As a Kassier (or Admin/Auditor with finance read),
+I want a budget-vs-actual (Soll/Ist) report by cost center and fiscal period,
+so that I can track project/event financial performance against plan.
+
+> **Built on the resolved epic model (DEC-1).** Cost center = `ActivityArea`; the budget (Soll) comes from the `Budget` entity built in [E6-S1](e6-s1-add-cost-center-and-budget-model.md); the actual (Ist) is summed from finance records' amounts grouped by `ActivityAreaId` within the fiscal period's date range. This is a read-only reporting story — no edits to budgets or assignments.
 
 ## Acceptance Criteria
 
-1. Given Vorstand or Kassier has the required permission and prerequisite data exists, when budget vs actual reports by cost center, then report shows budget, actual, variance, fiscal period, and cost center.
-2. Given a caller lacks the required permission or role, when the protected behavior is requested, then report respects finance read permissions.
-3. Given valid inputs and existing system constraints, when this story behavior is exercised, then report is filterable by period and cost center.
-4. Given valid inputs and existing system constraints, when this story behavior is exercised, then export is available where existing finance export patterns support it.
-5. Given the page is loaded in desktop and mobile layouts, when the relevant state is displayed, then UI uses existing finance reporting layout and translations.
+1. **(Report content)** For a chosen fiscal period (and optionally a single cost center), the report shows, per cost center (ActivityArea): the **budget (Soll)**, the **actual (Ist)**, the **variance** (budget − actual), the **variance %**, plus the fiscal period and cost-center identity. Cost centers with a budget but zero actuals (and vice-versa) still appear.
+2. **(Authorization)** The report endpoint and page use `RequireFinanceRead` (Admin/Kassier/Auditor), gated by `Module:finance`. _(Vorstand excluded per the epic authz decision — see DEC-3.)_
+3. **(Filterable)** The report is filterable by fiscal period (required) and by cost center (optional — all cost centers when unset). Filtering by fiscal **year** (rolling up its periods) is supported if DEC-2 keys budgets by year.
+4. **(Export)** The report is exportable via the existing finance export pattern (CSV through the `ExportFileResult` + `Results.File` mechanism), audited as `FinanceExported`.
+5. **(UI)** The page reuses the existing finance reporting layout and translations — mirror [accounting-reports/page.tsx](../../frontend/src/app/finance/accounting-reports/page.tsx) (filter bar + generate + export + styled table), uses `formatCurrency` for money, orange-600 actions, next-intl keys, and the standard authenticated layout. Loading / empty / error / permission-denied states are handled.
 
 ## Tasks / Subtasks
 
-- [ ] Confirm scope, existing code, and acceptance evidence (AC: all)
-  - [ ] Inspect every expected file listed in Dev Notes before implementation and preserve existing behavior.
-  - [ ] Record any product/provider decision that blocks implementation before changing code.
-- [ ] Implement backend/application/infrastructure slice (AC: 1, 2, 3, 4, 5)
-  - [ ] Add or update Domain/Application commands, queries, DTOs, validators, and services using existing module patterns.
-  - [ ] Add EF configuration and migration only when durable persistence changes are required.
-  - [ ] Add Minimal API endpoints with explicit authorization policies and audit/security logging where sensitive.
-- [ ] Implement frontend/user-facing slice (AC: relevant UI criteria)
-  - [ ] Use shared components, standard page layout, orange primary actions, lucide icons where applicable, and typed API wrappers.
-  - [ ] Add next-intl keys to frontend/messages/de.json and frontend/messages/en.json for all user-visible text.
-  - [ ] Cover loading, empty, error, permission-denied, validation, success, and responsive states where the UI is touched.
-- [ ] Add tests and manual validation evidence (AC: all)
-  - [ ] Add focused backend unit/integration/API tests for business rules, authorization, persistence, and sensitive edge cases.
-  - [ ] Add frontend tests for forms/rendering/permission states where UI is touched.
-  - [ ] Document manual validation for browser, Keycloak, provider, event-day, MailHog, finance, accessibility, or webhook behavior as applicable.
-- [ ] Update operational docs or requirement evidence when behavior changes (AC: all)
+- [ ] **Task 0 — Spike & decisions (AC: 1, 3, 4)**
+  - [ ] Confirm S1 shipped the `Budget` entity + `IBudgetRepository` + `GetByFiscalPeriodAsync` (project-context A62 — verify the sibling story actually delivered the surface this report consumes; if S1 named it differently, adapt).
+  - [ ] Resolve DEC-1 (actuals source), DEC-2 (period vs year rollup — must match S1's `Budget` keying), DEC-3 (authz, already resolved), DEC-4 (export format). Record (a)/(b)/(c) Debug Log per A41/A43 if autonomous, else AskUserQuestion.
+  - [ ] Read [accounting-reports/page.tsx](../../frontend/src/app/finance/accounting-reports/page.tsx) (the layout template) and [Application/Finance/Exports/Queries/ExportJournalQueryHandler](../../backend/src/IabConnect.Application/Finance/Exports/Queries/) (the export template).
+- [ ] **Task 1 — Application: Soll/Ist read-model query (AC: 1, 3)**
+  - [ ] Add `backend/src/IabConnect.Application/Finance/Budgets/Queries/GetBudgetVsActualQuery.cs`: `record GetBudgetVsActualQuery(Guid FiscalPeriodId, Guid? ActivityAreaId) : IRequest<BudgetVsActualReportDto>` (add `int? Year` if DEC-2 = year rollup).
+  - [ ] `BudgetVsActualReportDto` = period identity + `IReadOnlyList<BudgetVsActualRow>`; `BudgetVsActualRow(Guid ActivityAreaId, string ActivityAreaCode, string ActivityAreaName, decimal Budget, decimal Actual, decimal Variance, decimal VariancePercent, string Currency)`.
+  - [ ] Handler: load the `FiscalPeriod` (for `StartDate`/`EndDate` bounds + name); load `Budget` rows for the period (`IBudgetRepository.GetByFiscalPeriodAsync`); compute **actuals as a server-side SQL `GroupBy` projection** over the chosen actuals source filtered by `ActivityAreaId != null` + `Date` within `[StartDate, EndDate]` (and soft-delete filter applies automatically). **Do not load full entity graphs** (architecture: "use query/read model … avoid loading unnecessary object graphs"). Full-outer-merge budgets and actuals by `ActivityAreaId` so areas with only one side still appear. `VariancePercent` guards divide-by-zero (budget 0 → 0% or null per DEC).
+  - [ ] No audit needed for the read query itself (reads aren't audited elsewhere); the **export** is audited (Task 3).
+- [ ] **Task 2 — API: report endpoint (AC: 2, 3)**
+  - [ ] Add `GET /api/v1/finance/budgets/budget-vs-actual` (query params `fiscalPeriodId`, optional `activityAreaId`/`year`) to `BudgetEndpoints` (from S1) or a `FinanceReportEndpoints` group — `.RequireAuthorization("Module:finance")` + `RequireFinanceRead`, thin `sender.Send(...)`, `WithName/Summary/Description` (REQ-044). Register in [EndpointMapper.cs](../../backend/src/IabConnect.Api/Endpoints/EndpointMapper.cs) if a new group.
+- [ ] **Task 3 — API/Application: export (AC: 4)**
+  - [ ] Add `ExportBudgetVsActualQuery : IRequest<ExportFileResult>` + handler building CSV via `StringBuilder` + `EscapeCsv` (header: `CostCenterCode;CostCenterName;FiscalPeriod;Budget;Actual;Variance;VariancePercent;Currency`), `Encoding.UTF8.GetBytes`, return `new ExportFileResult(bytes, "text/csv", "budget-vs-actual_<period>.csv")`. Audit `FinanceExported`. Mirror [ExportJournalQueryHandler](../../backend/src/IabConnect.Application/Finance/Exports/Queries/).
+  - [ ] Expose `GET /api/v1/finance/exports/budget-vs-actual` in [FinanceExportEndpoints.cs](../../backend/src/IabConnect.Api/Endpoints/FinanceExportEndpoints.cs) → `RequireFinanceRead` + `Module:finance`, `Results.File(result.Content, result.ContentType, result.FileName)`.
+- [ ] **Task 4 — Frontend: report page (AC: 1, 3, 4, 5)**
+  - [ ] Add `frontend/src/app/finance/budget-vs-actual/page.tsx` (or `/finance/accounting-reports/budget-vs-actual`). **Mirror** [accounting-reports/page.tsx](../../frontend/src/app/finance/accounting-reports/page.tsx): `useAuth().canReadFinance` gate (redirect/return null otherwise); filter bar (fiscal period `<Select>` required + cost center `<Select>` optional); "Generate" + "Export CSV" buttons (orange-600); styled results table (`bg-white rounded-xl shadow-sm` + `min-w-full divide-y divide-gray-200`) with Budget/Actual/Variance/Variance% columns via `formatCurrency`; loading/empty/error states.
+  - [ ] Variance visual cue (e.g. red text for over-budget / unfavorable variance) using existing color tokens — no new blue.
+  - [ ] Typed API wrapper in `frontend/src/lib/api/budgets.ts` (extend S1's) for the report + export endpoints.
+  - [ ] next-intl keys under `finance` (e.g. `finance.budgetVsActual.*`: title, soll, ist, variance, variancePercent, period, costCenter, allCostCenters, exportCsv, noData) in de.json + en.json with parity (A51). Use the German finance terms (Soll/Ist) consistent with the existing `finance.accounting` namespace.
+- [ ] **Task 5 — Tests (AC: all)**
+  - [ ] Application/query tests (the load-bearing calculation proof): budget-only area (actual 0, variance = budget, 100% under), actual-only area (budget 0, variance negative, divide-by-zero guarded), both present (variance + % correct), area outside the period excluded, soft-deleted records excluded, records with `ActivityAreaId = null` excluded. Prefer Testcontainers PostgreSQL for the GroupBy-in-SQL behavior; pure unit tests acceptable for the merge/variance math.
+  - [ ] API authorization test: `RequireFinanceRead` + `Module:finance` on report + export routes; **register new DI services in finance endpoint-metadata harnesses** (A63).
+  - [ ] Export test: CSV header + a representative row + audit call.
+  - [ ] Frontend Vitest/Testing Library: permission gate + filter + table render + export trigger. Stable `useTranslations` mock (A64); `afterEach(cleanup)` + jsdom (A35/A46). Scoped eslint/prettier + full `vitest run` (A58).
+- [ ] **Task 6 — Quality gates & closing checklist (AC: all)**
+  - [ ] `dotnet test` from `backend` green; `npm run typecheck` + scoped lint/format + `vitest run` green.
+  - [ ] AC-Subitem Completion Check (A29) with per-AC evidence in Completion Notes.
 
 ## Dev Notes
 
 ### Sprint Plan Context
 
-- Multi-epic sprint-plan order: 25.
-- Requirement(s): REQ-044.
-- Epic goal: Add budgets and cost centers without weakening existing finance compliance behavior.
-- This story is prepared from `_bmad-output/implementation-artifacts/sprint-plan.md`; do not start coding from the epic summary alone.
+- Epic E6 "Finance Planning" (REQ-044), final story. Depends HARD on S1's `Budget` entity (Soll) and S2's verified `ActivityAreaId` association (Ist). Read-only — no budget/assignment edits here (out of scope per epic).
+- Post-MVP comprehensive: build the full report + export + UI vertical slice.
 
-### Scope Boundaries
+### Soll/Ist computation (load-bearing)
 
-In scope:
+- **Soll (budget)**: `Budget` rows for the period (and cost center). Currency from the budget row (DEC-4 of S1).
+- **Ist (actual)**: sum of finance-record amounts grouped by `ActivityAreaId`, filtered to the period's `[StartDate, EndDate]` and the chosen cost center. **Actuals source** is mode-dependent (DEC-1).
+- **Merge**: full-outer by `ActivityAreaId` so a cost center appearing in only budgets or only actuals still produces a row (AC-1).
+- **Variance** = `Budget − Actual`; **Variance%** = `Budget == 0 ? (Actual == 0 ? 0 : null/∞-guard) : Variance / Budget * 100`. Pick one divide-by-zero convention and test it.
+- **Performance**: do the sum with an EF `GroupBy(...).Select(g => new { g.Key, Sum })` that translates to SQL — never `ToList()` then sum in memory (architecture guardrail; contrast the existing in-memory export handlers, which this story deliberately improves on for the aggregate).
 
-- Use query/read model suited to PostgreSQL.
-- Avoid loading unnecessary object graphs.
+### Decision-Needed (resolve at Task 0)
 
-Out of scope:
-
-- Editing budgets or assignments
-- Loading full finance object graphs for report calculations
-
-### Existing Code To Inspect Before Editing
-
-- budget vs actual query/read model
-- finance report endpoint/export
-- existing accounting reports extension
-
-Additional module context:
-
-- backend/src/IabConnect.Domain/Finance
-- backend/src/IabConnect.Application/Finance
-- backend/src/IabConnect.Infrastructure/Persistence/Repositories/FinanceRepositories.cs
-- backend/src/IabConnect.Api/Endpoints/FinanceExportEndpoints.cs
-- backend/src/IabConnect.Api/Endpoints/InvoiceEndpoints.cs
-- backend/src/IabConnect.Api/Endpoints/PaymentEndpoints.cs
-- frontend/src/app/finance
+- **DEC-1 — Actuals source.** Options: (a) **`Transaction.Amount`** _(recommended — SimpleCash is the default accounting mode; the journal/VAT exports are Transaction-based; simplest correct v1, no double-count)_; (b) `JournalEntryLine` (correct for DoubleEntry mode but only populated when that mode is active); (c) mode-aware: pick Transaction in SimpleCash, JournalEntryLine in DoubleEntry (most complete, more code). **Recommended: (a) for v1, with a documented note that DoubleEntry installations would use (b)/(c).** Per project-context A68, the QGT row must state the **concrete v1 behavior** ("actuals = Transactions tagged with the cost center in the period"), not the aspirational "all finance records". Do **not** also sum `InvoiceItem` on top of `Transaction` — that double-counts if invoices are also booked as transactions; pick one source.
+- **DEC-2 — Period vs year rollup.** Must match S1's `Budget` keying (S1-DEC-3). If budgets key by `FiscalPeriodId` → filter by period (recommended, matches AC-1 "fiscal period"); if by `Year` → roll up the year's periods. Keep consistent across S1 and S3.
+- **DEC-3 — Authorization.** **RESOLVED 2026-06-07: `RequireFinanceRead` (Admin/Kassier/Auditor) + `Module:finance`.** Vorstand excluded (epic-wide decision; Vorstand has no finance access today).
+- **DEC-4 — Export format.** Options: (a) **CSV** via the existing `ExportFileResult` pattern _(recommended — matches all current finance exports; lowest risk)_; (b) PDF via QuestPDF (heavier; the accounting-reports page offers PDF, but the finance **exports** are CSV). Recommend (a); PDF is a future enhancement.
 
 ### Architecture Guardrails
 
-- Keep the modular monolith and Clean Architecture boundaries: Domain for business rules, Application for commands/queries/validators, Infrastructure for EF/Keycloak/provider implementations, API for Minimal API endpoints.
-- Backend authorization policies are mandatory for protected operations. Frontend role checks are UX only and never the security boundary.
-- Use MediatR commands/queries and FluentValidation for workflow behavior. Keep endpoints thin and pass CancellationToken through async calls.
-- EF Core schema changes require migrations under backend/src/IabConnect.Infrastructure/Migrations; do not make manual database changes.
-- Frontend UI must use Next.js App Router patterns, shared UI components, next-intl keys, orange primary actions, and the standard authenticated page layout.
-- Sensitive changes must preserve audit, privacy, retention, and finance compliance rules where applicable.
+- Read-model query, server-side aggregation, no full-graph loading. Respect `Module:finance` + finance read authz. Reuse `ExportFileResult` + `EscapeCsv` for export; audit `FinanceExported`.
+- Frontend: reuse the accounting-reports layout + table standard ([docs/13_frontend_design_standards.md](../../docs/13_frontend_design_standards.md):138-142), `formatCurrency`, orange-600, next-intl, standard page wrapper. de+en only.
+- No mutation of finance state (report is read-only); no weakening of finance compliance.
 
-Story-specific risks:
+### Existing Code To Inspect Before Editing
 
-- Locked fiscal periods, posted entries, cancellation/reversal, archive, and soft-delete behavior must remain intact.
-- Budget/cost center models must not force existing records to have a cost center.
-- Finance reports should use query/read models and avoid loading unnecessary object graphs.
-
-### Implementation Guidance
-
-- Prefer extending existing module patterns over creating new parallel services, routes, or UI primitives.
-- Keep request/response DTOs explicit at API/Application boundaries; never expose EF entities directly to frontend or external API responses.
-- Preserve current behavior for existing member, event, finance, communication, identity, and public routes unless an acceptance criterion explicitly changes it.
-- Add audit/security logs for create/update/delete, revocation, merge, finance, provider, webhook, and access-denied behavior where this story touches sensitive operations.
-- Keep provider-dependent behavior disabled, documented, or behind configuration until credentials, scopes, signing policy, and whitelist decisions are available.
+- [e6-s1-add-cost-center-and-budget-model.md](e6-s1-add-cost-center-and-budget-model.md) + the shipped `Budget` entity/repo/`GetByFiscalPeriodAsync`
+- [Domain/Finance/FiscalPeriod.cs](../../backend/src/IabConnect.Domain/Finance/FiscalPeriod.cs) (`StartDate`/`EndDate`/`Name`)
+- [Application/Finance/Exports/Queries/](../../backend/src/IabConnect.Application/Finance/Exports/Queries/) (`ExportFileResult`, `EscapeCsv`, audit-on-export)
+- [Api/Endpoints/FinanceExportEndpoints.cs](../../backend/src/IabConnect.Api/Endpoints/FinanceExportEndpoints.cs)
+- Frontend layout template: [frontend/src/app/finance/accounting-reports/page.tsx](../../frontend/src/app/finance/accounting-reports/page.tsx); money: [frontend/src/lib/utils.ts](../../frontend/src/lib/utils.ts):42-56; i18n: `frontend/messages/{de,en}.json` (`finance.accounting` namespace as the style reference)
 
 ### Testing Requirements
 
-Required planned evidence from source story:
-
-- Application/query tests for calculations.
-- Frontend/manual validation of filters and export.
-
-Concrete test guidance:
-
-- Backend: xUnit v3, FluentAssertions, Moq only for external boundaries; Testcontainers PostgreSQL for repository/persistence behavior.
-- API: authorization, routing, serialization, response contracts, rate/scope behavior where applicable.
-- Frontend: Vitest/Testing Library for shared controls/forms/rendering/permission states; Playwright or manual browser validation for critical flows.
-- Manual: capture browser, Keycloak, provider, event-day, MailHog, finance, accessibility, or webhook validation notes where automated coverage cannot prove behavior.
-
-Minimum verification before marking implementation complete:
-
-- Backend: run focused tests for changed handlers/services/repositories/endpoints, then `dotnet test` from `backend` when local infrastructure permits.
-- Frontend: run `npm run typecheck`, `npm run lint`, and relevant Vitest/Playwright tests from `frontend` when UI changes are made.
+- Backend: query/calculation tests are the priority (variance math + outer-merge + period bounds + null/soft-delete exclusion). Testcontainers PostgreSQL for the SQL GroupBy; FluentAssertions. API auth tests + export test. Register new DI services in harnesses (A63).
+- Frontend: Vitest/Testing Library; stable `useTranslations` (A64); `afterEach(cleanup)` + jsdom (A35/A46); scoped eslint/prettier (A58).
 
 ### Previous Story Intelligence
 
-- Build on `e6-s2-associate-finance-records-with-cost-centers.md` if present. Reuse its module paths, endpoint conventions, test style, and review findings.
-
-- Recent git context before this planning pass: `feat(REQ-017): Segmentierung & Verteiler - vollständige Implementierung`; reuse established member segment, audit, and communication patterns where relevant.
-- `e1-s1-configure-role-based-mfa-policy.md` is already `in-progress` with a review finding requiring live Keycloak MFA validation; do not close or overwrite it from this story.
+- Consumes S1 (`Budget`) and S2 (`ActivityAreaId` actuals). A62: verify S1/S2 actually shipped the consumed surfaces at Task 0 — don't assume from the DEC. A68: state the concrete v1 actuals behavior in the QGT, not the aspirational wording. The existing export handlers load-then-project in memory; this story deliberately uses server-side aggregation for the actuals sum (a small, justified divergence — note it).
 
 ### Latest Technical Context
 
-- Keycloak current server administration guide documents OTP, WebAuthn/passkeys, and recovery codes as 2FA options; use infra/docker-compose.yml as the implementation version source of truth. https://www.keycloak.org/docs/latest/server_admin/index.html
-- ASP.NET Core 10 policy authorization remains the official pattern for requirement/handler based access control. https://learn.microsoft.com/en-us/aspnet/core/security/authorization/policies?view=aspnetcore-10.0
-- Next.js 16 App Router docs are the framework reference for routes, server/client components, and route handlers. https://nextjs.org/docs/app
-- EF Core migrations should be generated from model changes and tracked in source control. https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/
-- Hangfire background jobs persist work and need idempotent handlers because retries/at-least-once execution are expected. https://docs.hangfire.io/
-- WCAG 2.2 is the baseline accessibility reference for labels, focus, contrast, keyboard operation, and error identification. https://www.w3.org/TR/wcag/
+- EF Core 10 LINQ `GroupBy` server-side translation (Npgsql) for the actuals sum. No schema change expected (consumes S1's table + existing `ActivityAreaId` columns) → likely **no new migration**.
+- Next.js 16 App Router / React 19 / next-intl; de+en only. `Intl.NumberFormat("de-CH", ...)` via `formatCurrency`.
 
 ### Project Structure Notes
 
-- Backend source: `backend/src/IabConnect.Domain`, `backend/src/IabConnect.Application`, `backend/src/IabConnect.Infrastructure`, `backend/src/IabConnect.Api`.
-- Backend tests: `backend/tests/IabConnect.Application.Tests`, `backend/tests/IabConnect.Infrastructure.Tests`, `backend/tests/IabConnect.Api.Tests`.
-- Frontend source: `frontend/src/app`, `frontend/src/components`, `frontend/src/lib/api` or `frontend/src/lib/services`, `frontend/messages`.
-- Infrastructure/config: `infra/docker-compose.yml`, `infra/keycloak/realms/iabconnect-realm.json` where identity behavior changes.
-- Documentation/evidence: `docs/` for durable project documentation; `_bmad-output/implementation-artifacts` for story execution records.
+- Backend: `Application/Finance/Budgets/Queries/GetBudgetVsActualQuery(+Handler+Dto).cs`, export query+handler, endpoint additions.
+- Frontend: `app/finance/budget-vs-actual/page.tsx`, `lib/api/budgets.ts` (extend), `messages/{de,en}.json`.
+- Tests across Application/Infrastructure/Api + a frontend page test.
 
 ### References
 
-- _bmad-output/implementation-artifacts/sprint-plan.md
-- _bmad-output/planning-artifacts/epics-and-stories.md
-- _bmad-output/planning-artifacts/prd.md
-- _bmad-output/planning-artifacts/architecture.md
-- _bmad-output/project-context.md
-- docs/13_frontend_design_standards.md
-- docs/07_dos_donts.md
-
-## Validation Notes
-
-- Create-story validation completed on 2026-05-12 for `e6-s3-add-budget-vs-actual-reports`.
-- Checklist coverage: acceptance criteria, source paths, authorization/audit/privacy/finance impact, migration need, tests, manual validation, i18n/accessibility states where relevant.
-- Remaining implementation risk: code-level inspection may split this story further if existing module coupling or provider decisions make the scope too large.
+- [epics-and-stories.md](../planning-artifacts/epics-and-stories.md#L727-L742) (E6-S3)
+- [prd.md](../planning-artifacts/prd.md) REQ-044 (Soll/Ist visible per cost center and period; respects finance authz + export rules)
+- [architecture.md](../planning-artifacts/architecture.md) (read-model/no-graph guidance; export/authz)
+- [project-context.md](../project-context.md) (A56, A58, A62, A63, A64, A68)
+- [docs/13_frontend_design_standards.md](../../docs/13_frontend_design_standards.md)
 
 ## Dev Agent Record
 
@@ -174,4 +134,4 @@ _To be filled during implementation._
 
 ## Change Log
 
-- 2026-05-12: Story created from multi-epic sprint plan and marked ready for development.
+- 2026-06-07: Story refreshed from the 2026-05-12 pre-pivot stub to a comprehensive dev-ready spec. Reframed on the resolved epic model (cost center = ActivityArea; Soll from S1 `Budget`, Ist summed by `ActivityAreaId`); read-only report + CSV export + reporting UI. Marked ready-for-dev.
