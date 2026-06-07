@@ -1,5 +1,39 @@
 # generated: 2026-05-12
-# last_updated: 2026-06-07 (bmad-create-story BULK REFRESH for entire Epic-8 (External Integration
+# last_updated: 2026-06-07 (bmad-create-story for ENTIRE Epic-22 (Frontend Feature-Slice
+#   Migration — Sponsors): COMPLETE. **First domain epic of the Frontend Refactoring Program**
+#   (E21 foundation+pilot closed; E22-E31 roadmapped). Materialised from frontend-refactoring-
+#   roadmap.md §E22 + the E21-S3 pilot recipe; the 3 NET-NEW stories were authored from the
+#   epics-and-stories.md E22 section (not 2026-05-12 stubs — E22 didn't exist before today's
+#   bmad-create-epics-and-stories run). User decision: scope = ONLY E22 (3 stories: Tests/List/
+#   Forms). **A56 existing-implementation spike findings (load-bearing):** (1) e22-s1 (tests) —
+#   all 4 Sponsors pages have ZERO tests; mirror E21-S2 harness (stable useApiClient/useRouter/
+#   useParams/useAuth/useTranslations mocks + QueryClientProvider seam). Pin the two Sponsors-
+#   specific gates: list view = isVorstand||isAdmin, delete = isAdmin-only. A76: assert delete
+#   destructive affordance + delete-FAIL branch (the E21 P2/P3 blind spots). (2) e22-s2 (list) —
+#   near-1:1 mirror of the suppliers slice (api/hooks/components verbatim template) + 3 deltas:
+#   sponsor-tier-badge (net-new; Tier Bronze/Silver/Gold/Platinum has 4 values but only 4 generic
+#   Badge variants exist and mapping mislabels → S2-DEC-1, recommend feature-local tier badge, do
+#   NOT couple ui/badge to a sponsor concept), isAdmin prop on the table for the admin-only delete,
+#   and hi.json sponsors.* parity (~52 keys, 0 in hi today; parity test tolerates a hi subset so a
+#   full real-Hindi fill stays green, like E21-S4). Type split: move Sponsor-specific types to
+#   features/sponsors/types, keep ContractLink* in src/types/sponsors.ts (still used by
+#   features/suppliers). Blast radius = the 4 sponsors pages (repoint) + supplier slice (unchanged).
+#   (3) e22-s3 (detail/new/edit) — LARGEST story. Detail is mutation-heavy: 7 endpoints (GET, PUT
+#   /status, DELETE, POST/DELETE /packages, POST/DELETE /links) + inline package/link CRUD + status
+#   change + delete dialog. new/edit are manual-useState forms (NEITHER Sponsors NOR Suppliers use
+#   RHF+Zod today) → S3-DEC-1 introduce RHF+Zod (project stack standard; establishes the form sub-
+#   recipe E23+ inherit, the epic goal) vs keep manual; S3-DEC-2 convert detail to full TanStack vs
+#   keep manual useState. Both behaviour-preserving (A79 deltas enumerated). **Cross-cutting:**
+#   (a) dev-story order S1 -> S2 -> S3 HARD (S2/S3 depend on S1 green; S3 builds on S2's api/types,
+#   A62). (b) DEC blocks carry recommended options for A41/A32 + A43 (a)/(b)/(c). (c) Frontend gates
+#   per A58/A72 (changed-files eslint/prettier, never npm run format / prettier --write only on NEW
+#   files) + A73 LF + A78 stable mocks. **Status transitions:** epic-22 backlog -> in-progress;
+#   e22-s1/s2/s3 (net-new) -> ready-for-dev; epic-22-retrospective -> optional. Sprint state: 20
+#   epics closed (E1-E21) + E22 in-progress (3 ready-for-dev); E23-E31 roadmapped (planned-only,
+#   materialise after each preceding domain epic's boundary review). NEXT per workflow +
+#   feedback_session_pacing_dev_cycles + A34: commit this 3-story authoring + sprint-status update,
+#   then bmad-dev-story for e22-s1 in a fresh session. Independent of the still-open Beta
+#   walkthrough.) ## Previously: 2026-06-07 (bmad-create-story BULK REFRESH for entire Epic-8 (External Integration
 #   Surface — REQ-058 API / Webhooks): COMPLETE. **The LAST remaining deferred-backlog epic resumed**
 #   (E4 Event Monetization, E5 Communication Automation, E6 Finance Planning, E7 Accessibility &
 #   Localization all closed; E8 was the final held pre-Beta-pivot epic). Per user directive "nun epic 8
@@ -1358,3 +1392,20 @@ development_status:
   e21-s4-i18n-parity-suppliers-keys-in-hi-json: done
   e21-s5-architecture-boundary-enforcement: done
   epic-21-retrospective: done
+
+  # === FRONTEND REFACTORING PROGRAM — domain migration: Sponsors (E22) =======
+  # First domain epic materialised from planning-artifacts/frontend-refactoring-
+  # roadmap.md §E22 + the E21-S3 pilot recipe (recipe-validation epic; closest
+  # mirror of Suppliers). Tech-initiative (no REQ). Sequence: S1 (characterization
+  # tests, all 4 pages) -> S2 (list slice + Tier badge + hi.json parity + type
+  # split) -> S3 (detail/new/edit slice + form sub-recipe). S2 and S3 each depend
+  # on S1 green; S3 builds on S2's api/types. Bulk-refreshed to ready-for-dev per
+  # A34 (user directive "für alle stories in epic e22", 2026-06-07). Open DECs for
+  # dev-story: S2-DEC-1 tier-badge home; S3-DEC-1 RHF+Zod vs manual form; S3-DEC-2
+  # detail full-TanStack vs manual. Independent of the still-open Beta walkthrough.
+  epic-22: done
+  e22-s1-sponsors-characterization-tests: done
+  e22-s2-sponsors-list-feature-slice: done
+  e22-s3-sponsors-detail-new-edit-feature-slice: done
+  e22-s4-suppliers-detail-new-edit-feature-slice: done
+  epic-22-retrospective: done

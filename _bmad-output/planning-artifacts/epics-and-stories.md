@@ -1,7 +1,7 @@
 # IAB Connect Epics and Stories
 
 Date: 2026-05-11
-Last revised: 2026-05-15 — appended Epics E11–E20 (Beta-on-Railway and Open Source Foundation) covering REQ-088 (E11–E18) and REQ-089 (E20), plus Production Readiness preparation (E19), with Scope, Epic Summary, Dependencies, Release Guidance, Traceability Matrix, and Validation Checklist updates (Sprint Change Proposal 2026-05-15, handoff step 3). Previously revised 2026-05-14 (appended Epic E9 Generic Positioning and White-Label Branding REQ-086 and Epic E10 Module Configuration and Access Enforcement REQ-087) for the generic white-label pivot (Sprint Change Proposal 2026-05-14, handoff step 4).
+Last revised: 2026-06-07 — appended Epic E22 (Frontend Feature-Slice Migration — Sponsors), the first domain epic of the Frontend Refactoring Program materialised from `frontend-refactoring-roadmap.md` §E22 + the E21-S3 pilot recipe, with three grounded stories (E22-S1 characterization tests / E22-S2 list slice + Tier badge + `hi.json` parity / E22-S3 form sub-recipe); updated Traceability Matrix and Validation Checklist. Previously revised 2026-05-15 — appended Epics E11–E20 (Beta-on-Railway and Open Source Foundation) covering REQ-088 (E11–E18) and REQ-089 (E20), plus Production Readiness preparation (E19), with Scope, Epic Summary, Dependencies, Release Guidance, Traceability Matrix, and Validation Checklist updates (Sprint Change Proposal 2026-05-15, handoff step 3). Previously revised 2026-05-14 (appended Epic E9 Generic Positioning and White-Label Branding REQ-086 and Epic E10 Module Configuration and Access Enforcement REQ-087) for the generic white-label pivot (Sprint Change Proposal 2026-05-14, handoff step 4).
 Project: IAB Connect
 Document status: Draft epics and stories from validated PRD and architecture
 Output location: `_bmad-output/planning-artifacts/epics-and-stories.md`
@@ -2181,6 +2181,99 @@ The complete domain map, page counts, proposed per-domain epics, sequencing wave
 
 When E21-S3 is done, run `bmad-create-epics-and-stories` against that roadmap to materialise E22+ with grounded ACs. (The earlier S6–S9 sponsor/member/event/finance stub stories were superseded by this roadmap and removed.)
 
+**Materialised so far:** E22 (Sponsors) was authored 2026-06-07 from roadmap §E22 + the E21-S3 recipe (see below). The remaining program epics (E23 Members, E24 Events, E25 Communication, E26 Finance, E27 Admin, E28 Public, E29 Smaller, E30 Shell/Auth, E31 Legacy-client retirement) stay planned-only and are materialised one at a time AFTER each preceding domain epic's boundary review (code-review + retro), so each inherits a twice-proven recipe — the same post-pilot grounding rule that produced E22.
+
+## Epic E22: Frontend Feature-Slice Migration — Sponsors
+
+Requirements: Technical initiative (no REQ) — Frontend Refactoring Program, materialised from `_bmad-output/planning-artifacts/frontend-refactoring-roadmap.md` §E22 after the E21 Suppliers pilot closed (2026-06-07). Inherits the E21-S1 boundary decisions and the `docs/architecture-frontend.md` "Pilot Result Note — Suppliers (E21-S3)" recipe.
+
+Goal: Migrate all four Sponsors pages (`/sponsors` list, `/sponsors/[id]` detail, `/sponsors/new`, `/sponsors/[id]/edit`) into the `src/features/sponsors/` feature-slice pattern WITHOUT behaviour change — the recipe-validation epic that proves the E21 pilot recipe generalises to (a) a second list page carrying an extra `Tier` dimension and a Vorstand-or-Admin auth rule, and (b) the first form pages (React Hook Form + Zod), establishing the form sub-recipe that E23+ inherit. Preserve all existing routes, auth behaviour, API contracts, i18n keys, and tests.
+
+Conflict priority (applies to every story, per E21): (1) preserve existing functionality; (2) never overwrite foreign uncommitted changes; (3) do not break routes, API contracts, auth, i18n, or existing tests; (4) stay within story scope; (5) improve architecture; (6) improve styling/theming. When a clean solution raises risk to (1)-(3), choose the lower-risk incremental option and document the residual debt.
+
+Epic-wide hard constraints (inherited from E21): no backend/route/API-contract changes; no route-group moves; no global token sweep; no new external UI library; no duplicate UI primitives; no test removal; no cosmetic mass changes. DoD = `npm run typecheck` + `npx eslint <changed>` + `npx prettier --check <changed>` + `npm test -- --run` only — never `npm run format` (the prettier-tailwind plugin re-sorts classes repo-wide) and never repo-wide lint/format as a per-story gate (A58/A72); keep edited files LF (A73).
+
+Dependencies: Blocked by E21-S3 (the slice recipe) and E21-S5 (boundary lint) — both closed. Within E22: E22-S2 (list) and E22-S3 (forms) each depend on E22-S1 (characterization tests) and must keep the S1 suite green; E22-S3 reuses the E22-S2 slice's `api`/`types`.
+
+### Story E22-S1: Sponsors — characterization tests for all four pages (regression net)
+
+As a developer about to refactor four un-tested Sponsors pages, I want a characterization test suite that pins their current observable behaviour first, so that the E22-S2/S3 slice extractions are provably behaviour-preserving.
+
+Requirements: Tech-initiative; mirrors E21-S2; applies A76 (assert what a manual→TanStack/Radix refactor silently changes: destructive button variant + error/empty/loading lifecycle including failure paths).
+
+Acceptance criteria:
+
+- New co-located `*.test.tsx` suites pin the CURRENT behaviour of all four pages against branch HEAD (green before any refactor commit):
+  - List (`app/sponsors/page.tsx`): Vorstand-OR-Admin view access (redirect `/login` if unauthenticated; redirect `/` if authenticated but not Vorstand/Admin), sponsor load, server-side `?status=` filter, client-side search (companyName/contactPerson/email), loading/error/empty states, table render, status badge AND tier badge render, detail link, edit link, delete button visible only to Admin, delete-dialog open, delete action, delete-failure path (error surfaced, list not cleared), list refresh after delete.
+  - Detail (`app/sponsors/[id]/page.tsx`): auth guard, sponsor load by id, packages + contractLinks render, loading/error/not-found states.
+  - New (`app/sponsors/new/page.tsx`): auth guard, form render, required-field validation, submit → create call, success redirect, submit-error surfaced.
+  - Edit (`app/sponsors/[id]/edit/page.tsx`): auth guard, prefill from load, submit → update call, success redirect, submit-error surfaced.
+- Tests follow harness conventions: `// @vitest-environment jsdom`, `afterEach(cleanup)` (A35/A46), stable `useTranslations`/`useApiClient`/`useRouter` mocks (A64/A78), `QueryClientProvider` wrapper. The suite records (A79) that a `retry:false` harness masks the provider's `retry:1` + sticky-mutation-error + no-spinner-on-refetch deltas, which S2/S3 must decide on explicitly.
+- A76 explicit assertions: the delete button's destructive/red affordance AND the delete-failure branch (the two regressions the green E21-S2 suite missed).
+- No production code changed (test-only). Suite green against HEAD.
+
+Architecture notes:
+
+- Pure additive safety net; blocks E22-S2 and E22-S3. The four suites are the green baseline S2/S3 must keep green. Mirrors the ATDD step from the E21 pilot ordering.
+
+Tests/evidence:
+
+- `vitest run` shows the new Sponsors suites passing on branch HEAD before any refactor commit; per-page assertion inventory recorded.
+
+### Story E22-S2: Sponsors list — feature-slice extraction, Tier badge, and `hi.json` parity
+
+As a maintainer, I want the Sponsors list page refactored into the feature-slice pattern, so that it matches the proven Suppliers slice and validates the recipe on a second list page that carries an extra Tier dimension and a Vorstand-or-Admin auth rule.
+
+Requirements: Tech-initiative; mirrors E21-S3 for the list; roadmap §E22 ("closest mirror of Suppliers"); folds in the E21-S4-style i18n parity fix. Depends on E22-S1.
+
+Acceptance criteria (behaviour preserved — all E22-S1 list tests stay green):
+
+- Route `/sponsors`, Vorstand-or-Admin access, sponsor load, status filter, search, loading/error/empty states, table, status badge, tier badge, detail link, edit link, Admin-only delete, delete dialog, delete action, delete-failure handling, list-refresh-after-delete, and i18n texts all work exactly as before.
+
+Acceptance criteria (improvements):
+
+- `app/sponsors/page.tsx` becomes a thin entry (no `"use client"`) rendering a `features/sponsors` content component (the only `"use client"` is the composition root).
+- A `features/sponsors/` slice exists mirroring `features/suppliers/`: `api/sponsors-api.ts` (encapsulated `/api/v1/sponsors` URLs + a `sponsorsKeys` query-key factory), `hooks/use-sponsors.ts` (`useQuery`) + `hooks/use-delete-sponsor.ts` (`useMutation` + list invalidation), `components/` (`sponsors-page-content`, `sponsors-filter-bar`, `sponsors-table`, `sponsor-status-badge`, `sponsor-tier-badge`, `delete-sponsor-dialog` composing the EXISTING `components/ui/alert-dialog.tsx`), `types/sponsor.types.ts`.
+- Type split: Sponsor-specific types (`SponsorStatus`, `SponsorTier`, `SponsorListDto`, `SponsorDetailDto`, `PackageDto`, `Create/UpdateSponsorRequest`) move to `features/sponsors/types/sponsor.types.ts`; shared `ContractLink*` stay in `src/types/` (roadmap "keep shared ContractLink*"). A Task-0 spike confirms every current importer of `@/types/sponsors` (including any suppliers detail/new/edit pages) is repointed without behaviour change.
+- Status badge AND tier badge are extracted as components; both map to Badge variants/tokens per DEC-2 — no raw `bg-blue-100`/`bg-amber-100` brand colours in feature components; the mapping is verified against the named token's canonical value, not a comment (A77). The delete button's destructive variant is tested (A76).
+- `startTransition` around fetching is removed; the manual→TanStack deltas (A79) are decided explicitly: refetch-after-delete via `invalidateQueries`; mutation error surfaced (not silently sticky); chosen retry semantics documented.
+- `frontend/messages/hi.json` gains the full `sponsors.*` key set at parity with `en.json`/`de.json` (53 keys; currently 0 in `hi`); `frontend/messages/messages.parity.test.ts` passes; the prior baseline is recorded; no key renames/removals in any locale.
+- No new `any`, no new hard-coded user-facing strings, no new direct API URL in `page.tsx`, no duplicate UI primitive.
+
+Architecture notes:
+
+- Second `features/` slice and second TanStack Query adopter. The tier badge is the net-new surface vs the Suppliers pilot. Keep `ContractLink*` shared to avoid a Suppliers ripple. Update the `docs/architecture-frontend.md` recipe note if the tier-badge pattern adds anything reusable.
+
+Tests/evidence:
+
+- All E22-S1 list tests green post-refactor; new `sponsor-status-badge` + `sponsor-tier-badge` component tests; `tsc`/eslint(changed)/prettier-check(changed)/`vitest run` green; i18n parity green; `next build` succeeds.
+
+### Story E22-S3: Sponsors detail/new/edit — feature-slice extraction and form sub-recipe
+
+As a maintainer, I want the Sponsors detail, new, and edit pages refactored into the feature-slice pattern, so that the first form pages establish the React Hook Form + Zod sub-recipe that every later domain epic (E23+) inherits, with behaviour preserved.
+
+Requirements: Tech-initiative; extends the E21 recipe from list pages to form pages; roadmap §E22 (4 pages). Depends on E22-S1; builds on the E22-S2 slice (`api`/`types`).
+
+Acceptance criteria (behaviour preserved — all E22-S1 detail/new/edit tests stay green):
+
+- `/sponsors/[id]`, `/sponsors/new`, and `/sponsors/[id]/edit` auth guards (Vorstand-or-Admin), data load/prefill, create/update submit, validation, success redirect, and submit-error handling all work exactly as before — plus the detail page's FULL surface: status change (`PUT /status`), delete → redirect, package add/remove, contract-link add/remove, and packages + contractLinks render with their empty states. (Detail is richer than Suppliers detail — 7 endpoints + inline package/link CRUD; do not drop any of it.)
+
+Acceptance criteria (improvements):
+
+- Each route file (`[id]/page.tsx`, `new/page.tsx`, `[id]/edit/page.tsx`) becomes a thin entry rendering a `features/sponsors/components` content component (the composition root is the only `"use client"`).
+- `features/sponsors/` gains: `api/` get-by-id/create/update/delete URLs (extending S2's module — the single source of `/api/v1/sponsors` URLs), `hooks/` (`use-sponsor` get-by-id `useQuery`; `use-create-sponsor`/`use-update-sponsor` mutations invalidating `sponsorsKeys`), `schemas/sponsor.schema.ts` (a Zod schema shared by new + edit), `components/` (`sponsor-detail`, `sponsor-form` reused by new + edit, `sponsor-packages`, `sponsor-contract-links`).
+- The form uses React Hook Form + Zod (project standard) behind a stable, tested contract; validation messages via next-intl (no hard-coded strings); detail uses the shared `ContractLink*` from `src/types/`.
+- No new `any`, no new hard-coded user-facing strings, no new direct API URL in route files, no duplicate UI primitive; CRUD round-trips (create→redirect→detail; edit→prefill→update→redirect) unchanged.
+- `docs/architecture-frontend.md` gains a short "Form sub-recipe" note (RHF+Zod + a shared new/edit form component + the mutation-invalidation pattern) as the template E23+ forms follow.
+
+Architecture notes:
+
+- First form-page migration. Reuses the E22-S2 `api`/`types`. The `sponsor-form` shared by new + edit is the reuse anchor; the Zod schema is the single validation source. This note becomes the form half of the next-page recipe in `docs/architecture-frontend.md`.
+
+Tests/evidence:
+
+- All E22-S1 detail/new/edit tests green post-refactor; form-validation + create/update mutation tests; `tsc`/eslint(changed)/prettier-check(changed)/`vitest run` green; `next build` succeeds.
+
 ## Release and Sprint Guidance
 
 Per the 2026-05-14 generic white-label pivot (OD-3, resolved), Epics E9 then E10 are the active focus and preempt the waves below. Epics E4–E8 were reset to backlog and resume after E9/E10, with E10 sequenced before E8 so the external API route group is covered by module enforcement. Detailed resequencing is handled by `bmad-sprint-planning`.
@@ -2248,6 +2341,7 @@ Before `bmad-create-story`, each story should have:
 | REQ-087 | E10 | E10-S1, E10-S2, E10-S3, E10-S4, E10-S5 |
 | REQ-088 | E11, E12, E13, E14, E15, E16, E17, E18, E19 | E11-S1..S3, E12-S1..S4, E13-S1..S4, E14-S1..S5, E15-S1..S4, E16-S1..S3, E17-S1..S4, E18-S1..S4, E19-S1..S4 |
 | REQ-089 | E20 | E20-S1, E20-S2, E20-S3, E20-S4, E20-S5 |
+| Tech-initiative (Frontend Refactoring) | E21, E22 | E21-S1..S5; E22-S1, E22-S2, E22-S3 |
 
 ## Validation Checklist
 
@@ -2263,6 +2357,7 @@ Before `bmad-create-story`, each story should have:
 - E14-S4 (rate-limiting baseline) lands before E8 (External Integration Surface) when E8 resumes, so external API routes inherit the rate-limit policy.
 - E11–E20 stories explicitly reference Architecture ADR-009 through ADR-021 for traceability and to avoid re-deciding agreed-upon items at story execution time.
 - The 40 Beta-pivot stories (e11-s1 through e20-s5) have pre-authored implementation-artifact stubs in `_bmad-output/implementation-artifacts/`; sprint planning may need to reconcile any stub drift against the canonical acceptance criteria in this artifact.
+- Epic E22 (Sponsors) is the first Frontend Refactoring Program domain epic materialised from `frontend-refactoring-roadmap.md` §E22; its three stories (E22-S1 tests / E22-S2 list slice + Tier badge + `hi.json` parity / E22-S3 form sub-recipe) inherit the E21-S3 pilot recipe with grounded ACs and preserve all routes, auth, API contracts, i18n keys, and existing tests. The remaining program epics (E23–E31) stay planned-only in the roadmap and are materialised one at a time after each preceding domain epic's boundary review.
 
 ## Residual Risks
 
