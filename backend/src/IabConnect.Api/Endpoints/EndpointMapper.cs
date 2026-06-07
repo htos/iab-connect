@@ -23,12 +23,14 @@ public static class EndpointMapper
         app.MapMemberSegmentEndpoints(); // REQ-017: Segmentierung & Verteiler
         app.MapAuditEndpoints(); // REQ-011: Audit Log
         api.MapPrivacyEndpoints(); // REQ-012: Datenschutz & Einwilligungen (DSGVO)
+        app.MapChannelPreferenceEndpoints(); // REQ-030 (E5-S5): self-service channel preferences
         app.MapEventEndpoints(); // REQ-019: Eventverwaltung (uses EventEndpoints.cs)
         app.MapEventRegistrationEndpoints(); // REQ-020: Event-Anmeldung / RSVP
         app.MapEventVolunteerEndpoints(); // REQ-024 (E3.S3): Volunteer planning (roles, shifts, assignments)
         app.MapEventFeeEndpoints(); // REQ-022 (E4-S1): Event fee categories (paid registration)
         app.MapEmailCampaignEndpoints(); // REQ-026: E-Mail-Kampagnen
         app.MapEmailTemplateEndpoints(); // REQ-027: Email Template Editor
+        app.MapAutomationEndpoints(); // REQ-028 (E5-S1): Communication automations (journeys)
         app.MapSettingsEndpoints(); // REQ-059: System Settings
         app.MapModuleSettingsEndpoints(); // REQ-087 (E10-S2): Module enablement configuration
         app.MapCustomRoleEndpoints(); // REQ-003: Custom Roles

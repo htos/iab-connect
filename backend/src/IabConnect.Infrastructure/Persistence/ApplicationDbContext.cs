@@ -47,6 +47,16 @@ public sealed class ApplicationDbContext : DbContext
     public DbSet<EmailRecipient> EmailRecipients => Set<EmailRecipient>();
     public DbSet<EmailTemplate> EmailTemplates => Set<EmailTemplate>();
     public DbSet<NewsletterSubscriber> NewsletterSubscribers => Set<NewsletterSubscriber>();
+
+    // REQ-028 (E5-S1): Communication automation definitions (journeys)
+    public DbSet<AutomationDefinition> AutomationDefinitions => Set<AutomationDefinition>();
+
+    // REQ-028 (E5-S2): Automation dispatch runs + per-recipient execution records
+    public DbSet<AutomationExecution> AutomationExecutions => Set<AutomationExecution>();
+    public DbSet<AutomationRecipient> AutomationRecipients => Set<AutomationRecipient>();
+
+    // REQ-030 (E5-S5): per-user preferred communication channel
+    public DbSet<UserChannelPreference> UserChannelPreferences => Set<UserChannelPreference>();
     public DbSet<SystemSettings> SystemSettings => Set<SystemSettings>();
     public DbSet<CustomRole> CustomRoles => Set<CustomRole>();
 

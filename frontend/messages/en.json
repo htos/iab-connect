@@ -251,7 +251,20 @@
     "consentEventNotifications": "Event Notifications",
     "consentEventNotificationsDesc": "Receive notifications about upcoming events.",
     "consentSaved": "Preferences saved.",
-    "consentError": "Error saving preferences."
+    "consentError": "Error saving preferences.",
+    "channelPreferences": {
+      "title": "Channel Preferences",
+      "description": "Which channel would you like to receive notifications on?",
+      "saved": "Preference saved.",
+      "error": "Could not save preference.",
+      "loadError": "Could not load preference.",
+      "comingSoon": "(coming soon)",
+      "channel": {
+        "Email": "Email",
+        "Sms": "SMS",
+        "WhatsApp": "WhatsApp"
+      }
+    }
   },
   "members": {
     "title": "Member Management",
@@ -554,6 +567,10 @@
       "title": "Quick Actions",
       "newCampaign": "Create New Campaign",
       "newTemplate": "Create New Template"
+    },
+    "automations": {
+      "title": "Automations",
+      "description": "Send recurring messages automatically"
     }
   },
   "admin": {
@@ -2675,5 +2692,102 @@
     "title": "License",
     "body": "IAB Connect is licensed under the GNU Affero General Public License version 3.0 or later. See the full license text below or on the official FSF site.",
     "viewExternal": "View the AGPL-3.0 license on gnu.org"
+  },
+  "automations": {
+    "title": "Automations",
+    "subtitle": "Send recurring messages automatically",
+    "totalAutomations": "{count} automation(s)",
+    "newAutomation": "New automation",
+    "createTitle": "Create automation",
+    "editTitle": "Edit automation",
+    "search": "Search automations…",
+    "status": "Status",
+    "allStatuses": "All statuses",
+    "statusDraft": "Draft",
+    "statusActive": "Active",
+    "statusPaused": "Paused",
+    "statusDisabled": "Disabled",
+    "noAutomationsFound": "No automations found",
+    "loading": "Loading…",
+    "loadError": "Could not load automations",
+    "genericError": "An error occurred",
+    "saving": "Saving…",
+    "save": "Save",
+    "cancel": "Cancel",
+    "previous": "Previous",
+    "next": "Next",
+    "pagination": "Page {current} of {total}",
+    "backToList": "Back to list",
+    "actions": "Actions",
+    "activate": "Activate",
+    "pause": "Pause",
+    "resume": "Resume",
+    "disable": "Disable",
+    "edit": "Edit",
+    "recentRuns": "Recent runs",
+    "noRunsYet": "No runs yet",
+    "previewRecipients": "Preview recipients",
+    "previewing": "Computing…",
+    "previewCount": "{count} recipients",
+    "table": {
+      "name": "Name",
+      "trigger": "Trigger",
+      "template": "Template",
+      "created": "Created"
+    },
+    "run": {
+      "startedAt": "Started",
+      "sent": "Sent",
+      "failed": "Failed",
+      "skipped": "Skipped"
+    },
+    "form": {
+      "name": "Name",
+      "description": "Description",
+      "template": "Email template",
+      "selectTemplate": "Select a template…",
+      "trigger": "Trigger",
+      "offsetDays": "Days before",
+      "recipients": "Recipients",
+      "segment": "Segment",
+      "selectSegment": "Select a segment…",
+      "consentFilter": "Consent filter",
+      "noConsentFilter": "No filter"
+    },
+    "trigger": {
+      "MemberJoined": "Member joined",
+      "EventUpcoming": "Event upcoming",
+      "MembershipRenewalDue": "Renewal due",
+      "Scheduled": "Scheduled (recurring)",
+      "Manual": "Manual"
+    },
+    "triggerLabel": {
+      "memberJoined": "On join",
+      "eventUpcoming": "{days} days before event",
+      "membershipRenewalDue": "{days} days before renewal",
+      "scheduled": "Scheduled (recurring)",
+      "manual": "Manual"
+    },
+    "segment": {
+      "AllActiveMembers": "All active members",
+      "NewsletterSubscribers": "Newsletter subscribers",
+      "MemberSegment": "Member segment",
+      "Custom": "Custom",
+      "Manual": "Manually selected",
+      "EventParticipants": "Event participants"
+    },
+    "consent": {
+      "Newsletter": "Newsletter",
+      "EventNotifications": "Event notifications",
+      "Marketing": "Marketing",
+      "DataProcessing": "Data processing",
+      "PhotoUsage": "Photo usage"
+    },
+    "validation": {
+      "nameRequired": "Name is required",
+      "templateRequired": "Please select a template",
+      "offsetRequired": "This trigger requires a non-negative number of days",
+      "segmentRequired": "Please select a segment"
+    }
   }
 }

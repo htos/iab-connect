@@ -1,5 +1,6 @@
 using Hangfire;
 using IabConnect.Api.Extensions;
+using IabConnect.Application.Members.Segments;
 using IabConnect.Domain.Communication;
 using IabConnect.Domain.Members;
 using IabConnect.Domain.Privacy;

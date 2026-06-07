@@ -251,7 +251,20 @@
     "consentEventNotifications": "Event-Benachrichtigungen",
     "consentEventNotificationsDesc": "Benachrichtigungen über kommende Veranstaltungen erhalten.",
     "consentSaved": "Einstellungen gespeichert.",
-    "consentError": "Fehler beim Speichern der Einstellungen."
+    "consentError": "Fehler beim Speichern der Einstellungen.",
+    "channelPreferences": {
+      "title": "Kanal-Präferenzen",
+      "description": "Über welchen Kanal möchten Sie Benachrichtigungen erhalten?",
+      "saved": "Präferenz gespeichert.",
+      "error": "Präferenz konnte nicht gespeichert werden.",
+      "loadError": "Präferenz konnte nicht geladen werden.",
+      "comingSoon": "(bald verfügbar)",
+      "channel": {
+        "Email": "E-Mail",
+        "Sms": "SMS",
+        "WhatsApp": "WhatsApp"
+      }
+    }
   },
   "members": {
     "title": "Mitgliederverwaltung",
@@ -554,6 +567,10 @@
       "title": "Schnellaktionen",
       "newCampaign": "Neue Kampagne erstellen",
       "newTemplate": "Neue Vorlage erstellen"
+    },
+    "automations": {
+      "title": "Automationen",
+      "description": "Wiederkehrende Nachrichten automatisch versenden"
     }
   },
   "admin": {
@@ -2676,5 +2693,102 @@
     "title": "Lizenz",
     "body": "IAB Connect ist unter der GNU Affero General Public License Version 3.0 oder neuer lizenziert. Den vollständigen Lizenztext finden Sie unten oder auf der offiziellen FSF-Website.",
     "viewExternal": "AGPL-3.0 Lizenztext auf gnu.org ansehen"
+  },
+  "automations": {
+    "title": "Automationen",
+    "subtitle": "Wiederkehrende Nachrichten automatisch versenden",
+    "totalAutomations": "{count} Automation(en)",
+    "newAutomation": "Neue Automation",
+    "createTitle": "Automation erstellen",
+    "editTitle": "Automation bearbeiten",
+    "search": "Automationen suchen…",
+    "status": "Status",
+    "allStatuses": "Alle Status",
+    "statusDraft": "Entwurf",
+    "statusActive": "Aktiv",
+    "statusPaused": "Pausiert",
+    "statusDisabled": "Deaktiviert",
+    "noAutomationsFound": "Keine Automationen gefunden",
+    "loading": "Wird geladen…",
+    "loadError": "Automationen konnten nicht geladen werden",
+    "genericError": "Ein Fehler ist aufgetreten",
+    "saving": "Wird gespeichert…",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "previous": "Zurück",
+    "next": "Weiter",
+    "pagination": "Seite {current} von {total}",
+    "backToList": "Zurück zur Übersicht",
+    "actions": "Aktionen",
+    "activate": "Aktivieren",
+    "pause": "Pausieren",
+    "resume": "Fortsetzen",
+    "disable": "Deaktivieren",
+    "edit": "Bearbeiten",
+    "recentRuns": "Letzte Ausführungen",
+    "noRunsYet": "Noch keine Ausführungen",
+    "previewRecipients": "Empfänger anzeigen",
+    "previewing": "Wird berechnet…",
+    "previewCount": "{count} Empfänger",
+    "table": {
+      "name": "Name",
+      "trigger": "Auslöser",
+      "template": "Vorlage",
+      "created": "Erstellt"
+    },
+    "run": {
+      "startedAt": "Gestartet",
+      "sent": "Gesendet",
+      "failed": "Fehlgeschlagen",
+      "skipped": "Übersprungen"
+    },
+    "form": {
+      "name": "Name",
+      "description": "Beschreibung",
+      "template": "E-Mail-Vorlage",
+      "selectTemplate": "Vorlage auswählen…",
+      "trigger": "Auslöser",
+      "offsetDays": "Tage vorher",
+      "recipients": "Empfänger",
+      "segment": "Segment",
+      "selectSegment": "Segment auswählen…",
+      "consentFilter": "Einwilligungs-Filter",
+      "noConsentFilter": "Kein Filter"
+    },
+    "trigger": {
+      "MemberJoined": "Mitglied beigetreten",
+      "EventUpcoming": "Event steht bevor",
+      "MembershipRenewalDue": "Verlängerung fällig",
+      "Scheduled": "Geplant (wiederkehrend)",
+      "Manual": "Manuell"
+    },
+    "triggerLabel": {
+      "memberJoined": "Bei Beitritt",
+      "eventUpcoming": "{days} Tage vor Event",
+      "membershipRenewalDue": "{days} Tage vor Verlängerung",
+      "scheduled": "Geplant (wiederkehrend)",
+      "manual": "Manuell"
+    },
+    "segment": {
+      "AllActiveMembers": "Alle aktiven Mitglieder",
+      "NewsletterSubscribers": "Newsletter-Abonnenten",
+      "MemberSegment": "Mitglieder-Segment",
+      "Custom": "Benutzerdefiniert",
+      "Manual": "Manuell ausgewählt",
+      "EventParticipants": "Event-Teilnehmer"
+    },
+    "consent": {
+      "Newsletter": "Newsletter",
+      "EventNotifications": "Event-Benachrichtigungen",
+      "Marketing": "Marketing",
+      "DataProcessing": "Datenverarbeitung",
+      "PhotoUsage": "Fotonutzung"
+    },
+    "validation": {
+      "nameRequired": "Name ist erforderlich",
+      "templateRequired": "Bitte eine Vorlage auswählen",
+      "offsetRequired": "Dieser Auslöser benötigt eine nicht-negative Tagesangabe",
+      "segmentRequired": "Bitte ein Segment auswählen"
+    }
   }
 }

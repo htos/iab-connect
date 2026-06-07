@@ -13,7 +13,12 @@ import Link from "next/link";
 
 // Icons as components
 const EmailCampaignIcon = ({ className }: { className?: string }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <svg
+    className={className}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
     <path
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -24,7 +29,12 @@ const EmailCampaignIcon = ({ className }: { className?: string }) => (
 );
 
 const EmailTemplateIcon = ({ className }: { className?: string }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <svg
+    className={className}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
     <path
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -34,9 +44,35 @@ const EmailTemplateIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const AutomationIcon = ({ className }: { className?: string }) => (
+  <svg
+    className={className}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M13 10V3L4 14h7v7l9-11h-7z"
+    />
+  </svg>
+);
+
 const ChevronRightIcon = ({ className }: { className?: string }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+  <svg
+    className={className}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M9 5l7 7-7 7"
+    />
   </svg>
 );
 
@@ -54,10 +90,10 @@ export default function CommunicationPage() {
 
   if (isLoading) {
     return (
-      <main className="min-h-[calc(100vh-4rem)] p-4 md:p-8 bg-gray-50">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-center min-h-100">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+      <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="flex min-h-100 items-center justify-center">
+            <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-orange-600"></div>
           </div>
         </div>
       </main>
@@ -81,18 +117,24 @@ export default function CommunicationPage() {
       descriptionKey: "emailTemplates.description",
       icon: EmailTemplateIcon,
     },
+    {
+      href: "/communication/automations",
+      titleKey: "automations.title",
+      descriptionKey: "automations.description",
+      icon: AutomationIcon,
+    },
   ];
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] p-4 md:p-8 bg-gray-50">
-      <div className="max-w-7xl mx-auto">
+    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
+      <div className="mx-auto max-w-7xl">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
+        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
               {t("title")}
             </h1>
-            <p className="text-gray-600 mt-1">{t("subtitle")}</p>
+            <p className="mt-1 text-gray-600">{t("subtitle")}</p>
           </div>
         </div>
 
@@ -104,21 +146,21 @@ export default function CommunicationPage() {
               <Link
                 key={section.href}
                 href={section.href}
-                className="group bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow"
+                className="group rounded-xl bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
               >
                 <div className="flex items-start gap-4">
-                  <div className="p-3 bg-orange-100 rounded-xl">
+                  <div className="rounded-xl bg-orange-100 p-3">
                     <IconComponent className="h-6 w-6 text-orange-600" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-semibold text-gray-900 group-hover:text-orange-600 transition-colors">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-lg font-semibold text-gray-900 transition-colors group-hover:text-orange-600">
                       {t(section.titleKey)}
                     </h3>
                     <p className="mt-1 text-sm text-gray-600">
                       {t(section.descriptionKey)}
                     </p>
                   </div>
-                  <ChevronRightIcon className="h-5 w-5 text-gray-400 group-hover:text-orange-600 transition-colors shrink-0 mt-1" />
+                  <ChevronRightIcon className="mt-1 h-5 w-5 shrink-0 text-gray-400 transition-colors group-hover:text-orange-600" />
                 </div>
               </Link>
             );
@@ -127,29 +169,55 @@ export default function CommunicationPage() {
 
         {/* Quick Actions */}
         <div className="mt-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">{t("quickActions.title")}</h2>
+          <h2 className="mb-4 text-lg font-semibold text-gray-900">
+            {t("quickActions.title")}
+          </h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Link
               href="/communication/email-campaigns/new"
-              className="flex items-center gap-3 p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow"
+              className="flex items-center gap-3 rounded-xl bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
             >
-              <div className="p-2 bg-green-100 rounded-lg">
-                <svg className="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <div className="rounded-lg bg-green-100 p-2">
+                <svg
+                  className="h-5 w-5 text-green-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
                 </svg>
               </div>
-              <span className="font-medium text-gray-900">{t("quickActions.newCampaign")}</span>
+              <span className="font-medium text-gray-900">
+                {t("quickActions.newCampaign")}
+              </span>
             </Link>
             <Link
               href="/communication/email-templates/new"
-              className="flex items-center gap-3 p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow"
+              className="flex items-center gap-3 rounded-xl bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
             >
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <div className="rounded-lg bg-blue-100 p-2">
+                <svg
+                  className="h-5 w-5 text-blue-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
                 </svg>
               </div>
-              <span className="font-medium text-gray-900">{t("quickActions.newTemplate")}</span>
+              <span className="font-medium text-gray-900">
+                {t("quickActions.newTemplate")}
+              </span>
             </Link>
           </div>
         </div>

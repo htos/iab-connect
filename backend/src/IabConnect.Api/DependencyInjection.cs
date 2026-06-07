@@ -7,6 +7,7 @@ using IabConnect.Api.Middleware;
 using IabConnect.Api.RateLimiting;
 using IabConnect.Infrastructure.Backup;
 using IabConnect.Infrastructure.Common;
+using IabConnect.Infrastructure.Communication.Jobs;
 using IabConnect.Infrastructure.Finance.Jobs;
 using IabConnect.Infrastructure.Events.Jobs;
 using IabConnect.Infrastructure.Retention;
@@ -69,6 +70,20 @@ public static class DependencyInjection
 
     /// <summary>Cron expression for the prune pass — 04:00 UTC.</summary>
     internal const string PruneOldBackupsCron = "0 4 * * *";
+
+    /// <summary>
+    /// REQ-028 (E5-S2 / ADR-005): recurring-job id for the communication automation dispatch pass.
+    /// The 7th recurring job (see <c>RegisterDailyBackupJobTests.RecurringJobIds_AreGloballyUnique</c>).
+    /// Extracted as a constant so the registration is assertable without standing up Hangfire storage.
+    /// </summary>
+    internal const string AutomationDispatchJobId = "dispatch-automations";
+
+    /// <summary>
+    /// Cron expression for the automation dispatch pass — hourly (DEC-3). A modest fixed cadence so
+    /// time-relative triggers ("N days before") fire within an acceptable window; the per-recipient
+    /// idempotency (E5-S2 AC-3) makes "evaluate every run" safe.
+    /// </summary>
+    internal const string AutomationDispatchCron = "0 * * * *";
 
     public static IServiceCollection AddApiServices(
         this IServiceCollection services,
@@ -389,6 +404,16 @@ public static class DependencyInjection
                 job => job.ExecuteAsync(CancellationToken.None),
                 VolunteerReminderCron,
                 new RecurringJobOptions { TimeZone = reminderJobTimeZone });
+
+            // REQ-028 (E5-S2 / ADR-005): hourly communication-automation dispatch pass (DEC-3).
+            // The 7th recurring job; gated only by the Testing-env skip above (the job itself
+            // no-ops when Module:communication is disabled). Per-recipient idempotency (AC-3)
+            // makes the fixed cadence safe.
+            jobManager.AddOrUpdate<AutomationDispatchJob>(
+                AutomationDispatchJobId,
+                job => job.ExecuteAsync(CancellationToken.None),
+                AutomationDispatchCron,
+                new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
         }
 
         // REQ-054: Health check endpoints (basic + detailed). REQ-088 AC-4 (E14-S4):

@@ -1,4 +1,5 @@
 using IabConnect.Application.Authorization;
+using IabConnect.Application.Members.Segments;
 using IabConnect.Domain.Members;
 using IabConnect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Mvc;
@@ -471,55 +472,12 @@ public static class MemberSegmentEndpoints
         return dbContext.Members.Where(m => memberIds.Contains(m.Id));
     }
 
+    // REQ-028 (E5-S1, DEC-3): the criteria-application logic was relocated to the Application
+    // layer (MemberSegmentCriteria) so it is single-source — shared with IRecipientResolutionService
+    // without the Application/Infrastructure layers referencing this Api endpoint class. This thin
+    // delegate preserves the existing internal signature that EmailCampaignEndpoints calls.
     internal static IQueryable<Member> ApplyCriteria(IQueryable<Member> query, SegmentCriteria criteria)
-    {
-        if (criteria.Status is { Length: > 0 })
-        {
-            var statuses = criteria.Status
-                .Select(s => Enum.TryParse<DomainMembershipStatus>(s, true, out var v) ? v : (DomainMembershipStatus?)null)
-                .Where(v => v.HasValue)
-                .Select(v => v!.Value)
-                .ToList();
-
-            if (statuses.Count > 0)
-                query = query.Where(m => statuses.Contains(m.Status));
-        }
-
-        if (criteria.Type is { Length: > 0 })
-        {
-            var types = criteria.Type
-                .Select(t => Enum.TryParse<DomainMembershipType>(t, true, out var v) ? v : (DomainMembershipType?)null)
-                .Where(v => v.HasValue)
-                .Select(v => v!.Value)
-                .ToList();
-
-            if (types.Count > 0)
-                query = query.Where(m => types.Contains(m.MembershipType));
-        }
-
-        if (criteria.MemberSince != null)
-        {
-            if (criteria.MemberSince.From.HasValue)
-                query = query.Where(m => m.MemberSince >= criteria.MemberSince.From.Value);
-
-            if (criteria.MemberSince.To.HasValue)
-                query = query.Where(m => m.MemberSince <= criteria.MemberSince.To.Value);
-        }
-
-        if (!string.IsNullOrWhiteSpace(criteria.City))
-        {
-            var city = criteria.City.ToLower();
-            query = query.Where(m => m.Address.City.ToLower().Contains(city));
-        }
-
-        if (!string.IsNullOrWhiteSpace(criteria.Country))
-        {
-            var country = criteria.Country.ToLower();
-            query = query.Where(m => m.Address.Country.ToLower().Contains(country));
-        }
-
-        return query;
-    }
+        => MemberSegmentCriteria.Apply(query, criteria);
 
     private static bool IsValidCriteriaJson(string json)
     {
@@ -609,22 +567,4 @@ public record SegmentMemberDto
     public DomainMembershipStatus Status { get; init; }
     public DomainMembershipType MembershipType { get; init; }
     public DateOnly MemberSince { get; init; }
-}
-
-/// <summary>
-/// Segment filter criteria (stored as JSON in CriteriaJson)
-/// </summary>
-public class SegmentCriteria
-{
-    public string[]? Status { get; set; }
-    public string[]? Type { get; set; }
-    public DateRange? MemberSince { get; set; }
-    public string? City { get; set; }
-    public string? Country { get; set; }
-}
-
-public class DateRange
-{
-    public DateOnly? From { get; set; }
-    public DateOnly? To { get; set; }
 }

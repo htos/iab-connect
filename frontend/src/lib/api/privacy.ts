@@ -54,6 +54,48 @@ export async function revokeConsent(
   if (!response.ok) throw new Error("Failed to revoke consent");
 }
 
+// REQ-030 (E5-S5): channel preferences (self-scoped)
+export interface ChannelAvailabilityDto {
+  channel: string;
+  isEnabled: boolean;
+}
+
+export interface ChannelPreferenceDto {
+  preferredChannel: string;
+  availableChannels: ChannelAvailabilityDto[];
+}
+
+export async function getChannelPreference(
+  accessToken: string
+): Promise<ChannelPreferenceDto> {
+  const response = await fetch(
+    `${baseUrl}/api/v1/privacy/channel-preferences`,
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  );
+  if (!response.ok) throw new Error("Failed to load channel preference");
+  return response.json();
+}
+
+export async function updateChannelPreference(
+  accessToken: string,
+  preferredChannel: string
+): Promise<void> {
+  const response = await fetch(
+    `${baseUrl}/api/v1/privacy/channel-preferences`,
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ preferredChannel }),
+    }
+  );
+  if (!response.ok) throw new Error("Failed to update channel preference");
+}
+
 // Public API (no auth required)
 export interface UnsubscribeVerifyResult {
   alreadyUnsubscribed: boolean;

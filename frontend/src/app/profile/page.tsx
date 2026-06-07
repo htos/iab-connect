@@ -17,8 +17,14 @@ import {
   getStatusTranslationKey,
   getTypeTranslationKey,
 } from "@/lib/api/members";
-import { ConsentDto, getConsents, grantConsent, revokeConsent } from "@/lib/api/privacy";
+import {
+  ConsentDto,
+  getConsents,
+  grantConsent,
+  revokeConsent,
+} from "@/lib/api/privacy";
 import { useTranslations } from "next-intl";
+import ChannelPreferencesCard from "./ChannelPreferencesCard";
 
 export default function ProfilePage() {
   const t = useTranslations();
@@ -51,7 +57,10 @@ export default function ProfilePage() {
   // REQ-029: Consent preferences
   const [consents, setConsents] = useState<ConsentDto[]>([]);
   const [consentSaving, setConsentSaving] = useState(false);
-  const [consentMessage, setConsentMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [consentMessage, setConsentMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
 
@@ -113,7 +122,10 @@ export default function ProfilePage() {
     }
   }, []);
 
-  const handleConsentToggle = async (consentType: string, currentlyGranted: boolean) => {
+  const handleConsentToggle = async (
+    consentType: string,
+    currentlyGranted: boolean
+  ) => {
     const token = accessTokenRef.current;
     if (!token) return;
     setConsentSaving(true);
@@ -150,7 +162,12 @@ export default function ProfilePage() {
   const initialFetchDone = useRef(false);
 
   useEffect(() => {
-    if (isAuthenticated && isMember && accessToken && !initialFetchDone.current) {
+    if (
+      isAuthenticated &&
+      isMember &&
+      accessToken &&
+      !initialFetchDone.current
+    ) {
       initialFetchDone.current = true;
       fetchProfile();
       fetchConsents();
@@ -212,7 +229,7 @@ export default function ProfilePage() {
     return (
       <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
+          <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-orange-600"></div>
           <p className="mt-4 text-gray-600">{t("common.loading")}</p>
         </div>
       </div>
@@ -226,13 +243,13 @@ export default function ProfilePage() {
   if (noMemberRecord && !member) {
     const showAdminLink = isAdmin || isVorstand;
     return (
-      <main className="min-h-[calc(100vh-4rem)] p-4 md:p-8 bg-gray-50">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">
+      <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
+        <div className="mx-auto max-w-2xl">
+          <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h2 className="mb-2 text-xl font-semibold text-gray-900">
               {t("profile.noProfileTitle")}
             </h2>
-            <p className="text-gray-600 mb-6">
+            <p className="mb-6 text-gray-600">
               {showAdminLink
                 ? t("profile.noProfileMessageAdmin")
                 : t("profile.noProfileMessageMember")}
@@ -240,14 +257,14 @@ export default function ProfilePage() {
             <div className="flex flex-wrap gap-3">
               <Link
                 href="/profile/security"
-                className="inline-flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+                className="inline-flex items-center rounded-lg bg-orange-600 px-4 py-2 text-white transition-colors hover:bg-orange-700"
               >
                 {t("profile.goToSecurity")}
               </Link>
               {showAdminLink && (
                 <Link
                   href="/admin"
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="inline-flex items-center rounded-lg border border-gray-300 px-4 py-2 transition-colors hover:bg-gray-50"
                 >
                   {t("profile.goToAdmin")}
                 </Link>
@@ -261,10 +278,12 @@ export default function ProfilePage() {
 
   if (error && !member) {
     return (
-      <main className="min-h-[calc(100vh-4rem)] p-4 md:p-8 bg-gray-50">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
-            <h2 className="text-xl font-semibold text-yellow-700 mb-2">{t("error.notice")}</h2>
+      <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
+        <div className="mx-auto max-w-2xl">
+          <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-6">
+            <h2 className="mb-2 text-xl font-semibold text-yellow-700">
+              {t("error.notice")}
+            </h2>
             <p className="text-yellow-600">{error}</p>
           </div>
         </div>
@@ -277,23 +296,35 @@ export default function ProfilePage() {
   }
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] p-4 md:p-8 bg-gray-50">
-      <div className="max-w-4xl mx-auto">
+    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
+      <div className="mx-auto max-w-4xl">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
+        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{t("profile.title")}</h1>
-            <p className="text-gray-600 mt-1">
+            <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
+              {t("profile.title")}
+            </h1>
+            <p className="mt-1 text-gray-600">
               {t("profile.managePersonalData")}
             </p>
           </div>
           {!editing && (
             <button
               onClick={() => setEditing(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+              className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-white transition-colors hover:bg-orange-700"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
               </svg>
               {t("common.edit")}
             </button>
@@ -302,42 +333,54 @@ export default function ProfilePage() {
 
         {/* Error */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
             <p className="text-red-700">{error}</p>
           </div>
         )}
 
         {/* Content Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {/* Profile Card */}
           <div className="md:col-span-1">
-            <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="rounded-xl bg-white p-6 shadow-sm">
               <div className="flex flex-col items-center text-center">
-                <div className="h-24 w-24 bg-orange-100 rounded-full flex items-center justify-center mb-4">
+                <div className="mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-orange-100">
                   <span className="text-3xl font-bold text-orange-600">
-                    {member.firstName[0]}{member.lastName[0]}
+                    {member.firstName[0]}
+                    {member.lastName[0]}
                   </span>
                 </div>
                 <h2 className="text-xl font-semibold text-gray-900">
                   {member.firstName} {member.lastName}
                 </h2>
-                <p className="text-gray-500 mb-4">{member.email}</p>
+                <p className="mb-4 text-gray-500">{member.email}</p>
 
-                <div className="flex flex-wrap gap-2 justify-center">
-                  <span className={`px-3 py-1 text-sm font-medium rounded-full ${getMembershipStatusColor(member.status)}`}>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <span
+                    className={`rounded-full px-3 py-1 text-sm font-medium ${getMembershipStatusColor(member.status)}`}
+                  >
                     {t(`status.${getStatusTranslationKey(member.status)}`)}
                   </span>
-                  <span className={`px-3 py-1 text-sm font-medium rounded-full ${getMembershipTypeColor(member.membershipType)}`}>
-                    {t(`membershipType.${getTypeTranslationKey(member.membershipType)}`)}
+                  <span
+                    className={`rounded-full px-3 py-1 text-sm font-medium ${getMembershipTypeColor(member.membershipType)}`}
+                  >
+                    {t(
+                      `membershipType.${getTypeTranslationKey(member.membershipType)}`
+                    )}
                   </span>
                 </div>
 
-                <p className="text-sm text-gray-500 mt-4">
-                  {t("profile.memberSince", { date: new Date(member.memberSince).toLocaleDateString("de-CH", {
-                    day: "2-digit",
-                    month: "2-digit",
-                    year: "numeric",
-                  }) })}
+                <p className="mt-4 text-sm text-gray-500">
+                  {t("profile.memberSince", {
+                    date: new Date(member.memberSince).toLocaleDateString(
+                      "de-CH",
+                      {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                      }
+                    ),
+                  })}
                 </p>
               </div>
             </div>
@@ -346,14 +389,22 @@ export default function ProfilePage() {
           {/* Details / Edit Form */}
           <div className="md:col-span-2">
             {editing ? (
-              <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm p-6">
+              <form
+                onSubmit={handleSubmit}
+                className="rounded-xl bg-white p-6 shadow-sm"
+              >
                 <div className="space-y-6">
                   {/* Personal Info */}
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">{t("profile.personalInfo")}</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <h3 className="mb-4 text-lg font-medium text-gray-900">
+                      {t("profile.personalInfo")}
+                    </h3>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       <div>
-                        <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
+                        <label
+                          htmlFor="firstName"
+                          className="mb-1 block text-sm font-medium text-gray-700"
+                        >
                           {t("form.firstName")} *
                         </label>
                         <input
@@ -363,11 +414,14 @@ export default function ProfilePage() {
                           required
                           value={formData.firstName}
                           onChange={handleChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                          className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
                         />
                       </div>
                       <div>
-                        <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
+                        <label
+                          htmlFor="lastName"
+                          className="mb-1 block text-sm font-medium text-gray-700"
+                        >
                           {t("form.lastName")} *
                         </label>
                         <input
@@ -377,7 +431,7 @@ export default function ProfilePage() {
                           required
                           value={formData.lastName}
                           onChange={handleChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                          className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
                         />
                       </div>
                     </div>
@@ -385,9 +439,14 @@ export default function ProfilePage() {
 
                   {/* Contact Info */}
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">{t("profile.contact")}</h3>
+                    <h3 className="mb-4 text-lg font-medium text-gray-900">
+                      {t("profile.contact")}
+                    </h3>
                     <div>
-                      <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+                      <label
+                        htmlFor="phone"
+                        className="mb-1 block text-sm font-medium text-gray-700"
+                      >
                         {t("form.phone")}
                       </label>
                       <input
@@ -396,20 +455,25 @@ export default function ProfilePage() {
                         name="phone"
                         value={formData.phone || ""}
                         onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                        className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
                       />
                     </div>
-                    <p className="text-sm text-gray-500 mt-2">
+                    <p className="mt-2 text-sm text-gray-500">
                       {t("profile.emailCannotBeChanged")}
                     </p>
                   </div>
 
                   {/* Address */}
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">{t("profile.address")}</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <h3 className="mb-4 text-lg font-medium text-gray-900">
+                      {t("profile.address")}
+                    </h3>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       <div className="md:col-span-2">
-                        <label htmlFor="street" className="block text-sm font-medium text-gray-700 mb-1">
+                        <label
+                          htmlFor="street"
+                          className="mb-1 block text-sm font-medium text-gray-700"
+                        >
                           {t("form.street")} *
                         </label>
                         <input
@@ -419,11 +483,14 @@ export default function ProfilePage() {
                           required
                           value={formData.street}
                           onChange={handleChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                          className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
                         />
                       </div>
                       <div>
-                        <label htmlFor="postalCode" className="block text-sm font-medium text-gray-700 mb-1">
+                        <label
+                          htmlFor="postalCode"
+                          className="mb-1 block text-sm font-medium text-gray-700"
+                        >
                           {t("form.postalCode")} *
                         </label>
                         <input
@@ -433,11 +500,14 @@ export default function ProfilePage() {
                           required
                           value={formData.postalCode}
                           onChange={handleChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                          className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
                         />
                       </div>
                       <div>
-                        <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
+                        <label
+                          htmlFor="city"
+                          className="mb-1 block text-sm font-medium text-gray-700"
+                        >
                           {t("form.city")} *
                         </label>
                         <input
@@ -447,11 +517,14 @@ export default function ProfilePage() {
                           required
                           value={formData.city}
                           onChange={handleChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                          className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
                         />
                       </div>
                       <div className="md:col-span-2">
-                        <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">
+                        <label
+                          htmlFor="country"
+                          className="mb-1 block text-sm font-medium text-gray-700"
+                        >
                           {t("form.country")}
                         </label>
                         <input
@@ -460,7 +533,7 @@ export default function ProfilePage() {
                           name="country"
                           value={formData.country || ""}
                           onChange={handleChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                          className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
                         />
                       </div>
                     </div>
@@ -468,18 +541,18 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex justify-end gap-4 mt-8 pt-6 border-t border-gray-200">
+                <div className="mt-8 flex justify-end gap-4 border-t border-gray-200 pt-6">
                   <button
                     type="button"
                     onClick={handleCancel}
-                    className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="rounded-lg border border-gray-300 px-6 py-2 transition-colors hover:bg-gray-50"
                   >
                     {t("common.cancel")}
                   </button>
                   <button
                     type="submit"
                     disabled={saving}
-                    className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="rounded-lg bg-orange-600 px-6 py-2 text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {saving ? t("common.saving") : t("common.save")}
                   </button>
@@ -488,26 +561,40 @@ export default function ProfilePage() {
             ) : (
               <div className="space-y-6">
                 {/* Contact Info */}
-                <div className="bg-white rounded-xl shadow-sm p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">{t("profile.contactDetails")}</h3>
-                  <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="rounded-xl bg-white p-6 shadow-sm">
+                  <h3 className="mb-4 text-lg font-semibold text-gray-900">
+                    {t("profile.contactDetails")}
+                  </h3>
+                  <dl className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
-                      <dt className="text-sm font-medium text-gray-500">{t("form.email")}</dt>
+                      <dt className="text-sm font-medium text-gray-500">
+                        {t("form.email")}
+                      </dt>
                       <dd className="mt-1">
-                        <a href={`mailto:${member.email}`} className="text-blue-600 hover:underline">
+                        <a
+                          href={`mailto:${member.email}`}
+                          className="text-blue-600 hover:underline"
+                        >
                           {member.email}
                         </a>
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-sm font-medium text-gray-500">{t("form.phone")}</dt>
+                      <dt className="text-sm font-medium text-gray-500">
+                        {t("form.phone")}
+                      </dt>
                       <dd className="mt-1">
                         {member.phone ? (
-                          <a href={`tel:${member.phone}`} className="text-blue-600 hover:underline">
+                          <a
+                            href={`tel:${member.phone}`}
+                            className="text-blue-600 hover:underline"
+                          >
                             {member.phone}
                           </a>
                         ) : (
-                          <span className="text-gray-400">{t("common.notSpecified")}</span>
+                          <span className="text-gray-400">
+                            {t("common.notSpecified")}
+                          </span>
                         )}
                       </dd>
                     </div>
@@ -515,44 +602,69 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Address */}
-                <div className="bg-white rounded-xl shadow-sm p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">{t("profile.address")}</h3>
-                  <address className="not-italic text-gray-700">
-                    {member.street}<br />
-                    {member.postalCode} {member.city}<br />
+                <div className="rounded-xl bg-white p-6 shadow-sm">
+                  <h3 className="mb-4 text-lg font-semibold text-gray-900">
+                    {t("profile.address")}
+                  </h3>
+                  <address className="text-gray-700 not-italic">
+                    {member.street}
+                    <br />
+                    {member.postalCode} {member.city}
+                    <br />
                     {member.country}
                   </address>
                 </div>
 
                 {/* REQ-029: Consent Preferences */}
-                <div className="bg-white rounded-xl shadow-sm p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-1">{t("profile.consentPreferences")}</h3>
-                  <p className="text-sm text-gray-500 mb-4">{t("profile.consentDescription")}</p>
+                <div className="rounded-xl bg-white p-6 shadow-sm">
+                  <h3 className="mb-1 text-lg font-semibold text-gray-900">
+                    {t("profile.consentPreferences")}
+                  </h3>
+                  <p className="mb-4 text-sm text-gray-500">
+                    {t("profile.consentDescription")}
+                  </p>
 
                   {consentMessage && (
-                    <div className={`rounded-lg p-3 mb-4 text-sm ${consentMessage.type === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
+                    <div
+                      className={`mb-4 rounded-lg p-3 text-sm ${consentMessage.type === "success" ? "border border-green-200 bg-green-50 text-green-700" : "border border-red-200 bg-red-50 text-red-700"}`}
+                    >
                       {consentMessage.text}
                     </div>
                   )}
 
                   <div className="space-y-4">
                     {[
-                      { type: "Newsletter", label: t("profile.consentNewsletter"), desc: t("profile.consentNewsletterDesc") },
-                      { type: "EventNotifications", label: t("profile.consentEventNotifications"), desc: t("profile.consentEventNotificationsDesc") },
+                      {
+                        type: "Newsletter",
+                        label: t("profile.consentNewsletter"),
+                        desc: t("profile.consentNewsletterDesc"),
+                      },
+                      {
+                        type: "EventNotifications",
+                        label: t("profile.consentEventNotifications"),
+                        desc: t("profile.consentEventNotificationsDesc"),
+                      },
                     ].map(({ type, label, desc }) => {
                       const consent = consents.find((c) => c.type === type);
                       const isGranted = consent?.isGranted ?? false;
                       return (
-                        <label key={type} className="flex items-start gap-3 cursor-pointer">
+                        <label
+                          key={type}
+                          className="flex cursor-pointer items-start gap-3"
+                        >
                           <input
                             type="checkbox"
                             disabled={consentSaving}
                             checked={isGranted}
-                            onChange={() => handleConsentToggle(type, isGranted)}
+                            onChange={() =>
+                              handleConsentToggle(type, isGranted)
+                            }
                             className="mt-0.5 h-5 w-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500 disabled:opacity-50"
                           />
                           <div>
-                            <span className="text-sm font-medium text-gray-900">{label}</span>
+                            <span className="text-sm font-medium text-gray-900">
+                              {label}
+                            </span>
                             <p className="text-sm text-gray-500">{desc}</p>
                           </div>
                         </label>
@@ -560,6 +672,9 @@ export default function ProfilePage() {
                     })}
                   </div>
                 </div>
+
+                {/* REQ-030 (E5-S5): Channel Preferences */}
+                <ChannelPreferencesCard />
               </div>
             )}
           </div>

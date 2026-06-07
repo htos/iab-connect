@@ -93,6 +93,36 @@ public static class DependencyInjection
         services.AddScoped<IEmailTemplateRepository, EmailTemplateRepository>();
         services.AddScoped<INewsletterSubscriberRepository, NewsletterSubscriberRepository>();
 
+        // REQ-028 (E5-S1): Communication automation definition repository + shared recipient resolver
+        services.AddScoped<IAutomationDefinitionRepository, AutomationDefinitionRepository>();
+        services.AddScoped<IabConnect.Application.Communication.Automations.IRecipientResolutionService,
+            Infrastructure.Communication.RecipientResolutionService>();
+
+        // REQ-028 (E5-S2): automation execution engine + Hangfire dispatch job
+        services.AddScoped<IAutomationExecutionRepository, AutomationExecutionRepository>();
+        services.AddSingleton<IabConnect.Application.Communication.Automations.AutomationTriggerEvaluator>();
+        services.AddScoped<IabConnect.Application.Communication.Automations.IAutomationExecutionService,
+            Infrastructure.Communication.AutomationExecutionService>();
+        services.AddScoped<Infrastructure.Communication.Jobs.AutomationDispatchJob>();
+
+        // REQ-030 (E5-S4): multi-channel messaging abstraction. Email is the always-enabled default;
+        // SMS/WhatsApp ship as disabled stubs (config-driven, false by default — provider secrets are
+        // config-only). The automation send path (S2) routes through IMessageDispatcher (DEC-3);
+        // campaigns + event-notifications stay on IEmailSender directly. IChannelPreferenceService is
+        // the S4 seam with a default "email always eligible" impl that S5 replaces.
+        services.Configure<Messaging.SmsSettings>(configuration.GetSection(Messaging.SmsSettings.SectionName));
+        services.Configure<Messaging.WhatsAppSettings>(configuration.GetSection(Messaging.WhatsAppSettings.SectionName));
+        services.AddScoped<IabConnect.Application.Communication.Messaging.IMessageChannelSender, Messaging.EmailChannelSender>();
+        services.AddScoped<IabConnect.Application.Communication.Messaging.IMessageChannelSender, Messaging.SmsChannelSender>();
+        services.AddScoped<IabConnect.Application.Communication.Messaging.IMessageChannelSender, Messaging.WhatsAppChannelSender>();
+        services.AddScoped<IabConnect.Application.Communication.Messaging.IMessageDispatcher, Messaging.MessageDispatcher>();
+
+        // REQ-030 (E5-S5): the REAL channel-preference (eligibility) service replaces S4's default
+        // email-always-eligible seam — consent AND preference AND provider-availability before send.
+        services.AddScoped<IUserChannelPreferenceRepository, UserChannelPreferenceRepository>();
+        services.AddScoped<IabConnect.Application.Communication.Messaging.IChannelPreferenceService,
+            Messaging.ChannelPreferenceService>();
+
         // REQ-059: System Settings & Custom Roles
         services.AddScoped<ISystemSettingsRepository, SystemSettingsRepository>();
         services.AddScoped<ICustomRoleRepository, CustomRoleRepository>();

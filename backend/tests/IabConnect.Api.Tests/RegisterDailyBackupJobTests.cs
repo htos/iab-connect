@@ -60,9 +60,10 @@ public sealed class RegisterDailyBackupJobTests
             DependencyInjection.VolunteerReminderJobId,            // VolunteerShiftReminderJob
             DependencyInjection.DailyBackupJobId,                  // RegisterDailyBackupJob — E15-S3
             DependencyInjection.PruneOldBackupsJobId,              // RegisterDailyBackupJob — E15-S3
+            DependencyInjection.AutomationDispatchJobId,           // AutomationDispatchJob — E5-S2
         };
         ids.Should().OnlyHaveUniqueItems();
-        ids.Should().HaveCount(6, "the project currently registers exactly 6 recurring jobs; bump this count when adding a 7th");
+        ids.Should().HaveCount(7, "the project currently registers exactly 7 recurring jobs; bump this count when adding an 8th");
     }
 
     [Fact]
