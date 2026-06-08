@@ -2,10 +2,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 
 // REQ-022 (E4-S3) AC-4: admin roster shows a payment-status badge column + payment stat cards
-// derived from the linked-invoice payment status.
+// derived from the linked-invoice payment status. Preserved through the E24-S3 slice extraction.
+//
+// TRANSPORT ADAPTATION (E24-S3): the page now reads through the events slice api
+// (`useApiClient`) instead of `@/lib/services/events`, so the mock is a stable `useApiClient`
+// spy routed by endpoint. The behavioural assertions (payment badges + payment stat cards) are
+// preserved verbatim.
 
 vi.mock("react", async () => {
   const actual = await vi.importActual<typeof React>("react");
@@ -42,30 +48,9 @@ vi.mock("next-intl", () => {
   return { useTranslations: () => translate };
 });
 
-vi.mock("@/lib/auth", () => ({
-  useAuth: () => ({
-    isAuthenticated: true,
-    isLoading: false,
-    isVorstand: true,
-    isAdmin: false,
-  }),
-  useApiClient: () => ({ get: vi.fn() }),
-}));
-
-import RegistrationsPage from "./page";
-import * as eventsService from "@/lib/services/events";
-
-vi.mock("@/lib/services/events", async () => {
-  const actual = await vi.importActual<typeof eventsService>(
-    "@/lib/services/events"
-  );
-  return {
-    ...actual,
-    getEventById: vi.fn(),
-    getEventRegistrations: vi.fn(),
-    getEventRegistrationStatistics: vi.fn(),
-  };
-});
+const REGS = "/api/v1/events/evt-1/registrations";
+const STATS = "/api/v1/events/evt-1/registrations/statistics";
+const EVENT = "/api/v1/events/evt-1";
 
 const paidReg = {
   id: "r1",
@@ -93,35 +78,73 @@ const pendingReg = {
   amountDue: 10,
 };
 
+const apiGet = vi.fn((endpoint: string) => {
+  if (endpoint === EVENT)
+    return Promise.resolve({
+      data: { id: "evt-1", title: "Paid Event" },
+      error: null,
+    });
+  if (endpoint === STATS)
+    return Promise.resolve({
+      data: {
+        totalRegistrations: 2,
+        confirmedCount: 2,
+        pendingCount: 0,
+        waitlistedCount: 0,
+        cancelledCount: 0,
+        checkedInCount: 0,
+        noShowCount: 0,
+        totalParticipants: 2,
+        totalGuests: 0,
+      },
+      error: null,
+    });
+  if (endpoint.startsWith(REGS))
+    return Promise.resolve({
+      data: {
+        items: [paidReg, pendingReg],
+        totalCount: 2,
+        page: 1,
+        pageSize: 20,
+        totalPages: 1,
+      },
+      error: null,
+    });
+  return Promise.resolve({ data: null, error: null });
+});
+const apiClient = {
+  get: apiGet,
+  post: vi.fn(),
+  put: vi.fn(),
+  delete: vi.fn(),
+  upload: vi.fn(),
+};
+
+vi.mock("@/lib/auth", () => ({
+  useAuth: () => ({
+    isAuthenticated: true,
+    isLoading: false,
+    isVorstand: true,
+    isAdmin: false,
+  }),
+  useApiClient: () => apiClient,
+}));
+
+import RegistrationsPage from "./page";
+
+function renderPage() {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={client}>
+      <RegistrationsPage params={syncThenable({ id: "evt-1" })} />
+    </QueryClientProvider>
+  );
+}
+
 beforeEach(() => {
-  vi.mocked(eventsService.getEventById).mockResolvedValue({
-    data: { id: "evt-1", title: "Paid Event" },
-    error: undefined,
-  } as never);
-  vi.mocked(eventsService.getEventRegistrations).mockResolvedValue({
-    data: {
-      items: [paidReg, pendingReg],
-      totalCount: 2,
-      page: 1,
-      pageSize: 20,
-      totalPages: 1,
-    },
-    error: undefined,
-  } as never);
-  vi.mocked(eventsService.getEventRegistrationStatistics).mockResolvedValue({
-    data: {
-      totalRegistrations: 2,
-      confirmedCount: 2,
-      pendingCount: 0,
-      waitlistedCount: 0,
-      cancelledCount: 0,
-      checkedInCount: 0,
-      noShowCount: 0,
-      totalParticipants: 2,
-      totalGuests: 0,
-    },
-    error: undefined,
-  } as never);
+  // fixtures provided by the apiGet router above
 });
 
 afterEach(() => {
@@ -131,7 +154,7 @@ afterEach(() => {
 
 describe("RegistrationsPage payment column", () => {
   it("renders payment badges and payment stat cards", async () => {
-    render(<RegistrationsPage params={syncThenable({ id: "evt-1" })} />);
+    renderPage();
 
     await waitFor(() => {
       expect(screen.getByText("Anna Paid")).toBeInTheDocument();

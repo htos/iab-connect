@@ -3,8 +3,10 @@
  * Provides API functions for event management.
  */
 
-import { apiGet, apiPost, apiPut, apiDelete, type ApiResult } from './api';
-import type { PagedResult } from '@/types/common';
+// A62: after the dead-export cleanup only GET/POST helpers remain in use here (apiPut/apiDelete
+// were dropped with the removed manager fns). PagedResult is re-exported below straight from
+// `@/types/common`, so no value import is needed.
+import { apiGet, apiPost, type ApiResult } from './api';
 
 // Types matching backend DTOs
 export interface EventDto {
@@ -153,147 +155,17 @@ export async function getPublicEvent(id: string): Promise<ApiResult<EventDto>> {
 
 // === Protected API (auth required) ===
 
-export async function getEvents(
-  options?: EventFilterOptions
-): Promise<ApiResult<PagedResult<EventDto>>> {
-  const params = new URLSearchParams();
-  if (options?.search) params.append('search', options.search);
-  if (options?.status) params.append('status', options.status);
-  if (options?.visibility) params.append('visibility', options.visibility);
-  if (options?.category) params.append('category', options.category);
-  if (options?.fromDate) params.append('fromDate', options.fromDate);
-  if (options?.toDate) params.append('toDate', options.toDate);
-  if (options?.page) params.append('page', options.page.toString());
-  if (options?.pageSize) params.append('pageSize', options.pageSize.toString());
-
-  const queryString = params.toString() ? `?${params.toString()}` : '';
-  return apiGet<PagedResult<EventDto>>(`/events${queryString}`);
-}
-
+// A62 retained: reserved for E28 Public pages (Server Components), no in-app caller yet.
 export async function getUpcomingEvents(count: number = 10): Promise<ApiResult<EventDto[]>> {
   return apiGet<EventDto[]>(`/events/upcoming?count=${count}`);
 }
 
-export async function getEventById(id: string): Promise<ApiResult<EventDto>> {
-  return apiGet<EventDto>(`/events/${id}`);
-}
-
-export async function createEvent(data: CreateEventRequest): Promise<ApiResult<EventDto>> {
-  return apiPost<EventDto>('/events', data);
-}
-
-export async function updateEvent(
-  id: string,
-  data: UpdateEventRequest
-): Promise<ApiResult<EventDto>> {
-  return apiPut<EventDto>(`/events/${id}`, data);
-}
-
-export async function publishEvent(id: string): Promise<ApiResult<EventDto>> {
-  return apiPost<EventDto>(`/events/${id}/publish`, {});
-}
-
-export async function unpublishEvent(id: string): Promise<ApiResult<EventDto>> {
-  return apiPost<EventDto>(`/events/${id}/unpublish`, {});
-}
-
-export async function cancelEvent(id: string, reason?: string): Promise<ApiResult<EventDto>> {
-  return apiPost<EventDto>(`/events/${id}/cancel`, { reason });
-}
-
-export async function deleteEvent(id: string): Promise<ApiResult<void>> {
-  return apiDelete<void>(`/events/${id}`);
-}
-
-export async function getEventStatistics(): Promise<ApiResult<EventStatistics>> {
-  return apiGet<EventStatistics>('/events/statistics');
-}
-
-// === Utility Functions ===
-
-export function formatEventDate(event: EventDto): string {
-  const start = new Date(event.startDate);
-  const end = new Date(event.endDate);
-
-  const dateOptions: Intl.DateTimeFormatOptions = {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  };
-
-  const timeOptions: Intl.DateTimeFormatOptions = {
-    hour: '2-digit',
-    minute: '2-digit',
-  };
-
-  if (event.isAllDay) {
-    if (start.toDateString() === end.toDateString()) {
-      return start.toLocaleDateString('de-CH', dateOptions);
-    }
-    return `${start.toLocaleDateString('de-CH', dateOptions)} - ${end.toLocaleDateString('de-CH', dateOptions)}`;
-  }
-
-  if (start.toDateString() === end.toDateString()) {
-    return `${start.toLocaleDateString('de-CH', dateOptions)}, ${start.toLocaleTimeString('de-CH', timeOptions)} - ${end.toLocaleTimeString('de-CH', timeOptions)}`;
-  }
-
-  return `${start.toLocaleDateString('de-CH', { ...dateOptions, hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleDateString('de-CH', { ...dateOptions, hour: '2-digit', minute: '2-digit' })}`;
-}
-
-export function getStatusBadgeColor(
-  status: EventStatus
-): 'default' | 'secondary' | 'destructive' | 'outline' {
-  switch (status) {
-    case EventStatus.Published:
-      return 'default';
-    case EventStatus.Draft:
-      return 'secondary';
-    case EventStatus.Cancelled:
-      return 'destructive';
-    case EventStatus.Completed:
-      return 'outline';
-    default:
-      return 'default';
-  }
-}
-
-export function getCategoryLabel(category: EventCategory): string {
-  const labels: Record<EventCategory, string> = {
-    [EventCategory.General]: 'Allgemein',
-    [EventCategory.Cultural]: 'Kulturell',
-    [EventCategory.Social]: 'Gesellschaftlich',
-    [EventCategory.Educational]: 'Bildung',
-    [EventCategory.Sports]: 'Sport',
-    [EventCategory.Religious]: 'Religiös',
-    [EventCategory.Charity]: 'Wohltätigkeit',
-    [EventCategory.Meeting]: 'Versammlung',
-    [EventCategory.Workshop]: 'Workshop',
-    [EventCategory.Festival]: 'Festival',
-    [EventCategory.Other]: 'Sonstiges',
-  };
-  return labels[category] || category;
-}
-
-export function getStatusLabel(status: EventStatus): string {
-  const labels: Record<EventStatus, string> = {
-    [EventStatus.Draft]: 'Entwurf',
-    [EventStatus.Published]: 'Veröffentlicht',
-    [EventStatus.Cancelled]: 'Abgesagt',
-    [EventStatus.Completed]: 'Abgeschlossen',
-  };
-  return labels[status] || status;
-}
-
-export function getVisibilityLabel(visibility: EventVisibility): string {
-  const labels: Record<EventVisibility, string> = {
-    [EventVisibility.Public]: 'Öffentlich',
-    [EventVisibility.MembersOnly]: 'Nur Mitglieder',
-    [EventVisibility.InviteOnly]: 'Nur auf Einladung',
-    [EventVisibility.Hidden]: 'Versteckt',
-  };
-  return labels[visibility] || visibility;
-}
+// A62 cleanup: the protected event CRUD/stats fns (getEvents, getEventById, createEvent,
+// updateEvent, publishEvent, unpublishEvent, cancelEvent, deleteEvent, getEventStatistics) were
+// removed — the events slice (`features/events/api/events-api.ts` + hooks) is now their sole home
+// and no caller imports them from here. The label/format helpers (formatEventDate,
+// getStatusBadgeColor, getCategoryLabel, getStatusLabel, getVisibilityLabel) were likewise removed
+// (zero importers; the slice has its own `format-event-date.ts` + i18n labels).
 
 // ============================================
 // REQ-020: Event Registration / RSVP
@@ -396,6 +268,7 @@ export interface PagedRegistrationResult {
 
 // === Registration API Functions ===
 
+// A62 retained: reserved for E28 Public pages (Server Components), no in-app caller yet.
 export async function registerForEventPublic(
   eventId: string,
   request: RegisterPublicRequest
@@ -403,116 +276,13 @@ export async function registerForEventPublic(
   return apiPost<EventRegistrationDto>(`/events/${eventId}/registrations/public`, request);
 }
 
-export async function registerForEvent(
-  eventId: string,
-  request: RegisterMemberRequest = {}
-): Promise<ApiResult<EventRegistrationDto>> {
-  return apiPost<EventRegistrationDto>(`/events/${eventId}/registrations`, request);
-}
-
-export async function getEventRegistrations(
-  eventId: string,
-  params?: {
-    status?: RegistrationStatus;
-    isWaitlisted?: boolean;
-    searchTerm?: string;
-    page?: number;
-    pageSize?: number;
-  }
-): Promise<ApiResult<PagedRegistrationResult>> {
-  const searchParams = new URLSearchParams();
-  if (params?.status) searchParams.set('status', params.status);
-  if (params?.isWaitlisted !== undefined) searchParams.set('isWaitlisted', String(params.isWaitlisted));
-  if (params?.searchTerm) searchParams.set('searchTerm', params.searchTerm);
-  if (params?.page) searchParams.set('page', String(params.page));
-  if (params?.pageSize) searchParams.set('pageSize', String(params.pageSize));
-
-  const query = searchParams.toString();
-  return apiGet<PagedRegistrationResult>(`/events/${eventId}/registrations${query ? `?${query}` : ''}`);
-}
-
-export async function getEventRegistration(
-  eventId: string,
-  registrationId: string
-): Promise<ApiResult<EventRegistrationDto>> {
-  return apiGet<EventRegistrationDto>(`/events/${eventId}/registrations/${registrationId}`);
-}
-
-export async function updateEventRegistration(
-  eventId: string,
-  registrationId: string,
-  request: UpdateRegistrationRequest
-): Promise<ApiResult<EventRegistrationDto>> {
-  return apiPut<EventRegistrationDto>(`/events/${eventId}/registrations/${registrationId}`, request);
-}
-
-export async function cancelEventRegistration(
-  eventId: string,
-  registrationId: string,
-  reason?: string
-): Promise<ApiResult<EventRegistrationDto>> {
-  return apiPost<EventRegistrationDto>(`/events/${eventId}/registrations/${registrationId}/cancel`, { reason });
-}
-
-export async function confirmEventRegistration(
-  eventId: string,
-  registrationId: string
-): Promise<ApiResult<EventRegistrationDto>> {
-  return apiPost<EventRegistrationDto>(`/events/${eventId}/registrations/${registrationId}/confirm`, {});
-}
-
-export async function checkInRegistration(
-  eventId: string,
-  registrationId: string
-): Promise<ApiResult<EventRegistrationDto>> {
-  return apiPost<EventRegistrationDto>(`/events/${eventId}/registrations/${registrationId}/check-in`, {});
-}
-
-export async function markRegistrationAsNoShow(
-  eventId: string,
-  registrationId: string
-): Promise<ApiResult<EventRegistrationDto>> {
-  return apiPost<EventRegistrationDto>(`/events/${eventId}/registrations/${registrationId}/no-show`, {});
-}
-
-export async function revertRegistrationNoShow(
-  eventId: string,
-  registrationId: string
-): Promise<ApiResult<EventRegistrationDto>> {
-  return apiPost<EventRegistrationDto>(`/events/${eventId}/registrations/${registrationId}/revert-no-show`, {});
-}
-
-export async function revertRegistrationCheckIn(
-  eventId: string,
-  registrationId: string
-): Promise<ApiResult<EventRegistrationDto>> {
-  return apiPost<EventRegistrationDto>(`/events/${eventId}/registrations/${registrationId}/revert-check-in`, {});
-}
-
-export async function revertRegistrationCancellation(
-  eventId: string,
-  registrationId: string
-): Promise<ApiResult<EventRegistrationDto>> {
-  return apiPost<EventRegistrationDto>(`/events/${eventId}/registrations/${registrationId}/revert-cancellation`, {});
-}
-
-export async function getEventRegistrationStatistics(
-  eventId: string
-): Promise<ApiResult<EventRegistrationStatistics>> {
-  return apiGet<EventRegistrationStatistics>(`/events/${eventId}/registrations/statistics`);
-}
-
-export async function getEventWaitlist(
-  eventId: string
-): Promise<ApiResult<EventRegistrationDto[]>> {
-  return apiGet<EventRegistrationDto[]>(`/events/${eventId}/registrations/waitlist`);
-}
-
-export async function promoteFromWaitlist(
-  eventId: string
-): Promise<ApiResult<EventRegistrationDto>> {
-  return apiPost<EventRegistrationDto>(`/events/${eventId}/registrations/promote-from-waitlist`, {});
-}
+// A62 cleanup: the member/manager registration data fns (registerForEvent, getEventRegistrations,
+// getEventRegistration, updateEventRegistration, cancelEventRegistration, confirmEventRegistration,
+// checkInRegistration, markRegistrationAsNoShow, revertRegistrationNoShow, revertRegistrationCheckIn,
+// revertRegistrationCancellation, getEventRegistrationStatistics, getEventWaitlist,
+// promoteFromWaitlist, getMyRegistrations) were removed — the detail page + registrations sub-page
+// now call the slice (`features/events/api/event-registrations-api.ts`) and nothing imports them
+// from here. The registration DTOs above are RETAINED (the slice re-exports them via DEC-3).
 
 // REQ-023 (E3.S2): typed check-in result that includes the WasAlreadyCheckedIn flag and
 // typed conflict reasons so the UI doesn't string-match on error messages.
@@ -525,29 +295,9 @@ export interface CheckInResultDto {
   conflict?: CheckInConflictReason | null;
 }
 
-export async function checkInByQrCode(
-  qrCodeToken: string
-): Promise<ApiResult<CheckInResultDto>> {
-  // Post-review H-S2-3: URL-encode the token. Tokens containing `/`, `?`, `#`, or spaces
-  // would otherwise corrupt the route and produce surprising 404s or partial matches.
-  return apiPost<CheckInResultDto>(
-    `/registrations/check-in/${encodeURIComponent(qrCodeToken)}`,
-    {}
-  );
-}
-
-// REQ-023 (E3.S2): manual-search check-in — staff selects a roster row, optional
-// searchQuery hashed into searchQueryHash at the backend's audit log.
-export async function manualCheckIn(
-  eventId: string,
-  registrationId: string,
-  searchQuery?: string
-): Promise<ApiResult<CheckInResultDto>> {
-  return apiPost<CheckInResultDto>(
-    `/events/${eventId}/registrations/${registrationId}/manual-check-in`,
-    { searchQuery: searchQuery ?? null }
-  );
-}
+// A62 cleanup: the check-in fns (checkInByQrCode, manualCheckIn) were removed — the check-in
+// sub-page now calls the slice (`features/events/api/event-check-in-api.ts`). The check-in result
+// types above + roster types below are RETAINED (the slice re-exports them via DEC-3).
 
 // REQ-023 (E3.S1): roster surface used by the manual-search fallback list and CSV export.
 export interface EventCheckInRosterItemDto {
@@ -572,21 +322,8 @@ export interface EventCheckInRosterDto {
   items: EventCheckInRosterItemDto[];
 }
 
-export async function getEventCheckInRoster(
-  eventId: string,
-  options?: { includeWaitlisted?: boolean }
-): Promise<ApiResult<EventCheckInRosterDto>> {
-  const params = new URLSearchParams();
-  if (options?.includeWaitlisted) params.set('includeWaitlisted', 'true');
-  const qs = params.toString();
-  return apiGet<EventCheckInRosterDto>(
-    `/events/${eventId}/registrations/check-in-roster${qs ? `?${qs}` : ''}`
-  );
-}
-
-export async function getMyRegistrations(): Promise<ApiResult<EventRegistrationDto[]>> {
-  return apiGet<EventRegistrationDto[]>('/my-registrations');
-}
+// A62 cleanup: getEventCheckInRoster removed (the check-in sub-page uses the slice). The roster
+// DTOs above are RETAINED (slice re-exports them via DEC-3).
 
 // ============================================
 // REQ-024 (E3.S3 + E3.S4): Volunteer planning
@@ -633,29 +370,14 @@ export interface EventVolunteerAssignmentDto {
   assignedAt: string;
 }
 
-export async function getEventVolunteerRoles(eventId: string): Promise<ApiResult<EventVolunteerRoleDto[]>> {
-  return apiGet<EventVolunteerRoleDto[]>(`/events/${eventId}/volunteer-roles/`);
-}
-
-export async function createVolunteerRole(
-  eventId: string,
-  request: { name: string; description?: string | null }
-): Promise<ApiResult<EventVolunteerRoleDto>> {
-  return apiPost<EventVolunteerRoleDto>(`/events/${eventId}/volunteer-roles/`, request);
-}
-
-export async function updateVolunteerRole(
-  eventId: string,
-  roleId: string,
-  request: { name: string; description?: string | null; isActive: boolean }
-): Promise<ApiResult<EventVolunteerRoleDto>> {
-  return apiPut<EventVolunteerRoleDto>(`/events/${eventId}/volunteer-roles/${roleId}`, request);
-}
-
-export async function getEventVolunteerShifts(eventId: string): Promise<ApiResult<EventVolunteerShiftDto[]>> {
-  return apiGet<EventVolunteerShiftDto[]>(`/events/${eventId}/volunteer-shifts/`);
-}
-
+// A62 retained: VolunteerSelfSignupSection relies on ApiResult.errorBody.errorCode which
+// useApiClient doesn't expose, so the member self-signup flow stays on this service. Its three fns
+// (getEventVolunteerShifts, signUpForVolunteerShift, withdrawFromVolunteerShift) are kept; the
+// manager volunteer fns (getEventVolunteerRoles, createVolunteerRole, updateVolunteerRole,
+// createVolunteerShift, updateVolunteerShift, cancelVolunteerShift, getVolunteerShiftAssignments)
+// were removed (A62) — the volunteers sub-page now calls the slice
+// (`features/events/api/event-volunteers-api.ts`). CreateVolunteerShiftRequest type is RETAINED
+// (slice re-exports it via DEC-3).
 export interface CreateVolunteerShiftRequest {
   roleId: string;
   title: string;
@@ -668,39 +390,8 @@ export interface CreateVolunteerShiftRequest {
   notes?: string | null;
 }
 
-export async function createVolunteerShift(
-  eventId: string,
-  request: CreateVolunteerShiftRequest
-): Promise<ApiResult<EventVolunteerShiftDto>> {
-  return apiPost<EventVolunteerShiftDto>(`/events/${eventId}/volunteer-shifts/`, request);
-}
-
-export async function updateVolunteerShift(
-  eventId: string,
-  shiftId: string,
-  request: Omit<CreateVolunteerShiftRequest, 'roleId'>
-): Promise<ApiResult<EventVolunteerShiftDto>> {
-  return apiPut<EventVolunteerShiftDto>(`/events/${eventId}/volunteer-shifts/${shiftId}`, request);
-}
-
-export async function cancelVolunteerShift(
-  eventId: string,
-  shiftId: string,
-  reason?: string
-): Promise<ApiResult<{ cancelledAssignmentCount: number }>> {
-  return apiPost<{ cancelledAssignmentCount: number }>(
-    `/events/${eventId}/volunteer-shifts/${shiftId}/cancel`,
-    { reason: reason ?? null }
-  );
-}
-
-export async function getVolunteerShiftAssignments(
-  eventId: string,
-  shiftId: string
-): Promise<ApiResult<EventVolunteerAssignmentDto[]>> {
-  return apiGet<EventVolunteerAssignmentDto[]>(
-    `/events/${eventId}/volunteer-shifts/${shiftId}/assignments`
-  );
+export async function getEventVolunteerShifts(eventId: string): Promise<ApiResult<EventVolunteerShiftDto[]>> {
+  return apiGet<EventVolunteerShiftDto[]>(`/events/${eventId}/volunteer-shifts/`);
 }
 
 export async function signUpForVolunteerShift(
@@ -727,6 +418,8 @@ export async function withdrawFromVolunteerShift(
 }
 
 // REQ-021: Waitlist position for current user
+// A62 cleanup: getMyWaitlistPosition fn removed (no caller); WaitlistPositionDto type RETAINED
+// (slice re-exports DTOs via DEC-3 should a sub-page need it).
 export interface WaitlistPositionDto {
   registrationId: string;
   eventId: string;
@@ -735,43 +428,9 @@ export interface WaitlistPositionDto {
   registeredAt: string;
 }
 
-export async function getMyWaitlistPosition(
-  eventId: string
-): Promise<ApiResult<WaitlistPositionDto>> {
-  return apiGet<WaitlistPositionDto>(`/events/${eventId}/registrations/my-position`);
-}
-
-// === Registration Utility Functions ===
-
-export function getRegistrationStatusLabel(status: RegistrationStatus): string {
-  const labels: Record<RegistrationStatus, string> = {
-    Pending: 'Ausstehend',
-    Confirmed: 'Bestätigt',
-    Cancelled: 'Storniert',
-    Waitlisted: 'Warteliste',
-    CheckedIn: 'Eingecheckt',
-    NoShow: 'Nicht erschienen',
-  };
-  return labels[status] || status;
-}
-
-export function getRegistrationStatusColor(
-  status: RegistrationStatus
-): 'default' | 'secondary' | 'destructive' | 'outline' {
-  switch (status) {
-    case 'Confirmed':
-    case 'CheckedIn':
-      return 'default';
-    case 'Pending':
-    case 'Waitlisted':
-      return 'secondary';
-    case 'Cancelled':
-    case 'NoShow':
-      return 'destructive';
-    default:
-      return 'outline';
-  }
-}
+// A62 cleanup: the registration label/colour helpers (getRegistrationStatusLabel,
+// getRegistrationStatusColor) were removed — zero importers; the slice uses i18n labels + Badge
+// variants instead.
 
 // ============================================
 // REQ-022 (E4-S1): Event fee categories
@@ -829,6 +488,7 @@ export interface PublicFeeCategoryDto {
   currency: string;
 }
 
+// A62 retained: reserved for E28 Public pages (Server Components), no in-app caller yet.
 /** REQ-022 (E4-S3): the fee categories a public visitor can pick when registering. */
 export async function getPublicEventFeeCategories(
   eventId: string
@@ -836,42 +496,7 @@ export async function getPublicEventFeeCategories(
   return apiGet<PublicFeeCategoryDto[]>(`/events/public/${eventId}/fee-categories`);
 }
 
-export async function getEventFeeCategories(
-  eventId: string,
-  options?: { includeInactive?: boolean }
-): Promise<ApiResult<EventFeeCategoryDto[]>> {
-  const params = new URLSearchParams();
-  if (options?.includeInactive === false) params.set('includeInactive', 'false');
-  const qs = params.toString();
-  return apiGet<EventFeeCategoryDto[]>(
-    `/events/${eventId}/fee-categories/${qs ? `?${qs}` : ''}`
-  );
-}
-
-export async function createEventFeeCategory(
-  eventId: string,
-  request: SaveFeeCategoryRequest
-): Promise<ApiResult<EventFeeCategoryDto>> {
-  return apiPost<EventFeeCategoryDto>(`/events/${eventId}/fee-categories/`, request);
-}
-
-export async function updateEventFeeCategory(
-  eventId: string,
-  categoryId: string,
-  request: SaveFeeCategoryRequest
-): Promise<ApiResult<EventFeeCategoryDto>> {
-  return apiPut<EventFeeCategoryDto>(
-    `/events/${eventId}/fee-categories/${categoryId}`,
-    request
-  );
-}
-
-export async function deactivateEventFeeCategory(
-  eventId: string,
-  categoryId: string
-): Promise<ApiResult<EventFeeCategoryDto>> {
-  return apiPost<EventFeeCategoryDto>(
-    `/events/${eventId}/fee-categories/${categoryId}/deactivate`,
-    {}
-  );
-}
+// A62 cleanup: the manager fee-category fns (getEventFeeCategories, createEventFeeCategory,
+// updateEventFeeCategory, deactivateEventFeeCategory) were removed — the fees sub-page now calls
+// the slice (`features/events/api/event-fees-api.ts`). The fee DTOs + FEE_CURRENCIES above are
+// RETAINED (the slice re-exports them via DEC-3).

@@ -1,8 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+// A62: the manager volunteer wrappers (createVolunteerRole / createVolunteerShift / …) were removed
+// from the service — the slice (`features/events/api/event-volunteers-api.ts`) owns them now and is
+// covered by `event-volunteers-api.test.ts`. This file keeps only the member self-signup wrappers
+// (getEventVolunteerShifts / signUpForVolunteerShift / withdrawFromVolunteerShift) that VolunteerSelf-
+// SignupSection still relies on (they need `ApiResult.errorBody.errorCode`, which useApiClient can't
+// express).
 import {
   type EventVolunteerShiftDto,
-  createVolunteerRole,
-  createVolunteerShift,
   getEventVolunteerShifts,
   signUpForVolunteerShift,
   withdrawFromVolunteerShift,
@@ -40,48 +44,6 @@ describe('volunteer service wrappers', () => {
     expect((calledInit as RequestInit).method).toBe('GET');
     expect(res.success).toBe(true);
     expect(res.data).toEqual(payload);
-  });
-
-  it('createVolunteerRole POSTs JSON body to the role-collection URL', async () => {
-    const created = { id: 'r1', eventId: 'e1', name: 'Cash desk', description: null, isActive: true, createdAt: '2026-05-13T09:00:00Z' };
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify(created), { status: 201, headers: { 'Content-Type': 'application/json' } })
-    );
-
-    const res = await createVolunteerRole('e1', { name: 'Cash desk', description: null });
-
-    expect(fetchMock).toHaveBeenCalledOnce();
-    const [calledUrl, calledInit] = fetchMock.mock.calls[0];
-    expect(calledUrl).toBe(`${API_BASE}/api/v1/events/e1/volunteer-roles/`);
-    expect((calledInit as RequestInit).method).toBe('POST');
-    expect((calledInit as RequestInit).body).toBe(JSON.stringify({ name: 'Cash desk', description: null }));
-    expect(res.data).toEqual(created);
-  });
-
-  it('createVolunteerShift sends the full request body', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({}), { status: 201, headers: { 'Content-Type': 'application/json' } })
-    );
-
-    await createVolunteerShift('e1', {
-      roleId: 'r1',
-      title: 'Morning',
-      description: 'Greeting attendees',
-      startsAt: '2026-05-13T10:00:00Z',
-      endsAt: '2026-05-13T12:00:00Z',
-      capacity: 5,
-      allowWaitlist: true,
-      allowSelfSignup: true,
-      notes: null,
-    });
-
-    const [, calledInit] = fetchMock.mock.calls[0];
-    const parsed = JSON.parse((calledInit as RequestInit).body as string);
-    expect(parsed).toEqual({
-      roleId: 'r1', title: 'Morning', description: 'Greeting attendees',
-      startsAt: '2026-05-13T10:00:00Z', endsAt: '2026-05-13T12:00:00Z',
-      capacity: 5, allowWaitlist: true, allowSelfSignup: true, notes: null,
-    });
   });
 
   it('signUpForVolunteerShift surfaces 409 errorCode in errorBody', async () => {
