@@ -50,11 +50,11 @@ export function DuplicateWarning({
   return (
     <div
       role="alert"
-      className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-6"
+      className="mb-6 rounded-xl border border-orange-200 bg-orange-50 p-4"
       data-testid="duplicate-warning"
     >
       <div className="flex items-start gap-3">
-        <AlertTriangle className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
+        <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-orange-600" />
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <h3 className="font-semibold text-orange-800">
@@ -62,13 +62,13 @@ export function DuplicateWarning({
             </h3>
             {loading && (
               <span
-                className="inline-block w-3 h-3 border-2 border-orange-400 border-t-transparent rounded-full animate-spin"
+                className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-orange-400 border-t-transparent"
                 aria-hidden="true"
               />
             )}
           </div>
           {candidates.length > 0 && (
-            <p className="text-sm text-orange-700 mt-1">{t(subtitleKey)}</p>
+            <p className="mt-1 text-sm text-orange-700">{t(subtitleKey)}</p>
           )}
 
           {candidates.length > 0 && (
@@ -87,12 +87,12 @@ export function DuplicateWarning({
                 return (
                   <li
                     key={candidate.id}
-                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-white border border-orange-100 rounded-lg p-3"
+                    className="flex flex-col gap-2 rounded-lg border border-orange-100 bg-white p-3 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="flex flex-col">
                       <Link
                         href={`/members/${candidate.id}`}
-                        className="text-orange-700 hover:underline underline-offset-2 decoration-dotted font-medium"
+                        className="font-medium text-orange-700 decoration-dotted underline-offset-2 hover:underline"
                       >
                         {candidate.firstName} {candidate.lastName}
                       </Link>
@@ -100,7 +100,7 @@ export function DuplicateWarning({
                         {candidate.email}
                       </span>
                       {reasons.length > 0 && (
-                        <span className="text-xs text-gray-500 mt-1">
+                        <span className="mt-1 text-xs text-gray-500">
                           {reasons
                             .map((flag) =>
                               t(
@@ -123,7 +123,7 @@ export function DuplicateWarning({
           )}
 
           {hasExactMatch && (
-            <p className="text-sm font-medium text-orange-800 mt-3">
+            <p className="mt-3 text-sm font-medium text-orange-800">
               {t("members.duplicateWarning.blocked")}
             </p>
           )}
@@ -132,7 +132,7 @@ export function DuplicateWarning({
             <button
               type="button"
               onClick={onConfirmProceed}
-              className="mt-3 inline-flex items-center gap-2 rounded-lg border border-orange-300 bg-white px-3 py-1.5 text-sm font-medium text-orange-700 hover:bg-orange-100 transition-colors"
+              className="mt-3 inline-flex items-center gap-2 rounded-lg border border-orange-300 bg-white px-3 py-1.5 text-sm font-medium text-orange-700 transition-colors hover:bg-orange-100"
               data-testid="duplicate-warning-confirm"
             >
               {t("members.duplicateWarning.confirmProceed")}

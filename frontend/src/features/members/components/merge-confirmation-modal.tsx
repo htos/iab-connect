@@ -58,14 +58,16 @@ export function MergeConfirmationModal({
   const sourceCandidates = members.filter((m) => m.id !== targetId);
   // Two-member group: once the target is picked, the source is unambiguous. For N>2 the admin
   // must explicitly pick the source via the select; we never auto-fall-back to the first option.
-  const effectiveSourceId = members.length === 2 && targetId
-    ? sourceCandidates[0]?.id ?? ""
-    : sourceId;
-  const submitDisabled = submitting
-    || !targetId
-    || !effectiveSourceId
-    || effectiveSourceId === targetId
-    || reason.trim().length === 0;
+  const effectiveSourceId =
+    members.length === 2 && targetId
+      ? (sourceCandidates[0]?.id ?? "")
+      : sourceId;
+  const submitDisabled =
+    submitting ||
+    !targetId ||
+    !effectiveSourceId ||
+    effectiveSourceId === targetId ||
+    reason.trim().length === 0;
 
   function resetAndClose() {
     setTargetId("");
@@ -117,7 +119,7 @@ export function MergeConfirmationModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="bg-white max-w-xl"
+        className="max-w-xl bg-white"
         data-testid="merge-confirmation-modal"
       >
         <DialogHeader>
@@ -129,17 +131,17 @@ export function MergeConfirmationModal({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <p className="text-sm font-medium text-gray-700 mb-1">
+            <p className="mb-1 text-sm font-medium text-gray-700">
               {t("members.duplicates.merge.modal.targetPicker")}
             </p>
-            <p className="text-xs text-gray-500 mb-2">
+            <p className="mb-2 text-xs text-gray-500">
               {t("members.duplicates.merge.modal.targetPickerHint")}
             </p>
             <div className="space-y-2">
               {members.map((m) => (
                 <label
                   key={m.id}
-                  className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
+                  className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50"
                 >
                   <input
                     type="radio"
@@ -164,13 +166,13 @@ export function MergeConfirmationModal({
 
           {targetId && sourceCandidates.length > 1 && (
             <div>
-              <p className="text-sm font-medium text-gray-700 mb-1">
+              <p className="mb-1 text-sm font-medium text-gray-700">
                 {t("members.duplicates.merge.modal.sourcePicker")}
               </p>
               <select
                 value={sourceId}
                 onChange={(e) => setSourceId(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none"
                 data-testid="merge-source"
               >
                 <option value="" disabled>
@@ -186,7 +188,7 @@ export function MergeConfirmationModal({
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="mb-1 block text-sm font-medium text-gray-700">
               {t("members.duplicates.merge.modal.reasonLabel")}
             </label>
             <textarea
@@ -194,14 +196,14 @@ export function MergeConfirmationModal({
               onChange={(e) => setReason(e.target.value)}
               maxLength={500}
               rows={3}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none"
               data-testid="merge-reason-input"
             />
             <p className="text-xs text-gray-500">{reason.length} / 500</p>
           </div>
 
           <div className="space-y-2">
-            <label className="flex items-start gap-2 text-sm cursor-pointer">
+            <label className="flex cursor-pointer items-start gap-2 text-sm">
               <input
                 type="checkbox"
                 checked={confirmFinanceImpact}
@@ -211,7 +213,7 @@ export function MergeConfirmationModal({
               />
               <span>{t("members.duplicates.merge.modal.confirmFinance")}</span>
             </label>
-            <label className="flex items-start gap-2 text-sm cursor-pointer">
+            <label className="flex cursor-pointer items-start gap-2 text-sm">
               <input
                 type="checkbox"
                 checked={confirmKeycloakImpact}
@@ -225,7 +227,7 @@ export function MergeConfirmationModal({
 
           {error && (
             <p
-              className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-md p-2"
+              className="rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-700"
               role="alert"
             >
               {error}
@@ -244,7 +246,7 @@ export function MergeConfirmationModal({
             <button
               type="submit"
               disabled={submitDisabled}
-              className="inline-flex items-center rounded-lg bg-orange-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center rounded-lg bg-orange-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
               data-testid="merge-submit"
             >
               {submitting

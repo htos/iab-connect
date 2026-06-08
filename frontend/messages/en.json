@@ -281,6 +281,7 @@
     "allStatuses": "All Statuses",
     "allTypes": "All Types",
     "memberNotFound": "Member not found",
+    "confirmDeleteTitle": "Delete member?",
     "deleteConfirm": "Do you really want to delete {name}?",
     "editMember": "Edit Member",
     "newMember": "New Member",

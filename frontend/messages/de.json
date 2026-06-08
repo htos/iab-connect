@@ -281,6 +281,7 @@
     "allStatuses": "Alle Status",
     "allTypes": "Alle Typen",
     "memberNotFound": "Mitglied nicht gefunden",
+    "confirmDeleteTitle": "Mitglied löschen?",
     "deleteConfirm": "Möchtest du {name} wirklich löschen?",
     "editMember": "Mitglied bearbeiten",
     "newMember": "Neues Mitglied",

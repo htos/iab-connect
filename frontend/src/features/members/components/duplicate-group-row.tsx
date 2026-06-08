@@ -16,10 +16,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Users, AlertOctagon, X as XIcon, ArrowRight } from "lucide-react";
-import {
-  parseMatchReason,
-  type DuplicateGroupDto,
-} from "@/lib/api/members";
+import { parseMatchReason, type DuplicateGroupDto } from "@/lib/api/members";
 
 interface DuplicateGroupRowProps {
   group: DuplicateGroupDto;
@@ -50,14 +47,14 @@ export function DuplicateGroupRow({
 
   return (
     <div
-      className="bg-white border border-gray-200 rounded-xl p-4 md:p-5 shadow-sm"
+      className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm md:p-5"
       data-testid={`duplicate-group-${group.groupKey}`}
     >
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div className="flex items-start gap-3 flex-1 min-w-0">
-          <Users className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center flex-wrap gap-2">
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          <Users className="mt-0.5 h-5 w-5 flex-shrink-0 text-orange-600" />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
               <span
                 className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${tierBadgeClasses}`}
               >
@@ -69,29 +66,33 @@ export function DuplicateGroupRow({
                 })}
               </span>
             </div>
-            <p className="text-xs text-gray-400 mt-1 truncate">{group.groupKey}</p>
+            <p className="mt-1 truncate text-xs text-gray-400">
+              {group.groupKey}
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex flex-shrink-0 items-center gap-2">
           <button
             type="button"
             onClick={() => onDismiss(group)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
             data-testid="duplicate-group-dismiss"
           >
-            <XIcon className="w-4 h-4" />
+            <XIcon className="h-4 w-4" />
             {t("members.duplicates.actions.dismiss")}
           </button>
           <button
             type="button"
             onClick={() => onMerge(group)}
             disabled={!isAdmin}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-orange-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title={!isAdmin ? t("members.duplicates.mergeAdminOnly") : undefined}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-orange-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+            title={
+              !isAdmin ? t("members.duplicates.mergeAdminOnly") : undefined
+            }
             data-testid="duplicate-group-merge"
           >
-            <ArrowRight className="w-4 h-4" />
+            <ArrowRight className="h-4 w-4" />
             {t("members.duplicates.actions.merge")}
           </button>
         </div>
@@ -115,20 +116,20 @@ export function DuplicateGroupRow({
             return (
               <li
                 key={candidate.id}
-                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-orange-50/40 border border-orange-100 rounded-lg p-3"
+                className="flex flex-col gap-2 rounded-lg border border-orange-100 bg-orange-50/40 p-3 sm:flex-row sm:items-center sm:justify-between"
               >
-                <div className="flex flex-col min-w-0">
+                <div className="flex min-w-0 flex-col">
                   <Link
                     href={`/members/${candidate.id}`}
-                    className="text-orange-700 hover:underline underline-offset-2 decoration-dotted font-medium truncate"
+                    className="truncate font-medium text-orange-700 decoration-dotted underline-offset-2 hover:underline"
                   >
                     {candidate.firstName} {candidate.lastName}
                   </Link>
-                  <span className="text-sm text-gray-600 truncate">
+                  <span className="truncate text-sm text-gray-600">
                     {candidate.email}
                   </span>
                   {reasons.length > 0 && (
-                    <span className="text-xs text-gray-500 mt-1">
+                    <span className="mt-1 text-xs text-gray-500">
                       {reasons
                         .map((flag) =>
                           t(
@@ -139,9 +140,9 @@ export function DuplicateGroupRow({
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex flex-shrink-0 items-center gap-2">
                   <span className="inline-flex items-center gap-1 text-xs text-gray-500">
-                    <AlertOctagon className="w-3 h-3" />
+                    <AlertOctagon className="h-3 w-3" />
                     {candidate.memberSince}
                   </span>
                 </div>
