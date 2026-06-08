@@ -2181,7 +2181,7 @@ The complete domain map, page counts, proposed per-domain epics, sequencing wave
 
 When E21-S3 is done, run `bmad-create-epics-and-stories` against that roadmap to materialise E22+ with grounded ACs. (The earlier S6–S9 sponsor/member/event/finance stub stories were superseded by this roadmap and removed.)
 
-**Materialised so far:** E22 (Sponsors) was authored 2026-06-07 from roadmap §E22 + the E21-S3 recipe (see below). The remaining program epics (E23 Members, E24 Events, E25 Communication, E26 Finance, E27 Admin, E28 Public, E29 Smaller, E30 Shell/Auth, E31 Legacy-client retirement) stay planned-only and are materialised one at a time AFTER each preceding domain epic's boundary review (code-review + retro), so each inherits a twice-proven recipe — the same post-pilot grounding rule that produced E22.
+**Materialised so far:** E22 (Sponsors) was authored 2026-06-07 from roadmap §E22 + the E21-S3 recipe (see below). The remaining program epics E23-E31 (E23 Members, E24 Events, E25 Communication, E26 Finance, E27 Admin, E28 Public, E29 Smaller, E30 Shell/Auth, E31 Legacy-client retirement) were then BULK-MATERIALISED 2026-06-07 (user directive "add all from frontend-refactoring-roadmap now") as backlog SKELETONS — epic header + story-level BDD ACs (behaviour-preserved + improvements) + Architecture notes + Tests/evidence + grounded source hints, each mirroring the E22 epic shape + the E21-S3 pilot recipe and grounded in an accurate 95-page frontend inventory (see the E23-E31 sections below). This deliberately overrode the original just-in-time, one-epic-per-boundary-review rule. The post-pilot recipe grounding now happens at `bmad-create-story` time: each story's exhaustive dev-ready context (existing-implementation spikes, DEC blocks, A56 findings) is authored per-epic, just-in-time, so it still inherits the latest twice-proven recipe even though the skeletons all exist up front.
 
 ## Epic E22: Frontend Feature-Slice Migration — Sponsors
 
@@ -2273,6 +2273,838 @@ Architecture notes:
 Tests/evidence:
 
 - All E22-S1 detail/new/edit tests green post-refactor; form-validation + create/update mutation tests; `tsc`/eslint(changed)/prettier-check(changed)/`vitest run` green; `next build` succeeds.
+
+## Epic E23: Frontend Feature-Slice Migration — Members
+Requirements: Technical initiative (no REQ) — Frontend Refactoring Program, materialised from `_bmad-output/planning-artifacts/frontend-refactoring-roadmap.md` §E23 + the E21-S3 pilot recipe and the E22 epic shape. Inherits the E21-S1 boundary decisions and the `docs/architecture-frontend.md` Pilot Result Note.
+Goal: Migrate the 9 Members pages into `src/features/members/` without behaviour change, applying the proven `suppliers`/`sponsors` slice shape (api + query-key factory, TanStack hooks, thin component composition roots, Zod schemas, types). Distinct here: a destructive duplicates/merge-and-dismiss UI sub-surface, a Segments CRUD sub-domain, and relocating the existing `frontend/src/components/members/*` directory into the slice.
+
+Conflict priority (applies to every story, per E21): (1) preserve existing functionality; (2) never overwrite foreign uncommitted changes; (3) do not break routes, API contracts, auth, i18n, or existing tests; (4) stay within story scope; (5) improve architecture; (6) improve styling/theming. When a clean solution raises risk to (1)-(3), choose the lower-risk incremental option and document the residual debt.
+
+Epic-wide hard constraints (inherited from E21): no backend/route/API-contract changes; no route-group moves; no global token sweep; no new external UI library; no duplicate UI primitives; no test removal; no cosmetic mass changes. DoD = `npm run typecheck` + `npx eslint <changed>` + `npx prettier --check <changed>` + `npm test -- --run` only — never `npm run format` (the prettier-tailwind plugin re-sorts classes repo-wide) and never repo-wide lint/format as a per-story gate (A58/A72); keep edited files LF (A73).
+
+Dependencies: Blocked by E21-S3 + E21-S5 (closed) and the E22 form sub-recipe (closed). Within E23: S2/S3/S4 each depend on S1 (characterization tests) staying green; S3 reuses S2's `api`/`types`.
+
+### Story E23-S1: Members — characterization tests for all nine pages (regression net)
+As a refactoring engineer I want a pinned characterization-test net over all nine Members pages so that the subsequent slice extractions (S2/S3/S4) can prove behaviour was preserved.
+Requirements: Technical — regression safety net; test-only, no production code changes.
+Acceptance criteria (behaviour preserved — all E23-S1 tests stay green):
+- Tests cover all 9 pages: `members/page.tsx` (list), `members/[id]/page.tsx` (detail), `members/[id]/edit/page.tsx`, `members/new/page.tsx`, `members/duplicates/page.tsx`, `members/segments/page.tsx`, `members/segments/new/page.tsx`, `members/segments/[id]/page.tsx`, `members/segments/[id]/edit/page.tsx`.
+- Auth guards pinned per page: unauthenticated → `router.push("/login")`; authenticated-but-not-Vorstand-and-not-Admin → `router.push("/")`; admin-only affordances (list CSV export, list delete button, duplicates Merge) asserted present for Admin and absent for non-Admin (A76 destructive-affordance gating).
+- List behaviours pinned: search submit resets page to 1; status + type filter changes reset page and refetch; statistics cards render when present; pagination prev/next disabled at bounds; delete uses `confirm()` then `alert()` on failure (A76 destructive lifecycle).
+- Duplicates behaviours pinned: tier filter resets page; Merge opens `MergeConfirmationModal`; Dismiss opens `DismissConfirmationModal`; successful confirm bumps refresh and refetches; cascade-dismiss issues one call per canonical pair.
+- Error/empty/loading lifecycle pinned per page including failure paths (fetch rejects → error banner + retry control; empty list → empty state) per A76.
+Acceptance criteria (improvements):
+- Harness follows A35/A46 (jsdom + `afterEach` cleanup), A64/A78 stable mocks for `useTranslations`/`useApiClient`/`useRouter` (and `useAuth`), and wraps render in `QueryClientProvider` so S2/S3/S4 TanStack adopters need no harness rework.
+- Tests assert via i18n keys/roles/`data-testid` (e.g. `duplicates-list`, `duplicates-error`), not brittle copy, to survive the refactor.
+Architecture notes: Test-only; green against HEAD before any extraction. No slice created here. Establishes the regression net that gates S2/S3/S4. Reuse the suppliers/sponsors characterization-test conventions verbatim.
+Tests/evidence: New characterization specs colocated per page; `npm test -- --run` green at HEAD; typecheck + scoped eslint/prettier on changed test files.
+
+### Story E23-S2: Members core — feature-slice extraction (list/detail/new/edit)
+As a refactoring engineer I want the four core Members pages extracted into `features/members/` so that the list/detail/new/edit surface follows the standard slice shape without behaviour change.
+Requirements: Technical — feature-slice migration of `members/page.tsx` (list), `members/[id]/page.tsx`, `members/[id]/edit/page.tsx`, `members/new/page.tsx`.
+Acceptance criteria (behaviour preserved — all E23-S1 tests stay green):
+- All E23-S1 list/detail/new/edit tests stay green; routes, auth gates (login + non-Vorstand/non-Admin → "/"), API contracts, and i18n keys unchanged.
+- Search/status/type filtering, statistics cards, pagination, CSV export (admin-only), and the destructive delete flow (`confirm()` → refetch → `alert()` on failure) behave identically (A76).
+- New/edit forms preserve current validation and submit behaviour and the same success/redirect.
+Acceptance criteria (improvements):
+- Create `features/members/` slice in the proven shape: `api/members-api.ts` (encapsulated `/api/v1/members*` URLs + a `memberKeys` query-key factory), `hooks/use-*.ts` (TanStack `useQuery`/`useMutation` with list invalidation replacing the `useRef`/`refreshKey` refetch dance and the manual `confirm`/`alert` delete), `components/*.tsx` (thin page-content composition root + table/filter-bar/badges/detail/form), `schemas/members.schema.ts` (Zod, shared new+edit), `types/members.types.ts`.
+- Align `frontend/src/lib/api/members.ts` to the standard slice api contract (relocate/encapsulate URL builders + DTOs into `api/members-api.ts`); keep the legacy module re-exporting until S3/S4 also migrate to avoid breaking duplicates/segments imports mid-epic.
+- Move colour-in-TS helpers (`getMembershipStatusColor`/`getMembershipTypeColor`) to design tokens / Badge variants (A77 — verify the produced class against the token's canonical value, not a comment).
+- Forms use the E22 RHF+Zod sub-recipe (shared new/edit form component, mutation-invalidation).
+Architecture notes: First Members slice; sets `api`/`types`/`schemas` that S3 and S4 reuse. No backend/route changes; thin `app/members/*` pages become composition roots delegating to slice components. Document any residual debt where a clean token migration would risk (1)-(3).
+Tests/evidence: E23-S1 suite green post-extraction; new slice unit tests for hooks/schema as needed; DoD gates (typecheck + scoped eslint/prettier + `npm test -- --run`) green; i18n parity check on touched keys.
+
+### Story E23-S3: Members duplicates — slice extraction and `components/members` relocation
+As a refactoring engineer I want the duplicates review page and its modal components moved into the Members slice so that the destructive merge/dismiss surface lives in `features/members/` without behaviour change.
+Requirements: Technical — feature-slice migration of `members/duplicates/page.tsx` + relocation of `frontend/src/components/members/{DismissConfirmationModal,DuplicateGroupRow,DuplicateWarning,MergeConfirmationModal}.tsx`.
+Acceptance criteria (behaviour preserved — all E23-S1 tests stay green):
+- All E23-S1 duplicates tests stay green; the merge (admin-only) and dismiss (Vorstand+) confirmation flows are preserved exactly, including the destructive confirm gating and finance/Keycloak impact confirmations (A76).
+- Cascade-dismiss still issues one `dismissDuplicateCandidate` call per canonical pair; successful confirm still refreshes the list; tier filter still resets page.
+- Loading/error/empty lifecycle (`duplicates-loading`/`duplicates-error`/`duplicates-empty`, retry) unchanged.
+Acceptance criteria (improvements):
+- RELOCATE the four `components/members/*` files into `features/members/components/`; update all importers; delete the now-empty `frontend/src/components/members/` directory.
+- Replace the `refreshKey`/`useCallback` fetch dance with the slice's TanStack hooks + mutation-invalidation, reusing S2's `api/members-api.ts` (`memberKeys`) and `types/members.types.ts` (add `duplicateKeys` / duplicate DTOs alongside).
+- Keep destructive-action wiring explicit and well-named; no change to API endpoints or request shapes.
+Architecture notes: Reuses S2's `api`/`types`; adds duplicate-group query-keys/hooks. Highest-risk story (destructive merge); favour the lower-risk incremental move and document residual debt rather than restructuring the modals. No route/API changes.
+Tests/evidence: E23-S1 duplicates suite green; no remaining imports from `@/components/members/*` (grep clean); DoD gates green; i18n parity on touched keys.
+
+### Story E23-S4: Member segments — CRUD feature-slice
+As a refactoring engineer I want the four Member Segments pages extracted into the Members slice so that the segments CRUD sub-domain follows the standard slice shape without behaviour change.
+Requirements: Technical — feature-slice migration of `members/segments/page.tsx`, `members/segments/new/page.tsx`, `members/segments/[id]/page.tsx`, `members/segments/[id]/edit/page.tsx`, using `frontend/src/lib/api/member-segments.ts`.
+Acceptance criteria (behaviour preserved — all E23-S1 tests stay green):
+- All E23-S1 segments tests stay green; routes, auth gates, API contracts, and i18n keys unchanged.
+- Segments list/detail rendering, create/edit submit + success redirect, and any segment delete flow behave identically (A76 destructive lifecycle where a delete exists).
+- Loading/error/empty lifecycle preserved per page including failure paths.
+Acceptance criteria (improvements):
+- Extract a `segments` sub-area under `features/members/` (e.g. `api/member-segments-api.ts` + `segmentKeys`, `hooks/use-segment*.ts`, `components/segment-*.tsx`, `schemas/segment.schema.ts`, segment types) aligned to the slice shape; align `frontend/src/lib/api/member-segments.ts` to the standard api contract.
+- New/edit segment forms use the E22 RHF+Zod sub-recipe (shared new/edit form component, mutation-invalidation, list invalidation on success).
+- Reuse S2's `members-api.ts` conventions and `types/members.types.ts` where segment shapes reference members; no duplicate UI primitives.
+Architecture notes: Final E23 story; completes the Members slice. Reuses S2's api/types conventions and the E22 form sub-recipe. No backend/route changes; thin `app/members/segments/*` pages become composition roots. Document residual debt where a clean token/form migration would risk (1)-(3).
+Tests/evidence: E23-S1 segments suite green post-extraction; new slice unit tests for segment hooks/schema as needed; DoD gates (typecheck + scoped eslint/prettier + `npm test -- --run`) green; i18n parity on touched keys.
+
+## Epic E24: Frontend Feature-Slice Migration — Events
+Requirements: Technical initiative (no REQ) — Frontend Refactoring Program, materialised from `_bmad-output/planning-artifacts/frontend-refactoring-roadmap.md` §E24 + the E21-S3 pilot recipe and the E22 epic shape. Inherits the E21-S1 boundary decisions and the `docs/architecture-frontend.md` Pilot Result Note.
+Goal: Migrate the 8 Events pages (under the `(dashboard)` route group) into `src/features/events/` without behaviour change. Distinct here: the largest existing service module `frontend/src/lib/services/events.ts` (~26KB) folds into the slice, plus four event sub-pages (check-in/fees/registrations/volunteers); the `(dashboard)` route group is NOT moved (E21-S1 recommendation only).
+
+Conflict priority (applies to every story, per E21): (1) preserve existing functionality; (2) never overwrite foreign uncommitted changes; (3) do not break routes, API contracts, auth, i18n, or existing tests; (4) stay within story scope; (5) improve architecture; (6) improve styling/theming. When a clean solution raises risk to (1)-(3), choose the lower-risk incremental option and document the residual debt.
+
+Epic-wide hard constraints (inherited from E21): no backend/route/API-contract changes; no route-group moves; no global token sweep; no new external UI library; no duplicate UI primitives; no test removal; no cosmetic mass changes. DoD = `npm run typecheck` + `npx eslint <changed>` + `npx prettier --check <changed>` + `npm test -- --run` only — never `npm run format` (the prettier-tailwind plugin re-sorts classes repo-wide) and never repo-wide lint/format as a per-story gate (A58/A72); keep edited files LF (A73).
+
+Dependencies: Blocked by E21-S3 + E21-S5 (closed) and the E22 form sub-recipe (closed). Within E24: S2/S3 depend on S1 staying green; S3 reuses S2's `api`/`types`. NOTE the `(dashboard)` route group stays in place — no route move.
+
+### Story E24-S1: Events — characterization tests for all eight pages (regression net)
+As a frontend engineer, I want a characterization-test net pinning the current behaviour of all eight Events pages so that the S2/S3 slice extractions can be proven behaviour-preserving against a green baseline.
+Requirements: Test-only story; no production code changes. Green against HEAD; blocks S2/S3.
+Acceptance criteria (behaviour preserved — establishes the E24 baseline):
+- Characterization tests exist and pass at HEAD for all 8 pages: `frontend/src/app/(dashboard)/events/page.tsx`, `.../events/new/page.tsx`, `.../events/[id]/page.tsx`, `.../events/[id]/edit/page.tsx`, `.../events/[id]/check-in/page.tsx`, `.../events/[id]/fees/page.tsx`, `.../events/[id]/registrations/page.tsx`, `.../events/[id]/volunteers/page.tsx`.
+- Auth guard pinned: unauthenticated → `router.push('/login')`; `authLoading` renders the spinner/skeleton; on check-in, the role guard (`isVorstand || isAdmin || event-manager`) renders the `forbidden` alert when denied.
+- Per A76: destructive/action button variants and the full error/empty/loading lifecycle are exercised **including failure paths** — list `loadFailed` retry, statistics silent-ignore, check-in `networkError`/`invalidQr`/`scanAgain` banners, `AlreadyCheckedIn` idempotent banner, roster `loadRosterFailed`, and the manual/QR `actionInFlight` disabled states.
+- Role-gated UI pinned: `canManageEvents` (create-event link, status filter, statistics cards) shown/hidden correctly.
+Acceptance criteria (improvements):
+- None (test-only). Tests are authored to assert observable behaviour (rendered text, fetch URLs, navigation) — not implementation detail — so they survive the S2/S3 refactor unchanged.
+Architecture notes: Harness per A35/A46 (jsdom + cleanup), A64/A78 (stable mocks for `fetch`, `@/lib/auth`, `@/lib/services/events`, `next/navigation`, `next-intl`, and the dynamic `@yudiel/react-qr-scanner` import), wrapped in `QueryClientProvider`. Tests live beside pages or under the existing `frontend/src/app/(dashboard)/events/**/__tests__/` convention; no slice yet exists.
+Tests/evidence: New characterization specs for all 8 pages; `npm test -- --run` green at HEAD; gates (`typecheck` + `eslint`/`prettier --check` on changed test files) green; LF endings (A73).
+
+### Story E24-S2: Events core — feature-slice extraction (list/new/detail/edit)
+As a frontend engineer, I want the four core Events pages extracted into a `src/features/events/` slice so that the events domain follows the proven suppliers/sponsors slice shape with no behaviour change.
+Requirements: Migrate `frontend/src/app/(dashboard)/events/page.tsx`, `.../events/new/page.tsx`, `.../events/[id]/page.tsx`, `.../events/[id]/edit/page.tsx`. Create the slice and fold the relevant logic out of `frontend/src/lib/services/events.ts` into `api`/`hooks` without rewriting contracts.
+Acceptance criteria (behaviour preserved — all E24-S1 tests stay green):
+- All E24-S1 specs for the four core pages remain green unchanged (URLs, pagination `pageSize=12`, 300ms search debounce, `search`/`status`/`category` params, grid/list view toggle, statistics cards, auth redirect, `loadFailed` retry).
+- Page files become thin composition roots delegating to slice components; routes, `/api/v1/events` URLs, auth guard, and i18n keys (`events.*`, `common.*`) unchanged.
+- `events.ts` callers used only by the four core pages now route through the slice `api`; any logic still consumed by the S3 sub-pages remains reachable (no premature deletion).
+Acceptance criteria (improvements):
+- Slice created: `frontend/src/features/events/api/events-api.ts` (encapsulated `/api/v1/events` URLs + `eventsKeys` query-key factory), `hooks/use-*.ts` (TanStack Query: list/statistics/detail queries, new/edit mutations with invalidation), `components/*.tsx` (page-content root + table/grid/filter-bar/status-badge/detail/form), `schemas/event.schema.ts` (Zod, shared new+edit), `types/events.types.ts` (`EventDto`, `EventStatistics`, `PagedResponse<T>`).
+- New/edit forms adopt the E22 RHF+Zod sub-recipe (shared form for new+edit, mutation-invalidation on success).
+Architecture notes: Mirror suppliers/sponsors slice shape exactly. Migrate `events.ts` event CRUD/list/statistics logic into `events-api.ts`; do NOT change request/response contracts. Keep the inline `formatEventDate`/`statusColors` as slice-local helpers/components. No `(dashboard)` route-group move (E21-S1).
+Tests/evidence: E24-S1 core-page specs green post-extraction; new slice-level unit tests for `events-api`/hooks as warranted; gates on changed files green; `npm test -- --run` green; i18n parity (en/de) unchanged; LF (A73).
+
+### Story E24-S3: Event sub-pages — feature-slice extraction (check-in/fees/registrations/volunteers)
+As a frontend engineer, I want the four Event sub-pages extracted into the `src/features/events/` slice, reusing S2's `api`/`types`, so that the whole events domain lives in one slice with check-in/roster/volunteer behaviours preserved exactly.
+Requirements: Migrate `frontend/src/app/(dashboard)/events/[id]/check-in/page.tsx`, `.../events/[id]/fees/page.tsx`, `.../events/[id]/registrations/page.tsx`, `.../events/[id]/volunteers/page.tsx`. Reuse S2's `api`/`types`; fold the remaining `events.ts` sub-page logic into the slice.
+Acceptance criteria (behaviour preserved — all E24-S1 tests stay green):
+- All E24-S1 specs for the four sub-pages remain green unchanged.
+- Check-in preserved exactly: scanner/manual tabs, camera probe auto-flip to manual on unavailability, 250ms manual-search debounce, client-side roster filter, QR token dedupe (`lastScannedToken`), `refreshKey`-keyed roster reload, `checkInByQrCode`/`manualCheckIn`/`getEventCheckInRoster` calls, and the `CheckedIn`/`AlreadyCheckedIn`/`Conflict`/`NotFound`/`networkError`/`invalidQr` outcome banners with `scanAgain` reset.
+- Roster (registrations) and volunteer-planning behaviours preserved exactly; role guard (`isVorstand || isAdmin || event-manager`) and `/login` redirect unchanged.
+Acceptance criteria (improvements):
+- Sub-pages become thin composition roots over slice components (`components/check-in/*`, `components/registrations/*`, `components/fees/*`, `components/volunteers/*`); check-in/roster/fees/volunteer DTOs (`CheckInResultDto`, `EventCheckInRosterDto`, `EventCheckInRosterItemDto`, etc.) move into `types/events.types.ts`.
+- Sub-page service functions migrate into `api/events-api.ts` (reusing S2's `eventsKeys`); the dynamic `@yudiel/react-qr-scanner` import stays SSR-guarded and slice-local; any now-empty `frontend/src/lib/services/events.ts` exports are removed only once no caller remains.
+Architecture notes: Reuse S2's `api`/`types`/`eventsKeys`; do NOT duplicate them. Preserve the `'use client'` boundary and the camera-only dynamic import. Backend `RequireEventStaff` remains the security boundary — the slice role guard stays UX-only. No contract changes; no `(dashboard)` route-group move.
+Tests/evidence: E24-S1 sub-page specs green post-extraction; slice unit tests for migrated check-in/roster/volunteer api/hooks as warranted; gates on changed files green; `npm test -- --run` green; i18n parity (en/de) unchanged; LF (A73).
+
+## Epic E25: Frontend Feature-Slice Migration — Communication
+
+Requirements: Technical initiative (no REQ) — Frontend Refactoring Program, materialised from `_bmad-output/planning-artifacts/frontend-refactoring-roadmap.md` §E25 + the E21-S3 pilot recipe and the E22 epic shape. Inherits the E21-S1 boundary decisions and the `docs/architecture-frontend.md` Pilot Result Note.
+
+Goal: Migrate the 12 Communication pages — three CRUD sub-modules (Automations, Email-Campaigns, Email-Templates) plus the `communication/page.tsx` index — into `src/features/communication/` (per-sub-module slices) WITHOUT behaviour change. Distinct here vs. earlier domains: three parallel CRUD surfaces sharing one route group, and relocating `frontend/src/components/email-templates/EmailTemplateForm.tsx` into its owning slice.
+
+Conflict priority (applies to every story, per E21): (1) preserve existing functionality; (2) never overwrite foreign uncommitted changes; (3) do not break routes, API contracts, auth, i18n, or existing tests; (4) stay within story scope; (5) improve architecture; (6) improve styling/theming. When a clean solution raises risk to (1)-(3), choose the lower-risk incremental option and document the residual debt.
+
+Epic-wide hard constraints (inherited from E21): no backend/route/API-contract changes; no route-group moves; no global token sweep; no new external UI library; no duplicate UI primitives; no test removal; no cosmetic mass changes. DoD = `npm run typecheck` + `npx eslint <changed>` + `npx prettier --check <changed>` + `npm test -- --run` only — never `npm run format` (the prettier-tailwind plugin re-sorts classes repo-wide) and never repo-wide lint/format as a per-story gate (A58/A72); keep edited files LF (A73).
+
+Dependencies: Blocked by E21-S3 + E21-S5 (closed) and the E22 form sub-recipe (closed). Within E25: S2/S3/S4 depend on S1 staying green; each CRUD sub-module is independent of the others so S2/S3/S4 may proceed in parallel after S1.
+
+### Story E25-S1: Communication — characterization tests for all twelve pages (regression net)
+
+As a developer about to refactor twelve un-tested Communication pages across three CRUD sub-modules, I want a characterization test suite that pins their current observable behaviour first, so that the E25-S2/S3/S4 slice extractions are provably behaviour-preserving.
+
+Requirements: Tech-initiative; mirrors E22-S1; applies A76 (assert what a manual→TanStack/Radix refactor silently changes: destructive button variant + error/empty/loading lifecycle including failure paths) and the harness conventions A35/A46/A64/A78 + `QueryClientProvider`.
+
+Acceptance criteria:
+
+- New co-located `*.test.tsx` suites pin the CURRENT behaviour of all twelve pages against branch HEAD (green before any refactor commit):
+  - Automations list (`app/communication/automations/page.tsx`): Vorstand-OR-Admin view access (redirect `/login` if unauthenticated; redirect `/` if authenticated but not Vorstand/Admin), automation load via `listAutomations`, server-side `?status=` filter, client-side search (name/templateName), loading/error/empty states, table render, status badge (`getStatusColor`) + trigger label (`getTriggerLabel`) render, detail link, `New` link, pagination.
+  - Automations new/detail/edit (`automations/new`, `automations/[id]`, `automations/[id]/edit`): auth guard, form render / load-by-id / prefill, required-field validation, submit → create/update call, success redirect, submit-error surfaced.
+  - Email-campaigns list + new/detail/edit (`email-campaigns/page.tsx`, `email-campaigns/new`, `email-campaigns/[id]`, `email-campaigns/[id]/edit`): auth guard, list load, filter/search, loading/error/empty states, table + status badge, detail/edit links, create/update submit, validation, success redirect, submit-error surfaced.
+  - Email-templates list + new/detail (`email-templates/page.tsx`, `email-templates/new`, `email-templates/[id]`): auth guard, `emailTemplatesApi.getAllTemplates` load, client-side search (name/description), loading/error/empty states, card-grid render, category + inactive badges, edit link, delete button + `confirm` flow, delete-failure path (error surfaced, list not cleared); new/detail form render via `EmailTemplateForm`, required-field validation, submit → create/update, success redirect, submit-error surfaced.
+  - Communication index (`app/communication/page.tsx`): auth guard and the navigation/links it renders to the three sub-modules.
+- Tests follow harness conventions: `// @vitest-environment jsdom`, `afterEach(cleanup)` (A35/A46), stable `useTranslations`/`useAuth`/`useApiClient`/`useRouter` mocks (A64/A78), `QueryClientProvider` wrapper. The suite records (A79) that a `retry:false` harness masks the provider's `retry:1` + sticky-mutation-error + no-spinner-on-refetch deltas, which S2/S3/S4 must decide on explicitly.
+- A76 explicit assertions: the email-templates delete button's destructive/red affordance AND the delete-failure branch (the two regressions the green E21-S2 suite missed).
+- No production code changed (test-only). Suite green against HEAD; blocks E25-S2/S3/S4.
+
+Architecture notes:
+
+- Pure additive safety net; blocks all three extraction stories. The twelve suites are the green baseline S2/S3/S4 must keep green. Mirrors the ATDD step from the E21/E22 ordering. Note that the three sub-modules use different API clients (`@/lib/api/automations`, `@/lib/api/email-campaigns`, `@/lib/email-templates` + `@/types/email-templates`) — pin each against its current client.
+
+Tests/evidence:
+
+- `vitest run` shows the new Communication suites passing on branch HEAD before any refactor commit; per-page assertion inventory recorded.
+
+### Story E25-S2: Automations — CRUD feature-slice extraction
+
+As a maintainer, I want the four Automations pages refactored into the feature-slice pattern, so that they match the proven Suppliers/Sponsors slices and validate the recipe on the first of three parallel Communication CRUD surfaces.
+
+Requirements: Tech-initiative; mirrors E22-S2 (list) + E22-S3 (form sub-recipe); roadmap §E25. Uses the existing `frontend/src/lib/api/automations.ts`. Depends on E25-S1; independent of S3/S4.
+
+Acceptance criteria (behaviour preserved — all E25-S1 tests stay green):
+
+- Routes `/communication/automations`, `/communication/automations/new`, `/communication/automations/[id]`, `/communication/automations/[id]/edit`; Vorstand-or-Admin access (redirect `/login` / `/`); automation load, status filter, client-side search, loading/error/empty states, table, status badge, trigger label, pagination, detail/edit/new navigation, create/update submit, validation, success redirect, and submit-error handling all work exactly as before.
+
+Acceptance criteria (improvements):
+
+- Each route file becomes a thin entry (no `"use client"`) rendering a `features/communication/automations` content component (the only `"use client"` is the composition root).
+- A `features/communication/automations/` slice exists mirroring `features/sponsors/`: `api/automations-api.ts` (encapsulated `/api/v1` URLs wrapping the existing `frontend/src/lib/api/automations.ts` calls + an `automationsKeys` query-key factory), `hooks/use-automations.ts` (`useQuery`) + `hooks/use-automation.ts` (get-by-id) + `hooks/use-create-automation.ts`/`use-update-automation.ts` (`useMutation` + `automationsKeys` invalidation), `schemas/automation.schema.ts` (Zod shared by new + edit), `components/` (`automations-page-content`, `automations-filter-bar`, `automations-table`, `automation-status-badge`, `automation-form` reused by new + edit, `automation-detail`), `types/automation.types.ts`.
+- The status badge maps to Badge variants/tokens per DEC-2 — no raw `getStatusColor` brand colour strings in feature components; the mapping is verified against the named token's canonical value, not a comment (A77). The form uses React Hook Form + Zod per the E22 form sub-recipe behind a stable, tested contract; validation messages via next-intl (no hard-coded strings).
+- The manual→TanStack deltas (A79) are decided explicitly: refetch via `invalidateQueries`; mutation error surfaced (not silently sticky); chosen retry semantics documented.
+- No new `any`, no new hard-coded user-facing strings, no new direct API URL in route files, no duplicate UI primitive; `i18n` parity stays green (no key renames/removals in any locale).
+
+Architecture notes:
+
+- First Communication sub-slice; nests under `features/communication/automations/` to keep the three sub-modules cohesive yet independently migratable. Wraps the existing `lib/api/automations.ts` rather than duplicating fetch logic, so the slice is the single TanStack/query-key surface. Independent of S3/S4 — may run in parallel.
+
+Tests/evidence:
+
+- All E25-S1 Automations tests green post-refactor; new `automation-status-badge` + `automation-form` validation/mutation tests; `tsc`/eslint(changed)/prettier-check(changed)/`vitest run` green; i18n parity green; `next build` succeeds.
+
+### Story E25-S3: Email campaigns — CRUD feature-slice extraction
+
+As a maintainer, I want the four Email-campaigns pages refactored into the feature-slice pattern, so that the second parallel Communication CRUD surface matches the proven slice recipe with behaviour preserved.
+
+Requirements: Tech-initiative; mirrors E22-S2 (list) + E22-S3 (form sub-recipe); roadmap §E25. Uses the existing `frontend/src/lib/api/email-campaigns.ts`. Depends on E25-S1; independent of S2/S4.
+
+Acceptance criteria (behaviour preserved — all E25-S1 tests stay green):
+
+- Routes `/communication/email-campaigns`, `/communication/email-campaigns/new`, `/communication/email-campaigns/[id]`, `/communication/email-campaigns/[id]/edit`; auth guard, campaign load, status filter, search, loading/error/empty states, table, status badge, detail/edit/new navigation, create/update submit, validation, success redirect, and submit-error handling all work exactly as before.
+
+Acceptance criteria (improvements):
+
+- Each route file becomes a thin entry (no `"use client"`) rendering a `features/communication/email-campaigns` content component (the only `"use client"` is the composition root).
+- A `features/communication/email-campaigns/` slice exists mirroring `features/sponsors/`: `api/email-campaigns-api.ts` (encapsulated `/api/v1` URLs wrapping the existing `frontend/src/lib/api/email-campaigns.ts` calls + an `emailCampaignsKeys` query-key factory), `hooks/use-email-campaigns.ts` (`useQuery`) + `hooks/use-email-campaign.ts` (get-by-id) + `hooks/use-create-email-campaign.ts`/`use-update-email-campaign.ts` (`useMutation` + `emailCampaignsKeys` invalidation), `schemas/email-campaign.schema.ts` (Zod shared by new + edit), `components/` (`email-campaigns-page-content`, `email-campaigns-filter-bar`, `email-campaigns-table`, `email-campaign-status-badge`, `email-campaign-form` reused by new + edit, `email-campaign-detail`), `types/email-campaign.types.ts`.
+- The status badge maps to Badge variants/tokens per DEC-2 — no raw brand colour strings in feature components; the mapping is verified against the named token's canonical value, not a comment (A77). The form uses React Hook Form + Zod per the E22 form sub-recipe behind a stable, tested contract; validation messages via next-intl (no hard-coded strings).
+- The manual→TanStack deltas (A79) are decided explicitly: refetch via `invalidateQueries`; mutation error surfaced (not silently sticky); chosen retry semantics documented.
+- No new `any`, no new hard-coded user-facing strings, no new direct API URL in route files, no duplicate UI primitive; i18n parity stays green (no key renames/removals in any locale).
+
+Architecture notes:
+
+- Second Communication sub-slice; nests under `features/communication/email-campaigns/`. Wraps the existing `lib/api/email-campaigns.ts` rather than duplicating fetch logic. Independent of S2/S4 — may run in parallel.
+
+Tests/evidence:
+
+- All E25-S1 Email-campaigns tests green post-refactor; new `email-campaign-status-badge` + `email-campaign-form` validation/mutation tests; `tsc`/eslint(changed)/prettier-check(changed)/`vitest run` green; i18n parity green; `next build` succeeds.
+
+### Story E25-S4: Email templates — CRUD feature-slice and `components/email-templates` relocation
+
+As a maintainer, I want the Email-templates pages and the Communication index refactored into the feature-slice pattern, and the orphaned `components/email-templates/EmailTemplateForm.tsx` relocated into its owning slice, so that the third Communication CRUD surface is cohesive and free of cross-tree component imports, with behaviour preserved.
+
+Requirements: Tech-initiative; mirrors E22-S2 (list) + E22-S3 (form sub-recipe); roadmap §E25. Uses `emailTemplatesApi` (`@/lib/email-templates`) + `@/types/email-templates`; RELOCATES `frontend/src/components/email-templates/EmailTemplateForm.tsx`. Depends on E25-S1; independent of S2/S3.
+
+Acceptance criteria (behaviour preserved — all E25-S1 tests stay green):
+
+- Routes `/communication/email-templates`, `/communication/email-templates/new`, `/communication/email-templates/[id]`, plus the `/communication` index; auth guard, template load via `emailTemplatesApi.getAllTemplates`, client-side search (name/description), loading/error/empty states, card-grid render, category + inactive badges, edit link, delete (`confirm` → `deleteTemplate` → list filtered), delete-failure handling, create/update submit via the relocated `EmailTemplateForm`, validation, success redirect, submit-error handling, and the index's sub-module navigation all work exactly as before.
+
+Acceptance criteria (improvements):
+
+- Each route file (incl. `communication/page.tsx`) becomes a thin entry (no `"use client"`) rendering a `features/communication/...` content component (the only `"use client"` is the composition root).
+- A `features/communication/email-templates/` slice exists mirroring `features/sponsors/`: `api/email-templates-api.ts` (encapsulated `/api/v1` URLs wrapping the existing `emailTemplatesApi` calls + an `emailTemplatesKeys` query-key factory), `hooks/use-email-templates.ts` (`useQuery`) + `hooks/use-email-template.ts` (get-by-id) + `hooks/use-delete-email-template.ts` + `hooks/use-create-email-template.ts`/`use-update-email-template.ts` (`useMutation` + `emailTemplatesKeys` invalidation), `schemas/email-template.schema.ts` (Zod), `components/` (`email-templates-page-content`, `email-templates-search-bar`, `email-template-card`, `email-template-category-badge`, the RELOCATED `EmailTemplateForm` reused by new + detail/edit, `delete-email-template-dialog` composing the EXISTING `components/ui/alert-dialog.tsx`), `types/email-template.types.ts`.
+- `frontend/src/components/email-templates/EmailTemplateForm.tsx` is MOVED into the slice `components/`; every importer is repointed (a Task-0 spike confirms all current importers of the old path and of `@/lib/email-templates`/`@/types/email-templates` are repointed without behaviour change); the now-empty `components/email-templates/` directory is removed if no other files remain.
+- The category + inactive badges map to Badge variants/tokens per DEC-2 — no raw `bg-gray-100`/`bg-gray-500` brand strings in feature components; the mapping is verified against the named token's canonical value, not a comment (A77). The delete button's destructive variant is tested (A76); the native `confirm()` flow is preserved as-is (no new dialog primitive introduced unless behaviour is identical). The form uses React Hook Form + Zod per the E22 form sub-recipe; validation messages via next-intl.
+- The manual→TanStack deltas (A79) are decided explicitly: refetch-after-delete via `invalidateQueries`; mutation error surfaced (not silently sticky); chosen retry semantics documented.
+- No new `any`, no new hard-coded user-facing strings, no new direct API URL in route files, no duplicate UI primitive; i18n parity stays green (no key renames/removals in any locale).
+
+Architecture notes:
+
+- Third Communication sub-slice + the only relocation in E25. Nests under `features/communication/email-templates/`. The `EmailTemplateForm` move is the net-new surface vs S2/S3 — it eliminates the cross-tree `src/components/email-templates` import and brings the form under the slice's ownership; wrap `emailTemplatesApi` rather than duplicating fetch logic. Owns `communication/page.tsx` (the lightweight index) since it is the natural composition root for the three sub-modules. Independent of S2/S3 — may run in parallel.
+
+Tests/evidence:
+
+- All E25-S1 Email-templates + index tests green post-refactor; new `email-template-category-badge` + relocated-`EmailTemplateForm` validation/mutation tests + delete-dialog/destructive-variant test; importer-repoint spike recorded; `tsc`/eslint(changed)/prettier-check(changed)/`vitest run` green; i18n parity green; `next build` succeeds.
+
+## Epic E26: Frontend Feature-Slice Migration — Finance
+Requirements: Technical initiative (no REQ) — Frontend Refactoring Program, materialised from `_bmad-output/planning-artifacts/frontend-refactoring-roadmap.md` §E26 + the E21-S3 pilot recipe and the E22 epic shape. Inherits the E21-S1 boundary decisions and the `docs/architecture-frontend.md` Pilot Result Note.
+Goal: Migrate the 26 Finance pages — the largest surface in the program (ledger/accounting, receivables/payables, budgeting/reporting, banking/data, settings) — from `frontend/src/app/finance/` into `src/features/finance/` sub-slices with no behaviour change. SENSITIVE AREA: preserve the `canReadFinance`/`canWriteFinance` permission checks exactly — route every read through the existing `useAuth()` read guard (redirect to `/` + `null` render when `!isAuthenticated || !canReadFinance`) and gate every mutation/create-action behind `canWriteFinance`, never weakening or removing either. All `/api/v1/finance/*` URLs and API contracts stay byte-identical.
+
+Conflict priority (applies to every story, per E21): (1) preserve existing functionality; (2) never overwrite foreign uncommitted changes; (3) do not break routes, API contracts, auth, i18n, or existing tests; (4) stay within story scope; (5) improve architecture; (6) improve styling/theming. When a clean solution raises risk to (1)-(3), choose the lower-risk incremental option and document the residual debt.
+
+Epic-wide hard constraints (inherited from E21): no backend/route/API-contract changes; no route-group moves; no global token sweep; no new external UI library; no duplicate UI primitives; no test removal; no cosmetic mass changes. DoD = `npm run typecheck` + `npx eslint <changed>` + `npx prettier --check <changed>` + `npm test -- --run` only — never `npm run format` (the prettier-tailwind plugin re-sorts classes repo-wide) and never repo-wide lint/format as a per-story gate (A58/A72); keep edited files LF (A73).
+
+Dependencies: Blocked by E21-S3 + E21-S5 (closed) and the E22 form sub-recipe (closed). Within E26: S2..S6 depend on S1 staying green; finance sub-slices share a `features/finance/api` foundation so later stories reuse earlier `api`/`types`. Note this epic may be split into two epics at create-story time if capacity demands (roadmap §E26).
+
+### Story E26-S1: Finance — characterization tests for all twenty-six pages (regression net)
+As a developer migrating the largest and most permission-sensitive surface in the program, I need a behaviour-pinning test net across every Finance page before any extraction, so that the `canReadFinance`/`canWriteFinance` guards and all finance flows are provably unchanged.
+
+Requirements: Technical initiative — characterization regression net for E26-S2..S6.
+
+Acceptance criteria (behaviour preserved — all E26-S1 tests stay green):
+- Characterization tests exist for ALL 26 Finance pages under `frontend/src/app/finance/` (see the page lists in S2..S6, plus `finance/page.tsx`). This is the heaviest characterization story in the program — pin each page even where coverage is shallow.
+- For EVERY page that reads finance data, a test asserts the read guard: when `!isAuthenticated || !canReadFinance`, the page redirects to `/` (via the mocked `useRouter().push`) and renders `null` (no finance API call fires).
+- For EVERY page exposing a mutation/create/action (e.g. invoices new/send/cancel, payments, receipts, budgets, settings forms), a test asserts those write affordances render only when `canWriteFinance` is true and are absent when it is false — `canReadFinance && !canWriteFinance` yields read-only render.
+- Tests assert the authenticated+`canReadFinance` happy path renders the page's primary content (table/cards/form) and that the expected `/api/v1/finance/*` URLs are requested.
+- Tests are green against HEAD with zero production-code changes.
+
+Acceptance criteria (improvements):
+- Apply A76 (characterization-first discipline) and the shared harness helpers A35/A46/A64/A78; wrap rendered pages in `QueryClientProvider` so S2..S6 can introduce TanStack without harness churn.
+- Mock `useAuth`/`useApiClient` from `@/lib/auth` at one shared seam reused across all 26 specs.
+
+Architecture notes: Test-only; no `src/features/` code yet. Co-locate specs beside pages or under the existing finance test folder per the suppliers/sponsors precedent. Guards live in `useAuth()` (`canReadFinance`, `canWriteFinance`) consumed in each page's `useEffect` redirect + render-guard + conditional action rendering — pin exactly those seams.
+
+Tests/evidence: New characterization specs for all 26 pages; `npm test -- --run` green; DoD gates on changed files. Blocks S2..S6.
+
+### Story E26-S2: Finance core ledger/accounting — feature-slice extraction
+As a developer, I want the core ledger/accounting pages extracted into `src/features/finance/` establishing the shared finance `api`/`types` foundation, so that later sub-slices reuse it without duplication.
+
+Requirements: Technical initiative — feature-slice extraction (ledger/accounting group).
+
+Acceptance criteria (behaviour preserved — all E26-S1 tests stay green):
+- Pages migrated: `finance/page.tsx` (dashboard), `finance/accounts/page.tsx`, `finance/ledger-accounts/page.tsx`, `finance/journal-entries/page.tsx`, `finance/accounting-reports/page.tsx`, `finance/fiscal-periods/page.tsx`, `finance/posting-mappings/page.tsx`.
+- `canReadFinance` still gates read access on every page (redirect to `/` + `null` render when `!isAuthenticated || !canReadFinance`); `canWriteFinance` still gates every mutation/create-action (e.g. journal-entry posting, fiscal-period close, posting-mapping edits). Guards routed through the existing `useAuth()` seam, never weakened.
+- All `/api/v1/finance/*` URLs (dashboard, `/transactions/summary`, `/dashboard`, `/invoices/open`, `/transactions`, ledger/journal/fiscal/mapping endpoints) unchanged; routes and i18n keys (`finance.*`) unchanged.
+
+Acceptance criteria (improvements):
+- Establish `src/features/finance/api/finance-api.ts` (encapsulated `/api/v1/finance` URLs + `financeKeys` query-key factory) and `src/features/finance/types/finance.types.ts` as the shared foundation reused by S3..S6.
+- Add `hooks/use-*.ts` (TanStack Query) per page-resource; thin `components/*.tsx` page-content composition roots (table/filter-bar/badges/detail). App-router `page.tsx` files become thin shells importing the slice.
+
+Architecture notes: First E26 slice — own the `api`/`types` foundation here. Follow the suppliers/sponsors slice shape and the E21-S3 Pilot Result Note. Reuse existing fetch behaviour (`useApiClient`) inside hooks; no API-contract change. Keep `formatCHF`/date helpers shared, not duplicated.
+
+Tests/evidence: E26-S1 net green unchanged; DoD gates (typecheck/eslint/prettier/test) on changed files; i18n parity green.
+
+### Story E26-S3: Finance receivables/payables — feature-slice extraction
+As a developer, I want the receivables/payables pages extracted into `src/features/finance/`, reusing the S2 `api`/`types` foundation, so that invoice/payment flows and forms move without behaviour change.
+
+Requirements: Technical initiative — feature-slice extraction (receivables/payables group).
+
+Acceptance criteria (behaviour preserved — all E26-S1 tests stay green):
+- Pages migrated: `finance/invoices/page.tsx`, `finance/invoices/new/page.tsx`, `finance/invoices/[id]/page.tsx`, `finance/receipts/page.tsx`, `finance/payments/page.tsx`, `finance/dunning/page.tsx`, `finance/expense-claims/page.tsx`.
+- `canReadFinance` still gates read access on every page (redirect to `/` + `null` render); `canWriteFinance` still gates every mutation — preserve the invoices-list affordances exactly: "New invoice" link, per-row Send (Draft only) and Cancel (not Cancelled/Paid) actions and their confirmation modals render only when `canWriteFinance`. Send POSTs `/api/v1/finance/invoices/{id}/send`; Cancel DELETEs `/api/v1/finance/invoices/{id}`.
+- Client-side search/status/date filters and status badge styling on the invoices list preserved; all `/api/v1/finance/invoices|receipts|payments|dunning|expense-claims` URLs unchanged.
+
+Acceptance criteria (improvements):
+- Invoice new/edit forms use the E22 form sub-recipe: RHF + Zod via `schemas/invoice.schema.ts` (shared new+edit), with mutation-invalidation of the relevant `financeKeys` on success.
+- Extract `components/*` (invoice table/filter-bar/status-badge/detail/form, confirmation dialogs) and `hooks/use-*.ts` (TanStack) reusing S2's `finance-api.ts`/`finance.types.ts`; add receivables types/keys to the shared foundation rather than a parallel one.
+
+Architecture notes: Depends on S2 foundation. Confirmation modals (Send/Cancel) and `actionLoading` state move into slice components without changing the optimistic local-status update behaviour. Keep `recipientType`/`status` unions in shared types.
+
+Tests/evidence: E26-S1 net green unchanged; DoD gates on changed files; i18n parity green; form validation behaviour pinned.
+
+### Story E26-S4: Finance budgeting/reporting — feature-slice extraction
+As a developer, I want the budgeting/reporting pages extracted into `src/features/finance/`, reusing the shared foundation and the existing budgets lib, so that budget views migrate without behaviour change.
+
+Requirements: Technical initiative — feature-slice extraction (budgeting/reporting group).
+
+Acceptance criteria (behaviour preserved — all E26-S1 tests stay green):
+- Pages migrated: `finance/budgets/page.tsx`, `finance/budget-vs-actual/page.tsx`, `finance/activity-areas/page.tsx`, `finance/categories/page.tsx`.
+- `canReadFinance` still gates read access on every page (redirect to `/` + `null` render); `canWriteFinance` still gates every mutation (budget create/edit, activity-area and category create/edit/delete). Guards routed through the existing `useAuth()` seam, never weakened.
+- `frontend/src/lib/api/budgets.ts` continues to back the budget data flows; budget-vs-actual computations and all `/api/v1/finance/budgets|categories|activity-areas` URLs unchanged.
+
+Acceptance criteria (improvements):
+- Wrap `frontend/src/lib/api/budgets.ts` calls in `hooks/use-*.ts` (TanStack) and reuse the shared `finance-api.ts`/`financeKeys` + `finance.types.ts` from S2; do not duplicate the budgets lib.
+- Extract `components/*` (budget table/filter-bar/budget-vs-actual view/category + activity-area lists) as thin composition roots; any create/edit forms follow the E22 RHF+Zod sub-recipe with mutation-invalidation.
+
+Architecture notes: Depends on S2 foundation. `budgets.ts` stays the transport; hooks adapt it to TanStack without altering request shapes. Share category/activity-area types with S6 settings where they overlap (single source in `finance.types.ts`).
+
+Tests/evidence: E26-S1 net green unchanged; DoD gates on changed files; i18n parity green.
+
+### Story E26-S5: Finance banking/data — feature-slice extraction
+As a developer, I want the banking/data pages extracted into `src/features/finance/`, so that bank-import, transactions and exports migrate while preserving their upload/download flows exactly.
+
+Requirements: Technical initiative — feature-slice extraction (banking/data group).
+
+Acceptance criteria (behaviour preserved — all E26-S1 tests stay green):
+- Pages migrated: `finance/bank-import/page.tsx`, `finance/transactions/page.tsx`, `finance/exports/page.tsx`.
+- `canReadFinance` still gates read access on every page (redirect to `/` + `null` render); `canWriteFinance` still gates every mutation (bank-import upload/commit, transaction edits, export generation). Guards routed through the existing `useAuth()` seam, never weakened.
+- Import/upload flow (file select → upload → preview/commit) and export-download flow (request → file download/blob handling) preserved byte-for-byte; all `/api/v1/finance/bank-import|transactions|exports` URLs unchanged.
+
+Acceptance criteria (improvements):
+- Extract `hooks/use-*.ts` (TanStack) and `components/*` (bank-import wizard/dropzone, transactions table/filter-bar, exports panel) reusing S2's shared `finance-api.ts`/`finance.types.ts`.
+- Keep file-upload (multipart) and download (blob) handling in dedicated api/hook functions; do not convert these to plain JSON query/mutation patterns where they currently stream files.
+
+Architecture notes: Depends on S2 foundation. Upload/download are the highest-risk behaviours in E26 — pin them in S1 and keep the exact `FormData`/blob handling. No change to `Content-Type` or response handling.
+
+Tests/evidence: E26-S1 net green unchanged; DoD gates on changed files; i18n parity green; upload/download paths exercised.
+
+### Story E26-S6: Finance settings — feature-slice extraction
+As a developer, I want the Finance settings pages extracted into `src/features/finance/`, so that settings forms migrate to the shared form sub-recipe without behaviour change.
+
+Requirements: Technical initiative — feature-slice extraction (settings group).
+
+Acceptance criteria (behaviour preserved — all E26-S1 tests stay green):
+- Pages migrated: `finance/settings/page.tsx`, `finance/settings/profile/page.tsx`, `finance/settings/invoice-templates/page.tsx`, `finance/settings/activity-areas/page.tsx`, `finance/settings/tax-codes/page.tsx`.
+- `canReadFinance` still gates read access on every page (redirect to `/` + `null` render); `canWriteFinance` still gates every settings mutation (profile save, invoice-template create/edit, activity-area and tax-code create/edit/delete) — read-only render when `canReadFinance && !canWriteFinance`. Guards routed through the existing `useAuth()` seam, never weakened.
+- All `/api/v1/finance/settings|tax-codes|invoice-templates|activity-areas` URLs, routes and `finance.*` i18n keys unchanged.
+
+Acceptance criteria (improvements):
+- Settings forms use the E22 form sub-recipe: RHF + Zod via `schemas/*.schema.ts` (shared new+edit per resource), with mutation-invalidation of the relevant `financeKeys` on save.
+- Extract `components/*` (settings nav/sections, profile form, invoice-template form, activity-area + tax-code lists/forms) and `hooks/use-*.ts` (TanStack) reusing S2's shared `finance-api.ts`/`finance.types.ts`; reuse the activity-area type/keys shared with S4 rather than re-declaring.
+
+Architecture notes: Depends on S2 foundation; final E26 slice. Close out the shared `finance.types.ts`/`financeKeys` foundation so the whole Finance domain lives under `src/features/finance/` with thin app-router shells. Note the `settings/activity-areas` overlap with S4's `finance/activity-areas` — keep one shared type, distinct routes/components per the no-route-move constraint.
+
+Tests/evidence: E26-S1 net green unchanged; DoD gates on changed files; i18n parity green; settings-form validation pinned.
+
+## Epic E27: Frontend Feature-Slice Migration — Admin
+
+Requirements: Technical initiative (no REQ) — Frontend Refactoring Program, materialised from `_bmad-output/planning-artifacts/frontend-refactoring-roadmap.md` §E27 + the E21-S3 pilot recipe and the E22 epic shape. Inherits the E21-S1 boundary decisions and the `docs/architecture-frontend.md` Pilot Result Note.
+
+Goal: Migrate the 15 admin pages (users + new/[id]/[id]/sessions, settings + admin dashboard, system: audit/backups/health/retention, integrations: api-clients/webhooks/webhooks-deliveries, documents/register) from `frontend/src/app/admin/` into `src/features/<admin-area>/` slices WITHOUT behaviour change. Every admin page is admin-gated; the admin auth guard (redirect non-admins) is preserved verbatim in each story.
+
+Open decision (resolve at create-story time — E21-S1 carry-over): is `admin` ONE feature or an AREA of sub-features? RECOMMENDED: treat admin as an area split into sub-slices (`features/admin-users`, `features/admin-settings`, `features/admin-system`, `features/admin-integrations`, `features/admin-documents`) rather than one monolith slice — confirm during E27-S2.
+
+Conflict priority (applies to every story, per E21): (1) preserve existing functionality; (2) never overwrite foreign uncommitted changes; (3) do not break routes, API contracts, auth, i18n, or existing tests; (4) stay within story scope; (5) improve architecture; (6) improve styling/theming. When a clean solution raises risk to (1)-(3), choose the lower-risk incremental option and document the residual debt.
+
+Epic-wide hard constraints (inherited from E21): no backend/route/API-contract changes; no route-group moves; no global token sweep; no new external UI library; no duplicate UI primitives; no test removal; no cosmetic mass changes. DoD = `npm run typecheck` + `npx eslint <changed>` + `npx prettier --check <changed>` + `npm test -- --run` only — never `npm run format` (the prettier-tailwind plugin re-sorts classes repo-wide) and never repo-wide lint/format as a per-story gate (A58/A72); keep edited files LF (A73).
+
+Dependencies: Blocked by E21-S3 + E21-S5 (closed) and the E22 form sub-recipe (closed). Within E27: S2..S6 depend on S1 staying green; the sub-features are mutually independent so S2..S6 may proceed in parallel after S1.
+
+### Story E27-S1: Admin — characterization tests for all fifteen pages (regression net)
+
+As a developer about to refactor fifteen admin pages across five sub-areas, I want a characterization test suite that pins each page's current observable behaviour — including its admin auth guard — first, so that the E27-S2..S6 slice extractions are provably behaviour-preserving.
+
+Requirements: Tech-initiative; mirrors E21-S2 / E22-S1; applies A76 (assert what a manual→TanStack/Radix refactor silently changes: destructive button variant + error/empty/loading lifecycle including failure paths) plus the harness conventions A35/A46/A64/A78 and a `QueryClientProvider` wrapper.
+
+Acceptance criteria (test-only; green against branch HEAD before any refactor commit):
+
+- New co-located `*.test.tsx` suites pin the CURRENT behaviour of all fifteen admin pages. EVERY suite asserts the admin auth guard explicitly: redirect away (`router.push("/")`) when authenticated-but-not-admin and the unauthenticated path, and that protected content/data fetch is gated on `isAuthenticated && isAdmin && accessToken`.
+  - Users area (`admin/users/page.tsx`, `admin/users/new/page.tsx`, `admin/users/[id]/page.tsx`, `admin/users/[id]/sessions/page.tsx`): list load + search + pagination; per-row actions (enable/disable toggle, password-reset `confirm`+`alert`, MFA-reset `confirm`+`alert`, delete `confirm`); role + status badges; new/edit form render + required-field validation + submit→create/update + success redirect + submit-error surfaced; sessions list load + revoke; loading/error/empty states and failure paths (e.g. delete-failure: error surfaced, list not cleared).
+  - Settings area (`admin/settings/page.tsx`, `admin/page.tsx`): admin-dashboard tiles/links render; settings load, edit, save→submit, success + save-error states.
+  - System area (`admin/audit/page.tsx`, `admin/backups/page.tsx`, `admin/health/page.tsx`, `admin/retention/page.tsx`): audit log load + filters + pagination; backups list + create/trigger + restore/download actions; health status render; retention policy load + edit + save; loading/error/empty per page.
+  - Integrations area (`admin/api-clients/page.tsx`, `admin/webhooks/page.tsx`, `admin/webhooks/deliveries/page.tsx`): api-clients list + create (show-once secret panel) + delete; webhooks list + create/edit shared dialog + enable/disable toggle + delete `confirm` + the show-once signing-secret panel (copy/dismiss); deliveries list + filters; loading/error/empty per page.
+  - Documents area (`admin/documents/page.tsx`, `admin/register/page.tsx`): documents list + upload/delete; registration register load + filters + per-row approve/reject actions; loading/error/empty per page.
+- Tests follow harness conventions: `// @vitest-environment jsdom`, `afterEach(cleanup)` (A35/A46), stable `useTranslations`/`useApiClient`/`useAuth`/`useRouter` mocks (A64/A78), `QueryClientProvider` wrapper. Each suite records (A79) the manual→TanStack deltas a `retry:false` harness masks (provider `retry:1`, sticky-mutation-error, no-spinner-on-refetch) so S2..S6 decide them explicitly.
+- A76 explicit assertions per page that has them: the destructive/red affordance of every delete/revoke button AND each delete/revoke-failure branch.
+- No production code changed (test-only). Suite green against HEAD; blocks E27-S2..S6.
+
+Architecture notes:
+
+- Pure additive safety net; blocks all five extraction stories. Because admin is an AREA, organise the suites by sub-area so each S2..S6 story owns a clear green baseline. Mirrors the ATDD step from the E21/E22 ordering. Note the show-once secret panels (api-clients, webhooks) and the `confirm`/`alert` browser-dialog patterns as the highest-risk behaviours to pin.
+
+Tests/evidence:
+
+- `vitest run` shows the new admin suites passing on branch HEAD before any refactor commit; per-page assertion inventory recorded, with the admin-guard assertion present in every page's suite.
+
+### Story E27-S2: Admin users — feature-slice extraction
+
+As a maintainer, I want the admin users pages refactored into a feature slice, so that user management matches the proven Suppliers/Sponsors slices while the area-vs-feature decision for admin is confirmed.
+
+Requirements: Tech-initiative; mirrors E21-S3 (list) + E22-S3 (forms); pages `admin/users/page.tsx`, `admin/users/new/page.tsx`, `admin/users/[id]/page.tsx`, `admin/users/[id]/sessions/page.tsx`; uses `frontend/src/lib/api/users.ts`. Depends on E27-S1. CONFIRM the area-vs-feature decision here (recommended: `features/admin-users` sub-slice).
+
+Acceptance criteria (behaviour preserved — all E27-S1 tests stay green):
+
+- The admin auth guard is preserved: non-admins are redirected (`router.push("/")`), data fetch stays gated on `isAuthenticated && isAdmin && accessToken`.
+- Route paths, list load + search + pagination, per-row actions (enable/disable, password-reset `confirm`+`alert`, MFA-reset `confirm`+`alert`, delete `confirm` + list refresh), role/status badges, new/edit create+update + redirect, sessions list + revoke, and all i18n texts work exactly as before.
+
+Acceptance criteria (improvements):
+
+- DECISION CONFIRMED: admin is an area; this slice is `features/admin-users/` (composition root is the only `"use client"`; each route file becomes a thin entry).
+- Slice shape mirrors the template: `api/admin-users-api.ts` (encapsulated `/api/v1` user URLs wrapping/replacing the direct calls in `frontend/src/lib/api/users.ts` + an `adminUsersKeys` query-key factory), `hooks/` (`use-users` list `useQuery`; `use-user` get-by-id; mutations `use-set-user-enabled`/`use-reset-password`/`use-reset-mfa`/`use-delete-user`/`use-create-user`/`use-update-user`/`use-revoke-session`, each invalidating `adminUsersKeys`), `schemas/admin-user.schema.ts` (Zod shared by new + edit, per the E22 form sub-recipe), `components/` (`admin-users-page-content`, `admin-users-table`, `admin-users-filter-bar`, `user-role-badge`, `user-status-badge`, `delete-user-dialog`, `admin-user-form` shared new+edit, `user-sessions`), `types/admin-user.types.ts`.
+- The new/edit form uses RHF+Zod (E22 sub-recipe); validation/messages via next-intl. Role/status badges map to Badge variants/tokens per DEC-2 — no raw brand colours in feature components, mapping verified against the token's canonical value (A77). Delete button destructive variant tested (A76).
+- The manual→TanStack deltas (A79) are decided explicitly: refetch-after-mutation via `invalidateQueries`; mutation error surfaced (not silently sticky); retry semantics documented. Browser `confirm`/`alert` flows are preserved as-is (not converted to Radix) to keep S1 green — any dialog upgrade is out of scope and noted as residual debt.
+- No new `any`, no new hard-coded user-facing strings, no new direct API URL in route files, no duplicate UI primitive.
+
+Architecture notes:
+
+- First `features/admin-*` sub-slice; sets the naming + boundary precedent (and ESLint import-boundary entry per E21-S5) that S3..S6 follow. Largest admin slice (4 pages, 8+ mutations). Keep the `confirm`/`alert` semantics to avoid behaviour drift. Update the `docs/architecture-frontend.md` recipe note with the admin-area sub-slice convention.
+
+Tests/evidence:
+
+- All E27-S1 users-area tests green post-refactor; new badge + form-validation + mutation tests; `tsc`/eslint(changed)/prettier-check(changed)/`vitest run` green; i18n parity green; `next build` succeeds.
+
+### Story E27-S3: Admin settings — feature-slice extraction
+
+As a maintainer, I want the admin settings page and the admin dashboard refactored into a feature slice, so that they match the proven slice pattern with behaviour preserved.
+
+Requirements: Tech-initiative; mirrors E21-S3; pages `admin/settings/page.tsx` and `admin/page.tsx` (admin dashboard). Depends on E27-S1.
+
+Acceptance criteria (behaviour preserved — all E27-S1 tests stay green):
+
+- The admin auth guard is preserved: non-admins redirected (`router.push("/")`), content/data gated on `isAuthenticated && isAdmin && accessToken`.
+- The admin dashboard's tiles/navigation links and the settings load → edit → save (success + save-error) flow, plus all i18n texts, work exactly as before.
+
+Acceptance criteria (improvements):
+
+- `features/admin-settings/` slice exists mirroring the template: `api/admin-settings-api.ts` (encapsulated `/api/v1` settings URLs + `adminSettingsKeys`), `hooks/` (`use-settings` `useQuery` + `use-update-settings` `useMutation` with invalidation), `schemas/admin-settings.schema.ts` (Zod, if settings is a form — RHF+Zod per the E22 sub-recipe), `components/` (`admin-settings-page-content`, `admin-dashboard` for the `admin/page.tsx` tile grid, `admin-settings-form`), `types/admin-settings.types.ts`.
+- `admin/page.tsx` and `admin/settings/page.tsx` become thin entries rendering the slice content components (composition root is the only `"use client"`).
+- Manual→TanStack deltas (A79) decided explicitly (invalidate-on-save, mutation error surfaced, retry semantics documented). Badges/tokens per DEC-2; A77 token verification where applicable.
+- No new `any`, no new hard-coded user-facing strings, no new direct API URL in route files, no duplicate UI primitive.
+
+Architecture notes:
+
+- Smallest area (2 pages); the admin dashboard is mostly static navigation, so the slice may be hooks-light. Follows the `features/admin-*` convention set in E27-S2.
+
+Tests/evidence:
+
+- All E27-S1 settings-area tests green post-refactor; `tsc`/eslint(changed)/prettier-check(changed)/`vitest run` green; i18n parity green; `next build` succeeds.
+
+### Story E27-S4: Admin system — feature-slice extraction (audit/backups/health/retention)
+
+As a maintainer, I want the admin system pages (audit, backups, health, retention) refactored into a feature slice, so that operational admin tooling matches the proven slice pattern with behaviour preserved.
+
+Requirements: Tech-initiative; mirrors E21-S3; pages `admin/audit/page.tsx`, `admin/backups/page.tsx`, `admin/health/page.tsx`, `admin/retention/page.tsx`; uses `frontend/src/lib/api/audit.ts`, `frontend/src/lib/api/backup.ts`, `frontend/src/lib/api/retention.ts`. Depends on E27-S1.
+
+Acceptance criteria (behaviour preserved — all E27-S1 tests stay green):
+
+- The admin auth guard is preserved on all four pages: non-admins redirected (`router.push("/")`), data fetch gated on `isAuthenticated && isAdmin && accessToken`.
+- Audit log load + filters + pagination; backups list + create/trigger + restore/download; health status render; retention policy load + edit + save; and all i18n texts work exactly as before.
+
+Acceptance criteria (improvements):
+
+- `features/admin-system/` slice exists mirroring the template: `api/` modules (`audit-api.ts`, `backups-api.ts`, `health-api.ts`, `retention-api.ts` — each encapsulating the `/api/v1` URLs currently in `frontend/src/lib/api/audit.ts`/`backup.ts`/`retention.ts` + per-resource query-key factories), `hooks/` (`use-audit-log`, `use-backups` + `use-create-backup`/`use-restore-backup` mutations, `use-health`, `use-retention` + `use-update-retention` mutation, each invalidating its keys), `schemas/retention.schema.ts` (Zod for the retention form, RHF+Zod per the E22 sub-recipe), `components/` (one page-content + table/filter/status component set per resource: `audit-page-content`/`audit-table`/`audit-filter-bar`, `backups-page-content`/`backups-table`, `health-page-content`/`health-status`, `retention-page-content`/`retention-form`), `types/` per resource.
+- Each route file becomes a thin entry rendering its slice content component (composition root is the only `"use client"`).
+- Manual→TanStack deltas (A79) decided explicitly (invalidate-on-mutation, mutation error surfaced, retry semantics documented). Status/severity indicators map to Badge variants/tokens per DEC-2 (A77); destructive actions (restore) tested for destructive affordance (A76).
+- No new `any`, no new hard-coded user-facing strings, no new direct API URL in route files, no duplicate UI primitive.
+
+Architecture notes:
+
+- Four loosely-related operational pages sharing the `admin-system` area; keep them as sibling component sets inside one slice rather than four slices, to match the recommended area split. Backups restore is the highest-risk destructive action — preserve its confirmation/affordance exactly.
+
+Tests/evidence:
+
+- All E27-S1 system-area tests green post-refactor; new status-badge + mutation tests; `tsc`/eslint(changed)/prettier-check(changed)/`vitest run` green; i18n parity green; `next build` succeeds.
+
+### Story E27-S5: Admin integrations — feature-slice extraction (api-clients/webhooks)
+
+As a maintainer, I want the admin integrations pages (api-clients, webhooks, webhook deliveries) refactored into a feature slice, so that integration management matches the proven slice pattern with behaviour preserved — including the show-once secret panels.
+
+Requirements: Tech-initiative; mirrors E21-S3; pages `admin/api-clients/page.tsx`, `admin/webhooks/page.tsx`, `admin/webhooks/deliveries/page.tsx`; uses `frontend/src/lib/api/apiClients.ts`, `frontend/src/lib/api/webhooks.ts`. Depends on E27-S1.
+
+Acceptance criteria (behaviour preserved — all E27-S1 tests stay green):
+
+- The admin auth guard is preserved on all three pages: non-admins redirected (`router.push("/")`), data fetch gated on `isAuthenticated && isAdmin && accessToken`.
+- API clients: list + create (the show-once secret panel — secret shown exactly once, copy/dismiss) + delete. Webhooks: list + create/edit via the SHARED dialog (name/targetUrl/eventTypes checkboxes, save disabled until valid) + enable/disable toggle + delete `confirm` + the show-once signing-secret panel (`secretOnceWarning`, copy → `copied`, dismiss). Deliveries: list + filters. All i18n texts work exactly as before.
+
+Acceptance criteria (improvements):
+
+- `features/admin-integrations/` slice exists mirroring the template: `api/` modules (`api-clients-api.ts`, `webhooks-api.ts` — encapsulating the `/api/v1` URLs and the existing `WEBHOOKS_BASE` from `frontend/src/lib/api/webhooks.ts` + per-resource query-key factories), `hooks/` (`use-api-clients` + `use-create-api-client`/`use-delete-api-client`; `use-webhooks` + `use-create-webhook`/`use-update-webhook`/`use-toggle-webhook`/`use-delete-webhook`; `use-webhook-deliveries`; mutations invalidate their keys), `schemas/webhook.schema.ts` (Zod for the shared create/edit dialog, RHF+Zod per the E22 sub-recipe), `components/` (`api-clients-page-content`/`api-clients-table`/`api-client-secret-panel`; `webhooks-page-content`/`webhooks-table`/`webhook-dialog` shared create+edit/`webhook-secret-panel`/`delete-webhook-dialog`; `webhook-deliveries-page-content`/`deliveries-table`/`deliveries-filter-bar`), `types/` per resource.
+- The show-once secret panels are extracted as components but keep IDENTICAL behaviour (secret rendered once, `navigator.clipboard.writeText`, copied/dismiss state) — a tested invariant, since losing the secret is a hard data-loss path. Each route file becomes a thin entry (composition root is the only `"use client"`).
+- The webhook create/edit dialog migrates to RHF+Zod behind a stable tested contract (validation parity: save disabled unless name + targetUrl + ≥1 eventType). The `confirm`-based webhook delete is preserved as-is to keep S1 green (Radix upgrade out of scope, noted as residual debt). Manual→TanStack deltas (A79) decided explicitly. DEC-2 badges/tokens (A77); delete destructive variant (A76).
+- No new `any`, no new hard-coded user-facing strings, no new direct API URL in route files, no duplicate UI primitive.
+
+Architecture notes:
+
+- Highest data-loss risk in the epic: the two show-once secret panels. Treat their extraction as behaviour-locked (test the once-only render + copy + dismiss). The webhook dialog is the form anchor (shared create+edit per the E22 sub-recipe). Keep `WEBHOOKS_BASE`'s URL ownership inside the slice `api/` module.
+
+Tests/evidence:
+
+- All E27-S1 integrations-area tests green post-refactor; secret-panel once-only + copy/dismiss tests; webhook-dialog validation + mutation tests; `tsc`/eslint(changed)/prettier-check(changed)/`vitest run` green; i18n parity green; `next build` succeeds.
+
+### Story E27-S6: Admin documents and register — feature-slice extraction
+
+As a maintainer, I want the admin documents and registration register pages refactored into a feature slice, so that they match the proven slice pattern with behaviour preserved.
+
+Requirements: Tech-initiative; mirrors E21-S3; pages `admin/documents/page.tsx`, `admin/register/page.tsx`; uses `frontend/src/lib/api/registration.ts`. Depends on E27-S1.
+
+Acceptance criteria (behaviour preserved — all E27-S1 tests stay green):
+
+- The admin auth guard is preserved on both pages: non-admins redirected (`router.push("/")`), data fetch gated on `isAuthenticated && isAdmin && accessToken`.
+- Documents: list + upload + delete. Register: registration entries load + filters + per-row approve/reject actions + list refresh. All loading/error/empty states and i18n texts work exactly as before.
+
+Acceptance criteria (improvements):
+
+- `features/admin-documents/` slice exists mirroring the template: `api/` (`documents-api.ts`, `registration-api.ts` — encapsulating the `/api/v1` URLs in `frontend/src/lib/api/registration.ts` + per-resource query-key factories), `hooks/` (`use-documents` + `use-upload-document`/`use-delete-document`; `use-registrations` + `use-approve-registration`/`use-reject-registration`; mutations invalidate their keys), `components/` (`documents-page-content`/`documents-table`/`delete-document-dialog`; `register-page-content`/`register-table`/`register-filter-bar`/registration status badge), `types/` per resource.
+- Each route file becomes a thin entry rendering its slice content component (composition root is the only `"use client"`).
+- Manual→TanStack deltas (A79) decided explicitly (invalidate-on-mutation, mutation error surfaced, retry semantics documented). Registration status maps to Badge variants/tokens per DEC-2 (A77); delete/reject destructive affordance tested (A76).
+- No new `any`, no new hard-coded user-facing strings, no new direct API URL in route files, no duplicate UI primitive.
+
+Architecture notes:
+
+- Final admin sub-slice; closes the area. File-upload (documents) is the net-new surface vs prior admin slices — preserve the upload control's behaviour and error path exactly. With S2..S6 merged the whole `admin/` route tree is feature-sliced, enabling the E27 boundary review.
+
+Tests/evidence:
+
+- All E27-S1 documents-area tests green post-refactor; upload + approve/reject mutation tests; registration status-badge test; `tsc`/eslint(changed)/prettier-check(changed)/`vitest run` green; i18n parity green; `next build` succeeds.
+
+## Epic E28: Frontend Feature-Slice Migration — Public Site
+Requirements: Technical initiative (no REQ) — Frontend Refactoring Program, materialised from `_bmad-output/planning-artifacts/frontend-refactoring-roadmap.md` §E28 + the E21-S3 pilot recipe and the E22 epic shape. Inherits the E21-S1 boundary decisions and the `docs/architecture-frontend.md` Pilot Result Note.
+Goal: Migrate the 9 unauthenticated Public pages (served under the separate `public/layout.tsx` shell) into `src/features/public/` slices without behaviour change. DISTINCT here: these pages are UNAUTHENTICATED (no auth guard) and SEO/SSR-sensitive — the strongest candidates in the whole program for genuine React Server Components (E21-S1 prompt rule 14). Where a page is currently `"use client"` only to fetch read-only data (e.g. `public/blog/page.tsx`), the improvement is to render it as a Server Component fetching at request time; where client interactivity is genuinely required (the contact/newsletter forms, the blog search box), keep a minimal client island.
+
+Conflict priority (applies to every story, per E21): (1) preserve existing functionality; (2) never overwrite foreign uncommitted changes; (3) do not break routes, API contracts, auth, i18n, or existing tests; (4) stay within story scope; (5) improve architecture; (6) improve styling/theming. When a clean solution raises risk to (1)-(3), choose the lower-risk incremental option and document the residual debt.
+
+Epic-wide hard constraints (inherited from E21): no backend/route/API-contract changes; no route-group moves; no global token sweep; no new external UI library; no duplicate UI primitives; no test removal; no cosmetic mass changes. DoD = `npm run typecheck` + `npx eslint <changed>` + `npx prettier --check <changed>` + `npm test -- --run` only — never `npm run format` (the prettier-tailwind plugin re-sorts classes repo-wide) and never repo-wide lint/format as a per-story gate (A58/A72); keep edited files LF (A73).
+
+Dependencies: Blocked by E21-S3 + E21-S5 (closed) and the E22 form sub-recipe (closed). Within E28: S2/S3/S4 depend on S1 staying green; independent of each other.
+
+### Story E28-S1: Public site — characterization tests for all nine pages (regression net)
+As a frontend engineer, I want a behaviour-pinning characterization suite over all nine Public pages plus the `public/layout.tsx` shell, so that the S2/S3/S4 extractions are provably behaviour-preserving.
+Requirements: Technical initiative — regression net; test-only; blocks E28-S2/S3/S4.
+Acceptance criteria (behaviour preserved — all E28-S1 tests stay green):
+- Characterization tests pin all nine pages against HEAD render output: `public/blog/page.tsx`, `public/blog/[id]/page.tsx`, `public/events/page.tsx`, `public/events/[id]/page.tsx`, `public/contact/page.tsx`, `public/newsletter/page.tsx`, `public/license/page.tsx`, `public/sponsors/page.tsx`, `public/unsubscribe/[token]/page.tsx`, plus the `public/layout.tsx` shell (header/footer/`children` slot).
+- Per A76, each data-driven page pins error / empty / loading paths; each form page (`contact`, `newsletter`, `unsubscribe/[token]`) additionally pins the submit-success and submit-failure paths (e.g. contact: honeypot-success short-circuit, `loading→success` swap to the "send another" panel, `error` banner + retry-label swap; blog: search-filter narrowing + `noResults` vs `empty` distinction).
+- Detail pages (`blog/[id]`, `events/[id]`) pin the param-driven fetch and the not-found / not-published path.
+- `public/sponsors/page.tsx` is pinned independently of the authenticated `src/features/sponsors/` slice (no shared characterization state).
+- No auth-redirect assertions: these pages have no auth guard — tests assert render/data/SEO/form behaviour only.
+- Suite green against HEAD before any extraction lands.
+Acceptance criteria (improvements):
+- Tests assert observable behaviour (rendered text, i18n keys resolved, fetch URL + payload, status transitions), not implementation detail, so they survive the Server-Component / client-island reshaping in S2-S4.
+- Snapshot SEO-relevant output where present (page `<h1>`/title text, blog/event metadata) to protect the SSR/SEO improvements in S2.
+Architecture notes:
+- Harness per A35/A46/A64/A78 + wrap in `QueryClientProvider`; mock `fetch` / the `/api/v1/...` endpoints (`/api/v1/blog/public`, the public events/sponsors endpoints, `/api/v1/public/contact`, newsletter + unsubscribe endpoints) and `next-intl` `useTranslations`.
+- Tests live under the existing frontend test layout mirroring `frontend/src/app/public/**`; this story adds no `src/features/public/` code — pure regression net.
+- Treat `useAppSettings` (contact sidebar) and `next/image` (`unoptimized`) as harness-provided so the net does not couple to provider internals.
+Tests/evidence: New characterization specs for all nine pages + the layout shell; `npm test -- --run` green at HEAD; typecheck + `eslint`/`prettier --check` on the new test files; evidence = green run logged in the story file. No source changes.
+
+### Story E28-S2: Public content — Server-Component feature-slice extraction
+As a frontend engineer, I want the five read-only Public content pages extracted into a `src/features/public/` slice and rendered as Server Components where behaviour allows, so that SEO/SSR improves while behaviour is preserved.
+Requirements: Technical initiative — Server-Components candidate story (E21-S1 prompt rule 14).
+Acceptance criteria (behaviour preserved — all E28-S1 tests stay green):
+- Pages migrated: `public/blog/page.tsx`, `public/blog/[id]/page.tsx`, `public/events/page.tsx`, `public/events/[id]/page.tsx`, `public/sponsors/page.tsx`.
+- Rendered output, i18n keys, fetch URLs/payloads, formatting (e.g. blog `de-CH` date, 200-char excerpt truncation), category/content-language badges, and the not-found/not-published detail paths are unchanged.
+- The blog list search-box behaviour (client-side filter, `noResults` vs `empty`) is preserved — extracted as a small client island layered over server-rendered content where the page converts to a Server Component.
+- Routes, links (`/public/blog/${id}`, event detail links), and `next/image` `unoptimized` behaviour unchanged.
+Acceptance criteria (improvements):
+- Where a page is `"use client"` only to fetch read-only data (confirmed for `public/blog/page.tsx`), convert it to a Server Component that fetches at request time; keep the search box as the only client island. Apply the same Server-Component conversion to `events`, `sponsors`, and the two detail pages where no client interactivity is required.
+- Slice shape per pilot: `api/public-content-api.ts` (encapsulated `/api/v1/...` public URLs + `publicContentKeys` query-key factory, used by any retained client island); `types/public.types.ts` (DTOs: blog post, event, sponsor — relocated from inline page interfaces); thin `components/*.tsx` composition roots + presentational list/card/detail components shared by list+detail.
+- Replace ad-hoc `process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000'` base-URL duplication with the slice `api/` module.
+Architecture notes:
+- Server Components must not import client-only hooks; isolate `useState`/`useTranslations`-driven interactivity (search box) behind a `"use client"` island under `components/`. Server-rendered text may use the server `next-intl` API to keep i18n parity.
+- No new query-key namespace collisions with `suppliersKeys`/`sponsorsKeys`; `publicContentKeys` is public-site-scoped and distinct from the authenticated `src/features/sponsors/` slice.
+- No backend/route/API-contract change; same endpoints, same DTOs.
+Tests/evidence: All E28-S1 content-page tests green unchanged; new slice unit tests for `public-content-api` URL/key factory; DoD gates (`typecheck` + `eslint`/`prettier --check` on changed files + `npm test -- --run`); i18n parity green; evidence logged in story file.
+
+### Story E28-S3: Public forms — feature-slice extraction
+As a frontend engineer, I want the three Public form/flow pages extracted into the `src/features/public/` slice with RHF+Zod client islands, so that form handling is consistent with the E22 form sub-recipe while behaviour is preserved exactly.
+Requirements: Technical initiative — applies the E22 form sub-recipe (RHF+Zod, shared form, mutation-invalidation) to public forms.
+Acceptance criteria (behaviour preserved — all E28-S1 tests stay green):
+- Pages migrated: `public/contact/page.tsx`, `public/newsletter/page.tsx`, `public/unsubscribe/[token]/page.tsx`.
+- Contact: honeypot (`website`) silent-success short-circuit, `idle→loading→success` swap to the "send another" panel, `error` banner + `retry`-label swap, the `subject` select option set, and the `POST /api/v1/public/contact` payload `{ name, email, subject, message, website }` are all unchanged; the contact sidebar (`useAppSettings` application name, email/phone/address, opening hours) is preserved.
+- Newsletter: subscribe submit + success/error states unchanged; same endpoint and payload.
+- Unsubscribe: the `[token]` param-driven flow (token-confirm request, success/already-unsubscribed/invalid-token states) is preserved exactly — no change to the token handling or endpoint.
+Acceptance criteria (improvements):
+- Contact + newsletter forms reshaped to RHF + Zod per the E22 sub-recipe: `schemas/public-contact.schema.ts` + `schemas/public-newsletter.schema.ts` (Zod), one shared form component per form under `components/`, mutation via the slice `api/` module with the existing endpoints.
+- Forms remain `"use client"` islands (genuine interactivity); the surrounding hero/sidebar may be server-rendered where it does not break the E28-S1 pins.
+- Slice `api/public-forms-api.ts` encapsulates the contact/newsletter/unsubscribe `/api/v1/...` URLs; honeypot remains client-side and is not sent through validation in a way that alters the silent-success behaviour.
+Architecture notes:
+- Preserve the unsubscribe-token flow verbatim — token is a route param, the success panel and invalid-token branch must match HEAD; do not introduce a redirect or auth check.
+- Zod schemas validate the same fields the backend already expects; no new required fields, no contract change. RHF default values match current controlled-input initial state (empty strings).
+- Keep edited files LF (A73); no `npm run format`.
+Tests/evidence: All E28-S1 form-page tests green unchanged (honeypot, status transitions, payload shape, token flow); new schema + form-island unit tests; DoD gates on changed files; i18n parity green; evidence logged in story file.
+
+### Story E28-S4: Public static and layout — feature-slice extraction
+As a frontend engineer, I want the static License page and the Public layout shell consolidated into the `src/features/public/` slice, so that the public navigation chrome is defined once and the slice is complete.
+Requirements: Technical initiative — static page + shared layout/navigation consolidation.
+Acceptance criteria (behaviour preserved — all E28-S1 tests stay green):
+- `public/license/page.tsx` renders identical static content (text, i18n keys, headings) after migration into the slice.
+- `public/layout.tsx` continues to render the public header, footer, and `children` slot in the same structure for all nine pages; no route-group move, no change to which pages receive the shell.
+- `frontend/src/components/navigation/PublicHeader.tsx` and `PublicFooter.tsx` continue to render the same nav links/branding; their usage is referenced (not duplicated) by the consolidated layout.
+Acceptance criteria (improvements):
+- `public/license/page.tsx` extracted as a Server-Component static page under the slice (`components/`), with no client hooks (static content needs none).
+- `public/layout.tsx` consolidated to reference the public navigation primitives once via the slice; `PublicHeader`/`PublicFooter` are reused from `frontend/src/components/navigation/` (no duplicate primitives, per hard constraints) — defer extracting them into the slice until E30 `PageShell` exists, and reference E30 `PageShell` once available rather than introducing a competing shell now.
+- Residual debt (deferred `PageShell` adoption) documented in the story file so E30 can pick it up.
+Architecture notes:
+- No new external UI library, no duplicate header/footer primitives; layout consolidation is reference-only.
+- License page is the simplest Server-Component conversion in the slice — use it to confirm the static-page recipe; no `api/` or `schemas/` additions needed for this page.
+- Do not pre-empt E30 PageShell: leave a clearly-marked TODO/reference rather than building a parallel shell abstraction.
+Tests/evidence: E28-S1 license + layout-shell tests green unchanged; DoD gates on changed files (`typecheck` + `eslint`/`prettier --check` + `npm test -- --run`); i18n parity green; residual `PageShell`-deferral note recorded; evidence logged in story file.
+
+## Epic E29: Frontend Feature-Slice Migration — Smaller Features
+
+Requirements: Technical initiative (no REQ) — Frontend Refactoring Program, materialised from `_bmad-output/planning-artifacts/frontend-refactoring-roadmap.md` §E29 + the E21-S3 pilot recipe and the E22 epic shape. Inherits the E21-S1 boundary decisions and the `docs/architecture-frontend.md` Pilot Result Note.
+
+Goal: Migrate the remaining small authenticated surfaces — Documents (1 page: `/documents`), Board Documents (2 pages: `/board/documents`, `/board/documents/[id]`), and Profile (2 pages: `/profile`, `/profile/security`) — into `src/features/` slices WITHOUT behaviour change. One slice per small feature (`features/documents/`, `features/board-documents/`, `features/profile/`), each following the proven Suppliers/Sponsors shape so the remaining low-volume pages reach parity with the rest of the program.
+
+Conflict priority (applies to every story, per E21): (1) preserve existing functionality; (2) never overwrite foreign uncommitted changes; (3) do not break routes, API contracts, auth, i18n, or existing tests; (4) stay within story scope; (5) improve architecture; (6) improve styling/theming. When a clean solution raises risk to (1)-(3), choose the lower-risk incremental option and document the residual debt.
+
+Epic-wide hard constraints (inherited from E21): no backend/route/API-contract changes; no route-group moves; no global token sweep; no new external UI library; no duplicate UI primitives; no test removal; no cosmetic mass changes. DoD = `npm run typecheck` + `npx eslint <changed>` + `npx prettier --check <changed>` + `npm test -- --run` only — never `npm run format` (the prettier-tailwind plugin re-sorts classes repo-wide) and never repo-wide lint/format as a per-story gate (A58/A72); keep edited files LF (A73).
+
+Dependencies: Blocked by E21-S3 + E21-S5 (closed) and the E22 form sub-recipe (closed). Within E29: S2/S3/S4 depend on S1 staying green; independent of each other.
+
+### Story E29-S1: Smaller features — characterization tests for documents, board, and profile (regression net)
+
+As a developer about to refactor five un-tested small-feature pages, I want a characterization test suite that pins their current observable behaviour first, so that the E29-S2/S3/S4 slice extractions are provably behaviour-preserving.
+
+Requirements: Tech-initiative; mirrors E22-S1; applies A76 (assert what a manual→TanStack/Radix refactor silently changes: error/empty/loading lifecycle including failure paths, and the consent/security side-effect branches).
+
+Acceptance criteria:
+
+- New co-located `*.test.tsx` suites pin the CURRENT behaviour of all five pages against branch HEAD (green before any refactor commit):
+  - Documents (`app/documents/page.tsx`): auth guard (redirect `/login` if unauthenticated), documents + folders + tags load via `lib/services/documents`, server-side search/folder/tag filters, folder navigation (into/up/root/breadcrumb), pagination, loading/error/empty states, table render, authenticated blob download path and download-error surfaced.
+  - Board Documents list (`app/board/documents/page.tsx`): auth guard, list load, filter/search/pagination as present, loading/error/empty states, row → detail link.
+  - Board Documents detail (`app/board/documents/[id]/page.tsx`): auth guard, load-by-id, content render, loading/error/not-found states, download/action affordances as present.
+  - Profile (`app/profile/page.tsx`): auth guard (redirect `/login` if unauthenticated; redirect `/` if authenticated but not member), `GET /members/me` load, 404 → no-member-record branch, view→edit toggle, profile `PUT` submit + submit-error surfaced, consent load + grant/revoke toggle (success + non-critical-failure branches), channel-preferences card render, loading/error states.
+  - Profile Security (`app/profile/security/page.tsx`): auth guard, session/device list load, security actions (revoke/change as present), loading/error/empty states, action-error surfaced.
+- Tests follow harness conventions: `// @vitest-environment jsdom`, `afterEach(cleanup)` (A35/A46), stable `useTranslations`/`useApiClient`/`useRouter`/`useAuth` mocks (A64/A78), `QueryClientProvider` wrapper. The suite records (A79) that a `retry:false` harness masks the provider's `retry:1` + sticky-mutation-error + no-spinner-on-refetch deltas, which S2/S3/S4 must decide on explicitly.
+- A76 explicit assertions: the consent grant/revoke success-vs-failure branches and the documents download-error branch (the silent-side-effect paths a manual→TanStack refactor most easily drops).
+- No production code changed (test-only). Suite green against HEAD; blocks E29-S2/S3/S4.
+
+Architecture notes:
+
+- Pure additive safety net; blocks E29-S2/S3/S4. The five suites are the green baseline the extractions must keep green. Mirrors the ATDD step from the E21/E22 ordering. Profile carries the most stateful surface (consent + edit form + channel prefs), so its inventory is the densest.
+
+Tests/evidence:
+
+- `vitest run` shows the new documents/board-documents/profile suites passing on branch HEAD before any refactor commit; per-page assertion inventory recorded.
+
+### Story E29-S2: Documents — feature-slice extraction
+
+As a maintainer, I want the Documents page refactored into the feature-slice pattern, so that the member document-browser matches the proven Suppliers/Sponsors slice with behaviour preserved.
+
+Requirements: Tech-initiative; mirrors E22-S2 for a list-style page; roadmap §E29. Depends on E29-S1; uses `frontend/src/lib/services/documents.ts`.
+
+Acceptance criteria (behaviour preserved — all E29-S1 documents tests stay green):
+
+- Route `/documents`, auth guard, documents + folders + tags load, server-side search/folder/tag filters, folder navigation (into/up/root/breadcrumb), pagination, loading/error/empty states, table render, authenticated blob download, download-error handling, and i18n texts all work exactly as before.
+
+Acceptance criteria (improvements):
+
+- `app/documents/page.tsx` becomes a thin entry (no `"use client"`) rendering a `features/documents` content component (the only `"use client"` is the composition root).
+- A `features/documents/` slice exists mirroring `features/sponsors/`: `api/documents-api.ts` (encapsulating the `/api/v1` document URLs, wrapping the EXISTING `lib/services/documents.ts` calls without changing their contract, + a `documentsKeys` query-key factory), `hooks/use-documents.ts` + `hooks/use-document-folders.ts` + `hooks/use-document-tags.ts` (`useQuery`), `components/` (`documents-page-content`, `documents-filter-bar`, `documents-breadcrumb`, `documents-folder-grid`, `documents-table`, `document-download-button`), `types/document.types.ts` (re-exporting/owning `DocumentDto`/`DocumentFolderDto` shapes; `lib/services/documents.ts` stays the transport seam — do not duplicate it).
+- The authenticated download (dynamic `next-auth/react` `getSession` → fetch blob → object-URL anchor) is preserved behind `document-download-button`; download-error surfaced (A76).
+- `startTransition`/manual `setLoading` plumbing is replaced by TanStack; the manual→TanStack deltas (A79) are decided explicitly: refetch-on-filter via query keys; chosen retry/refetch-spinner semantics documented.
+- i18n parity: any new user-facing strings reuse existing `documents.*` keys; if `frontend/messages/hi.json` lacks `documents.*` parity with `en.json`/`de.json`, bring it to parity and keep `frontend/messages/messages.parity.test.ts` green (record the prior baseline; no key renames/removals in any locale).
+- No new `any`, no new hard-coded user-facing strings, no new direct API URL in `page.tsx`, no duplicate UI primitive.
+
+Architecture notes:
+
+- A list-style slice over an existing service module (`lib/services/documents.ts`) rather than a raw fetch — the new wrinkle vs Sponsors is wrapping a pre-existing transport seam in the `api/` layer without re-implementing it. The folder-navigation + breadcrumb state is the net-new surface; keep it local to `documents-page-content`. Update the `docs/architecture-frontend.md` recipe note if the service-wrapping pattern adds anything reusable.
+
+Tests/evidence:
+
+- All E29-S1 documents tests green post-refactor; new `document-download-button` + filter/breadcrumb component tests; `tsc`/eslint(changed)/prettier-check(changed)/`vitest run` green; i18n parity green; `next build` succeeds.
+
+### Story E29-S3: Board documents — feature-slice extraction
+
+As a maintainer, I want the Board Documents list and detail pages refactored into the feature-slice pattern, so that the board-only document surface matches the proven slice with behaviour preserved.
+
+Requirements: Tech-initiative; mirrors E22-S2 (list) + the E22-S3 detail half; roadmap §E29 (2 pages). Depends on E29-S1.
+
+Acceptance criteria (behaviour preserved — all E29-S1 board-documents tests stay green):
+
+- `/board/documents` (auth guard, list load, filter/search/pagination as present, loading/error/empty states, row → detail link) and `/board/documents/[id]` (auth guard, load-by-id, content render, loading/error/not-found states, download/action affordances) all work exactly as before — including the board-only access rule and any download path, unchanged.
+
+Acceptance criteria (improvements):
+
+- Each route file (`board/documents/page.tsx`, `board/documents/[id]/page.tsx`) becomes a thin entry rendering a `features/board-documents/components` content component (the composition root is the only `"use client"`).
+- A `features/board-documents/` slice exists mirroring `features/sponsors/`: `api/board-documents-api.ts` (encapsulated `/api/v1` board-document URLs + a `boardDocumentsKeys` query-key factory), `hooks/` (`use-board-documents` list `useQuery`; `use-board-document` get-by-id `useQuery`), `components/` (`board-documents-page-content`, `board-documents-table`/filter bar as the list surface needs, `board-document-detail`), `types/board-document.types.ts`.
+- The board-only auth guard is preserved exactly (no widening/narrowing of who can view); any document-download affordance is preserved behind a component, with its error path surfaced (A76).
+- The manual→TanStack deltas (A79) are decided explicitly: list/detail query keys; chosen retry/refetch-spinner semantics documented.
+- i18n parity: reuse existing board-document keys; if `frontend/messages/hi.json` lacks parity with `en.json`/`de.json` for the touched key set, bring it to parity and keep `messages.parity.test.ts` green (record the baseline; no key renames/removals).
+- No new `any`, no new hard-coded user-facing strings, no new direct API URL in route files, no duplicate UI primitive.
+
+Architecture notes:
+
+- A two-page list+detail slice — the smallest full E22-shaped slice in the program. Keep the board-only access rule as the single behavioural invariant. No forms here, so no RHF/Zod is introduced. Independent of S2/S4 once S1 is green.
+
+Tests/evidence:
+
+- All E29-S1 board-documents tests green post-refactor; new list + detail component tests; `tsc`/eslint(changed)/prettier-check(changed)/`vitest run` green; i18n parity green; `next build` succeeds.
+
+### Story E29-S4: Profile — feature-slice extraction
+
+As a maintainer, I want the Profile and Profile Security pages refactored into the feature-slice pattern, so that the member self-service surface matches the proven slice with the consent, channel-preference, and security behaviours preserved exactly.
+
+Requirements: Tech-initiative; mirrors E22-S3 (form half) for the profile edit form; roadmap §E29 (2 pages). Depends on E29-S1; reuses the E22 form sub-recipe (RHF+Zod, shared form, mutation-invalidation).
+
+Acceptance criteria (behaviour preserved — all E29-S1 profile tests stay green):
+
+- `/profile` auth guard (redirect `/login` if unauthenticated; redirect `/` if authenticated but not member), `GET /members/me` load, 404 → no-member-record branch (with the Admin/Vorstand vs member message + security/admin links), view→edit toggle, profile `PUT` submit + submit-error surfaced, consent load + grant/revoke toggle (success message + auto-dismiss + non-critical-failure branch), and the channel-preferences card all work exactly as before.
+- `/profile/security` auth guard, session/device list load, security actions (session/device revoke/change as present), loading/error/empty states, and action-error handling all work exactly as before. The consent/channel-preference + security (session/device) behaviours are preserved verbatim — no widening of what is revealed or revocable.
+
+Acceptance criteria (improvements):
+
+- `app/profile/page.tsx` and `app/profile/security/page.tsx` become thin entries (no `"use client"`) each rendering a `features/profile/components` content component (the only `"use client"` is the composition root).
+- A `features/profile/` slice exists mirroring `features/sponsors/`: `api/profile-api.ts` (encapsulated `/api/v1/members/me`, consent (`lib/api/privacy`), channel-preference, and security/session URLs + a `profileKeys` query-key factory), `hooks/` (`use-profile` get + `use-update-profile` mutation invalidating `profileKeys`; `use-consents` + `use-toggle-consent` mutation; `use-sessions`/`use-security` query + revoke mutation), `schemas/profile.schema.ts` (Zod for the profile edit form), `components/` (`profile-page-content`, `profile-detail`, `profile-form`, `consent-preferences`, `channel-preferences-card` (relocating the existing `ChannelPreferencesCard`), `profile-security-content`, `session-list`), `types/profile.types.ts`.
+- The profile edit form uses React Hook Form + Zod (E22 form sub-recipe) behind a stable, tested contract; validation messages via next-intl (no hard-coded strings); the `PUT /members/me` round-trip (edit→prefill→update→exit-edit) is unchanged.
+- Consent toggle and security/session actions become mutations that invalidate their respective queries; the consent non-critical-failure (silent) and explicit-error branches are preserved exactly (A76); the manual→TanStack deltas (A79) decided explicitly (retry/refetch-spinner/sticky-error semantics documented).
+- i18n parity: reuse existing `profile.*`/`form.*`/`status.*` keys; if `frontend/messages/hi.json` lacks parity with `en.json`/`de.json` for the touched key set, bring it to parity and keep `messages.parity.test.ts` green (record the baseline; no key renames/removals).
+- No new `any`, no new hard-coded user-facing strings, no new direct API URL in route files, no duplicate UI primitive.
+
+Architecture notes:
+
+- The most stateful E29 slice: a profile edit form (RHF+Zod, reusing the E22 form sub-recipe) plus three side-effecting concerns (consent, channel preferences, session/security). The consent silent-vs-explicit failure branches and the security action set are the behavioural invariants — preserve verbatim. `ChannelPreferencesCard` relocates into the slice without behaviour change. Closes the program's small-surface backlog.
+
+Tests/evidence:
+
+- All E29-S1 profile + security tests green post-refactor; form-validation + update/consent/session mutation tests; `tsc`/eslint(changed)/prettier-check(changed)/`vitest run` green; i18n parity green; `next build` succeeds.
+
+## Epic E30: Frontend Feature-Slice Migration — Auth and App Shell
+Requirements: Technical initiative (no REQ) — Frontend Refactoring Program, materialised from `_bmad-output/planning-artifacts/frontend-refactoring-roadmap.md` §E30 + the E21-S3 pilot recipe and the E22 epic shape. Inherits the E21-S1 boundary decisions and the `docs/architecture-frontend.md` Pilot Result Note.
+Goal: Consolidate the app shell, auth, and system pages without behaviour change: introduce the missing shared `components/layout` primitives (PageShell, PageHeader) by composing — not duplicating — the existing `components/navigation/{MainLayout,Header,Sidebar}.tsx`, then thread them through the auth/login, system, and root-shell surface. This is largely infrastructure; preserve the NextAuth session flow, the root `layout.tsx`/`providers.tsx` wiring (TanStack QueryClient + next-intl + NextAuth session + Sidebar/AppSettings providers), and the `api/auth/[...nextauth]` and `api/health` route handlers exactly.
+
+Conflict priority (applies to every story, per E21): (1) preserve existing functionality; (2) never overwrite foreign uncommitted changes; (3) do not break routes, API contracts, auth, i18n, or existing tests; (4) stay within story scope; (5) improve architecture; (6) improve styling/theming. When a clean solution raises risk to (1)-(3), choose the lower-risk incremental option and document the residual debt.
+
+Epic-wide hard constraints (inherited from E21): no backend/route/API-contract changes; no route-group moves; no global token sweep; no new external UI library; no duplicate UI primitives; no test removal; no cosmetic mass changes. DoD = `npm run typecheck` + `npx eslint <changed>` + `npx prettier --check <changed>` + `npm test -- --run` only — never `npm run format` (the prettier-tailwind plugin re-sorts classes repo-wide) and never repo-wide lint/format as a per-story gate (A58/A72); keep edited files LF (A73).
+
+Dependencies: Blocked by E21-S3 + E21-S5 (closed). Within E30: S1 (layout primitives) lands first so S2/S3 can adopt them; if a minimal PageShell was already introduced during an earlier migration epic, S1 consolidates it. Earlier domain epics (E22-E29) may already reference PageShell — S1 reconciles those usages.
+
+### Story E30-S1: Introduce and consolidate `components/layout` primitives (PageShell, PageHeader)
+As a frontend engineer, I want shared `PageShell` and `PageHeader` layout primitives that compose the existing navigation chrome, so every migrated page has one consistent, tested wrapper instead of ad-hoc per-page layout markup.
+Requirements: Technical initiative (no REQ). Implements roadmap §E30 "introduce a minimal PageShell EARLY, consolidate here" and the E21-S3 pilot recipe (`docs/architecture-frontend.md` Pilot Result Note).
+Acceptance criteria (behaviour preserved):
+- `PageShell` and `PageHeader` are pure presentational wrappers; they compose `@/components/navigation/{MainLayout,Header,Sidebar}` (importing the existing primitives) and do NOT duplicate or re-implement their markup, sidebar context wiring, or responsive behaviour.
+- The root `layout.tsx` `MainLayout` mount, `BetaBanner`, and `LicenseFooter` ordering are untouched; `PageShell` sits inside the page content area, not in the root layout, so chrome rendering is unchanged.
+- Any provisional `PageShell` usages introduced earlier in E22-E29 are reconciled to the consolidated component with identical rendered output (same DOM structure, classes, and slots); no consuming page changes visible behaviour.
+- `npm run typecheck` + `npm test -- --run` stay green; no existing test is modified to pass.
+Acceptance criteria (improvements):
+- New primitives live at `frontend/src/components/layout/PageShell.tsx` and `frontend/src/components/layout/PageHeader.tsx`, with a barrel `frontend/src/components/layout/index.ts` mirroring the navigation barrel convention.
+- `PageHeader` exposes title/description/actions slots; `PageShell` exposes a content container + optional header slot — typed props, no `any`.
+- Tailwind classes follow the existing token layer (E21 globals.css tokens); no inline hex, no global token sweep.
+Architecture notes: Wrapper-extraction only — lift the repeated page-frame markup already present across migrated pages into `PageShell`/`PageHeader`; compose over `components/navigation`. Keep the component boundary identical to the `features/suppliers` + `features/sponsors` template (presentational, prop-driven). No sidebar/header logic moves out of `components/navigation`. ESLint import-boundary rules (E21-S5) apply: `components/layout` is shared, importable by features.
+Tests/evidence: Add `frontend/src/components/layout/PageShell.test.tsx` and `PageHeader.test.tsx` (render slots, default + with-header, actions present/absent). Evidence: `npm run typecheck`; `npx eslint frontend/src/components/layout/**`; `npx prettier --check frontend/src/components/layout/**`; `npm test -- --run` (new tests green, suite unchanged otherwise).
+
+### Story E30-S2: Auth, login, and system pages — slice/shell extraction
+As a frontend engineer, I want the auth, login, and system/error pages refactored onto the shared layout primitives without changing their behaviour, so the system-page surface matches the feature-slice template while NextAuth redirects and error rendering stay identical.
+Requirements: Technical initiative (no REQ). Implements roadmap §E30; consumes E30-S1 primitives.
+Acceptance criteria (behaviour preserved):
+- `frontend/src/app/login/page.tsx` preserves the NextAuth sign-in flow exactly: same `signIn`/callback wiring, same success/failure redirect targets, same `callbackUrl`/`error` query handling, same i18n keys.
+- `frontend/src/app/auth/error/page.tsx` renders the same error states/messages for the same error codes; no copy or routing change.
+- `frontend/src/app/module-unavailable/page.tsx` and `frontend/src/app/site-unavailable/page.tsx` render identical content and any existing redirect/guard behaviour.
+- Route-level `frontend/src/app/error.tsx`, `global-error.tsx`, `not-found.tsx`, and `loading.tsx` keep their exact Next.js semantics (error boundary reset, 404 rendering, suspense fallback) and rendered output.
+- No route, route-group, or API-contract change; `npm run typecheck` + `npm test -- --run` green.
+Acceptance criteria (improvements):
+- Page chrome adopts `PageShell`/`PageHeader` (E30-S1) where applicable; page-local presentational pieces and any data/schema helpers follow the `features/<domain>` slice shape (`components/`, and `schemas`/`types` only if such logic already exists in-page).
+- Duplicated auth/system markup is collapsed into the shared primitives — no new duplicate UI primitive introduced.
+- i18n keys unchanged and resolvable in both `en.json` and `hi.json` (i18n parity per E21-S4).
+Architecture notes: Behaviour-preserving extraction only. `global-error.tsx` must remain a self-contained root boundary (it renders its own `<html>/<body>` and cannot depend on providers/`PageShell`) — leave it minimal; do not force it onto layout primitives. Login stays a client component with its existing `signIn` import. Keep NextAuth callback/redirect logic byte-for-byte where feasible; if extraction touches it, document residual debt rather than altering flow.
+Tests/evidence: Add characterization tests as a regression net for the login flow (renders form, invokes `signIn` with expected args, honours `callbackUrl`/`error` params) and for `auth/error` error-code mapping; smoke-render `module-unavailable`, `site-unavailable`, `not-found`, and `error.tsx` (boundary resets). Evidence: `npm run typecheck`; `npx eslint <changed>`; `npx prettier --check <changed>`; `npm test -- --run`.
+
+### Story E30-S3: App shell — layout, providers, root page, and API routes
+As a frontend engineer, I want the root shell files normalized onto the consolidated structure without altering the providers tree, root behaviour, or route handlers, so the app shell is consistent with the feature-slice template while NextAuth, TanStack, next-intl, and the health/auth endpoints behave exactly as before.
+Requirements: Technical initiative (no REQ). Implements roadmap §E30; consumes E30-S1 primitives.
+Acceptance criteria (behaviour preserved):
+- `frontend/src/app/providers.tsx` keeps the exact provider nesting and config: `SessionProvider` → `QueryClientProvider` (QueryClient with `staleTime: 60_000`, `retry: 1`, created via `useState`) → `SidebarProvider` → `AppSettingsProvider`. No provider added, removed, reordered, or reconfigured.
+- `frontend/src/app/layout.tsx` preserves `generateMetadata` (de-branded REQ-086 fetch with 3s `AbortSignal.timeout` + 300s revalidate + neutral fallback), the Inter font wiring, `getLocale`/`getMessages`, and the `Providers` → `NextIntlClientProvider` → `BetaBanner`/`MainLayout`/`LicenseFooter` tree exactly.
+- `frontend/src/app/page.tsx` (root home) preserves its current redirect/home rendering behaviour exactly.
+- `frontend/src/app/api/auth/[...nextauth]/route.ts` and `frontend/src/app/api/health/route.ts` are unchanged in contract: same handlers, exports, status codes, and payloads; `frontend/src/app/api/health/route.test.ts` stays green and is not modified.
+- `npm run typecheck` + `npm test -- --run` green; every page still renders.
+Acceptance criteria (improvements):
+- Only non-behavioural normalization is allowed: import ordering/barrels, comments, and adopting shared types — no logic change to providers, metadata, route handlers, or root page.
+- Any root-page chrome that can adopt `PageShell`/`PageHeader` (E30-S1) does so without changing rendered output or redirect behaviour.
+- ESLint import-boundary rules (E21-S5) satisfied for any touched shell imports.
+Architecture notes: This is the highest-risk infra story — treat `providers.tsx`, `layout.tsx`, and both route handlers as behaviour-frozen; prefer the lower-risk incremental option (Conflict priority 1-3) and document residual debt over any refactor that touches the auth/session/query wiring. The existing `api/health/route.test.ts` is the regression anchor for the health endpoint. Do not move route groups or relocate `api/`.
+Tests/evidence: Keep `frontend/src/app/api/health/route.test.ts` green (regression anchor). Add a providers regression test asserting the provider tree mounts (QueryClient available, SessionProvider/Sidebar/AppSettings present) and a root-`page.tsx` characterization test for its redirect/home behaviour; smoke-test `api/auth/[...nextauth]/route.ts` handler exports resolve. Evidence: `npm run typecheck`; `npx eslint <changed>`; `npx prettier --check <changed>`; `npm test -- --run`.
+
+## Epic E31: Frontend Feature-Slice Migration — Legacy HTTP-Client Retirement
+Requirements: Technical initiative (no REQ) — Frontend Refactoring Program, materialised from `_bmad-output/planning-artifacts/frontend-refactoring-roadmap.md` §E31 + the E21-S3 pilot recipe and the E22 epic shape. Inherits the E21-S1 standard HTTP contract and the E21-S5 import-boundary lint.
+Goal: Retire the legacy HTTP clients now that every domain feature uses the E21-S1 standard `useApiClient`-based contract. Migrate any residual consumers off the class-based `frontend/src/lib/api-client.ts` and the `lib/api/*` + `lib/services/*` modules into the owning feature slice's `api` module, then DELETE the now-unused legacy client(s) and compatibility shims. This is the final consolidation of the program — one HTTP contract, zero legacy paths.
+
+Conflict priority (applies to every story, per E21): (1) preserve existing functionality; (2) never overwrite foreign uncommitted changes; (3) do not break routes, API contracts, auth, i18n, or existing tests; (4) stay within story scope; (5) improve architecture; (6) improve styling/theming. When a clean solution raises risk to (1)-(3), choose the lower-risk incremental option and document the residual debt.
+
+Epic-wide hard constraints (inherited from E21): no backend/route/API-contract changes; no route-group moves; no global token sweep; no new external UI library; no duplicate UI primitives; no test removal; no cosmetic mass changes. DoD = `npm run typecheck` + `npx eslint <changed>` + `npx prettier --check <changed>` + `npm test -- --run` only — never `npm run format` (the prettier-tailwind plugin re-sorts classes repo-wide) and never repo-wide lint/format as a per-story gate (A58/A72); keep edited files LF (A73).
+
+Dependencies: BLOCKED BY ALL migration epics E22-E30 — no feature may still import a legacy client before E31-S2 deletes it. Within E31: S2 (deletion) depends on S1 (residual migration) leaving zero legacy importers.
+
+### Story E31-S1: Migrate residual consumers to the standard HTTP contract
+As a frontend engineer, I want every remaining importer of the legacy HTTP clients migrated onto the E21-S1 standard contract, so that no production code path depends on `frontend/src/lib/api-client.ts`, `frontend/src/lib/api/*`, or `frontend/src/lib/services/*` and the legacy client becomes safe to delete in E31-S2.
+Requirements: Technical initiative — closes the long tail left by E22-E30. Inherits the E21-S1 standard HTTP contract (`useApiClient`, proven in `frontend/src/features/suppliers/api/suppliers-api.ts` and `frontend/src/features/sponsors/api/sponsors-api.ts`) and the E21-S5 import-boundary lint.
+Acceptance criteria (behaviour preserved):
+- A verification step enumerates EVERY remaining importer of `frontend/src/lib/api-client.ts` (incl. `createApiClient`/`ApiClient`), each module under `frontend/src/lib/api/` (`apiClients.ts`, `audit.ts`, `automations.ts`, `backup.ts`, `budgets.ts`, `email-campaigns.ts`, `health.ts`, `member-segments.ts`, `members.ts`, `privacy.ts`, `registration.ts`, `retention.ts`, `users.ts`, `webhooks.ts`), and each module under `frontend/src/lib/services/` (`api.ts`, `documents.ts`, `events.ts`).
+- Each enumerated residual importer is migrated to the owning feature slice's `api/<domain>-api.ts` module using the standard `useApiClient` contract; request/response shapes, endpoints, auth header behaviour, error mapping (`ApiError`/non-OK throw), and 204-empty handling are preserved exactly.
+- After migration the importer count of every legacy path reaches ZERO, OR any deliberately-retained shim is explicitly documented (path + reason + follow-up) so E31-S2 knows it must remain.
+- The full vitest suite stays green (`npm test -- --run`); no test is removed or skipped; no route, API contract, auth, or i18n behaviour changes.
+Acceptance criteria (improvements):
+- Migrated calls collapse onto the single standard contract (one client, one error model), removing the per-resource service indirection and the class-based `fetch` wrapper for those call sites.
+- Migrated slices follow the E21-S1 recipe (typed `api/<domain>-api.ts`, hook-based client access) and satisfy the E21-S5 import-boundary rule without new allowances.
+Architecture notes:
+- The legacy class client (`frontend/src/lib/api-client.ts`) is a token-seeded `fetch` wrapper exposing `get/post/put/delete`, throwing a structured `ApiError` on non-OK and returning `{}` for 204; preserve these semantics when porting to `useApiClient` so error and empty-body handling is unchanged.
+- Place each migrated method on the slice that OWNS the resource (e.g. members/segments → members slice, budgets → finance slice, webhooks → integrations slice, documents/events → their domain slices) — do not create a catch-all slice; if a resource has no existing owning slice, document it as a retained shim rather than inventing scope.
+- No backend/route/API-contract changes; endpoints and payloads are copied verbatim.
+Tests/evidence:
+- Verification output (grep/import scan) listing every legacy importer before and after, demonstrating the count reaches zero or enumerating each documented retained shim.
+- `npm run typecheck` + `npx eslint <changed>` + `npx prettier --check <changed>` + `npm test -- --run` all green; suite count unchanged or higher (no removals).
+
+### Story E31-S2: Delete the legacy client and compatibility shims
+As a frontend engineer, I want the now-unused legacy HTTP client and its compatibility shims deleted, so that the codebase has exactly one HTTP contract and the E21-S5 import-boundary lint no longer needs any legacy-path allowance.
+Requirements: Technical initiative — final consolidation of the Frontend Refactoring Program. Depends on E31-S1 having left zero legacy importers (or only explicitly-documented retained shims).
+Acceptance criteria (behaviour preserved):
+- Pre-deletion gate: re-run the E31-S1 verification and confirm zero importers of each target legacy path (excluding any explicitly-documented retained shim); deletion proceeds only for modules with zero importers.
+- DELETE the class-based client `frontend/src/lib/api-client.ts` and every now-unused compatibility shim under `frontend/src/lib/api/` (`apiClients.ts`, `audit.ts`, `automations.ts`, `backup.ts`, `budgets.ts`, `email-campaigns.ts`, `health.ts`, `member-segments.ts`, `members.ts`, `privacy.ts`, `registration.ts`, `retention.ts`, `users.ts`, `webhooks.ts`) and `frontend/src/lib/services/` (`api.ts`, `documents.ts`, `events.ts`).
+- Still-needed tests are preserved by relocation, not deletion: move `frontend/src/lib/api/members.test.ts`, `frontend/src/lib/api/users.test.ts`, and `frontend/src/lib/services/volunteers.test.ts` into the owning feature slice (retargeted at the slice's `api/<domain>-api.ts`); if a test is obsoleted purely because its legacy module is gone, document the rationale rather than silently dropping coverage.
+- No route, API contract, auth, or i18n behaviour changes; no remaining import resolves to a deleted path.
+Acceptance criteria (improvements):
+- The E21-S5 import-boundary ESLint config has NO remaining legacy-path allowances (any `lib/api-client`, `lib/api/*`, `lib/services/*` exception is removed); lint passes with the stricter config.
+- `frontend/src/lib/` no longer hosts an HTTP-client layer parallel to `src/features/*/api`; the program ends on a single `useApiClient` contract.
+Architecture notes:
+- Deletion order: confirm zero importers (gate) → delete shims under `lib/api/`/`lib/services/` → delete `lib/api-client.ts` → relocate retained tests → tighten the E21-S5 lint allowlist → full build.
+- `next build` is added to this story's gate (beyond the standard per-story DoD) because deleting modules can surface previously-tolerated dangling imports only at build/type time.
+- Any shim deliberately retained by E31-S1 stays; record it explicitly so this story does not delete a still-referenced module.
+Tests/evidence:
+- Record of deleted files (full paths) and relocated test files (old → new path), plus the E21-S5 lint-config diff removing legacy-path allowances.
+- `npm run typecheck` (`tsc`) + full vitest (`npm test -- --run`) + `next build` all green with the legacy client gone; final import scan shows zero references to any deleted path.
 
 ## Release and Sprint Guidance
 
