@@ -1,13 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 
 // REQ-055 (E7-S4) AC-3: the public events list surfaces the content-language
-// metadata as a badge WITHOUT changing the route. We mock useTranslations with a
-// STABLE per-namespace function (A64) so `language.de` renders the native name, and
-// stub fetch to return one event carrying contentLanguage="de".
+// metadata as a badge WITHOUT changing the route. ADAPTED to RSC in E28-S2
+// (A88/A79): the list flipped client→async Server Component, so the render harness
+// is `render(await Page())` + a `next-intl/server` `getTranslations` mock for the
+// SC hero; the content-language badge now renders inside the `<EventsFilter>` client
+// island (still `useTranslations("language")` — STABLE per-namespace, A64). The
+// behavioural assertion (the native language name renders / is absent) is UNCHANGED.
+
+vi.mock("next-intl/server", () => ({
+  getTranslations: async (_ns?: string) => (k: string) => k,
+}));
 
 vi.mock("next-intl", () => {
   const langMap: Record<string, string> = {
@@ -75,19 +82,15 @@ describe("PublicEventsPage content-language badge (E7-S4)", () => {
 
   it("renders the native language name when an event has a content language", async () => {
     stubFetch([eventWith("de")]);
-    render(<PublicEventsPage />);
-    await waitFor(() =>
-      expect(screen.getByText("Test Event")).toBeInTheDocument()
-    );
+    render(await PublicEventsPage());
+    expect(screen.getByText("Test Event")).toBeInTheDocument();
     expect(screen.getByText("Deutsch")).toBeInTheDocument();
   });
 
   it("renders no language badge when an event has no content language", async () => {
     stubFetch([eventWith(undefined)]);
-    render(<PublicEventsPage />);
-    await waitFor(() =>
-      expect(screen.getByText("Test Event")).toBeInTheDocument()
-    );
+    render(await PublicEventsPage());
+    expect(screen.getByText("Test Event")).toBeInTheDocument();
     expect(screen.queryByText("Deutsch")).toBeNull();
     expect(screen.queryByText("English")).toBeNull();
   });
