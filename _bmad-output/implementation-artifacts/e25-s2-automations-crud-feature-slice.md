@@ -1,6 +1,6 @@
 # Story E25.S2: Automations — CRUD Feature-Slice Extraction
 
-Status: ready-for-dev
+Status: review
 
 Depends on: **E25-S1 (this net must be green at HEAD first)**, plus E21-S3 + E21-S5 (closed) and the E22 RHF+Zod form sub-recipe (closed). Inherits E21-S1 boundary decisions (DEC-1 `useApiClient`, DEC-2 status colours). Independent of S3/S4 once S1 is green (the three CRUD sub-modules may proceed in parallel). **Consumes `@/lib/email-templates` for the template dropdown (boundary-legal `features→lib`; do NOT import the email-templates slice — A83/E21-S5).**
 
@@ -37,18 +37,18 @@ so that the first of three parallel Communication CRUD surfaces matches the stan
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites + resolve the DECs (AC: all) — record A43 (a)/(b)/(c) per DEC
-  - [ ] E25-S1 Automations specs green at HEAD. Confirm `features/communication/automations/` does NOT exist. Re-read the 4 pages + `AutomationForm.tsx` + `lib/api/automations.ts` + the E29 documents/board wrap recipe + sponsors form recipe (A56).
-  - [ ] **DEC-1 (transport — wrap vs adapt the token-param fns):** recommended **A** — slice `api/automations-api.ts` WRAPS `@/lib/api/automations.ts`; since those fns take a `token` param (not the `useApiClient` shape), the slice api fns take the token from a hook the components hold (or pass `useApiClient`-style — pick the minimal adaptation that keeps the S1 mock on `@/lib/api/automations` intercepting). Do NOT rewrite the URLs. `lib/api/automations.ts` stays (consumed nowhere else, but wrapping is the recipe).
-  - [ ] **DEC-2 (form):** recommended **A** — adopt E22 RHF+Zod for `automation-form` (epic goal; behaviour-preserving — same required set as the manual `clientValidate`).
-  - [ ] **DEC-3 (type home):** recommended **re-export** the DTOs/enums from `@/lib/api/automations` via `types/automation.types.ts`.
-  - [ ] **DEC-4 (status badge):** recommended **map to Badge variants/tokens** (DEC-2/A77); verify the token value against the named brand colour, not a comment.
-- [ ] Task 1: Scaffold slice `api` + `types` + `schemas` (AC: 3, 4) — `automations-api.ts` (`automationsKeys` + wrapped fns + folded segment-load, URLs/params byte-identical) + `types/automation.types.ts` + `schemas/automation.schema.ts` + `automations-api.test.ts`.
-- [ ] Task 2: Hooks (AC: 3, 5) — list/detail (+`AutomationNotFoundError`, A93 retry-exclusion)/executions queries; create/update/lifecycle/preview mutations + invalidation. `use-automation.test.tsx`.
-- [ ] Task 3: Components — list + detail (AC: 1, 2, 3, 4) — `automations-page-content` (+filter-bar/table/status-badge) + `automation-detail` (lifecycle actions, `canEdit` gating, executions table). Status badge → Badge variants (A77).
-- [ ] Task 4: Components — new + edit forms (AC: 1, 2, 4) — `automation-form` (RHF+Zod, E22 sub-recipe; the trigger/segment conditional fields + previewRecipients action) + `automation-new-content`/`automation-edit-content`. `automation-form.test.tsx`.
-- [ ] Task 5: Thin route entries (AC: 2) — the 4 route files → content components (KEEP `params: Promise<{id}>` + `use(params)` for [id]/[id]/edit so the S1 specs stay green).
-- [ ] Task 6: Green-the-net + DoD gate (AC: 1, 6) — E25-S1 Automations specs green (transport-mock re-pointed only; form/lifecycle mechanism is the licensed-update surface); new slice unit tests; `tsc`/eslint(changed)/prettier-check(changed)/`vitest run` green; i18n parity green; `next build` succeeds (or deferred to epic boundary per A58); LF. Record A79 deltas.
+- [x] Task 0: Verify prerequisites + resolve the DECs (AC: all) — A43 (a)/(b)/(c) recorded in Dev Agent Record below
+  - [x] E25-S1 Automations specs green at HEAD (65 tests). Confirmed `features/communication/automations/` did NOT exist. Re-read the 4 pages + `AutomationForm.tsx` + `lib/api/automations.ts` + the E29 documents/board wrap recipe + sponsors form recipe (A56).
+  - [x] **DEC-1 = A WRAP** — `api/automations-api.ts` WRAPS `@/lib/api/automations.ts` (token-param fns); hooks read the token from `useAuth().accessToken`. URLs unchanged → the S1 `vi.mock("@/lib/api/automations")` specs keep intercepting with ZERO transport-mock edits (A94). Folded the inline segment-load → `fetchMemberSegments(token)` at the REAL url **`/api/v1/member-segments?pageSize=100`** (the story text's `/active` was wrong).
+  - [x] **DEC-2 = A** — RHF+Zod `automation-form`; same `validation.*` keys; `.superRefine` for offsetDays-when-time-relative + segmentFilter-when-MemberSegment; preview action + template/segment/conditional fields + redirect + submit-error banner preserved.
+  - [x] **DEC-3 = re-export** the DTOs/enums from `@/lib/api/automations` via `types/automation.types.ts`.
+  - [x] **DEC-4 = Badge variants** — Draft→secondary, Active→default, Paused→outline, Disabled→destructive (mirrors `sponsor-status-badge.tsx`; A77 semantic tokens, no raw `getStatusColor` strings in feature components).
+- [x] Task 1: Scaffolded slice `api` + `types` + `schemas` — `automations-api.ts` (`automationsKeys` + wrapped fns + folded segment-load, URLs/params byte-identical) + `types/automation.types.ts` + `schemas/automation.schema.ts` + `automations-api.test.ts` (13).
+- [x] Task 2: Hooks — list/detail (retry:false per A93/A79 — see Debug Log; `AutomationNotFoundError` defined for parity but the wrapped lib fn has no status)/executions(swallow→[]) queries; create/update/lifecycle/preview mutations + invalidation. `use-automation.test.tsx` (5).
+- [x] Task 3: Components — list + detail — `automations-page-content` (+filter-bar/table/status-badge) + `automation-detail` (lifecycle actions, `canEdit` gating, executions table). Status badge → Badge variants (A77).
+- [x] Task 4: Components — new + edit forms — `automation-form` (RHF+Zod, E22 sub-recipe; trigger/segment conditional fields + previewRecipients action) + `automation-new-content`/`automation-edit-content`. `automation-form.test.tsx` (9).
+- [x] Task 5: Thin route entries — the 4 route files → content components (KEPT `params: Promise<{id}>` + `use(params)` for [id]/[id]/edit so the S1 specs stay green). Deleted the old `AutomationForm.tsx`.
+- [x] Task 6: Green-the-net + DoD gate — E25-S1 Automations specs green (transport mocks unchanged via A94 WRAP; only the detail-spec `QueryClientProvider` wrapper + the deleted-form test relocation adapted); new slice unit tests; `tsc` exit 0 / eslint(slice+changed) clean / `vitest run` FULL **1000/1000 green (114 files)**, no regressions; LF. A79 deltas recorded. (`next build` deferred to epic boundary per A58.)
 
 ## Dev Notes
 
@@ -101,12 +101,38 @@ First Communication sub-slice; nests under `features/communication/automations/`
 
 ### Agent Model Used
 
+claude-opus-4-8[1m] (autonomous whole-epic dev-story; slice extraction by a focused subagent, central verification by the orchestrator).
+
 ### Debug Log References
+
+**A43 (a)/(b)/(c) — DEC resolutions (A41 autonomous mode; user directive "das ganze epic implementieren mit allen stories. ohne stop"):**
+- **DEC-1 (a)** WRAP `@/lib/api/automations`. **(b)** the lib module already owns its `/api/v1` URLs; rewriting against `useApiClient` would be a transport change not a relocation; wrapping keeps request bytes identical AND keeps every S1 `vi.mock("@/lib/api/automations")` spec intercepting with zero edits (A94). **(c)** no raw `/api/v1` string left in any component (the inline segment-load now lives behind `fetchMemberSegments` at the REAL `/api/v1/member-segments?pageSize=100`); the lib fns still throw a generic `Error` (no status) — constrains DEC-A93.
+- **DEC-2 (a)** RHF+Zod `automation-form`. **(b)** the E22 sub-recipe; Zod `.superRefine` centralises the conditional validation the god-page did imperatively. **(c)** validation MECHANISM moved from a single yellow `fieldError` banner → per-field messages, BUT the same `validation.*` message keys are reused so the S1 new/edit specs pass unchanged.
+- **DEC-3 (a)** re-export DTOs/enums via `types/automation.types.ts`. **(b)** `features→lib` legal; single import surface. **(c)** no component reaches across to `@/lib/api/automations` for a type.
+- **DEC-4 (a)** Badge variants (Draft→secondary/Active→default/Paused→outline/Disabled→destructive). **(b)** DEC-2(E21)/A77 — semantic tokens on the shared Badge, no raw brand strings. **(c)** S1 list spec asserts the badge via the translated label scoped to the table, not a colour class → passes unchanged.
+- **DEC-A93/A79 (a)** `retry: false` on the `use-automation` detail query (`AutomationNotFoundError` defined for parity only). **(b)** the wrapped `getAutomation` throws a generic `Error` with NO status so a 404 sentinel can't be distinguished without modifying the wrapped lib fn (out of scope); the god-page rendered its error panel on the first failed fetch, so `retry:false` is behaviour-preserving and avoids the A93 double-fetch. **(c)** A79 deltas: list refetch via query-key + `invalidateQueries`; lifecycle mutations `setQueryData(detail(id))` (mirrors god-page `setAutomation(updated)`) + invalidate list; mutation errors surfaced via `mutation.error.message`, not silently sticky; executions swallow failure → `[]` (god-page "no runs yet").
 
 ### Completion Notes List
 
+- ✅ Automations 4 pages → `features/communication/automations/` slice (api/hooks/components/schemas/types) mirroring the sponsors + E29 wrap recipe. Behaviour-preserving — every E25-S1 Automations assertion stays green.
+- ✅ **Full suite 1000/1000 green (114 files)** = 978 (post-S1) + 22 new slice unit tests; **no regressions**. `tsc --noEmit` exit 0. `eslint` on slice + changed files clean incl. the E21-S5 boundary (no `@/features/**` imports inside the slice — relative only). New files `prettier --write` (LF); modified route/spec files hand-matched (diff stayed logical: 5 files, +44/−542 as the route logic moved into the slice).
+- ✅ Licensed-update surface (A79/A94): only the detail-spec `QueryClientProvider` wrapper was added and the deleted-`AutomationForm.tsx` test was relocated into the slice `automation-form.test.tsx`; `page.test.tsx`/`new`/`[id]/edit` specs needed NO edits (WRAP kept transport mocks + Zod reused the message keys).
+
 ### File List
+
+New — slice `frontend/src/features/communication/automations/`:
+- `api/automations-api.ts`, `api/automations-api.test.ts`
+- `schemas/automation.schema.ts`
+- `hooks/use-automations.ts`, `hooks/use-automation.ts`, `hooks/use-automation-executions.ts`, `hooks/use-create-automation.ts`, `hooks/use-update-automation.ts`, `hooks/use-automation-lifecycle.ts`, `hooks/use-recipient-preview.ts`, `hooks/use-automation.test.tsx`
+- `components/automations-page-content.tsx`, `automations-filter-bar.tsx`, `automations-table.tsx`, `automation-status-badge.tsx`, `automation-form.tsx`, `automation-detail.tsx`, `automation-new-content.tsx`, `automation-edit-content.tsx`, `automation-form.test.tsx`
+- `types/automation.types.ts`
+
+Modified (thin route entries / S1-spec adaptation): `frontend/src/app/communication/automations/{page,new/page,[id]/page,[id]/edit/page}.tsx`, `frontend/src/app/communication/automations/[id]/page.test.tsx`.
+
+Deleted: `frontend/src/app/communication/automations/AutomationForm.tsx`, `frontend/src/app/communication/automations/AutomationForm.test.tsx`.
 
 ## Change Log
 
 - 2026-06-12: Story created (Automations 4 pages → `features/communication/automations/` slice; DEC-1 wrap token-fn module, DEC-2 RHF+Zod, DEC-3 type re-export, DEC-4 Badge tokens; fold inline segment-load; A93 404-no-retry; emailTemplatesApi stays in lib). Status ready-for-dev.
+- 2026-06-12: Implemented (autonomous whole-epic E25 session). Slice built; AutomationForm → RHF+Zod; transport WRAPPED (S1 mocks unchanged, A94); segment-load url corrected to `?pageSize=100`; detail query retry:false (A93/A79, no status from wrapped lib fn). Full suite 1000/1000 green, tsc/eslint clean. Status → review.
+- 2026-06-12: Epic-25 boundary review — 2 patches applied (P1 HIGH: out-of-set `segmentType`/`consentFilter` now round-trip on a no-touch edit-save — schema widened to full transport unions + raw defaults + extra `<option>`; P2 MED: detail/edit query `enabled` → token-only so a non-privileged direct-nav shows the `loadError` panel instead of an infinite spinner). +regression tests. See epic-25-boundary-review-2026-06-12.md.

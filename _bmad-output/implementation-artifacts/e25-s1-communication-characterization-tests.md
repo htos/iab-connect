@@ -1,6 +1,6 @@
 # Story E25.S1: Communication — Characterization Tests for All Twelve Pages (Regression Net)
 
-Status: ready-for-dev
+Status: review
 
 Depends on: E21-S3 + E21-S5 (closed), the E22 RHF+Zod form sub-recipe (closed), E23/E24/E29 (closed — their slice recipe + characterization harness are the templates). Inherits E21-S1 boundary decisions (DEC-1 `useApiClient` client contract, DEC-2 status/destructive colours). **Blocks E25-S2 (Automations), E25-S3 (Email-campaigns), E25-S4 (Email-templates)** — each requires this net green at HEAD.
 
@@ -42,15 +42,15 @@ so that the E25-S2/S3/S4 slice extractions are provably behaviour-preserving.
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Confirm prerequisites + harness spike (AC: all) — **DEC-1 (per-sub-module mock strategy) is load-bearing; resolve it first**
-  - [ ] On branch `refactor/frontend-feature-slice`; confirm `src/features/communication/` does NOT exist yet. Re-read the 12 pages + `lib/api/automations.ts` + `lib/api/email-campaigns.ts` (DTOs/helpers only) + `lib/email-templates.ts` + `types/email-templates.ts` + `components/email-templates/EmailTemplateForm.tsx` + `app/communication/automations/AutomationForm.tsx` (A56).
-  - [ ] **A56 correction (pin, don't assume zero-tested):** automations ALREADY has 2 tests — `automations/AutomationForm.test.tsx` + `automations/[id]/page.test.tsx`. Retain/augment them (mirror the E24-S1 retain-and-extend); email-campaigns + email-templates have ZERO tests. Net delta is ~10 new spec files + 2 retained.
-  - [ ] **DEC-1 RESOLVED → [dev fills A43 (a)/(b)/(c)]:** Recommended **A — transport-matched hybrid mocks (one strategy per sub-module, since the three use different clients):** automations → `vi.mock("@/lib/api/automations")` (token-param fns) + stub `fetch` for the inline segment-load; email-campaigns → `vi.stubGlobal("fetch", …)` + `vi.mock("next-auth/react")` `getSession` (the pages fetch inline) + `vi.mock("@/lib/email-templates")` for the template dropdown + `vi.mock("@/lib/api/email-campaigns")` if any helper is consumed; email-templates → `vi.mock("@/lib/email-templates")` (`emailTemplatesApi` object) + `vi.stubGlobal("confirm")`. Stable `vi.mock("@/lib/auth")` `useAuth` for all guards. Flag every mock target as the surface S2/S3/S4 re-point (A88/A94 — wrapping a lib module keeps its mock intercepting; the inline-fetch email-campaigns will need the heaviest transport adaptation since S3 BUILDS its api layer).
-- [ ] Task 1: Automations specs — `automations/page.test.tsx` (list) + retain/extend `automations/[id]/page.test.tsx` + `automations/AutomationForm.test.tsx` + new `automations/new` / `automations/[id]/edit` coverage (AC: 2, 3, 7, 8, 9).
-- [ ] Task 2: Email-campaigns specs — `email-campaigns/page.test.tsx` (list) + `new` + `[id]` (detail, incl. the status-state-machine action matrix) + `[id]/edit` (AC: 2, 4, 7, 8, 9). Stub `fetch` per action; pin test/schedule/send/cancel/resend endpoints + confirm + refetch/alert.
-- [ ] Task 3: Email-templates specs — `email-templates/page.test.tsx` (list, incl. the destructive delete affordance + delete-success-removal + delete-FAILURE-list-unchanged A76 branches) + `new` + `[id]` (AC: 2, 5, 7, 8, 9).
-- [ ] Task 4: Index spec — `communication/page.test.tsx` (AC: 2, 6, 8, 9): guard + the 3 nav cards + 2 quick-action links.
-- [ ] Task 5: Green-at-HEAD + DoD gate (AC: 1, 8, 9): `npx vitest run "src/app/communication"` green; full `npx vitest run` green, no regressions; `npx tsc --noEmit` clean; `npx eslint <new/changed specs>` clean; `npx prettier --write` new files / `--check` the 2 retained (LF). Record per-page spec counts + HEAD quirks pinned (not fixed) in Completion Notes.
+- [x] Task 0: Confirm prerequisites + harness spike (AC: all) — **DEC-1 (per-sub-module mock strategy) is load-bearing; resolve it first**
+  - [x] On branch `refactor/frontend-feature-slice`; confirmed `src/features/communication/` does NOT exist yet. Re-read the 12 pages + `lib/api/automations.ts` + `lib/api/email-campaigns.ts` (DTOs/helpers only) + `lib/email-templates.ts` + `types/email-templates.ts` + `components/email-templates/EmailTemplateForm.tsx` + `app/communication/automations/AutomationForm.tsx` (A56).
+  - [x] **A56 correction (pin, don't assume zero-tested):** automations ALREADY has 2 tests — `automations/AutomationForm.test.tsx` + `automations/[id]/page.test.tsx` (+ `automations.i18n.test.ts`). Retained unchanged; added list/new/edit coverage. email-campaigns + email-templates had ZERO tests. Net delta: 11 new spec files + 3 retained.
+  - [x] **DEC-1 RESOLVED → A (transport-matched hybrid mocks).** (a) **Option chosen:** A — one mock strategy per sub-module. (b) **Rationale:** the three sub-modules use three different transports (story A56 finding) so a single mock cannot intercept all; story-recommended A; user pre-declared autonomous mode ("das ganze epic implementieren mit allen stories. ohne stop"); keeping each transport's natural mock surface means S2/S3/S4 re-point only their own transport (A88/A94). (c) **Consequence chain:** automations → `vi.mock("@/lib/api/automations")` (importActual + override token-fns) + `vi.stubGlobal("fetch")` for the inline segment-load; email-campaigns → `vi.stubGlobal("fetch")` (pages fetch inline via `useAuth().accessToken` — NOT `getSession` as the story guessed) + `vi.mock("@/lib/email-templates")` (template dropdown) + editor-component stubs + `useAppSettings` mock; email-templates → `vi.mock("@/lib/email-templates")` (`emailTemplatesApi`) + `vi.stubGlobal("confirm")`. Stable `vi.mock("@/lib/auth")` for all guards. Every render wrapped in `QueryClientProvider` (retry:false) seam.
+- [x] Task 1: Automations specs — added `automations/page.test.tsx` (list, 17) + `automations/new/page.test.tsx` (8) + `automations/[id]/edit/page.test.tsx` (6); retained `automations/[id]/page.test.tsx` (4) + `automations/AutomationForm.test.tsx` (5) + `automations.i18n.test.ts` (3) unchanged (AC: 2, 3, 7, 8, 9).
+- [x] Task 2: Email-campaigns specs — `email-campaigns/page.test.tsx` (list, 22) + `new` (14) + `[id]` (detail, 26 — incl. the status-state-machine action matrix) + `[id]/edit` (13) (AC: 2, 4, 7, 8, 9). Stubbed `fetch` per action; pinned test/schedule/send/cancel/resend(+failed-only) endpoints + confirm + refetch/alert.
+- [x] Task 3: Email-templates specs — `email-templates/page.test.tsx` (list, 13 — incl. destructive delete affordance + delete-success-removal + delete-FAILURE-list-unchanged + confirm-cancel A76 branches) + `new` (7) + `[id]` (7) (AC: 2, 5, 7, 8, 9).
+- [x] Task 4: Index spec — `communication/page.test.tsx` (6, AC: 2, 6, 8, 9): guard + the 3 nav cards + 2 quick-action links.
+- [x] Task 5: Green-at-HEAD + DoD gate (AC: 1, 8, 9): `npx vitest run src/app/communication` green (14 files / 151 tests); full `npx vitest run` green (112 files / 978 tests, no regressions — 839 E29-baseline + 139 new); `npx tsc --noEmit` clean (exit 0); `npx eslint <new specs>` clean; `npx prettier --write` new files (LF). Per-page spec counts + HEAD quirks recorded in Completion Notes.
 
 ## Dev Notes
 
@@ -105,12 +105,47 @@ Write delete/submit/lifecycle assertions at the **outcome** level so S2/S3/S4 ca
 
 ### Agent Model Used
 
+claude-opus-4-8[1m] (autonomous whole-epic dev-story; A87 parallel-subagent characterization-net authoring, one agent per sub-module, central verification by the orchestrator).
+
 ### Debug Log References
+
+- **DEC-1 (a)/(b)/(c)** recorded in Task 0 above (A43 template; A41 autonomous-mode escape — user directive "das ganze epic implementieren mit allen stories. ohne stop das wird jetzt implementiert. danach review und retro").
+- **HEAD quirks pinned (corrections vs the story's pre-spike guesses — these are the ACTUAL behaviours the net asserts):**
+  - The AutomationForm inline segment-load URL is **`/api/v1/member-segments?pageSize=100`** (NOT `/api/v1/member-segments/active` as the story text guessed). **S2 must fold THIS URL.**
+  - Email-campaigns detail + edit read the id via **`useParams()`** (no React `use(params)` shim needed). Automations detail + edit use React **`use(params)`** (the `vi.mock("react")` sync-`use` shim + `syncThenable` helper are required for those two).
+  - Email-campaigns pages fetch INLINE via `useAuth().accessToken` Bearer (NOT `next-auth getSession` — the story guessed `getSession`).
+  - Email-templates LIST: no-token → the loading spinner stays shown (initial `loading=true`, the effect early-returns before `setLoading(false)`); `getAllTemplates` is NOT called. Same no-token-stuck-spinner shape on the email-campaigns list (bails inside the fetch before `setLoading(false)`).
+  - Per-page guard asymmetry pinned exactly: automations/email-campaigns list+detail → `push("/login")` (unauth) / `push("/")` (authed-not-Vorstand/Admin); email-templates list → NO guard; email-templates new/[id] → silent `return null` (no push); index → `push("/")` redirect.
+  - `getSegmentTypeLabel` returns hard-coded German (asserted literally — it is not i18n today; a candidate S3 i18n note, not an S1 fix).
+  - Resend modal `sendToFailedOnly` is disabled when `statistics.failed === 0`.
 
 ### Completion Notes List
 
+- ✅ **Characterization net green at HEAD** over all 12 Communication pages across the 3 sub-modules (3 transports). **11 new spec files + 3 retained** automations specs; **139 new tests** (automations 31 new / email-campaigns 75 / email-templates 27 / index 6) on top of the 12 retained → **151 tests in `src/app/communication`**.
+- ✅ Full frontend suite **978/978 green (112 files)** = 839 E29-baseline + 139 new; **no regressions**. `tsc --noEmit` exit 0. `eslint` on the new specs clean. New specs `prettier --write` (LF, A73).
+- ✅ Harness per AC-8/9: `// @vitest-environment jsdom` + `@testing-library/jest-dom/vitest` + `afterEach(cleanup + vi.unstubAllGlobals)` (A35/A46); stable identity translator + mutable `authState` + stable router/`useParams` (A64/A78); `QueryClientProvider` (retry:false) seam on every render so S2/S3/S4 TanStack adopters need no harness rework. Assertions via i18n keys / ARIA roles / service-call args / fetch URLs / navigation — never display copy.
+- ✅ A79 recorded: the `retry:false` harness masks the provider's `retry:1` + sticky-mutation-error + no-spinner-on-refetch deltas (and the A93 deterministic-404 retry); S2/S3/S4 must decide these explicitly.
+- ✅ A76 bug-magnet surfaces pinned at the outcome level: email-templates delete two-branch (success-removes / failure-keeps + destructive-red affordance), email-campaigns detail status→action matrix (5 mutations + confirm gates + refetch/alert), the deterministic-404 not-found surfaces.
+- **Licensed-update surface flagged for S2/S3/S4** (A79/A88/A94): only the per-sub-module transport mock target + the form/lifecycle/delete *mechanism* assertions are re-pointable; the auth gate, fetch URLs/endpoints, navigation, status-badge presence, action matrix, search/pagination/empty/error assertions must stay green verbatim.
+
 ### File List
+
+New (test-only — no production code changed):
+- `frontend/src/app/communication/automations/page.test.tsx`
+- `frontend/src/app/communication/automations/new/page.test.tsx`
+- `frontend/src/app/communication/automations/[id]/edit/page.test.tsx`
+- `frontend/src/app/communication/email-campaigns/page.test.tsx`
+- `frontend/src/app/communication/email-campaigns/new/page.test.tsx`
+- `frontend/src/app/communication/email-campaigns/[id]/page.test.tsx`
+- `frontend/src/app/communication/email-campaigns/[id]/edit/page.test.tsx`
+- `frontend/src/app/communication/email-templates/page.test.tsx`
+- `frontend/src/app/communication/email-templates/new/page.test.tsx`
+- `frontend/src/app/communication/email-templates/[id]/page.test.tsx`
+- `frontend/src/app/communication/page.test.tsx`
+
+Retained unchanged (pre-existing automations specs): `frontend/src/app/communication/automations/[id]/page.test.tsx`, `frontend/src/app/communication/automations/AutomationForm.test.tsx`, `frontend/src/app/communication/automations/automations.i18n.test.ts`.
 
 ## Change Log
 
 - 2026-06-12: Story created (characterization net over the 12 Communication pages across 3 sub-modules with 3 different transports). DEC-1 = transport-matched hybrid mocks. A56 findings recorded (3 transports; automations not zero-tested; per-sub-module guards; shared emailTemplatesApi stays in lib). Status ready-for-dev.
+- 2026-06-12: Implemented (autonomous whole-epic E25 session). 11 new spec files + 3 retained; 151 tests in `src/app/communication`, full suite 978/978 green, tsc clean. DEC-1=A resolved with A43 (a)/(b)/(c). HEAD-quirk corrections recorded (segment-load URL `?pageSize=100`; useParams vs use(params) per sub-module; inline `accessToken` fetch not getSession; no-token-stuck-spinner). Status → review.

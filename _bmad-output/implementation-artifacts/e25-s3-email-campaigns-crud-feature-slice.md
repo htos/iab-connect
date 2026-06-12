@@ -1,6 +1,6 @@
 # Story E25.S3: Email Campaigns — CRUD Feature-Slice Extraction
 
-Status: ready-for-dev
+Status: review
 
 Depends on: **E25-S1 (this net must be green at HEAD first)**, plus E21-S3 + E21-S5 (closed) and the E22 RHF+Zod form sub-recipe (closed). Inherits E21-S1 boundary decisions. Independent of S2/S4 once S1 is green. **Consumes `@/lib/email-templates` for the template load-into-campaign dropdown (boundary-legal `features→lib`; do NOT import the email-templates slice — A83/E21-S5).** **The LARGEST E25 sub-slice** — the detail page is a status state machine with five mutations.
 
@@ -39,18 +39,18 @@ so that the second parallel Communication CRUD surface matches the proven recipe
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites + resolve the DECs (AC: all) — record A43 (a)/(b)/(c) per DEC
-  - [ ] E25-S1 Email-campaigns specs green at HEAD. Confirm `features/communication/email-campaigns/` does NOT exist. Re-read the 4 pages (list/new/detail/edit — the new/edit are ~744/864 lines) + `lib/api/email-campaigns.ts` (DTOs/helpers) + the E29 board-documents detail slice (the closest mutation-heavy precedent) (A56).
-  - [ ] **DEC-1 (BUILD the api layer):** recommended **A** — consolidate the inline page fetches into `api/email-campaigns-api.ts` via `useApiClient` (there is no module to wrap — the URLs live inline today). Keep the `getStatusColor`/helpers/DTOs in `@/lib/api/email-campaigns.ts` (reused). This is BUILD-not-wrap (the email-campaigns exception to A94 — no lib module owns the URLs).
-  - [ ] **DEC-2 (form):** recommended **A** — E22 RHF+Zod for `email-campaign-form` (the big multi-section form; behaviour-preserving required set).
-  - [ ] **DEC-3 (type home):** recommended **re-export** DTOs/enums from `@/lib/api/email-campaigns`.
-  - [ ] **DEC-4 (detail mutations):** recommended **A** — the 5 detail actions become `use-campaign-actions` TanStack mutations invalidating the right keys; the `confirm()` gates + modals (test/schedule/resend) preserved (A86 — no new dialog primitive unless behaviour-identical).
-- [ ] Task 1: Scaffold slice `api` + `types` + `schemas` (AC: 4, 5) — `email-campaigns-api.ts` (`emailCampaignsKeys` + all fns incl. the 5 actions + statistics + recipients, URLs/bodies byte-identical) + `types/email-campaign.types.ts` + `schemas/email-campaign.schema.ts` + `email-campaigns-api.test.ts`.
-- [ ] Task 2: Hooks (AC: 4, 6) — list/detail(+`EmailCampaignNotFoundError`, A93)/statistics/recipients queries; create/update/delete + `use-campaign-actions` (test/schedule/send/cancel/resend) mutations + invalidation. `use-email-campaign.test.tsx`.
-- [ ] Task 3: Components — list (AC: 1, 3, 5) — `email-campaigns-page-content` (+filter-bar/table/status-badge); Draft-only edit/delete affordances; delete confirm flow.
-- [ ] Task 4: Components — detail (AC: 2, 3, 5) — `email-campaign-detail`: the state-machine action bar + the test/schedule/resend modals + send/cancel confirms + 7-card stats + DOMPurify preview + recipients table. Preserve the per-status action matrix exactly.
-- [ ] Task 5: Components — new + edit forms (AC: 1, 3, 5) — `email-campaign-form` (RHF+Zod; segment selection incl. MemberSegment search + Custom; content editor toggle reusing shared RichTextEditor/HtmlSourceEditor; template load-in dropdown via `emailTemplatesApi`) + `email-campaign-new-content`/`email-campaign-edit-content` (edit Draft-only guard + the REQ-086 fromName race-guard). `email-campaign-form.test.tsx`.
-- [ ] Task 6: Thin route entries + green-the-net + DoD (AC: 1, 2, 7) — 4 route files → content components (`use(params)`); E25-S1 specs green (transport adapted from inline-fetch-stub to the slice api/`useApiClient` spy — the heaviest transport adaptation of the epic, since this slice BUILDS the api; the action/form mechanism is the licensed-update surface); new slice unit tests; `tsc`/eslint/prettier/`vitest run` green; i18n parity green; `next build` (epic boundary); LF. Record A79 deltas.
+- [x] Task 0: Verify prerequisites + resolve the DECs (AC: all) — A43 (a)/(b)/(c) recorded in Dev Agent Record below
+  - [x] E25-S1 Email-campaigns specs green at HEAD (75). Confirmed `features/communication/email-campaigns/` did NOT exist. Re-read the 4 pages + `lib/api/email-campaigns.ts` (DTOs/helpers) + the E29 board-documents detail slice (A56).
+  - [x] **DEC-1 = A BUILD** — consolidated the inline fetches into `api/email-campaigns-api.ts` via `useApiClient` (no module to wrap). `EMAIL_CAMPAIGNS_BASE` + `emailCampaignsKeys` (`all`/`list`/`detail`/`statistics`/`recipients`); URLs/params/bodies byte-identical. Helpers/DTOs stay in `@/lib/api/email-campaigns.ts`.
+  - [x] **DEC-2 = A** — RHF+Zod `email-campaign-form`. **Required set VERIFIED against the god-page = native-required name/subject/fromName/fromEmail ONLY** (htmlContent + segmentType carried NO `required` → kept optional so the S1 net's empty-htmlContent submit still POSTs; no `.email()` added — the native form applied none). REQ-086 `fromName` race-guard preserved (structural now: TanStack settings query doesn't re-run + RHF captures defaults once at mount → the god-page's no-clobber ref was dropped, also fixing a lint); neutral `noreply@example.org` default preserved.
+  - [x] **DEC-3 = re-export** DTOs/enums from `@/lib/api/email-campaigns` via `types/email-campaign.types.ts`.
+  - [x] **DEC-4 = A** — `use-campaign-actions` TanStack mutations (test invalidates nothing; schedule/send/cancel/resend invalidate detail+statistics+recipients+all). Native `confirm()` on send-now + cancel + the test/schedule/resend modals + the per-status matrix preserved (A86); error branch keeps the god-page's FIXED failure-key `alert` (A76 parity).
+- [x] Task 1: Scaffolded slice `api` + `types` + `schemas` — `email-campaigns-api.ts` (+ the 5 actions + statistics + recipients + folded `fetchActiveMemberSegments`) + `types/email-campaign.types.ts` + `schemas/email-campaign.schema.ts` + `email-campaigns-api.test.ts`.
+- [x] Task 2: Hooks — list/detail(+`EmailCampaignNotFoundError`, A93 retry-exclusion — a REAL 404 sentinel is feasible here since `useApiClient` returns `status`)/statistics/recipients queries; create/update/delete + `use-campaign-actions` mutations + invalidation. `use-email-campaign.test.tsx`.
+- [x] Task 3: Components — list — `email-campaigns-page-content` (+filter-bar/table/status-badge); Draft-only edit/delete affordances; delete confirm flow.
+- [x] Task 4: Components — detail — `email-campaign-detail`: the state-machine action bar + test/schedule/resend modals + send/cancel confirms + 7-card stats + DOMPurify preview + recipients table. Per-status action matrix preserved exactly.
+- [x] Task 5: Components — new + edit forms — `email-campaign-form` (RHF+Zod; segment selection incl. MemberSegment search + Custom; content editor toggle reusing shared RichTextEditor/HtmlSourceEditor; template load-in dropdown via `emailTemplatesApi`) + `email-campaign-new-content`/`email-campaign-edit-content` (edit Draft-only guard + the REQ-086 fromName race-guard). `email-campaign-form.test.tsx`.
+- [x] Task 6: Thin route entries + green-the-net + DoD — 4 route files → thin entries (detail/edit content keep `useParams()` — the god-pages used it, NOT `use(params)`); E25-S1 specs green via the A88 transport adaptation (global-fetch stub → `useApiClient` spy added to the `@/lib/auth` mock; endpoint+body re-pointed; EVERY behavioural assertion preserved); new slice unit tests; `tsc` exit 0 / eslint(slice+changed) clean (boundary) / `vitest run` FULL **1029/1029 green (117 files)**, no regressions; LF. A79 deltas recorded. (`next build` deferred to epic boundary per A58.)
 
 ## Dev Notes
 
@@ -103,12 +103,36 @@ Second Communication sub-slice; nests under `features/communication/email-campai
 
 ### Agent Model Used
 
+claude-opus-4-8[1m] (autonomous whole-epic dev-story; slice extraction by a focused subagent, central verification by the orchestrator). The richest/heaviest E25 slice.
+
 ### Debug Log References
+
+**A43 (a)/(b)/(c) — DEC resolutions (A41 autonomous mode; user directive "das ganze epic implementieren mit allen stories. ohne stop"):**
+- **DEC-1 (a)** BUILD `email-campaigns-api.ts` on `useApiClient`. **(b)** no lib client module exists (the 4 god-pages fetched INLINE via `useAuth().accessToken`) so there is nothing to WRAP — the A94 "raw-fetch god-page → adapt" branch. **(c)** URLs/params/bodies byte-identical; because the page now routes through `useApiClient` (not inline fetch) the S1 specs needed the A88 fetch-spy→apiClient-spy adaptation.
+- **DEC-2 (a)** RHF+Zod form. **(b)** the E22 sub-recipe; editors + `emailTemplatesApi` shared/boundary-legal so no duplication. **(c)** required set VERIFIED = native-required name/subject/fromName/fromEmail ONLY; htmlContent/segmentType kept optional (god-page had no `required` on them) so the S1 empty-htmlContent submit still POSTs; no `.email()` added (would reject previously-accepted values). REQ-086 fromName no-clobber is now STRUCTURAL (TanStack settings query + RHF mount-once defaults) → the god-page ref dropped (also fixed a `react-hooks/refs` lint); neutral default preserved.
+- **DEC-3 (a)** re-export DTOs/enums. **(b)** E23/E29 pattern, `features→lib` legal. **(c)** feature code never reaches across to `@/lib/api/email-campaigns` for a type; lib stays the source of the DTOs + colour/label helpers.
+- **DEC-4 (a)** `use-campaign-actions` mutation set. **(b)** mirrors the board-documents mutation-set recipe; invalidation replaces the god-page `await fetchCampaign()`. **(c)** native `confirm()` on send-now + cancel + the test/schedule/resend MODALS + the per-status MATRIX preserved (A86); error branch keeps the god-page's FIXED failure-key `alert` (testEmailFailed/scheduleFailed/sendFailed/cancelFailed/resendFailed), NOT the server message (A76 parity); `test` invalidates nothing (god-page parity).
+- **A93 (a)** real sentinel — `use-email-campaign` throws `EmailCampaignNotFoundError` on `status===404`, generic Error otherwise; `retry: (n,err)=>!(err instanceof EmailCampaignNotFoundError) && n<1` (mirrors `use-board-document`). **(b)** unlike the automations sibling (no status from the wrapped lib fn → retry:false), `useApiClient` returns `status` so a 404 is distinguishable. **(c)** not-found/error surface preserved; the edit spec sets `retryDelay:0` to keep the one non-404 retry deterministic (timing only).
 
 ### Completion Notes List
 
+- ✅ Email-campaigns 4 pages → `features/communication/email-campaigns/` slice (api/hooks/components/schemas/types) mirroring the board-documents (mutation-heavy detail) + sponsors (form) recipes. The detail status state machine (Draft/Scheduled/Sending/Sent/Cancelled/Failed) + 5 mutations (test/schedule/send/cancel/resend(+failed-only)) + statistics + recipients + DOMPurify preview all behaviour-preserving.
+- ✅ **Full suite 1029/1029 green (117 files)** = 1000 (post-S2) + 29 new slice unit tests; **no regressions**. `tsc --noEmit` exit 0. `eslint` on slice + changed files clean incl. the E21-S5 boundary (no `@/features/**` imports — relative only). No raw `/api/v1` URL left in any component/route (consolidated into the api). New files `prettier --write` (LF); modified route files hand-matched (god-pages → thin entries: 4 files, +18/−2591).
+- ✅ **Heaviest S1 adaptation (A88/E24-S2):** the 4 S1 email-campaigns specs re-pointed from `vi.stubGlobal("fetch")` → a stable `useApiClient` spy added to the `@/lib/auth` mock; transport assertions re-pointed to method+endpoint+body; EVERY behavioural assertion preserved (per-status action matrix + endpoints + confirm gates + refetch/alert, list Draft-only edit/delete + delete flow, badges via label, 7-card stats, DOMPurify preview, recipients, navigation, REQ-086).
+
 ### File List
+
+New — slice `frontend/src/features/communication/email-campaigns/`:
+- `api/email-campaigns-api.ts`, `api/email-campaigns-api.test.ts`
+- `schemas/email-campaign.schema.ts`
+- `hooks/use-email-campaigns.ts`, `use-email-campaign.ts`, `use-campaign-statistics.ts`, `use-campaign-recipients.ts`, `use-create-email-campaign.ts`, `use-update-email-campaign.ts`, `use-delete-email-campaign.ts`, `use-campaign-actions.ts`, `use-email-campaign.test.tsx`
+- `components/email-campaigns-page-content.tsx`, `email-campaigns-filter-bar.tsx`, `email-campaigns-table.tsx`, `email-campaign-status-badge.tsx`, `email-campaign-recipient-badge.tsx`, `email-campaign-form.tsx`, `email-campaign-form.test.tsx`, `email-campaign-detail.tsx`, `email-campaign-new-content.tsx`, `email-campaign-edit-content.tsx`
+- `types/email-campaign.types.ts`
+
+Modified (thin route entries + S1-spec A88 adaptation): `frontend/src/app/communication/email-campaigns/{page,new/page,[id]/page,[id]/edit/page}.tsx` + their `*.test.tsx`.
 
 ## Change Log
 
 - 2026-06-12: Story created (Email-campaigns 4 pages → `features/communication/email-campaigns/` slice; DEC-1 BUILD api (no lib module to wrap), DEC-2 RHF+Zod, DEC-3 type re-export, DEC-4 detail-mutation hooks; status state machine + 5 mutations preserved; A93 404-no-retry; A77 badge tokens; emailTemplatesApi stays in lib). Status ready-for-dev.
+- 2026-06-12: Implemented (autonomous whole-epic E25 session). Slice BUILT on `useApiClient` (heaviest transport adaptation); 5-action mutation set with preserved confirm gates + matrix + fixed-key alerts; RHF+Zod form (required set verified, REQ-086 structural); real 404 sentinel + retry-exclusion (A93). Full suite 1029/1029 green, tsc/eslint clean. Status → review.
+- 2026-06-12: Epic-25 boundary review — 3 patches applied (P3 HIGH: edit-form header back-link → detail page + singular `backToCampaign` via threaded `backHref`/`backLabelKey`, was list+plural; P4 MED: restored per-field Zod `form.required` rendering — empty-required submit no longer silently no-ops — + dropped schema `.trim()` for a byte-identical POST body; P5 LOW: detail not-found banner → localized `notFound` on non-404). +regression tests. See epic-25-boundary-review-2026-06-12.md.

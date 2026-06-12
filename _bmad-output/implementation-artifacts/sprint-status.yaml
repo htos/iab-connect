@@ -1,5 +1,34 @@
 # generated: 2026-05-12
-# last_updated: 2026-06-12 (bmad-create-story BULK REFRESH for entire Epic-25 (Frontend
+# last_updated: 2026-06-12 (Epic-25 CLOSED — Frontend Feature-Slice Migration (Communication).
+#   Single autonomous session delivered all 4 stories (S1 characterization net over the 12
+#   Communication pages → S2 automations WRAP slice → S3 email-campaigns BUILD-on-useApiClient
+#   slice → S4 email-templates WRAP slice + EmailTemplateForm relocation + index thin-entry) +
+#   epic-boundary code review + retrospective per user directive "das ganze epic implementieren
+#   mit allen stories. ohne stop das wird jetzt implementiert. danach review und retro" (2026-06-12).
+#   All DECs auto-resolved per A41 with (a)/(b)/(c) A43 notes; 3 transports (token-fn WRAP /
+#   inline-fetch BUILD / ApiClient WRAP). **Quality gates:** Vitest 839→1057 (+218: 139 S1 char +
+#   ~72 slice + 7 boundary-regression; 122 files) all green; tsc/eslint(E21-S5 boundary)/next-build
+#   clean; no raw /api/v1 in components; emailTemplatesApi+types stayed lib-resident (sibling-consumed).
+#   **Epic-boundary review** (4 parallel adversarial layers — per-slice + net-integrity auditor):
+#   **9 patches APPLIED** (P1 HIGH out-of-set segmentType/consentFilter silent-rewrite-on-edit-save;
+#   P2 MED detail/edit enabled-gate role→token so non-privileged direct-nav shows error panel not
+#   stuck spinner; P3 HIGH email-campaign edit back-link → detail+singular; P4 MED field-error
+#   rendering + schema .trim() drop; P5 LOW not-found copy; P6 MED email-template .trim() drop; P7/P8/P9
+#   LOW spinner-parity/error-msg/badge-distinct) + 2 dismissed (DEC-1 error-source contract + cosmetic);
+#   net-integrity auditor PASS (oracle not weakened). Docs: epic-25-boundary-review-2026-06-12.md.
+#   **Retrospective:** epic-25-retro-2026-06-12.md. 5 new action items A95-A99 promoted to
+#   project-context.md: A95 RHF+Zod migration of a manual <select> form must round-trip an out-of-set
+#   stored value (widen schema + extra <option>); A96 never use Zod .trim()/transform on a byte-must-match
+#   field + noValidate form must render field errors (recurred 2×); A97 a migrated query's enabled-gate
+#   must match the god-page FETCH gate not the render/role-gate (refines A90); A98 a shared create/edit
+#   form's mode-divergent surfaces must be threaded + pinned PER MODE (extends A80); A99 the 404-sentinel
+#   feasibility is a function of the transport's status surface (refines A93). A28-A94 carry forward.
+#   **Status transitions:** e25-s1..s4 review→done; epic-25 in-progress→done; epic-25-retrospective
+#   optional→done. Sprint state: 26 epics done (E1-E25 + E29); E26/E27/E28/E30/E31 backlog. **NEXT per
+#   workflow + roadmap wave order (E23→E24→E29→E25→E27→E26→E28→E30→E31): E27 (Admin) — bmad-create-story
+#   for e27-s1 in a fresh session** (just-in-time A56 spike; E27 carries the E21-S1 area-vs-feature DEC +
+#   show-once secret-panel behaviour-lock; apply A95/A96/A98 to its forms). Independent of the still-open
+#   Beta go-live walkthrough.) ## Previously: 2026-06-12 (bmad-create-story BULK REFRESH for entire Epic-25 (Frontend
 #   Feature-Slice Migration — Communication): COMPLETE. Resumed per roadmap order (E29 CLOSED ->
 #   E25 next; file-order + roadmap agree, no AskUserQuestion needed). User directive "das ganze
 #   epic mit den stories dazu implementierungs ready machen" -> all 4 stories dev-ready, post-MVP-
@@ -1537,12 +1566,12 @@ development_status:
   e24-s3-event-subpages-feature-slice: done
   epic-24-retrospective: done
 
-  epic-25: in-progress  # 2026-06-12: resumed per roadmap order (E29->E25); bulk create-story for all 4 stories
-  e25-s1-communication-characterization-tests: ready-for-dev
-  e25-s2-automations-crud-feature-slice: ready-for-dev
-  e25-s3-email-campaigns-crud-feature-slice: ready-for-dev
-  e25-s4-email-templates-crud-slice-and-component-relocation: ready-for-dev
-  epic-25-retrospective: optional
+  epic-25: done  # 2026-06-12: implemented (S1-S4, all 12 Communication pages sliced) + epic-boundary review (9 patches) + retro; Vitest 1057/122, tsc/eslint/next-build green
+  e25-s1-communication-characterization-tests: done
+  e25-s2-automations-crud-feature-slice: done
+  e25-s3-email-campaigns-crud-feature-slice: done
+  e25-s4-email-templates-crud-slice-and-component-relocation: done
+  epic-25-retrospective: done
 
   epic-26: backlog
   e26-s1-finance-characterization-tests: backlog

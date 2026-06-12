@@ -1,6 +1,6 @@
 # Story E25.S4: Email Templates — CRUD Feature-Slice and `components/email-templates` Relocation
 
-Status: ready-for-dev
+Status: review
 
 Depends on: **E25-S1 (this net must be green at HEAD first)**, plus E21-S3 + E21-S5 (closed) and the E22 RHF+Zod form sub-recipe (closed). Inherits E21-S1 boundary decisions. Independent of S2/S3 once S1 is green. **Owns the `communication/page.tsx` index thin-entry conversion. Relocates ONLY the `EmailTemplateForm` component; `emailTemplatesApi` + types STAY in `@/lib`/`@/types` because automations (S2) + email-campaigns (S3) consume them (A83/A84/E21-S5).**
 
@@ -39,18 +39,18 @@ so that the third Communication CRUD surface is cohesive and free of cross-tree 
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites + relocation spike + resolve the DECs (AC: all) — record A43 (a)/(b)/(c) per DEC
-  - [ ] E25-S1 Email-templates + index specs green at HEAD. Confirm `features/communication/email-templates/` does NOT exist. **Relocation spike:** grep every importer of `components/email-templates/EmailTemplateForm` (expect exactly 2, both in-epic) AND of `@/lib/email-templates` / `@/types/email-templates` (expect the 3 out-of-epic/sibling importers: automations/AutomationForm + email-campaigns new + email-campaigns [id]/edit) — confirm the form moves but the api+types STAY. Re-read the 3 pages + index + `EmailTemplateForm.tsx` + `lib/email-templates.ts` + `types/email-templates.ts` (A56).
-  - [ ] **DEC-1 (transport):** recommended **A** — `api/email-templates-api.ts` WRAPS `emailTemplatesApi` (`@/lib/email-templates`) + `emailTemplatesKeys`; `emailTemplatesApi` STAYS in lib (S2/S3 consume it; A83/A94).
-  - [ ] **DEC-2 (form):** recommended **A** — the relocated `EmailTemplateForm` adopts E22 RHF+Zod (the variables-array sub-form preserved; behaviour-preserving required set).
-  - [ ] **DEC-3 (type home):** recommended **re-export** from `@/types/email-templates` (which STAYS — sibling-consumed).
-  - [ ] **DEC-4 (delete):** recommended **keep native `confirm()`** (A86 — the AC preserves the confirm flow); delete becomes a TanStack mutation invalidating `emailTemplatesKeys.all` (the failure branch keeps the item, matching HEAD).
-- [ ] Task 1: Scaffold slice `api` + `types` + `schemas` (AC: 3, 5) — `email-templates-api.ts` (wrap `emailTemplatesApi` + `emailTemplatesKeys`) + `types/email-template.types.ts` (re-export) + `schemas/email-template.schema.ts` + `email-templates-api.test.ts`.
-- [ ] Task 2: Hooks (AC: 3, 6) — list/detail(+`EmailTemplateNotFoundError`, A93)/create/update/delete mutations + invalidation. `use-email-template.test.tsx`.
-- [ ] Task 3: Relocate `EmailTemplateForm` + adopt RHF+Zod (AC: 4, 5) — MOVE `components/email-templates/EmailTemplateForm.tsx` → `features/communication/email-templates/components/email-template-form.tsx`; migrate to RHF+Zod (preserve the props contract `template?`/`onSave`/`isSaving` + the variables-array editor); i18n the hard-coded placeholder; remove the empty `components/email-templates/` dir. `email-template-form.test.tsx` (mirror `sponsor-form.test.tsx`).
-- [ ] Task 4: Components — list + index (AC: 1, 2, 3, 5) — `email-templates-page-content` (card-grid + search-bar + category/inactive Badge tokens + the destructive delete affordance + native `confirm()` + delete success/failure branches) + `email-template-card` + `communication-index-content` (the 3 nav cards + 2 quick-action links). New/detail content components rendering the relocated form.
-- [ ] Task 5: Thin route entries (AC: 2) — `email-templates/{page,new/page,[id]/page}.tsx` + `communication/page.tsx` → content components (`use(params)` for [id]). Preserve the per-page guards EXACTLY (list no-guard; new/[id] silent-null; index redirect).
-- [ ] Task 6: Green-the-net + DoD gate (AC: 1, 7) — E25-S1 Email-templates + index specs green (transport-mock re-pointed; the form/delete mechanism + the relocated-form import path are the licensed-update surface); new slice unit tests; `tsc`/eslint(changed)/prettier-check(changed)/`vitest run` green; i18n parity green; `next build` (epic boundary); LF. Verify the 3 out-of-epic `@/lib/email-templates`/`@/types/email-templates` importers still compile (unchanged). Record A79 deltas.
+- [x] Task 0: Verify prerequisites + relocation spike + resolve the DECs (AC: all) — A43 (a)/(b)/(c) recorded in Dev Agent Record below
+  - [x] E25-S1 Email-templates + index specs green at HEAD. Confirmed `features/communication/email-templates/` did NOT exist. **Relocation spike (post-S2/S3 reality):** `EmailTemplateForm` had exactly 2 in-epic importers (new + [id] pages). `@/lib/email-templates` is now imported by the SIBLING SLICE forms — `features/communication/automations/components/automation-form.tsx` (S2) + `features/communication/email-campaigns/components/email-campaign-form.tsx` (S3) — so the api+types MUST stay in lib (a slice importing another slice violates E21-S5). Confirmed via grep before+after.
+  - [x] **DEC-1 = A WRAP** — `api/email-templates-api.ts` WRAPS `emailTemplatesApi` (token-arg delegation) + `emailTemplatesKeys` (`all`/`list`/`detail(id)`); `emailTemplatesApi` STAYS in lib (sibling-consumed; A83/A84/A94). `EmailTemplate.id` kept numeric. S1 `vi.mock("@/lib/email-templates")` specs keep intercepting (A94, zero transport-mock edits).
+  - [x] **DEC-2 = A** — MOVED `EmailTemplateForm` → slice + RHF+Zod; props contract (`template?`/`onSave`/`isSaving`) + `onSave` payload byte-identical; variables-array sub-editor preserved as local state (mirrors HEAD's `newVariable`); name+subject → Zod `.min(1,"form.required")` (the only deliberate A79 change). Placeholder i18n-ed.
+  - [x] **DEC-3 = re-export** `EmailTemplate`/`EmailTemplateVariable`/`Create…`/`Update…`/`EMAIL_TEMPLATE_CATEGORIES` from `@/types/email-templates` (which STAYS — sibling-consumed) via `types/email-template.types.ts`.
+  - [x] **DEC-4 = A** — native `confirm()` delete (A86) → TanStack mutation invalidating `emailTemplatesKeys.all`; SUCCESS refetch removes the item; FAILURE leaves the cache (item stays) + error banner — matching HEAD.
+- [x] Task 1: Scaffolded slice `api` + `types` + `schemas` — `email-templates-api.ts` (wrap + `emailTemplatesKeys`) + `types/email-template.types.ts` (re-export) + `schemas/email-template.schema.ts` + `email-templates-api.test.ts`.
+- [x] Task 2: Hooks — list/detail(+`EmailTemplateNotFoundError`, A93 — a REAL 404 sentinel since the legacy `ApiClient` throws `ApiError{statusCode}`)/create/update/delete mutations + invalidation. `use-email-template.test.tsx`.
+- [x] Task 3: Relocated `EmailTemplateForm` → `features/communication/email-templates/components/email-template-form.tsx`; migrated to RHF+Zod (props contract + variables-array editor preserved); i18n'd the hard-coded placeholder (`emailTemplates.form.editorPlaceholder` added to de+en); removed the empty `components/email-templates/` dir. `email-template-form.test.tsx`.
+- [x] Task 4: Components — list + index — `email-templates-page-content` (card-grid + search-bar + category/inactive Badge tokens + destructive delete affordance + native `confirm()` + delete success/failure branches) + `email-template-card` + `email-template-category-badge` + `email-templates-search-bar` + `communication-index-content` (3 nav cards + 2 quick-action links). New/detail content components render the relocated form.
+- [x] Task 5: Thin route entries — `email-templates/{page,new/page,[id]/page}.tsx` + `communication/page.tsx` → content components ([id] content keeps `useParams()` — the god-page used it). Per-page guards preserved EXACTLY (list no-guard; new/[id] silent-null; index redirect).
+- [x] Task 6: Green-the-net + DoD gate — E25-S1 Email-templates + index specs green (only the delete-success-refetch mechanism adapted; A94 WRAP kept transport mocks); new slice unit tests; `tsc` exit 0 / eslint(slice+changed+siblings) clean (boundary) / `vitest run` FULL **1050/1050 green (120 files)**, no regressions; i18n parity green; LF. The 2 sibling `@/lib/email-templates` importers still compile. A79 deltas recorded. (`next build` deferred to epic boundary per A58.)
 
 ## Dev Notes
 
@@ -103,12 +103,41 @@ Third Communication sub-slice + the index page. The distinctive work: **relocate
 
 ### Agent Model Used
 
+claude-opus-4-8[1m] (autonomous whole-epic dev-story; slice extraction + component relocation by a focused subagent, central verification by the orchestrator). The LAST E25 slice — all 12 Communication pages now sliced.
+
 ### Debug Log References
+
+**A43 (a)/(b)/(c) — DEC resolutions (A41 autonomous mode; user directive "das ganze epic implementieren mit allen stories. ohne stop"):**
+- **DEC-1 (a)** WRAP `emailTemplatesApi`; it STAYS in `@/lib`. **(b)** sibling-consumed by the S2 `automation-form` + S3 `email-campaign-form` for their template dropdowns — moving it would force an E21-S5 cross-feature import (A83/A84). The slice api fns take an explicit `token` and delegate byte-identically; `EmailTemplate.id` kept numeric. **(c)** S1 `vi.mock("@/lib/email-templates")` specs keep intercepting (A94, zero transport edits); verified the sibling importers still resolve `@/lib`/`@/types` before+after.
+- **DEC-2 (a)** MOVE the form + RHF+Zod. **(b)** props contract (`template?`/`onSave`/`isSaving`) + the `onSave` payload byte-identical → the new/[id] `createTemplate`/`updateTemplate` call args unchanged; the variables-array sub-editor stays local state (mirrors HEAD's `newVariable`). **(c)** name+subject → Zod `.min(1,"form.required")` (the only deliberate A79 behaviour change); the hard-coded German placeholder → `t("editorPlaceholder")` (key `emailTemplates.form.editorPlaceholder` added to de+en, parity green).
+- **DEC-3 (a)** re-export the types. **(b)** `@/types/email-templates` STAYS (sibling-consumed); `features→@/types` legal. **(c)** slice code imports from `../types/email-template.types`, never reaching across to `@/types` directly.
+- **DEC-4 (a)** native `confirm()` + TanStack mutation. **(b)** A86 keeps the confirm flow (no destructive-dialog swap). **(c)** SUCCESS → `deleteTemplate(id,token)` + `invalidateQueries(all)` (item gone); FAILURE → cache NOT mutated (item stays) + error banner — HEAD's "removal only on success"; confirm-cancel → no call.
+- **A93 (a)** real sentinel — `use-email-template` throws `EmailTemplateNotFoundError` on `err.statusCode === 404`, rethrows otherwise; `retry: (n,err)=>!(err instanceof EmailTemplateNotFoundError) && n<1`. **(b)** the legacy `ApiClient` throws `ApiError{message,statusCode,errors?}` so a 404 IS distinguishable (DIVERGES from the S2 automations `retry:false`). **(c)** not-found surface renders on the first fetch (god-page parity); a generic error still gets one retry.
 
 ### Completion Notes List
 
+- ✅ Email-templates 3 pages + the Communication INDEX → `features/communication/email-templates/` slice; `EmailTemplateForm` RELOCATED into the slice (manual `useState` → RHF+Zod); the empty `components/email-templates/` directory removed. **All 12 Communication pages are now feature-sliced** (S2 automations + S3 email-campaigns + S4 email-templates+index).
+- ✅ **Full suite 1050/1050 green (120 files)** = 1029 (post-S3) + 21 new slice unit tests; **no regressions**. `tsc --noEmit` exit 0. `eslint` on slice + changed + the 2 SIBLING slice forms clean incl. the E21-S5 boundary (no `@/features/**` imports — relative only). No raw `/api/v1` URL in any email-templates component/route. New files `prettier --write` (LF); modified route files hand-matched (god-pages → thin entries, net −639 lines).
+- ✅ Licensed-update surface (A79/A94): only ONE S1 spec mechanism adaptation (delete-success now resolves the post-delete refetch to [] — the manual `filter` became a TanStack invalidate; outcome identical). Every behavioural assertion preserved: delete two-branch (success-removes/failure-keeps/confirm-cancel) + destructive-red affordance, numeric ids in call-args, list no-token→spinner, new/[id] silent-null vs index `push("/")`, the 3 nav + 2 quick-action hrefs, card-grid/search/category+inactive badges.
+- ✅ i18n fix recorded: `emailTemplates.form.editorPlaceholder` added to de.json + en.json (parity test green; hi.json subset tolerated).
+
 ### File List
+
+New — slice `frontend/src/features/communication/email-templates/`:
+- `api/email-templates-api.ts`, `api/email-templates-api.test.ts`
+- `schemas/email-template.schema.ts`
+- `hooks/use-email-templates.ts`, `use-email-template.ts`, `use-create-email-template.ts`, `use-update-email-template.ts`, `use-delete-email-template.ts`, `use-email-template.test.tsx`
+- `components/email-templates-page-content.tsx`, `email-templates-search-bar.tsx`, `email-template-card.tsx`, `email-template-category-badge.tsx`, `email-template-form.tsx` (RELOCATED), `email-template-form.test.tsx`, `communication-index-content.tsx`, `email-template-new-content.tsx`, `email-template-edit-content.tsx`
+- `types/email-template.types.ts`
+
+Moved: `frontend/src/components/email-templates/EmailTemplateForm.tsx` → `frontend/src/features/communication/email-templates/components/email-template-form.tsx`.
+
+Modified (thin route entries + S1-spec delete adaptation + i18n): `frontend/src/app/communication/{page,email-templates/page,email-templates/new/page,email-templates/[id]/page}.tsx`, `frontend/src/app/communication/email-templates/page.test.tsx`, `frontend/messages/de.json`, `frontend/messages/en.json`.
+
+Deleted: `frontend/src/components/email-templates/EmailTemplateForm.tsx` (moved) + the now-empty `frontend/src/components/email-templates/` directory.
 
 ## Change Log
 
 - 2026-06-12: Story created (Email-templates 3 pages + index → `features/communication/email-templates/` slice; relocate ONLY EmailTemplateForm; DEC-1 wrap emailTemplatesApi (stays in lib), DEC-2 RHF+Zod, DEC-3 type re-export (types stay), DEC-4 native confirm() + TanStack delete; A83/A84 shared-client stays lib-resident; A86 confirm preserved; A93 404-no-retry; A77 badge tokens; placeholder i18n fix). Status ready-for-dev.
+- 2026-06-12: Implemented (autonomous whole-epic E25 session). Slice built (WRAP); EmailTemplateForm relocated + RHF+Zod; index thinned; real 404 sentinel (ApiClient carries statusCode); placeholder i18n'd. emailTemplatesApi + types stay lib-resident (sibling slices consume them). Full suite 1050/1050 green, tsc/eslint clean, dir removed. Status → review.
+- 2026-06-12: Epic-25 boundary review — 4 patches applied (P6 MED: dropped `.trim()` on `name`/`subject` so the `onSave`/`createTemplate`/`updateTemplate` payload is byte-identical to HEAD; P7 LOW: edit no-token spinner parity with the list page; P8 LOW: edit generic load-error → server `message` not the generic key; P9 LOW: inactive badge → distinct variant (category `outline`, inactive `secondary`) so they're visually separable again). +regression test. See epic-25-boundary-review-2026-06-12.md.
