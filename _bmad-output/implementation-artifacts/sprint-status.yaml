@@ -1,5 +1,18 @@
 # generated: 2026-05-12
-# last_updated: 2026-06-12 (bmad-create-story BULK REFRESH for the ENTIRE Epic-28 (Frontend
+# last_updated: 2026-06-12 (bmad-create-story BULK REFRESH for the ENTIRE Epic-30 (Frontend
+#   Feature-Slice Migration — Auth & App Shell) per user directive "das ganze epic 30 mit allen
+#   stories dazu implementations ready machen. es handelt sich nicht mehr um ein mvp" (2026-06-12).
+#   All stories backlog → ready-for-dev; epic-30 backlog → in-progress. E30 = the FINAL migration
+#   epic before E31. EXPANDED to 5 stories per user "Add both" (S4 dashboard slice + S5 73-page retrofit).
+#   epic before E31 legacy-client retirement. S1 introduces components/layout {PageShell,PageHeader}
+#   (inner content-frame primitives — NOT chrome; corrected the epic's "compose MainLayout" wording)
+#   + closes the E28-S4 TODO(E30) markers; S2 nets the untested login/auth-error surfaces + PageShell
+#   on module-unavailable (only shell-shaped page) + features/system slice (AC-3 i18n parity corrected
+#   en↔hi → en↔de; hi.json is a partial stub, left as-is); S3 = frozen-shell regression net (providers
+#   mount / root-page-NO-redirect / auth-route smoke; health test = anchor) + zero-risk normalization.
+#   Out-of-E30 residual surfaced to user: ~60-page PageShell retrofit + page.tsx dashboard slice.
+#   Authored via parallel A56 existing-implementation spikes against the live code.
+# Previously 2026-06-12: BULK REFRESH for the ENTIRE Epic-28 (Frontend
 #   Feature-Slice Migration — Public Site) per user directive "das ganze nächste epic mit allen
 #   stories dazu implemenations ready machen. es ist kein mvp mehr" (2026-06-12). All 4 stories
 #   backlog → ready-for-dev; epic-28 backlog → in-progress. NEXT per roadmap (E28 is next after
@@ -1673,10 +1686,15 @@ development_status:
   e29-s4-profile-feature-slice: done
   epic-29-retrospective: done
 
-  epic-30: backlog
-  e30-s1-introduce-pageshell-pageheader-layout-primitives: backlog
-  e30-s2-auth-login-and-system-pages-slice: backlog
-  e30-s3-app-shell-layout-providers-and-api-routes: backlog
+  epic-30: in-progress
+  e30-s1-introduce-pageshell-pageheader-layout-primitives: ready-for-dev
+  e30-s2-auth-login-and-system-pages-slice: ready-for-dev
+  e30-s3-app-shell-layout-providers-and-api-routes: ready-for-dev
+  # E30-S4/S5 added 2026-06-12 per user "Add both" — expand E30 to fully complete the layout
+  # consolidation (S4 = root dashboard page.tsx → features/dashboard slice; S5 = PageShell retrofit
+  # across the ~73 migrated authenticated pages). Both depend on S1.
+  e30-s4-dashboard-root-page-feature-slice: ready-for-dev
+  e30-s5-pageshell-retrofit-migrated-pages: ready-for-dev
   epic-30-retrospective: optional
 
   epic-31: backlog
