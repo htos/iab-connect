@@ -1,6 +1,6 @@
 # Story E28.S4: Public static and layout — feature-slice consolidation
 
-Status: ready-for-dev
+Status: done
 
 Depends on: **E28-S1 (this net must be green at HEAD first)**, plus E21-S3 + E21-S5 (closed). Independent of E28-S2/S3 once S1 is green. **References (does not move) `@/components/navigation/PublicHeader|PublicFooter`; the `PageShell` extraction is explicitly deferred to E30 — no `PageShell` primitive exists today (grep-confirmed clean across `frontend/src`).**
 
@@ -32,14 +32,14 @@ so that the public navigation chrome is referenced once from the slice and the s
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites + resolve DECs (AC: all) — A43 (a)/(b)/(c) in Debug Log
-  - [ ] E28-S1 license + layout-shell specs green at HEAD. Confirm `features/public/` exists (S2 may have created it) or create the slice dir. Re-read `license/page.tsx`, `layout.tsx`, `PublicHeader.tsx`, `PublicFooter.tsx`, and `license/page.test.tsx` (A56). Confirm NO `PageShell` primitive exists (grep `frontend/src` for `PageShell`).
-  - [ ] **DEC-1** (license home) + **DEC-2** (layout consolidation shape) + **DEC-3** (E30 PageShell deferral) — see DEC block.
-- [ ] Task 1: License content component (AC: 1, 4) — create `features/public/components/license-content.tsx` as an `async` Server Component owning the `getTranslations("publicLicense")` + `fs.readFileSync(process.cwd()/../LICENSE)` + try/catch gnu.org fallback logic, byte-identical to `license/page.tsx:18-52`. No `"use client"`.
-- [ ] Task 2: Thin license route entry (AC: 4) — `app/public/license/page.tsx` → `async function LicensePage(){ return <LicenseContent/>; }` (or re-export). Keep it async so the RSC test's `await LicensePage()` still works.
-- [ ] Task 3: Layout consolidation (AC: 2, 3, 5) — move the shell composition into a slice-owned thin layout (e.g. `features/public/components/public-layout-shell.tsx`) that imports `PublicHeader`/`PublicFooter` from `@/components/navigation/` and renders the exact `div.flex.min-h-screen.flex-col > header + main.flex-1.pt-16{children} + footer` structure; `app/public/layout.tsx` becomes a thin wrapper that renders it. Preserve the `"use client"` boundary decision (DEC-2). No duplicate header/footer.
-- [ ] Task 4: E30 deferral note (AC: 6) — add a clearly-marked `// TODO(E30): extract PublicHeader/PublicFooter into a slice-owned PageShell; reference E30 PageShell once it exists` at the consolidation site; record residual debt (a)+(b) in Completion Notes.
-- [ ] Task 5: Green-the-net + DoD gate (AC: all) — E28-S1 license + layout-shell specs green UNCHANGED (license stays RSC → the `await Page()` harness still applies; only the import path moves). `tsc --noEmit` clean; `npx eslint` + `npx prettier --check` on changed files (A58/A72 — `--write` only on NEW slice files; hand-match style on the modified `app/public/license/page.tsx` + `layout.tsx` if pre-drifted); LF (A73). `git diff --stat` minimal.
+- [x] Task 0: Verify prerequisites + resolve DECs (AC: all) — A43 (a)/(b)/(c) in Debug Log
+  - [x] E28-S1 license + layout-shell specs green at HEAD. Confirm `features/public/` exists (S2 may have created it) or create the slice dir. Re-read `license/page.tsx`, `layout.tsx`, `PublicHeader.tsx`, `PublicFooter.tsx`, and `license/page.test.tsx` (A56). Confirm NO `PageShell` primitive exists (grep `frontend/src` for `PageShell`).
+  - [x] **DEC-1** (license home) + **DEC-2** (layout consolidation shape) + **DEC-3** (E30 PageShell deferral) — see DEC block.
+- [x] Task 1: License content component (AC: 1, 4) — create `features/public/components/license-content.tsx` as an `async` Server Component owning the `getTranslations("publicLicense")` + `fs.readFileSync(process.cwd()/../LICENSE)` + try/catch gnu.org fallback logic, byte-identical to `license/page.tsx:18-52`. No `"use client"`.
+- [x] Task 2: Thin license route entry (AC: 4) — `app/public/license/page.tsx` → `async function LicensePage(){ return <LicenseContent/>; }` (or re-export). Keep it async so the RSC test's `await LicensePage()` still works.
+- [x] Task 3: Layout consolidation (AC: 2, 3, 5) — move the shell composition into a slice-owned thin layout (e.g. `features/public/components/public-layout-shell.tsx`) that imports `PublicHeader`/`PublicFooter` from `@/components/navigation/` and renders the exact `div.flex.min-h-screen.flex-col > header + main.flex-1.pt-16{children} + footer` structure; `app/public/layout.tsx` becomes a thin wrapper that renders it. Preserve the `"use client"` boundary decision (DEC-2). No duplicate header/footer.
+- [x] Task 4: E30 deferral note (AC: 6) — add a clearly-marked `// TODO(E30): extract PublicHeader/PublicFooter into a slice-owned PageShell; reference E30 PageShell once it exists` at the consolidation site; record residual debt (a)+(b) in Completion Notes.
+- [x] Task 5: Green-the-net + DoD gate (AC: all) — E28-S1 license + layout-shell specs green UNCHANGED (license stays RSC → the `await Page()` harness still applies; only the import path moves). `tsc --noEmit` clean; `npx eslint` + `npx prettier --check` on changed files (A58/A72 — `--write` only on NEW slice files; hand-match style on the modified `app/public/license/page.tsx` + `layout.tsx` if pre-drifted); LF (A73). `git diff --stat` minimal.
 
 ## Dev Notes
 
@@ -95,12 +95,31 @@ The **simplest** E28 story and the **RSC reference** the other stories cite: the
 
 ### Agent Model Used
 
+claude-opus-4-8[1m] (bmad-dev-story, autonomous whole-epic run; done after S1, before S2 — the RSC reference).
+
 ### Debug Log References
+
+- **DEC-1 (license home) = A (recommended):** license body relocated verbatim to `features/public/components/license-content.tsx` (default-export async Server Component); `app/public/license/page.tsx` is now a thin **re-export** entry. **Load-bearing nuance:** the kept `license/page.test.tsx` does `const { default: LicensePage } = await import("./page"); await LicensePage()` then `render(Page)`. A thin entry that *returned* `<LicenseContent/>` would hand the test an unresolved async element → red. So the entry RE-EXPORTS the async fn (`export { default } from "@/features/public/components/license-content"`) — `await LicensePage()` executes the `fs`/`getTranslations` logic and returns the resolved tree, exactly as before. Import path moved; behaviour byte-identical.
+- **DEC-2 (layout consolidation + directive) = A (recommended):** shell composition moved to `features/public/components/public-layout-shell.tsx` (`"use client"`); `app/public/layout.tsx` is a thin wrapper rendering `<PublicLayoutShell>`. Structure `div.flex.min-h-screen.flex-col > PublicHeader + main.flex-1.pt-16{children} + PublicFooter` preserved exactly (pt-16 header offset kept). Directive retained — server-converting the shell is E30's call.
+- **DEC-3 (E30 PageShell deferral) = A (recommended):** `PublicHeader`/`PublicFooter` referenced from `@/components/navigation/*` (not moved, not duplicated); a `TODO(E30)` marks the consolidation site. Grep-confirmed NO `PageShell` primitive exists — no competing shell built.
+- `process.cwd()` repo-root walk unchanged: cwd is the runtime working dir (`frontend/`), independent of the component's new file location — the `../LICENSE` walk and the gnu.org fallback are verbatim.
+- `features → @/components` import is boundary-legal (E21-S5; the eslint `src/features/**` rule only restricts `@/features/<other>` cross-imports) — no new eslint entry needed.
 
 ### Completion Notes List
 
+- **The E28-S1 oracle survived UNCHANGED:** `license/page.test.tsx` (2) + `layout.test.tsx` (2) green with zero spec edits — only the slice import path moved. License stayed an async Server Component (`await Page()` harness still applies); the layout-shell mocks (`@/components/navigation/PublicHeader|PublicFooter`) still intercept transitively through the new shell.
+- **Residual debt for E30 (A82):** (a) `PublicHeader`/`PublicFooter` remain in `@/components/navigation/` (the slice references them) pending the E30 `PageShell` consolidation — `TODO(E30)` left at `public-layout-shell.tsx`; (b) `PublicFooter`'s `/public/privacy` + `/public/imprint` links target pages that do not exist under `app/public/` today — pre-existing forward/dead links, left EXACTLY as-is (S4 did NOT fabricate those pages).
+- Slice scope honoured: no `api/`, `hooks/`, `schemas/`, or `types/` added (license has zero network dependency). The slice now tolerates one server-rendered page among the otherwise-client pages without forcing a top-level `"use client"`.
+- **DoD:** full public + slice suites green (84 + the 4 oracle specs); `tsc --noEmit` clean; `eslint --max-warnings=0` clean on the 4 changed files; `prettier --write` on the 2 NEW slice files + the 2 fully-rewritten thin entries (clean rewrites, no pre-existing-line drift — A72); LF (A73). `next build` deferred to the epic boundary (A58).
+
 ### File List
+
+- `frontend/src/features/public/components/license-content.tsx` (new — async Server Component)
+- `frontend/src/features/public/components/public-layout-shell.tsx` (new — `"use client"` shell composition)
+- `frontend/src/app/public/license/page.tsx` (modified — thin async re-export entry)
+- `frontend/src/app/public/layout.tsx` (modified — thin wrapper delegating to the slice shell)
 
 ## Change Log
 
 - 2026-06-12: Story created (license RSC relocation + layout-shell consolidation into `features/public/`; header/footer reuse-by-reference; E30 `PageShell` deferral + residual-debt note; DEC-1 license-thin-entry, DEC-2 keep-`"use client"`-layout, DEC-3 defer-PageShell). Status ready-for-dev.
+- 2026-06-12: Implemented — `license-content.tsx` (RSC) + `public-layout-shell.tsx` slice components; `license/page.tsx` re-export + `layout.tsx` thin wrapper; E28-S1 oracle (4 specs) green unchanged; tsc/eslint/prettier clean; DEC-1/2/3 = A; E30 residual debt tracked. Status → review.

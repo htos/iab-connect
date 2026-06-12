@@ -1659,12 +1659,12 @@ development_status:
   e27-s6-admin-documents-and-register-slice: done
   epic-27-retrospective: done
 
-  epic-28: in-progress  # 2026-06-12: bulk-refreshed to ready-for-dev (4 stories) per A34; Public site feature-slice migration — program's FIRST client→RSC epic
-  e28-s1-public-characterization-tests: ready-for-dev
-  e28-s2-public-content-server-components-slice: ready-for-dev
-  e28-s3-public-forms-feature-slice: ready-for-dev
-  e28-s4-public-static-and-layout-slice: ready-for-dev
-  epic-28-retrospective: optional
+  epic-28: done  # 2026-06-12 CLOSED: Public site feature-slice migration (program's FIRST client→RSC + only unauth/SEO surface); 4 stories + boundary review (APPROVED, ORACLE-INTACT) + retro; 1840→1944 green, tsc/eslint/next-build clean; A104-A107 promoted
+  e28-s1-public-characterization-tests: done  # char net green at HEAD (zero source edits — A87 oracle)
+  e28-s2-public-content-server-components-slice: done  # 5 pages client→RSC + 5 islands; slice foundation; next build ✓ (dynamic RSC)
+  e28-s3-public-forms-feature-slice: done  # contact+newsletter RHF+Zod islands + unsubscribe state-machine; S1 form specs green unchanged (live-binding re-export A106)
+  e28-s4-public-static-and-layout-slice: done  # license→RSC slice + layout-shell consolidation; oracle green unchanged
+  epic-28-retrospective: done  # 2026-06-12: epic-28-retro-2026-06-12.md; A104-A107 promoted to project-context.md
 
   epic-29: done  # 2026-06-12: implemented (S1-S4) + epic-boundary review (5 patches) + retro; Vitest 839/101, next build green
   e29-s1-smaller-features-characterization-tests: done

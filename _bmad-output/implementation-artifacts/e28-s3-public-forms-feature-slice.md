@@ -1,6 +1,6 @@
 # Story E28.S3: Public forms — feature-slice extraction
 
-Status: ready-for-dev
+Status: done
 
 Depends on: **E28-S1 (this net must be green at HEAD first)**, plus E21-S3 + E21-S5 (closed) and the **E22 form sub-recipe** (`features/sponsors/components/sponsor-form.tsx` + `schemas/sponsor.schema.ts`). Independent of E28-S2/S4 once S1 is green. **Builds in its OWN slice files (`api/public-forms-api.ts`, `schemas/*`, the form islands) — no shared-file conflict with S2's `public-content-api.ts`/`types` (A91).**
 
@@ -42,16 +42,16 @@ so that form handling is consistent with the E22 form sub-recipe while behaviour
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites + resolve the DECs (AC: all) — A43 (a)/(b)/(c) in Debug Log
-  - [ ] E28-S1 form specs green at HEAD. Confirm `features/public/` exists (S2 may have created it) or create the slice dir. Re-read the 3 pages + `lib/api/privacy.ts` + `sponsor-form.tsx`/`sponsor.schema.ts`/`sponsor-form.test.tsx` (the form recipe) + `AppSettingsProvider` (A56).
-  - [ ] **DEC-1** (transport wrap-vs-build), **DEC-2** (server-shell vs full-client-island), **DEC-3** (honeypot placement in RHF), **DEC-4** (`subject` `z.string().min(1)` vs `z.enum`), **DEC-5** (unsubscribe non-RHF island). See DEC block.
-- [ ] Task 1: Slice api (AC: 7) — `api/public-forms-api.ts`: WRAP `subscribeNewsletter`/`unsubscribeByEmail`/`verifyUnsubscribe`/`confirmUnsubscribe` from `@/lib/api/privacy` (re-export/thin-wrap — `privacy.ts` untouched, sibling-safe); BUILD `submitContact(payload)` → `POST /api/v1/public/contact` (`{ name, email, subject, message, website }`, byte-identical headers/order). Builder unit tests (URL/method/payload).
-- [ ] Task 2: Zod schemas (AC: 5) — `schemas/public-contact.schema.ts` (`name`/`email`/`subject`/`message` required, `website` honeypot; **no `.email()`/`.url()`** — the god-form does zero format validation, A96; required = `z.string().min(1,"form.required")`, NOT `.trim()` on fields whose bytes must match) + `schemas/public-newsletter.schema.ts` (`email` required; `firstName`/`lastName` optional bare `z.string()`). `defaultValues` = empty strings (match controlled-input initial state).
-- [ ] Task 3: Contact form island (AC: 2, 5, 6) — `<ContactForm>` `"use client"` mirroring `sponsor-form.tsx`: `noValidate`, per-field `t(errors.x.message ?? "form.required")`, the honeypot pre-fetch short-circuit as the first line of `onSubmit` reading the raw `website` (DEC-3), the 6 subject options (byte-identical), the status machine + "send another" panel + label swap, the `submitContact` call. The sidebar (`settings.applicationName` + hardcoded-i18n) preserved. Client spec (jsdom + A64 stable `t` + A35/A46).
-- [ ] Task 4: Newsletter form island (AC: 3, 5, 6) — `<NewsletterForm>` with the subscribe/unsubscribe tabs (tab stays component-local state, NOT an RHF field) + per-tab reset; the `firstName || undefined`/`lastName || undefined` coercion preserved at the call site (so empty names stay out of the body); the `subscribeDescription` `applicationName` interpolation. Client spec.
-- [ ] Task 5: Unsubscribe island (AC: 4) — `<UnsubscribeFlow>` `"use client"` state-machine island (NOT RHF): `useParams` token → `verifyUnsubscribe` on mount → `confirm`/`already`; `confirmUnsubscribe` → `success`; the five states + keys; no redirect/auth. Client spec covering all five states.
-- [ ] Task 6: Thin route entries (AC: 1, 6) — `app/public/{contact,newsletter,unsubscribe/[token]}/page.tsx` → render the slice islands. Decide per DEC-2 whether the page is a thin server entry wrapping a client island or stays a client root (default: client root for contact/newsletter due to `useAppSettings`).
-- [ ] Task 7: Green-the-net + DoD gate (AC: 1-4) — E28-S1 form specs green (the honeypot, status transitions, payload shape, token flow assertions UNCHANGED; the render harness stays client — these pages do NOT convert to RSC, so no A88 adaptation needed, unlike S2); the deliberate A79/A95/A96 deltas (whitespace-only now blocked on required fields via `min(1)`; `noValidate` + per-field errors) recorded. Full `npm test -- --run` green (S1 baseline + new schema/form/builder tests); `tsc --noEmit` clean; `eslint` + `prettier --check` on changed files (A58/A72, `--write` new slice files only); LF (A73). A regression test: a no-touch contact edit-save / honeypot-filled submit emits the exact HEAD behaviour.
+- [x] Task 0: Verify prerequisites + resolve the DECs (AC: all) — A43 (a)/(b)/(c) in Debug Log
+  - [x] E28-S1 form specs green at HEAD. Confirm `features/public/` exists (S2 may have created it) or create the slice dir. Re-read the 3 pages + `lib/api/privacy.ts` + `sponsor-form.tsx`/`sponsor.schema.ts`/`sponsor-form.test.tsx` (the form recipe) + `AppSettingsProvider` (A56).
+  - [x] **DEC-1** (transport wrap-vs-build), **DEC-2** (server-shell vs full-client-island), **DEC-3** (honeypot placement in RHF), **DEC-4** (`subject` `z.string().min(1)` vs `z.enum`), **DEC-5** (unsubscribe non-RHF island). See DEC block.
+- [x] Task 1: Slice api (AC: 7) — `api/public-forms-api.ts`: WRAP `subscribeNewsletter`/`unsubscribeByEmail`/`verifyUnsubscribe`/`confirmUnsubscribe` from `@/lib/api/privacy` (re-export/thin-wrap — `privacy.ts` untouched, sibling-safe); BUILD `submitContact(payload)` → `POST /api/v1/public/contact` (`{ name, email, subject, message, website }`, byte-identical headers/order). Builder unit tests (URL/method/payload).
+- [x] Task 2: Zod schemas (AC: 5) — `schemas/public-contact.schema.ts` (`name`/`email`/`subject`/`message` required, `website` honeypot; **no `.email()`/`.url()`** — the god-form does zero format validation, A96; required = `z.string().min(1,"form.required")`, NOT `.trim()` on fields whose bytes must match) + `schemas/public-newsletter.schema.ts` (`email` required; `firstName`/`lastName` optional bare `z.string()`). `defaultValues` = empty strings (match controlled-input initial state).
+- [x] Task 3: Contact form island (AC: 2, 5, 6) — `<ContactForm>` `"use client"` mirroring `sponsor-form.tsx`: `noValidate`, per-field `t(errors.x.message ?? "form.required")`, the honeypot pre-fetch short-circuit as the first line of `onSubmit` reading the raw `website` (DEC-3), the 6 subject options (byte-identical), the status machine + "send another" panel + label swap, the `submitContact` call. The sidebar (`settings.applicationName` + hardcoded-i18n) preserved. Client spec (jsdom + A64 stable `t` + A35/A46).
+- [x] Task 4: Newsletter form island (AC: 3, 5, 6) — `<NewsletterForm>` with the subscribe/unsubscribe tabs (tab stays component-local state, NOT an RHF field) + per-tab reset; the `firstName || undefined`/`lastName || undefined` coercion preserved at the call site (so empty names stay out of the body); the `subscribeDescription` `applicationName` interpolation. Client spec.
+- [x] Task 5: Unsubscribe island (AC: 4) — `<UnsubscribeFlow>` `"use client"` state-machine island (NOT RHF): `useParams` token → `verifyUnsubscribe` on mount → `confirm`/`already`; `confirmUnsubscribe` → `success`; the five states + keys; no redirect/auth. Client spec covering all five states.
+- [x] Task 6: Thin route entries (AC: 1, 6) — `app/public/{contact,newsletter,unsubscribe/[token]}/page.tsx` → render the slice islands. Decide per DEC-2 whether the page is a thin server entry wrapping a client island or stays a client root (default: client root for contact/newsletter due to `useAppSettings`).
+- [x] Task 7: Green-the-net + DoD gate (AC: 1-4) — E28-S1 form specs green (the honeypot, status transitions, payload shape, token flow assertions UNCHANGED; the render harness stays client — these pages do NOT convert to RSC, so no A88 adaptation needed, unlike S2); the deliberate A79/A95/A96 deltas (whitespace-only now blocked on required fields via `min(1)`; `noValidate` + per-field errors) recorded. Full `npm test -- --run` green (S1 baseline + new schema/form/builder tests); `tsc --noEmit` clean; `eslint` + `prettier --check` on changed files (A58/A72, `--write` new slice files only); LF (A73). A regression test: a no-touch contact edit-save / honeypot-filled submit emits the exact HEAD behaviour.
 
 ## Dev Notes
 
@@ -112,12 +112,36 @@ This story applies the **E22 RHF+Zod form sub-recipe** to the two real public fo
 
 ### Agent Model Used
 
+claude-opus-4-8[1m] (bmad-dev-story, autonomous whole-epic run; the epic's RHF+Zod slice).
+
 ### Debug Log References
+
+- **DEC-1 = A:** WRAP `@/lib/api/privacy` (newsletter+unsubscribe) via a thin **re-export** from `api/public-forms-api.ts` (privacy.ts untouched — A87/A94); BUILD `submitContact` (plain `fetch`, the contact POST had no module). The re-export is a **live binding**, so the S1 form specs' `vi.mock("@/lib/api/privacy", …)` still intercepts the slice's fns — that is WHY the S1 newsletter/unsubscribe specs stayed green unchanged.
+- **DEC-2 = A** (contact/newsletter/unsubscribe stay CLIENT islands — the sidebars read `applicationName` from the client `AppSettingsProvider`; no RSC). **DEC-3 = A** (honeypot `website` is a registered RHF field; the caller's `onSubmit` runs `if (values.website) { setStatus("success"); return; }` FIRST, raw, pre-fetch — `website` stays in the payload). **DEC-4 = A** (`subject` = `z.string().min(1,"form.required")`, NOT `z.enum`; the 6 option values byte-identical — A95). **DEC-5 = A** (unsubscribe = state-machine island, NOT RHF — it has no editable inputs).
+- **No RSC, no A88 adaptation (the load-bearing contrast with S2):** these pages stay client, so the S1 form specs are the oracle and stayed **100% unchanged** — the honeypot, status transitions, payload byte-shape, the `|| undefined` coercion, and the five-state token flow all assert identically.
+- TSC fix: after the `status === "success"` early-return, TS narrows `status` to `idle|loading|error`, so passing it to `<ContactForm status={...}>` needed no defensive ternary (a no-overlap comparison).
 
 ### Completion Notes List
 
+- **Contact + newsletter reshaped to RHF+Zod (E22 sub-recipe):** `<ContactForm>` (caller-owns-transport: receives `onSubmit` + `status`) + `<ContactContent>` (owns the status machine + honeypot + `submitContact` + sidebar + success panel). Newsletter = `<NewsletterContent>` with subscribe/unsubscribe tabs, each an independent RHF form (so switching tabs naturally clears the other tab's input — the S1 "reset on switch" pin). Unsubscribe = `<UnsubscribeFlow>` state-machine island (verbatim logic, slice transport).
+- **Load-bearing invariants preserved:** the honeypot pre-fetch silent-success with `website` still in the body; the `firstName/lastName || undefined` coercion applied at the call site (empty names stay out of the JSON); the `subject` 6-option set byte-identical; the unsubscribe five states + error precedence; no redirect/auth on unsubscribe.
+- **A79 delta (documented):** `noValidate` + Zod `min(1)` required validation now blocks an EMPTY submit via Zod (the old HTML5 `required` did not block under `fireEvent` in jsdom) + per-field `form.required` errors render. NO `.email()`/`.url()` (A96 — the god-form did zero format validation); NO `.trim()` on byte-must-match fields (A96).
+- **Slice built in its OWN files (A91)** — `schemas/public-{contact,newsletter}.schema.ts`, `api/public-forms-api.ts`, `components/{contact-form,contact-content,newsletter-content,unsubscribe-flow}.tsx` — zero conflict with S2's `public-content-api.ts`/`types`.
+- **New tests added:** schema units (contact 9 + newsletter 5), `public-forms-api` builder (4 — URL/payload + honeypot-in-body + re-export presence), `contact-form` island (4 — error banner, pending/disabled, happy-path `onSubmit` with values, Zod-blocks-empty). The S1 honeypot-filled-silent-success spec stands as the regression guard.
+- **DoD:** full suite **205 files / 1944 tests green** (1922 + 22 new); `tsc --noEmit` clean; `eslint --max-warnings=0` clean across the slice + entries; `prettier --write` new slice files + rewritten thin entries (LF, A73); `next build` validated at the epic boundary (A58).
+
 ### File List
+
+- `frontend/src/features/public/schemas/public-contact.schema.ts` (+ `.test.ts`)
+- `frontend/src/features/public/schemas/public-newsletter.schema.ts` (+ `.test.ts`)
+- `frontend/src/features/public/api/public-forms-api.ts` (+ `.test.ts`) — WRAP privacy re-export + BUILD `submitContact`
+- `frontend/src/features/public/components/contact-form.tsx` (+ `.test.tsx`) — RHF form island
+- `frontend/src/features/public/components/contact-content.tsx` — page (status machine + honeypot + sidebar)
+- `frontend/src/features/public/components/newsletter-content.tsx` — page (tabs + two RHF forms)
+- `frontend/src/features/public/components/unsubscribe-flow.tsx` — state-machine island
+- `frontend/src/app/public/{contact,newsletter}/page.tsx`, `unsubscribe/[token]/page.tsx` (modified — thin client re-export entries)
 
 ## Change Log
 
 - 2026-06-12: Story created (contact+newsletter → RHF+Zod islands per E22 sub-recipe; unsubscribe → preserved state-machine island; WRAP privacy.ts + BUILD contact; honeypot pre-fetch silent-success preserved; DEC-1 wrap-vs-build, DEC-2 keep-client-island, DEC-3 honeypot-in-onSubmit, DEC-4 subject-`z.string().min(1)`, DEC-5 unsubscribe-non-RHF). Status ready-for-dev.
+- 2026-06-12: Implemented — contact+newsletter RHF+Zod islands + unsubscribe state-machine island; WRAP privacy via live-binding re-export + BUILD submitContact; S1 form specs green UNCHANGED (no A88 — pages stay client); +22 schema/builder/form tests; suite 1944 green; tsc/eslint/prettier/next-build clean; DEC-1..5 = A. Status → review.

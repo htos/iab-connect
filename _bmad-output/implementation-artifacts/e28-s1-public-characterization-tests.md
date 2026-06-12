@@ -1,6 +1,6 @@
 # Story E28.S1: Public site — characterization tests for all nine pages (regression net)
 
-Status: ready-for-dev
+Status: done
 
 Depends on: E21-S3 + E21-S5 (closed) and the suppliers/sponsors slice recipe. **Blocks E28-S2/S3/S4** — the net must be green at HEAD before any extraction lands. Inherits E21-S1 boundary decisions. This is a **test-only** story: no `src/features/public/` code, no source changes.
 
@@ -54,17 +54,17 @@ so that the S2 (Server-Component), S3 (forms) and S4 (static+layout) extractions
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Spike + harness archetypes (AC: 5, 8, 9)
-  - [ ] Re-read all nine pages + `public/layout.tsx` + the three existing specs at HEAD (A56). Confirm `features/public/` does NOT exist.
-  - [ ] Codify the **two harness archetypes**: (A) **client-page** = `// @vitest-environment jsdom` + `import "@testing-library/jest-dom/vitest"` + `afterEach(cleanup)` (A35/A46) + a **stable per-namespace `next-intl` `useTranslations` mock** (A64/A78) + `vi.stubGlobal("fetch", …)` or `vi.mock("@/lib/api/privacy", …)` + `useParams` mock for dynamic routes; (B) **RSC** = mock `next-intl/server` `getTranslations` (stable async→sync map) + `node:fs` where needed, `const el = await Page(); render(el)`. No `QueryClientProvider` anywhere (no public page uses React Query — DEC-1).
-- [ ] Task 1: Blog net (AC: 2, 3, 8) — `blog/page.test.tsx` + `blog/[id]/page.test.tsx`. Pin loading/error/empty + `noResults`-vs-`empty`, the 5-field search filter, de-CH long-date, 200-char excerpt, category + content-language badges, `/public/blog/${id}` link, `unoptimized` image; detail: generic-error (no 404), `\n`-paragraphs, literal `Tags` heading, Share button, `<h1>=title`.
-- [ ] Task 2: Events net (AC: 2, 3, 5, 8) — `events/page.*.test.tsx` (NEW loading/error/empty/search/category specs; KEEP `page.contentlanguage.test.tsx`) + EXTEND `events/[id]/page.test.tsx` (loading/error/registration-state-machine/payload around the existing fee specs). Stable `t` (A64 — `t` is in both fetch-effect deps `events/page.tsx:67`, `events/[id]/page.tsx:118`).
-- [ ] Task 3: Sponsors net (AC: 2, 4, 8) — `sponsors/page.test.tsx`: loading / error(no-retry) / empty / tier grouping + German `TIER_LABELS.de` headings + `getHighestTier` + CTA + hardcoded `Website` link. Pinned independently of `features/sponsors/`.
-- [ ] Task 4: Contact net (AC: 2, 8) — `contact/page.test.tsx`: honeypot silent-success (pre-fetch, raw value), `idle→loading→success` "send another" panel, `error` + label swap (`sending`/`retry`/`submit`), the 6 subject options, the `{name,email,subject,message,website}` POST payload, the `settings.applicationName` sidebar line (mock `useAppSettings` for determinism).
-- [ ] Task 5: Newsletter net (AC: 2, 8) — `newsletter/page.test.tsx`: tab toggle + reset, subscribe payload `{email, firstName?, lastName?}` (empty names dropped), unsubscribe payload `{email}`, per-tab success/error panels + label swaps. Mock `@/lib/api/privacy` (`subscribeNewsletter`/`unsubscribeByEmail`).
-- [ ] Task 6: Unsubscribe net (AC: 2, 8) — `unsubscribe/[token]/page.test.tsx`: `useParams` token, verify-on-mount → `confirm`/`already`, confirm → `success`, the five states + keys, `err.message`/`invalidToken` error text. Mock `@/lib/api/privacy` (`verifyUnsubscribe`/`confirmUnsubscribe`). Assert NO redirect/auth.
-- [ ] Task 7: Layout-shell net (AC: 1) — pin `public/layout.tsx` renders `PublicHeader` → `<main class="flex-1 pt-16">{children}</main>` → `PublicFooter` (structure + that the `children` slot renders). Reference (do not duplicate) `@/components/navigation/PublicHeader|PublicFooter`.
-- [ ] Task 8: Green-the-net + DoD gate (AC: 6, 7) — full `npm test -- --run` green at HEAD (record the new baseline count); `tsc --noEmit` clean; `npx eslint` + `npx prettier --check` on the NEW test files (A58/A72, `--write` new files only); LF (A73). No source changes — `git diff --stat` shows only new `*.test.tsx` files.
+- [x] Task 0: Spike + harness archetypes (AC: 5, 8, 9)
+  - [x] Re-read all nine pages + `public/layout.tsx` + the three existing specs at HEAD (A56). Confirm `features/public/` does NOT exist.
+  - [x] Codify the **two harness archetypes**: (A) **client-page** = `// @vitest-environment jsdom` + `import "@testing-library/jest-dom/vitest"` + `afterEach(cleanup)` (A35/A46) + a **stable per-namespace `next-intl` `useTranslations` mock** (A64/A78) + `vi.stubGlobal("fetch", …)` or `vi.mock("@/lib/api/privacy", …)` + `useParams` mock for dynamic routes; (B) **RSC** = mock `next-intl/server` `getTranslations` (stable async→sync map) + `node:fs` where needed, `const el = await Page(); render(el)`. No `QueryClientProvider` anywhere (no public page uses React Query — DEC-1).
+- [x] Task 1: Blog net (AC: 2, 3, 8) — `blog/page.test.tsx` + `blog/[id]/page.test.tsx`. Pin loading/error/empty + `noResults`-vs-`empty`, the 5-field search filter, de-CH long-date, 200-char excerpt, category + content-language badges, `/public/blog/${id}` link, `unoptimized` image; detail: generic-error (no 404), `\n`-paragraphs, literal `Tags` heading, Share button, `<h1>=title`.
+- [x] Task 2: Events net (AC: 2, 3, 5, 8) — `events/page.*.test.tsx` (NEW loading/error/empty/search/category specs; KEEP `page.contentlanguage.test.tsx`) + EXTEND `events/[id]/page.test.tsx` (loading/error/registration-state-machine/payload around the existing fee specs). Stable `t` (A64 — `t` is in both fetch-effect deps `events/page.tsx:67`, `events/[id]/page.tsx:118`).
+- [x] Task 3: Sponsors net (AC: 2, 4, 8) — `sponsors/page.test.tsx`: loading / error(no-retry) / empty / tier grouping + German `TIER_LABELS.de` headings + `getHighestTier` + CTA + hardcoded `Website` link. Pinned independently of `features/sponsors/`.
+- [x] Task 4: Contact net (AC: 2, 8) — `contact/page.test.tsx`: honeypot silent-success (pre-fetch, raw value), `idle→loading→success` "send another" panel, `error` + label swap (`sending`/`retry`/`submit`), the 6 subject options, the `{name,email,subject,message,website}` POST payload, the `settings.applicationName` sidebar line (mock `useAppSettings` for determinism).
+- [x] Task 5: Newsletter net (AC: 2, 8) — `newsletter/page.test.tsx`: tab toggle + reset, subscribe payload `{email, firstName?, lastName?}` (empty names dropped), unsubscribe payload `{email}`, per-tab success/error panels + label swaps. Mock `@/lib/api/privacy` (`subscribeNewsletter`/`unsubscribeByEmail`).
+- [x] Task 6: Unsubscribe net (AC: 2, 8) — `unsubscribe/[token]/page.test.tsx`: `useParams` token, verify-on-mount → `confirm`/`already`, confirm → `success`, the five states + keys, `err.message`/`invalidToken` error text. Mock `@/lib/api/privacy` (`verifyUnsubscribe`/`confirmUnsubscribe`). Assert NO redirect/auth.
+- [x] Task 7: Layout-shell net (AC: 1) — pin `public/layout.tsx` renders `PublicHeader` → `<main class="flex-1 pt-16">{children}</main>` → `PublicFooter` (structure + that the `children` slot renders). Reference (do not duplicate) `@/components/navigation/PublicHeader|PublicFooter`.
+- [x] Task 8: Green-the-net + DoD gate (AC: 6, 7) — full `npm test -- --run` green at HEAD (record the new baseline count); `tsc --noEmit` clean; `npx eslint` + `npx prettier --check` on the NEW test files (A58/A72, `--write` new files only); LF (A73). No source changes — `git diff --stat` shows only new `*.test.tsx` files.
 
 ## Dev Notes
 
@@ -122,12 +122,38 @@ This is the **regression oracle** for the whole epic. The net pins HEAD behaviou
 
 ### Agent Model Used
 
+claude-opus-4-8[1m] (bmad-dev-story, autonomous whole-epic run).
+
 ### Debug Log References
+
+- **DEC-1 (provider seam) = A (recommended):** no `QueryClientProvider` anywhere in the net — no public page uses React Query, and `useApiClient` 401-gates on no-auth (`auth.ts:178`). Pages render directly with `fetch` / `@/lib/api/privacy` / `next-intl` mocked. Documented so boundary review does not flag the missing provider.
+- **DEC-2 (RSC-bound page idiom) = A (recommended):** the five read-only pages are pinned in their HEAD client idiom (`render(<Page/>)` + `useEffect`-fetch mock). HEAD is `"use client"`; the S2 render-harness swap to `render(await Page())` is the A88-licensed change (AC-9). The net is green at HEAD as required (AC-7).
+- **Task 0 archetypes codified:** (A) client-page = `// @vitest-environment jsdom` + `@testing-library/jest-dom/vitest` + `afterEach(cleanup)` (A35/A46) + stable per-namespace `next-intl` translator (A64/A78) + `vi.stubGlobal("fetch", …)` / `vi.mock("@/lib/api/privacy", …)` + `useParams` mock for dynamic routes; (B) RSC = the existing `license/page.test.tsx` (`await Page()` + `next-intl/server` + `node:fs`) — KEPT unchanged.
+- Confirmed `src/features/public/` does NOT exist at HEAD (this is a test-only story).
+- TSC fix: zero-arg `vi.fn` mocks infer an empty-tuple call-args type, so `calls[0][0]` failed `tsc`; added explicit `(_url?: unknown)` / `(_url?: string, _init?: RequestInit)` params to the call-inspecting mocks.
 
 ### Completion Notes List
 
+- **Baseline at HEAD: 192 files / 1840 tests green.** After the net: **200 files / 1917 tests green** (+8 new spec files, +77 tests; the modified `events/[id]/page.test.tsx` adds 7 to the existing 3). New S2/S3/S4 baseline = **1917**.
+- **Net is GREEN AT HEAD with ZERO source changes** — `git status` shows only 1 modified + 8 new `*.test.tsx` files, no `src/**/page.tsx`/`layout.tsx` edits (AC-6/AC-7; the A87 oracle proof).
+- The three existing specs were EXTENDED/KEPT, never rewritten (AC-5): `license/page.test.tsx` untouched (the RSC archetype); `events/page.contentlanguage.test.tsx` untouched; `events/[id]/page.test.tsx` extended with a new `describe` block AROUND the kept REQ-022 fee specs (loading / generic-error-block / registration state machine / POST payload).
+- **Load-bearing pins captured:** honeypot pre-fetch silent-success with `website` still in the payload (contact); the generic error block on both detail pages (NO Next `notFound()` — AC-3); tier grouping with hardcoded German `TIER_LABELS.de` headings + `getHighestTier` (sponsors, independent of `features/sponsors/` — AC-4); `firstName/lastName || undefined` coercion (newsletter); the unsubscribe five-state machine + error precedence; de-CH date formats computed in-test (timezone-robust); `/public/blog/${id}` id-routing; `unoptimized` image src; the registration `{name,email,phone?,numberOfGuests,specialRequirements?,feeCategoryId?}` payload.
+- **Render-harness adaptation explicitly licensed (A88/A79):** each affected client spec asserts observable behaviour only (text, resolved i18n keys, fetch URL/method/body, status transitions, SEO `<h1>`) so S2 swaps only the harness shell, not the expectations. Header comments in each spec state this so S2/boundary-review reads it as expected, not breakage.
+- **DoD:** `npm test -- --run` 1917 green; `tsc --noEmit` clean; `eslint --max-warnings=0` clean on all 9 changed files; `prettier --write` on the 8 NEW files + the modified `events/[id]` (was prettier-clean, only the appended region + the `fireEvent` import wrap changed — no pre-existing lines drifted, A72); LF (A73).
+
 ### File List
+
+- `frontend/src/app/public/blog/page.test.tsx` (new)
+- `frontend/src/app/public/blog/[id]/page.test.tsx` (new)
+- `frontend/src/app/public/events/page.test.tsx` (new)
+- `frontend/src/app/public/events/[id]/page.test.tsx` (modified — characterization extension around the kept fee specs)
+- `frontend/src/app/public/sponsors/page.test.tsx` (new)
+- `frontend/src/app/public/contact/page.test.tsx` (new)
+- `frontend/src/app/public/newsletter/page.test.tsx` (new)
+- `frontend/src/app/public/unsubscribe/[token]/page.test.tsx` (new)
+- `frontend/src/app/public/layout.test.tsx` (new)
 
 ## Change Log
 
 - 2026-06-12: Story created (characterization net over all 9 public pages + layout shell; two harness archetypes — client + RSC; pins honeypot/tier-grouping/state-machines/SEO; DEC-1 no-QueryClientProvider, DEC-2 pin-at-HEAD-client-idiom). Status ready-for-dev.
+- 2026-06-12: Implemented — 8 new spec files + 1 extended (events/[id]); 192→200 files, 1840→1917 tests green at HEAD with ZERO source changes (A87 oracle); tsc/eslint/prettier clean; DEC-1=A, DEC-2=A. Status → review.

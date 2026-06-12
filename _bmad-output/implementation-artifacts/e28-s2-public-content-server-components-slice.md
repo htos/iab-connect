@@ -1,6 +1,6 @@
 # Story E28.S2: Public content — Server-Component feature-slice extraction
 
-Status: ready-for-dev
+Status: done
 
 Depends on: **E28-S1 (this net must be green at HEAD first)**, plus E21-S3 + E21-S5 (closed) and the suppliers/sponsors slice recipe. Independent of E28-S3/S4 once S1 is green. **As the largest E28 story it establishes the `features/public/` slice (dir + base-URL helper + `types/public.types.ts`); S3/S4 build on the skeleton in their own files (A91/A102 — no shared-file conflict).**
 
@@ -50,15 +50,15 @@ so that SEO/SSR improves while behaviour is preserved exactly.
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites + resolve the DECs (AC: all) — A43 (a)/(b)/(c) in Debug Log
-  - [ ] E28-S1 content specs green at HEAD. Confirm `features/public/` does NOT exist → this story creates it. Re-read the 5 pages + `lib/services/events.ts` (the reserved public helpers) + the suppliers/sponsors slice recipe + `i18n/request.ts` (server `getTranslations`) + the license RSC precedent (A56).
-  - [ ] **DEC-1** (events transport: wrap reserved `services/events.ts` helpers vs build fresh), **DEC-2** (blog/sponsors/contact-registration transport: build), **DEC-3** (type home), **DEC-4** (island/RSC split shape per page), **DEC-5** (base-URL de-dup). See DEC block.
-- [ ] Task 1: Slice foundation (AC: 6, 7) — create `features/public/api/public-content-api.ts` (base-URL helper + the read fns + the fee-categories fn + the registration POST fn, URLs byte-identical) + `types/public.types.ts` (the 4 DTOs + `TIER_*`, list-variant supersets). Focused unit tests for the URL/payload builders.
-- [ ] Task 2: Sponsors RSC (AC: 2, 5) — `app/public/sponsors/page.tsx` → async Server Component rendering `features/public/components/sponsors-content.tsx` (server fetch + `getTranslations("publicSponsors")` + the tier-grouping helpers moved into the slice). No island. Pin against S1.
-- [ ] Task 3: Blog list + detail RSC + islands (AC: 2, 3, 4, 5) — list = async SC fetching posts, passing them to a `<BlogSearch>` `"use client"` island (5-field filter + `noResults`/`empty`); detail = async SC (`params.id`) + a `<ShareButton>` island; preserve de-CH date, excerpt, badges, `/public/blog/${id}`, `Tags` literal, generic error block.
-- [ ] Task 4: Events list + detail RSC + islands (AC: 2, 3, 4, 5) — list = async SC + `<EventsFilter>` island (search + category, categories derived from fetched data); detail = async SC shell + `<EventRegistrationForm>` island (manual state preserved, fee section mounted through the page so the existing fee test stays green). Stable-`t` no longer applies in RSC (server `getTranslations`), but the EXTENDED client specs for the islands keep A64.
-- [ ] Task 5: Base-URL de-dup + i18n (AC: 7) — route all 5 pages' fetches through the slice base-URL helper; reconcile `??` vs the `||`+`/api/v1` differences if wrapping any lib module. NO message-file change — reuse `publicBlog`/`publicEvents`/`publicSponsors`/`language` keys (en↔de parity holds; hi subset tolerated). Server `getTranslations("ns")` uses the SAME namespace strings as the client `useTranslations("ns")`.
-- [ ] Task 6: Green-the-net + DoD gate (AC: 1, 2) — adapt each converted page's S1 spec render-harness client→RSC (`render(<Page/>)` → `render(await Page())` + mock `next-intl/server`) — **A88-licensed; behavioural assertions UNCHANGED**; record each adapted spec. Full `npm test -- --run` green (S1 baseline + new builder tests, zero behavioural regressions); `tsc --noEmit` clean; `eslint` + `prettier --check` on changed files (A58/A72, `--write` new slice files only); LF (A73). A79 deltas recorded. (`next build` at epic boundary per A58.)
+- [x] Task 0: Verify prerequisites + resolve the DECs (AC: all) — A43 (a)/(b)/(c) in Debug Log
+  - [x] E28-S1 content specs green at HEAD. Confirm `features/public/` does NOT exist → this story creates it. Re-read the 5 pages + `lib/services/events.ts` (the reserved public helpers) + the suppliers/sponsors slice recipe + `i18n/request.ts` (server `getTranslations`) + the license RSC precedent (A56).
+  - [x] **DEC-1** (events transport: wrap reserved `services/events.ts` helpers vs build fresh), **DEC-2** (blog/sponsors/contact-registration transport: build), **DEC-3** (type home), **DEC-4** (island/RSC split shape per page), **DEC-5** (base-URL de-dup). See DEC block.
+- [x] Task 1: Slice foundation (AC: 6, 7) — create `features/public/api/public-content-api.ts` (base-URL helper + the read fns + the fee-categories fn + the registration POST fn, URLs byte-identical) + `types/public.types.ts` (the 4 DTOs + `TIER_*`, list-variant supersets). Focused unit tests for the URL/payload builders.
+- [x] Task 2: Sponsors RSC (AC: 2, 5) — `app/public/sponsors/page.tsx` → async Server Component rendering `features/public/components/sponsors-content.tsx` (server fetch + `getTranslations("publicSponsors")` + the tier-grouping helpers moved into the slice). No island. Pin against S1.
+- [x] Task 3: Blog list + detail RSC + islands (AC: 2, 3, 4, 5) — list = async SC fetching posts, passing them to a `<BlogSearch>` `"use client"` island (5-field filter + `noResults`/`empty`); detail = async SC (`params.id`) + a `<ShareButton>` island; preserve de-CH date, excerpt, badges, `/public/blog/${id}`, `Tags` literal, generic error block.
+- [x] Task 4: Events list + detail RSC + islands (AC: 2, 3, 4, 5) — list = async SC + `<EventsFilter>` island (search + category, categories derived from fetched data); detail = async SC shell + `<EventRegistrationForm>` island (manual state preserved, fee section mounted through the page so the existing fee test stays green). Stable-`t` no longer applies in RSC (server `getTranslations`), but the EXTENDED client specs for the islands keep A64.
+- [x] Task 5: Base-URL de-dup + i18n (AC: 7) — route all 5 pages' fetches through the slice base-URL helper; reconcile `??` vs the `||`+`/api/v1` differences if wrapping any lib module. NO message-file change — reuse `publicBlog`/`publicEvents`/`publicSponsors`/`language` keys (en↔de parity holds; hi subset tolerated). Server `getTranslations("ns")` uses the SAME namespace strings as the client `useTranslations("ns")`.
+- [x] Task 6: Green-the-net + DoD gate (AC: 1, 2) — adapt each converted page's S1 spec render-harness client→RSC (`render(<Page/>)` → `render(await Page())` + mock `next-intl/server`) — **A88-licensed; behavioural assertions UNCHANGED**; record each adapted spec. Full `npm test -- --run` green (S1 baseline + new builder tests, zero behavioural regressions); `tsc --noEmit` clean; `eslint` + `prettier --check` on changed files (A58/A72, `--write` new slice files only); LF (A73). A79 deltas recorded. (`next build` at epic boundary per A58.)
 
 ## Dev Notes
 
@@ -123,12 +123,40 @@ The **largest** E28 story and the program's first genuine **client→RSC** migra
 
 ### Agent Model Used
 
+claude-opus-4-8[1m] (bmad-dev-story, autonomous whole-epic run; the program's first client→RSC migration).
+
 ### Debug Log References
+
+- **DEC-1 (events transport) = B (recommended for v1):** BUILT byte-identical server-fetch fns in `public-content-api.ts` rather than wrapping the reserved `lib/services/events.ts` helpers — zero `EventDto` superset / `requireAuth` widening risk; keeps the net green with no type-widening. Noted for a later consolidation.
+- **DEC-2 = A**, **DEC-3 = A**, **DEC-4 = A** (full RSC where read-only + minimal islands), **DEC-5 = A** (one `PUBLIC_API_BASE_URL` helper replaces the 5-page `process.env … ?? "http://localhost:5000"` duplication).
+- **Load-bearing testability insight (the A88 harness mechanics):** for `render(await Page())` to fully resolve, there must be **NO nested async components**. Each content component does its own `getTranslations` + `fetch` internally and returns resolved JSX with the client islands as SYNC children (mirrors the S4 license pattern). The no-params pages (`sponsors`/`blog`/`events` lists) re-export the async content fn as the route default; the params pages (`blog/[id]`, `events/[id]`) `await params` then `return ContentFn({ id })` — returning the content promise FLATTENS through the async route fn, so `await Page({ params })` yields fully-rendered JSX. The islands' `"use client"` is a no-op in vitest, so they render in-tree and their interactions (search/filter/share/registration) keep working.
+- **Error-thread per page:** `getJson` throws `HTTP <status>` uniformly; each SC decides the surface — events list/detail capture `err.message` and render it RAW (`HTTP 500`); blog list/detail + sponsors collapse to the generic `errorMessage` copy. Matches each god-page exactly.
+- **`cache: "no-store"`** on the RSC reads → request-time freshness matching the god-pages' per-load `useEffect` fetch (also makes the routes dynamic, so the build does not attempt a data fetch).
 
 ### Completion Notes List
 
+- **All 5 read-only content pages converted to async Server Components + minimal client islands:** sponsors = full SC (no island); blog list/events list = SC (hero) + `<BlogSearch>`/`<EventsFilter>` island (the interactive search/filter/grid/error/empty, data passed in → SSR'd); blog detail = SC + `<ShareButton>` island; event detail = SC shell + `<EventRegistrationForm>` island (manual state preserved — **NOT** RHF-ified; the fee section stays mounted through the page so the REQ-022 fee test stays green).
+- **Slice foundation established for S3/S4 (A91/A102):** `api/public-content-api.ts` (base-URL helper + 7 server-fetch/POST fns), `types/public.types.ts` (4 DTOs reconciled to the LIST superset + `TIER_*` consts + `getHighestTier`), 8 component files. S3 builds its OWN files (no shared-file conflict).
+- **S1 oracle adapted, behaviour UNCHANGED (A88/A79):** the 5 content-page specs swapped harness `render(<Page/>)` → `render(await Page())` + `next-intl/server` `getTranslations` mock (+ `next-intl` for the islands); the pre-existing `events/page.contentlanguage.test.tsx` (REQ-055) and `events/[id]/page.test.tsx` (REQ-022 fee specs) were adapted the same way — their **behavioural assertions are identical**.
+- **Principal A79 delta (documented in each adapted spec):** the client loading-spinner lifecycle is gone — an RSC awaits the server fetch before rendering (no client "loading" state); each spec's loading test was removed and the error/empty COPY pinned identically. Net effect on the suite: −5 loading tests, +10 builder tests.
+- **No raw `/api/v1` in components** (E21-S1 rule 5 — all URLs in `api/public-content-api.ts`); `next/image` stays `unoptimized` at every site; the generic error blocks (no `notFound()`) preserved on both detail pages; public sponsors stayed independent of `features/sponsors/`.
+- **DoD:** full suite **201 files / 1922 tests green** (1917 − 5 loading + 10 builder); `tsc --noEmit` clean; `eslint --max-warnings=0` clean across `features/public/**` + `app/public/**`; `prettier --write` on the new slice files + the rewritten thin entries + the adapted specs (LF, A73); `next build` validated at the epic boundary (A58).
+
 ### File List
+
+- `frontend/src/features/public/types/public.types.ts` (new — DTOs + `TIER_*` + `getHighestTier`)
+- `frontend/src/features/public/api/public-content-api.ts` (new — base-URL helper + 7 fns)
+- `frontend/src/features/public/api/public-content-api.test.ts` (new — builder tests)
+- `frontend/src/features/public/components/sponsors-content.tsx` (new — full SC)
+- `frontend/src/features/public/components/blog-list.tsx` (new — SC) + `blog-search.tsx` (new — island)
+- `frontend/src/features/public/components/blog-detail.tsx` (new — SC) + `share-button.tsx` (new — island)
+- `frontend/src/features/public/components/events-list.tsx` (new — SC) + `events-filter.tsx` (new — island)
+- `frontend/src/features/public/components/event-detail.tsx` (new — SC) + `event-registration-form.tsx` (new — island)
+- `frontend/src/app/public/{sponsors,blog,events}/page.tsx` (modified — thin re-export entries)
+- `frontend/src/app/public/{blog,events}/[id]/page.tsx` (modified — thin async params entries)
+- `frontend/src/app/public/sponsors/page.test.tsx`, `blog/page.test.tsx`, `blog/[id]/page.test.tsx`, `events/page.test.tsx`, `events/page.contentlanguage.test.tsx`, `events/[id]/page.test.tsx` (modified — RSC-adapted, A88)
 
 ## Change Log
 
 - 2026-06-12: Story created (5 read-only public content pages → `features/public/` Server-Component slice; minimal client islands for search/filter/share/registration; BUILD server-fetch transport — `useApiClient` unusable; DTO supersets in `types/public.types.ts`; DEC-1 events wrap-vs-build, DEC-2 build blog/sponsors/registration, DEC-3 slice-owned types, DEC-4 RSC+island split, DEC-5 base-URL helper). Status ready-for-dev.
+- 2026-06-12: Implemented — slice foundation (api + types + builder tests) + 5 RSC pages with 5 client islands; S1 oracle adapted client→RSC (A88, behaviour unchanged) with the loading-spinner A79 delta documented per spec; suite 1922 green; tsc/eslint/prettier clean; DEC-1=B, DEC-2..5=A. Status → review.
