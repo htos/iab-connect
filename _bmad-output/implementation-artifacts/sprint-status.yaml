@@ -1,5 +1,37 @@
 # generated: 2026-05-12
-# last_updated: 2026-06-12 (bmad-create-story BULK REFRESH for entire Epic-29 (Frontend
+# last_updated: 2026-06-12 (bmad-create-story BULK REFRESH for entire Epic-25 (Frontend
+#   Feature-Slice Migration — Communication): COMPLETE. Resumed per roadmap order (E29 CLOSED ->
+#   E25 next; file-order + roadmap agree, no AskUserQuestion needed). User directive "das ganze
+#   epic mit den stories dazu implementierungs ready machen" -> all 4 stories dev-ready, post-MVP-
+#   comprehensive. 4 parallel A56 spikes (automations / email-campaigns / email-templates / index+
+#   recipe). **A56 spike findings (load-bearing, in each story):** (1) THREE DIFFERENT TRANSPORTS —
+#   automations = `@/lib/api/automations` raw-fetch+token-param fns (A94 WRAP); **email-campaigns =
+#   NO api module, the 4 god-pages fetch INLINE** (`lib/api/email-campaigns.ts` is DTOs/helpers only)
+#   -> S3 BUILDS the api layer via useApiClient (the A94 "no lib module -> adapt" branch, heaviest S1
+#   transport adaptation); email-templates = `emailTemplatesApi` over the legacy throwing `ApiClient`
+#   (id:number). (2) **Cross-module coupling (A83/A84/E21-S5):** automations(S2) + email-campaigns(S3)
+#   consume `emailTemplatesApi.getAllTemplates` for template dropdowns -> `emailTemplatesApi` + types
+#   MUST stay in `@/lib`/`@/types` (boundary-legal); only the `EmailTemplateForm` COMPONENT relocates
+#   (2 in-epic importers); nested sub-slices may NOT import `@/features/communication/<sibling>`. (3)
+#   per-page auth guards VARY (automations/campaigns = Vorstand/Admin redirect; email-templates list =
+#   NO guard / new+[id] = silent return-null; index = redirect) -> pin/preserve each. (4) automations
+#   NOT zero-tested (2 existing tests; E25-S1 retains/extends — A56 correction). (5) email-campaigns
+#   detail = the richest E25 surface: Draft/Scheduled/Sending/Sent/Cancelled/Failed state machine +
+#   5 mutations (test/schedule/send/cancel/resend) + statistics + recipients + DOMPurify preview
+#   (treat as the E29 board-documents-detail peer). (6) all forms manual useState -> E22 RHF+Zod; all
+#   status badges raw `getStatusColor` strings -> Badge variants/tokens (DEC-2/A77). (7) i18n: all
+#   namespaces (communication 15 / emailCampaigns 131 / emailTemplates 40 / automations 87) en<->de
+#   parity, hi=0 (subset OK) -> NO i18n work (reuse keys). **Cross-cutting:** dev-story order S1 ->
+#   {S2,S3,S4} (S2/S3/S4 each need S1 green; mutually independent, may parallel); each story carries
+#   DEC-1..4 w/ recommended options (A41/A32 + A43); recurring recs: DEC transport = wrap existing lib
+#   module where one exists (automations/email-templates) / BUILD via useApiClient where none does
+#   (email-campaigns), DEC form = E22 RHF+Zod, DEC type-home = re-export from lib, A93 disable retry on
+#   deterministic-404 sentinels. Frontend gates A58/A72/A73 + A78 stable mocks. **Status transitions:**
+#   epic-25 backlog -> in-progress; e25-s1..s4 backlog -> ready-for-dev; epic-25-retrospective optional.
+#   Sprint state: 25 epics done (E1-E24 + E29) + E25 in-progress (4 ready-for-dev); E26/E27/E28/E30/E31
+#   backlog. NEXT per workflow + feedback_session_pacing_dev_cycles + A34: commit this 4-story batch,
+#   then bmad-dev-story for e25-s1 in a fresh session (S1 net green at HEAD first). Independent of the
+#   still-open Beta go-live walkthrough.) ## Previously: 2026-06-12 (bmad-create-story BULK REFRESH for entire Epic-29 (Frontend
 #   Feature-Slice Migration — Smaller Features): COMPLETE. Resumed per the roadmap wave order
 #   (E23->E24 closed; E29 next, NOT the numeric E25 — user picked E29 via AskUserQuestion).
 #   User directive "für das ganze nächste Epic. wichtig es ist kein mvp mehr." (2026-06-12) →
@@ -1505,11 +1537,11 @@ development_status:
   e24-s3-event-subpages-feature-slice: done
   epic-24-retrospective: done
 
-  epic-25: backlog
-  e25-s1-communication-characterization-tests: backlog
-  e25-s2-automations-crud-feature-slice: backlog
-  e25-s3-email-campaigns-crud-feature-slice: backlog
-  e25-s4-email-templates-crud-slice-and-component-relocation: backlog
+  epic-25: in-progress  # 2026-06-12: resumed per roadmap order (E29->E25); bulk create-story for all 4 stories
+  e25-s1-communication-characterization-tests: ready-for-dev
+  e25-s2-automations-crud-feature-slice: ready-for-dev
+  e25-s3-email-campaigns-crud-feature-slice: ready-for-dev
+  e25-s4-email-templates-crud-slice-and-component-relocation: ready-for-dev
   epic-25-retrospective: optional
 
   epic-26: backlog
