@@ -1537,12 +1537,12 @@ development_status:
   e28-s4-public-static-and-layout-slice: backlog
   epic-28-retrospective: optional
 
-  epic-29: in-progress  # 2026-06-12: resumed per roadmap order (E24->E29); bulk create-story for all 4 stories
-  e29-s1-smaller-features-characterization-tests: ready-for-dev
-  e29-s2-documents-feature-slice: ready-for-dev
-  e29-s3-board-documents-feature-slice: ready-for-dev
-  e29-s4-profile-feature-slice: ready-for-dev
-  epic-29-retrospective: optional
+  epic-29: done  # 2026-06-12: implemented (S1-S4) + epic-boundary review (5 patches) + retro; Vitest 839/101, next build green
+  e29-s1-smaller-features-characterization-tests: done
+  e29-s2-documents-feature-slice: done
+  e29-s3-board-documents-feature-slice: done
+  e29-s4-profile-feature-slice: done
+  epic-29-retrospective: done
 
   epic-30: backlog
   e30-s1-introduce-pageshell-pageheader-layout-primitives: backlog

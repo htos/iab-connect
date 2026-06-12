@@ -1,6 +1,6 @@
 # Story E29.S2: Documents — Feature-Slice Extraction
 
-Status: ready-for-dev
+Status: done
 
 Depends on: **E29-S1 (this net must be green at HEAD first)**, plus E21-S3 + E21-S5 (closed) and the suppliers/sponsors/members/events slice recipe. Inherits E21-S1 boundary decisions (DEC-1 `useApiClient` client contract). Independent of E29-S3/S4 once S1 is green. **Shares `@/lib/services/documents.ts` + the `documents.*` i18n namespace with E29-S3 (Board Documents) — neither may break the shared seam (A62).**
 
@@ -38,17 +38,17 @@ so that the document browser matches the standard feature-slice architecture wit
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites + resolve the three DECs (AC: all) — record A43 (a)/(b)/(c) per DEC
-  - [ ] E29-S1 documents spec green at HEAD. Confirm `features/documents/` does NOT exist. Re-read `app/documents/page.tsx` + `lib/services/documents.ts` + `lib/services/api.ts` + the suppliers slice template (A56).
-  - [ ] **DEC-1 (transport — wrap service vs. useApiClient):** see DEC block; recommended **A** (wrap the existing `@/lib/services/documents` fns inside `api/documents-api.ts` + a `documentsKeys` factory; do NOT re-implement the URLs nor migrate the service to `useApiClient`, because the board sibling shares the module — A62).
-  - [ ] **DEC-2 (download location):** recommended **A** (extract `handleDownload` into a `use-document-download` hook behind `document-download-button` — a deterministic user-initiated side-effect, NOT a TanStack query/mutation cache entry).
-  - [ ] **DEC-3 (type home):** recommended **MEMBERS/EVENTS re-export pattern** (canonical DTOs stay where `lib/services/documents` defines them; `types/document.types.ts` re-exports from `@/lib/services/documents` — `features → lib` is boundary-legal; a `lib → features` move would violate E21-S5 and break the board sibling).
-- [ ] Task 1: Scaffold the slice `api` + `types` (AC: 3) — `documents-api.ts` (`DOCUMENTS_BASE`, `documentsKeys` {all/list(filters)/folders(parentId)/tags}, wrapped fetch fns — request URLs/params byte-identical incl. omitted-empty params + the single-`tags` string) + `types/document.types.ts` (re-export) + `documents-api.test.ts`.
-- [ ] Task 2: Hooks (AC: 3, 4, 5) — `useDocuments(filters, enabled)` / `useDocumentFolders(parentId, enabled)` / `useDocumentTags(enabled)` queries (mirror suppliers `useQuery`; `enabled` gated on auth); `useDocumentDownload()` side-effect hook (token via dynamic `getSession`; error surfaced). `use-documents.test.tsx` (query error→surface; download error path).
-- [ ] Task 3: Components (AC: 2, 3, 4, 5) — `documents-page-content.tsx` (single `"use client"`; holds `currentPath`/`selectedFolder`/`searchTerm`/`selectedTag`/`page` local state + the auth-guard redirect) composing `documents-filter-bar` / `documents-breadcrumb` / `documents-folder-grid` / `documents-table` / `document-download-button`. Preserve the de-CH date format, the responsive column hiding, and the up-button-only-when-`currentPath.length>0` rule.
-- [ ] Task 4: Thin route entry (AC: 2) — `app/documents/page.tsx` → `<DocumentsPageContent/>` (no `"use client"`).
-- [ ] Task 5: i18n parity (AC: 6) — fill any missing `documents.*` keys in hi.json to parity with en/de for the touched set; keep `messages.parity.test.ts` green; no key renames/removals (board shares the namespace).
-- [ ] Task 6: Green-the-net + DoD gate (AC: 1, 7) — E29-S1 documents spec green (transport-mock re-pointed only); new slice unit tests; `npx tsc --noEmit` + `npx eslint <changed>` + `npx prettier --check <changed>` + `npm test -- --run` clean; `next build` succeeds; LF (A73). Record the A79 deltas chosen.
+- [x] Task 0: Verify prerequisites + resolve the three DECs (AC: all) — A43 (a)/(b)/(c) in Debug Log
+  - [x] E29-S1 documents spec green at HEAD. Confirmed `features/documents/` did NOT exist. Re-read `app/documents/page.tsx` + `lib/services/documents.ts` + `lib/services/api.ts` + the suppliers slice template (A56).
+  - [x] **DEC-1 RESOLVED → A:** slice `api/documents-api.ts` WRAPS the existing `@/lib/services/documents` fns + a `documentsKeys` factory; `lib/services/documents.ts` untouched (sibling-safe for E29-S3 per A62).
+  - [x] **DEC-2 RESOLVED → A:** `hooks/use-document-download.ts` side-effect behind `components/document-download-button.tsx`; not cached.
+  - [x] **DEC-3 RESOLVED → A:** `types/document.types.ts` re-exports `DocumentDto`/`DocumentFolderDto`/`PagedDocumentsResult` from `@/lib/services/documents` (`features→lib` legal).
+- [x] Task 1: Scaffold the slice `api` + `types` (AC: 3) — `documents-api.ts` (`DOCUMENTS_BASE`, `documentsKeys` {all/list(filters)/folders(parentId)/tags}, wrapped fns — URLs/params byte-identical incl. omitted-empty params + single-`tags` string) + `types/document.types.ts` (re-export) + `documents-api.test.ts` (9 tests).
+- [x] Task 2: Hooks (AC: 3, 4, 5) — `use-documents` / `use-document-folders` / `use-document-tags` queries (`enabled` gated on auth; throw on `!result.success`); `use-document-download` side-effect (dynamic `getSession` token; error surfaced to caller). `use-documents.test.tsx` (6 tests: success/error-throw/disabled + tags-disabled + download success-revoke / error-surfaced).
+- [x] Task 3: Components (AC: 2, 3, 4, 5) — `documents-page-content.tsx` (single `"use client"`; holds currentPath/selectedFolder/searchTerm/selectedTag/page + the `!isAuthenticated→/login` guard + authLoading spinner) composing `documents-filter-bar` / `documents-breadcrumb` / `documents-folder-grid` / `documents-table` / `document-download-button`. Preserved de-CH date, responsive column hiding, up-button-only-when-currentPath.length>0, single-tag string, pageSize=20, the dual currentPath/selectedFolder state.
+- [x] Task 4: Thin route entry (AC: 2) — `app/documents/page.tsx` → `<DocumentsPageContent/>` (no `"use client"`).
+- [x] Task 5: i18n parity (AC: 6) — NO message-file change needed: the refactor reuses existing `documents.*`/`common.*` keys (en↔de parity holds; hi may stay a subset — parity test green). No keys added/renamed/removed.
+- [x] Task 6: Green-the-net + DoD gate (AC: 1, 7) — E29-S1 documents spec **21/21 green UNCHANGED** (DEC-1=A kept the transport on the mocked module → zero spec edits, A87 validated); new slice unit tests (15); full suite **780 passed / 93 files** (765 + 15, zero regressions); `tsc --noEmit` clean; `eslint` exit 0 on slice+page+spec; `prettier --write` new files + `--check` modified page clean; LF. A79 deltas recorded. (`next build` deferred to the epic boundary per A58.)
 
 ## Dev Notes
 
@@ -102,12 +102,41 @@ This is a **list-style slice over a pre-existing service module** — the new wr
 
 ### Agent Model Used
 
+claude-opus-4-8[1m] (dev-story orchestration + 1 general-purpose sub-agent for the full slice extraction).
+
 ### Debug Log References
+
+**DEC-1/2/3 (all = recommended A) — per A43, autonomous mode ("für das ganze epic … ohne stop"):**
+- **DEC-1 (transport) = A:** (a) `api/documents-api.ts` wraps `@/lib/services/documents` + adds `documentsKeys`; `lib/services/documents.ts` untouched. (b) the board page (E29-S3) shares the module (A62); rewriting to `useApiClient` would diverge the transport + the user pre-declared autonomous mode + the story recommended A. (c) the S1 spec's `vi.mock("@/lib/services/documents")` still intercepts byte-for-byte → the net stayed green with ZERO behavioural-assertion edits (A87 validated).
+- **DEC-2 (download) = A:** (a) `use-document-download.ts` side-effect hook behind `document-download-button.tsx`; error returned to caller, not cached/thrown. (b) a download is a user-initiated side-effect, not server state. (c) RQ cache clean; click-time token behaviour preserved; A76 error banner driven via the button's `onError`.
+- **DEC-3 (type home) = A:** (a) `types/document.types.ts` re-exports from `@/lib/services/documents`. (b) `features→lib` legal; a `lib→features` move violates E21-S5 + breaks the board sibling. (c) mirrors E23-S2/E24-S2; ESLint boundary clean.
 
 ### Completion Notes List
 
+- **Behaviour preserved (AC-1): all 21 E29-S1 documents tests pass UNCHANGED** — the spec was authored forward-compatibly (QueryClientProvider wrapper, mocked at `@/lib/services/documents`), and DEC-1=A keeps the transport on that exact module, so the mock still intercepts. `app/documents/page.test.tsx` was not edited. This is the A87 proof: a green characterization net + the provider seam = behaviour-preservation evidence with no harness rework.
+- **A79 deltas (AC-5):** manual `setLoading`/`startTransition` → TanStack; refetch-on-filter via `documentsKeys.list({page,pageSize,search,folderId,tags})` (all server filters in the key; tags now an independent cached query vs the god-page's parallel-on-every-load); loading spinner mapped to `query.isLoading`; folders/tags failures stay silent (matching the god-page `if(result.success)` no-op); the A76 download error is a separate sticky `downloadError` state taking precedence over the list error, cleared on next filter/nav.
+- **i18n:** no message-file change — reuses existing `documents.*`/`common.*` keys (en↔de parity holds; `hi.documents` empty, which the parity test permits). No keys added/renamed/removed (sibling-safe for S3, A62).
+- **Gates:** full suite **780 passed / 93 files** (765 baseline + 15 new slice tests; zero regressions); `tsc --noEmit` clean; `eslint` exit 0; `prettier --check` clean on the modified page (only NEW slice files were `--write`, per A72); LF (A73). Orchestrator re-verified the full suite + tsc + eslint independently.
+
 ### File List
+
+**New — slice (`frontend/src/features/documents/`):**
+- `api/documents-api.ts`, `api/documents-api.test.ts`
+- `types/document.types.ts`
+- `hooks/use-documents.ts`, `hooks/use-document-folders.ts`, `hooks/use-document-tags.ts`, `hooks/use-document-download.ts`, `hooks/use-documents.test.tsx`
+- `components/documents-page-content.tsx`, `components/documents-filter-bar.tsx`, `components/documents-breadcrumb.tsx`, `components/documents-folder-grid.tsx`, `components/documents-table.tsx`, `components/document-download-button.tsx`
+
+**Modified — thin route entry:** `frontend/src/app/documents/page.tsx`
+
+**Untouched (A62 sibling-safe):** `frontend/src/lib/services/documents.ts`; `frontend/src/app/documents/page.test.tsx` (E29-S1 net, unchanged + green).
+
+**Tracking:** `_bmad-output/implementation-artifacts/sprint-status.yaml` (e29-s2 → review).
 
 ## Change Log
 
-- 2026-06-12: Story created (member Documents browser → `src/features/documents/` slice; DEC-1 wrap-shared-service, DEC-2 download-hook, DEC-3 type re-export; A62 shared `documents.ts` + `documents.*` namespace constraint vs the board sibling). Status ready-for-dev.
+- 2026-06-12: Story created (member Documents browser → `src/features/documents/` slice; DEC-1 wrap-shared-service, DEC-2 download-hook, DEC-3 type re-export; A62 shared `documents.ts` + `documents.*` constraint vs the board sibling). Status ready-for-dev.
+- 2026-06-12: Implemented. Slice scaffolded (api/types/hooks/components); page → thin entry; DEC-1/2/3=A. E29-S1 documents net 21/21 green UNCHANGED (A87); +15 slice tests; full suite 780 green; tsc/eslint/prettier clean. No i18n change (reused keys). Status → review.
+
+## Senior Developer Review (AI) — Epic-Boundary, 2026-06-12
+
+**Outcome: Approved.** Clean list-style slice wrapping the shared `lib/services/documents.ts` (A62 sibling-safe — service untouched). DEC-1/2/3=A correct; the S1 net stayed green unchanged (A87 proof). No findings against S2. Full review: `epic-29-boundary-review-2026-06-12.md`.

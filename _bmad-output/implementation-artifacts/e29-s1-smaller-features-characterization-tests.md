@@ -1,6 +1,6 @@
 # Story E29.S1: Smaller Features — Characterization Tests for Documents, Board Documents, and Profile (Regression Net)
 
-Status: ready-for-dev
+Status: done
 
 Depends on: E21-S3 + E21-S5 (closed), the E22 RHF+Zod form sub-recipe (closed), E23 + E24 (closed — their slice recipe + characterization harness are the templates). Inherits E21-S1 boundary decisions (DEC-1 `useApiClient` client contract, DEC-2 status/destructive colours). **Blocks E29-S2 (Documents), E29-S3 (Board Documents), E29-S4 (Profile)** — each requires this net green at HEAD.
 
@@ -46,22 +46,22 @@ so that the E29-S2/S3/S4 slice extractions can prove behaviour was preserved aga
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Confirm prerequisites + harness spike (AC: all) — **DEC-1 (mock strategy) is load-bearing; resolve it first**
-  - [ ] On branch `refactor/frontend-feature-slice`; confirm `src/features/{documents,board-documents,profile}/` do NOT exist yet (S2/S3/S4 create them). Re-read the five pages + `lib/services/documents.ts` + `lib/api/privacy.ts` + `lib/api/users.ts` + `lib/services/api.ts` (A56).
-  - [ ] **A56 correction (pin, don't assume zero-tested):** `app/profile/ChannelPreferencesCard.test.tsx` ALREADY exists (3 tests, render + change + disabled-channels). Retain it untouched; the new profile spec covers the page-level consent/edit/security behaviours around it. Net delta is +5 new spec files.
-  - [ ] **DEC-1 RESOLVED → [dev fills A43 (a)/(b)/(c)]:** Recommended **A — layer-matched hybrid mocks**: `vi.mock("@/lib/services/documents", …importActual)` for the documents + board pages; `vi.mock("@/lib/api/privacy")` + `vi.mock("@/lib/api/users")` for profile/security; `vi.mock("@/lib/auth", …)` returning a stable `useAuth` (token + role flags) for the guards; and `vi.stubGlobal("fetch", …)` only for the **raw-fetch** surfaces (profile `GET`/`PUT /members/me`, the documents/board blob downloads, the board upload `FormData`). `vi.stubGlobal("confirm"/"alert", …)` + `vi.unstubAllGlobals()` in `afterEach` for the board delete + session revoke + restore confirms. Flag the service-mock specs as the surface S2/S3/S4 will re-point (the calls' URLs/outcomes don't change, only the mock target — exactly the E24-S1 sub-page note).
-- [ ] Task 1: Documents spec — `app/documents/page.test.tsx` (AC: 2, 4, 9, 10, 11)
-  - [ ] Auth spinner/login-redirect+no-fetch; `pageSize=20`; search→page-reset + folderId + single-tag filters on the `getDocuments` mock; folder nav into/up/root + breadcrumb; up-button visibility; pagination bounds; loading/empty/`loadError`; download success (blob anchor — assert `getDownloadUrl`/`getSession`/anchor) + download-error banner (A76).
-- [ ] Task 2: Board list spec — `app/board/documents/page.test.tsx` (AC: 2, 3, 5, 9, 10, 11)
-  - [ ] Vorstand/Admin-only gate (Member redirected + no fetch); search/status/category/folder filters→page-reset; pagination; folder nav + breadcrumb; upload modal `FormData` + success-refetch + `uploadError`; upload-disabled-without-folder + `selectFolderFirst`; status actions (review/publish/archive) gated by status + refetch + `statusChanged`/`statusChangeError`; delete confirm → refetch + `deleteSuccess`/`deleteError`; row→detail nav; loading/empty/`loadError`.
-- [ ] Task 3: Board detail spec — `app/board/documents/[id]/page.test.tsx` (AC: 2, 3, 6, 9, 10, 11)
-  - [ ] Vorstand/Admin gate; `getDocumentById` load; 404/not-found view (pin the `"Document not found"` fallback string as HEAD); metadata grid; download current + per-version + `downloadError`; tag edit toggle + save→refetch; version-upload modal→refetch + `uploadError`; status transitions; version history (latest highlight, restore non-latest → confirm → refetch); toast auto-dismiss 3000 ms.
-- [ ] Task 4: Profile spec — `app/profile/page.test.tsx` (AC: 2, 7, 9, 10, 11)
-  - [ ] login/`/`/no-record guard matrix (incl. admin-vs-member 404 message + links); `/members/me` load skeleton; view↔edit toggle; required/optional field set; `PUT` submit success (close+update) + error (banner+stay-in-edit) + Cancel reset; **consent three branches** (silent load failure; success+3 s auto-dismiss; explicit error no-timer); channel-prefs card present (defer card internals to the existing `ChannelPreferencesCard.test.tsx`).
-- [ ] Task 5: Profile Security spec — `app/profile/security/page.test.tsx` (AC: 2, 8, 9, 10, 11)
-  - [ ] login guard; `getMySessions` load + best-effort empty-on-error; session render (ip fallback / dates / client badges); `noSessions` empty state; revoke flow (`confirm` → `revokeMySession` → optimistic remove + success 4 s auto-dismiss; error no-timer; button-disabled while revoking).
-- [ ] Task 6: Green-at-HEAD + DoD gate (AC: 1, 10, 11)
-  - [ ] `npx vitest run "src/app/documents" "src/app/board/documents" "src/app/profile"` green; full `npx vitest run` green with no regressions; `npx tsc --noEmit` clean; `npx eslint <new test files>` clean; `npx prettier --write` on the new files (LF). Record per-page spec counts + any HEAD quirks pinned (not fixed) in Completion Notes.
+- [x] Task 0: Confirm prerequisites + harness spike (AC: all) — **DEC-1 (mock strategy) is load-bearing; resolve it first**
+  - [x] On branch `refactor/frontend-feature-slice`; confirmed `src/features/{documents,board-documents,profile}/` do NOT exist yet. Re-read the five pages + `lib/services/documents.ts` + `lib/api/privacy.ts` + `lib/api/users.ts` + `lib/services/api.ts` (A56).
+  - [x] **A56 correction confirmed:** `app/profile/ChannelPreferencesCard.test.tsx` ALREADY exists (3 tests) — retained untouched + verified still 3/3 green after the new profile spec. Net delta = +5 new spec files / +106 tests.
+  - [x] **DEC-1 RESOLVED → A (layer-matched hybrid mocks):** `vi.mock("@/lib/services/documents", …importActual)` (keeps real enums/helpers like `formatFileSize`) for documents + board pages; `vi.mock("@/lib/api/privacy")` for profile consent/channel; `vi.mock("@/lib/api/users")` for security; `vi.mock("@/lib/auth")` returning a stable `useAuth`; `vi.stubGlobal("fetch")` for the raw-fetch surfaces (profile GET/PUT /members/me, blob downloads, board FormData upload) + `vi.mock("next-auth/react")` `getSession` for the download token path; `vi.stubGlobal("confirm")` + `vi.unstubAllGlobals()` in `afterEach` for board delete + session revoke + restore. See Debug Log for the A43 (a)/(b)/(c) record.
+- [x] Task 1: Documents spec — `app/documents/page.test.tsx` (AC: 2, 4, 9, 10, 11) — **21 tests**
+  - [x] Auth spinner/login-redirect+no-fetch; `pageSize=20`; search→page-reset + folderId + single-tag STRING filter on `getDocuments`; folder nav into/up/root + breadcrumb; up-button visibility; pagination bounds; loading/empty/`loadError`; download success (`getDownloadUrl`→`getSession`→`fetch` blob→object-URL anchor) + download-error banner (A76).
+- [x] Task 2: Board list spec — `app/board/documents/page.test.tsx` (AC: 2, 3, 5, 9, 10, 11) — **33 tests**
+  - [x] Vorstand/Admin-only gate (Member redirected); search/status/category/folder filters→page-reset; pagination; folder nav + breadcrumb; upload modal `FormData` + success-refetch + `uploadError`; upload-disabled-without-folder + `selectFolderFirst`; status actions gated by `doc.status` + refetch + `statusChanged`/`statusChangeError`; delete confirm → refetch + `deleteSuccess`/`deleteError`; row→detail nav; loading/empty/`loadError`.
+- [x] Task 3: Board detail spec — `app/board/documents/[id]/page.test.tsx` (AC: 2, 3, 6, 9, 10, 11) — **22 tests**
+  - [x] Vorstand/Admin gate; `getDocumentById` load; 404/not-found VIEW renders `documents.notFound` key (hardcoded `"Document not found"` lands only in `error` state — pinned the split); metadata grid; download current + per-version + `downloadError`; tag edit toggle + save→refetch; version-upload modal→refetch + `uploadError`; status transitions (Draft→Review+Publish, Reviewed→Publish+Archive, Published→Archive); version history (latest highlight, restore non-latest → confirm → refetch); toast auto-dismiss 3000 ms (fake timers).
+- [x] Task 4: Profile spec — `app/profile/page.test.tsx` (AC: 2, 7, 9, 10, 11) — **18 tests**
+  - [x] login/`/`/no-record guard matrix (admin-vs-member 404 message + `/admin`-link presence/absence + always-`/profile/security` link, 3 tests); `/members/me` load skeleton + 500-notice; view↔edit toggle; required/optional field set; `PUT` submit success (close+update, error-precedence `errorData.message`→`error.savingError`) + error (banner+stay-in-edit) + Cancel reset; **consent three branches** (silent load failure; success+3 s auto-dismiss; explicit error no-timer — fake timers); channel-prefs card present (internals deferred to existing `ChannelPreferencesCard.test.tsx`, still 3/3 green).
+- [x] Task 5: Profile Security spec — `app/profile/security/page.test.tsx` (AC: 2, 8, 9, 10, 11) — **12 tests**
+  - [x] login guard (no member check); `getMySessions` load; session render (ip fallback / `formatDateTime` / client badges); `noSessions` empty state; **HEAD divergence pinned (see Completion Notes): load failure is NOT silent — it sets an `error` alert banner** (page.tsx:49-56); revoke flow (`confirm` → `revokeMySession(token,id)` → optimistic removal + success → 4 s auto-dismiss via setTimeout spy; declined-confirm short-circuit; error → message + row persists; button-disabled while revoking).
+- [x] Task 6: Green-at-HEAD + DoD gate (AC: 1, 10, 11)
+  - [x] `npx vitest run` full suite **765 passed / 91 files** (was 659/86 at HEAD → +106 / +5 files, zero regressions); `npx tsc --noEmit` clean; `npx eslint <5 new specs>` exit 0; `npx prettier --check <5 new specs>` clean (LF). Per-page counts + HEAD quirks recorded in Completion Notes.
 
 ## Dev Notes
 
@@ -120,12 +120,44 @@ Write delete/revoke/restore/submit assertions at the **outcome** level (confirm 
 
 ### Agent Model Used
 
+claude-opus-4-8[1m] (dev-story orchestration + 4 parallel general-purpose sub-agents, one per page-cluster: documents / board list+detail / profile / profile-security).
+
 ### Debug Log References
+
+**DEC-1 (characterization mock strategy) — per A43:**
+- (a) **Decision:** A — layer-matched hybrid mocks. `vi.mock("@/lib/services/documents", …importActual)` for documents + board pages (keeps real enums/`formatFileSize`); `vi.mock("@/lib/api/privacy")` for profile consent/channel; `vi.mock("@/lib/api/users")` for security; stable `vi.mock("@/lib/auth")` `useAuth`; `vi.stubGlobal("fetch")` for the raw-fetch surfaces; `vi.mock("next-auth/react")` `getSession` for the download token path; `vi.stubGlobal("confirm")` + `vi.unstubAllGlobals()` in `afterEach`.
+- (b) **Rationale:** the data layer is genuinely non-uniform (services + raw fetch + privacy/users modules); mocking each page at the layer it actually uses keeps assertions ergonomic and the specs readable; the user pre-declared autonomous mode ("für das ganze epic … ohne stop"); the story's DEC-1 recommended Option A.
+- (c) **Consequence / cross-story note:** the service-mock targets + the mechanism-level assertions (in-component delete/restore confirm modals, raw-fetch FormData upload, the `getSession` token path, the RHF/manual form submit, the `setTimeout` toasts) are the surface S2/S3/S4 are **licensed to re-point** (A79). Two harness gotchas surfaced for the siblings: (1) the `@/lib/services/documents` mock needs `vi.hoisted` (factory references fns at eval time → TDZ otherwise); (2) the download-error branch must also `vi.doMock("next-auth/react")` or `getSession`'s internal `/api/auth/session` fetch rejection escapes as an unhandled error.
 
 ### Completion Notes List
 
+- **+106 new tests across 5 new spec files; full suite 765 passed / 91 files** (was 659 / 86 at HEAD; zero regressions). `tsc --noEmit` clean; `eslint` exit 0 on all 5; `prettier --check` clean (LF). Per-file: documents 21, board list 33, board detail 22, profile 18, profile-security 12. Existing `ChannelPreferencesCard.test.tsx` (3) retained + verified still green.
+- **HEAD quirks pinned (characterized, NOT fixed):**
+  1. Documents: single-`tags` STRING (not array); initial URL omits empty `search`/`folderId`/`tags`; `pageSize=20`; no role gate (any authed user); search/tag change resets `page→1` even on page 2.
+  2. Board detail: the 404/not-found VIEW renders the i18n key `documents.notFound`; the hardcoded `"Document not found"` string (`[id]/page.tsx:65`) only lands in the `error` STATE, not visibly — pinned the split (S3 may i18n-fix the state string).
+  3. Board: toast 3000 ms auto-dismiss; upload button `disabled={!selectedFolder}`; `authLoading` does NOT gate the data-load effect (it keys on role flags) — the "no fetch" invariant holds only for the Member-only redirect cases.
+  4. Profile: silent consent-load catch (no surface); consent success 3 s auto-dismiss vs explicit-error no-timer; the no-member-record admin/vorstand-vs-member branch (+`/admin` link) always shows the `/profile/security` link; PUT error precedence `errorData.message` → `error.savingError`.
+  5. **Profile-security DIVERGENCE from the story AC-8 / spike (load-bearing for S4):** the AC said the `getMySessions` load failure is "best-effort — empty list on error, NO error surface". The SHIPPED code (`security/page.tsx:49-56`) DOES `setError(...)` in the catch → a `role="alert"` banner appears alongside the empty list. The spec pins the ACTUAL behaviour (empty-list + alert-banner, two tests). S4 must preserve the alert banner, not the (incorrect) "silent" AC wording. Also pinned: optimistic removal on revoke success; 4 s auto-dismiss; revoke is the ONLY mutating action (no device-change).
+- **Forward-compat seam (AC-10/11):** every render wrapped in a fresh `QueryClientProvider` (retry:false); all assertions via i18n keys / ARIA roles / service-call args / fetch URLs / navigation — so the S2/S3/S4 TanStack adopters need no harness rework.
+
 ### File List
+
+**New (test-only):**
+- `frontend/src/app/documents/page.test.tsx`
+- `frontend/src/app/board/documents/page.test.tsx`
+- `frontend/src/app/board/documents/[id]/page.test.tsx`
+- `frontend/src/app/profile/page.test.tsx`
+- `frontend/src/app/profile/security/page.test.tsx`
+
+**Untouched (part of the net, retained):** `frontend/src/app/profile/ChannelPreferencesCard.test.tsx` (3 tests).
+
+**Tracking:** `_bmad-output/implementation-artifacts/sprint-status.yaml` (e29-s1 → review).
 
 ## Change Log
 
-- 2026-06-12: Story created (characterization net over the 5 small-feature pages: documents / board-documents list+detail / profile / profile-security). Non-uniform data layer pinned as DEC-1 (layer-matched hybrid mocks). A56 divergences recorded (board surface richer than skeleton; profile not zero-tested; documents single-tag string + pageSize=20). Status ready-for-dev.
+- 2026-06-12: Story created (characterization net over the 5 small-feature pages). Non-uniform data layer pinned as DEC-1 (layer-matched hybrid mocks). A56 divergences recorded. Status ready-for-dev.
+- 2026-06-12: Implemented (4 parallel sub-agents). 106 new tests / 5 files; full suite 765 green / 91 files, zero regressions; tsc/eslint/prettier clean. DEC-1=A (layer-matched hybrid). HEAD quirks pinned incl. the profile-security load-failure-NOT-silent divergence (S4 must preserve the alert banner). Status → review.
+
+## Senior Developer Review (AI) — Epic-Boundary, 2026-06-12
+
+**Outcome: Approved.** Acceptance Auditor confirmed the characterization specs assert REAL behaviour (gates, guard matrix, consent three-branch, session optimistic-removal, both download-error surfaces) — none weakened or deleted to pass. The profile-security load-failure-NOT-silent divergence was correctly characterized (the net is the oracle, used to correct the S4 AC). No findings against S1. Full review: `epic-29-boundary-review-2026-06-12.md`.

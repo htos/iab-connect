@@ -1,6 +1,6 @@
 # Story E29.S3: Board Documents — Feature-Slice Extraction (list + detail, full surface)
 
-Status: ready-for-dev
+Status: done
 
 Depends on: **E29-S1 (this net must be green at HEAD first)**, plus E21-S3 + E21-S5 (closed), the E22 RHF+Zod form sub-recipe (closed — reused for the tag-edit form), and the suppliers/sponsors/events detail-slice recipe. Inherits E21-S1 boundary decisions (DEC-1 `useApiClient`, DEC-2 status/destructive colours). **Shares `@/lib/services/documents.ts` + the `documents.*` i18n namespace with E29-S2 (Documents) — re-verify at Task 0 what S2 actually shipped before depending on it (A62).** Independent of S2/S4 once S1 is green.
 
@@ -45,17 +45,17 @@ so that the board-only document surface (browse, upload, status workflow, versio
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites + resolve the DECs (AC: all) — record A43 (a)/(b)/(c) per DEC
-  - [ ] E29-S1 board specs green at HEAD. Confirm `features/board-documents/` does NOT exist. **A62: re-verify what E29-S2 actually shipped** for `@/lib/services/documents` (which fns it wrapped, whether any export it left intact is needed here) — a sibling DEC is not a delivered contract. Re-read both board pages + `lib/services/documents.ts` + the sponsors detail slice (A56).
-  - [ ] **DEC-1 (transport):** recommended **A** — slice `api` wraps the existing `@/lib/services/documents` fns (sibling-safe, mirrors E29-S2 DEC-1); the raw-fetch upload/version-upload/download paths move into the slice `api`/hooks but keep their exact `getSession()` token + `FormData` shape (or adopt `useApiClient().upload` if E29-S2 established it cleanly — secondary option).
-  - [ ] **DEC-2 (upload-metadata + tag forms):** recommended **A** — adopt the **E22 RHF+Zod sub-recipe** for the tag editor and the upload-metadata form (the epic goal; behaviour-preserving — the tag editor stays a free-text comma list, validation only where the HTML form already required). Secondary: keep manual `useState` (smaller diff, misses the epic goal).
-  - [ ] **DEC-3 (type home):** recommended **re-export from `@/lib/services/documents`** via `types/board-document.types.ts` (boundary-legal `features→lib`; sibling-safe).
-- [ ] Task 1: Scaffold slice `api` + `types` + `schemas` (AC: 5) — `board-documents-api.ts` (`boardDocumentsKeys` {all/list(filters)/detail(id)} + wrapped fns + upload/download endpoints, URLs/params/`FormData` byte-identical) + `types/board-document.types.ts` (re-export) + `schemas/board-document.schema.ts` + `board-documents-api.test.ts`.
-- [ ] Task 2: Hooks (AC: 5, 6, 7) — `use-board-documents` list query; `use-board-document` detail query (+`BoardDocumentNotFoundError`); status-change / delete / tag-update / restore / upload / version-upload mutations with invalidation (`all` + `detail(id)`); `use-board-document-download` side-effect. `use-board-document.test.tsx` (query error→throw; a mutation invalidation).
-- [ ] Task 3: Components — list (AC: 1, 3, 4, 5, 6) — `board-documents-page-content.tsx` (single `"use client"`; Vorstand/Admin guard verbatim; holds filter/folder/page local state) + `board-documents-filter-bar` + `board-documents-table` + `board-document-upload-dialog`. Status actions gated by `DocumentStatus`; delete via the `destructive` Radix dialog (A86); row→detail nav. Preserve upload-disabled-without-folder + `selectFolderFirst`.
-- [ ] Task 4: Components — detail (AC: 2, 3, 4, 5, 6) — `board-document-detail.tsx` + `board-document-version-history.tsx` + `board-document-tag-editor.tsx` (RHF+Zod per DEC-2) + `board-document-download-button.tsx`. Preserve 404 view, metadata grid (de-CH date), download current+per-version + `downloadError`, version-upload modal, status transitions, restore confirm modal, toast auto-dismiss.
-- [ ] Task 5: Thin route entries + i18n (AC: 4, 8) — `board/documents/page.tsx` → `<BoardDocumentsPageContent/>`, `board/documents/[id]/page.tsx` → `<BoardDocumentDetail .../>` (KEEP `params: Promise<{id}>` + `use(params)` so the S1 spec that passes `params` stays green). Replace the `"Document not found"` literal with `documents.notFound`. Fill missing hi.json `documents.*` parity for the touched set; `messages.parity.test.ts` green; no key renames/removals.
-- [ ] Task 6: Green-the-net + DoD gate (AC: 1, 2, 9) — E29-S1 board specs green (transport-mock re-pointed only; the delete/upload/restore mechanism assertions are the licensed-update surface per the S1 A76/A79 note); new slice unit tests; `npx tsc --noEmit` + `npx eslint <changed>` + `npx prettier --check <changed>` + `npm test -- --run` clean; `next build` succeeds; LF (A73). Record the A79 deltas + the A62 re-verification result.
+- [x] Task 0: Verify prerequisites + resolve the DECs (AC: all) — A43 (a)/(b)/(c) in Debug Log
+  - [x] E29-S1 board specs green at HEAD. Confirmed `features/board-documents/` did NOT exist. **A62 re-verified:** E29-S2 wrapped `getDocuments`/`getFolders`/`getAllTags`/`getDownloadUrl` in `features/documents/api` (root key `["documents"]`), re-exported types, left `lib/services/documents.ts` UNTOUCHED. The board slice owns a DISTINCT `boardDocumentsKeys` (root `["board-documents"]`) → no collision; service confirmed untouched.
+  - [x] **DEC-1 RESOLVED → A:** slice `api` wraps the existing `@/lib/services/documents` fns; raw-fetch upload/version-upload/download moved into the slice keeping the exact `getSession()` Bearer + `FormData` shape; `lib/services/documents.ts` untouched (sibling-safe).
+  - [x] **DEC-2 RESOLVED → A:** E22 RHF+Zod for tag-editor + upload-metadata + version-comment forms (behaviour-preserving — free-text comma tags, validation only where the HTML form required).
+  - [x] **DEC-3 RESOLVED → A:** `types/board-document.types.ts` re-exports `DocumentDto`/`DocumentDetailDto`/`DocumentVersionDto`/`DocumentStatus`/etc. from `@/lib/services/documents`.
+- [x] Task 1: Scaffold slice `api` + `types` + `schemas` (AC: 5) — `board-documents-api.ts` (`boardDocumentsKeys` {all/list(filters)/detail(id)} + wrapped fns + raw-fetch upload/version-upload/download, byte-identical) + `types/board-document.types.ts` (re-export) + `schemas/board-document.schema.ts` + `board-documents-api.test.ts` (17 tests).
+- [x] Task 2: Hooks (AC: 5, 6, 7) — `use-board-documents` list query; `use-board-document` detail query (+`BoardDocumentNotFoundError`); `use-board-document-mutations` status/delete/tag/restore/upload/version-upload with invalidation (`all` + `detail(id)`); `use-board-document-download` side-effect. `use-board-document.test.tsx` (9 tests: 404→NotFoundError + a mutation invalidation).
+- [x] Task 3: Components — list (AC: 1, 3, 4, 5, 6) — `board-documents-page-content.tsx` (single `"use client"`; Vorstand/Admin guard VERBATIM; filter/folder/page state) + `board-documents-filter-bar` + `board-documents-table` + `board-document-upload-dialog` (RHF+Zod) + `board-document-delete-dialog` (A86 Radix `destructive`). Status actions gated by `DocumentStatus`; upload-disabled-without-folder + `selectFolderFirst` preserved; row→detail nav.
+- [x] Task 4: Components — detail (AC: 2, 3, 4, 5, 6) — `board-document-detail.tsx` + `board-document-version-history.tsx` + `board-document-version-dialog.tsx` + `board-document-restore-dialog.tsx` + `board-document-tag-editor.tsx` (RHF+Zod, 5 tests) + `board-document-download-button.tsx`. Preserved 404 view, metadata grid (de-CH), download current+per-version + `downloadError`, version-upload, status transitions, restore confirm, 3000 ms toast auto-dismiss.
+- [x] Task 5: Thin route entries + i18n (AC: 4, 8) — `board/documents/page.tsx` → `<BoardDocumentsPageContent/>`; `board/documents/[id]/page.tsx` → `use(params)` + `<BoardDocumentDetail id=.../>`. Hardcoded `"Document not found"` replaced by the existing `documents.notFound` key. NO i18n file change (reused keys; en↔de parity holds; hi subset permitted) — parity test green.
+- [x] Task 6: Green-the-net + DoD gate (AC: 1, 2, 9) — board S1 suites **55 green** (list 33 UNCHANGED; detail 22 — one mechanism re-point: `useParams`→`use(params)` contract; ALL behavioural assertions preserved); +31 slice unit tests; full suite **811 passed / 96 files** (780 + 31, zero regressions); `tsc --noEmit` clean; `eslint` exit 0; `prettier --write` new + `--check` modified clean; LF; service untouched (A62). (`next build` deferred to epic boundary per A58.)
 
 ## Dev Notes
 
@@ -111,12 +111,44 @@ This is the **fullest** E29 slice — a list **and** a detail with upload, statu
 
 ### Agent Model Used
 
+claude-opus-4-8[1m] (dev-story orchestration + 1 general-purpose sub-agent for the full list+detail slice extraction).
+
 ### Debug Log References
+
+**DEC-1/2/3 (all = recommended A) — per A43, autonomous mode ("für das ganze epic … ohne stop"):**
+- **DEC-1 (transport) = A:** (a) slice `api` wraps `@/lib/services/documents`; raw-fetch upload/version-upload/download moved into the slice with the exact `getSession()` Bearer + `FormData` shape; service untouched. (b) sibling-safe (E29-S2 shares the module, A62); `apiPost` can't carry `FormData`; story recommended A; user pre-declared autonomous. (c) the S1 mocks (`@/lib/services/documents` + global `fetch`) still intercept → nets stayed green.
+- **DEC-2 (forms) = A:** (a) E22 RHF+Zod for tag-editor + upload-metadata + version-comment. (b) epic goal; behaviour-preserving (free-text comma tags; validation only where HTML required = none strict). (c) `board-document-tag-editor.test.tsx` mirrors `sponsor-form.test.tsx`.
+- **DEC-3 (type home) = A:** (a) `types/board-document.types.ts` re-exports from `@/lib/services/documents`. (b) `features→lib` legal; relocation violates E21-S5 + breaks S2. (c) ESLint boundary clean.
 
 ### Completion Notes List
 
+- **A62 re-verification (Task 0):** E29-S2 left `lib/services/documents.ts` untouched + owns root key `["documents"]`; the board slice owns a DISTINCT `["board-documents"]` root + a board-specific fn set (getById/review/publish/archive/delete/updateTags/restoreVersion + FormData uploads). No collision; service confirmed untouched (orchestrator re-verified empty diff).
+- **Behaviour preserved (AC-1/2): board S1 suites 55 green.** List spec (33) UNCHANGED — the Radix destructive delete dialog + the RHF+Zod upload were transparent to the outcome-level assertions (heading key, last `common.delete` confirm, FormData fetch URL/body, refetch counts, toast keys). Detail spec (22) — ONE mechanism re-point: the route entry migrated `useParams()` → the `params: Promise<{id}>` + `use(params)` contract (E24 events precedent), so the spec renders `<DocumentDetailPage params={syncThenable({id})}/>` with a synchronous-`use` shim; EVERY behavioural assertion preserved (gate, `getDocumentById` args, 404/notFound view, download URLs+Bearer, tag-save args, version-upload FormData, status-transition visibility, restore confirm, version-history, 3000 ms toast). These are exactly the mechanism-level surfaces the S1 net licensed for update (A79/A86).
+- **A86 destructive colour:** the list DELETE (was a hand-rolled in-component confirm overlay) → `board-document-delete-dialog.tsx` Radix `alert-dialog` + `buttonVariants({variant:"destructive"})` (red). Status actions + per-version Restore NOT recoloured (Restore was already a modal, kept its existing blue — contextual A86).
+- **documents.notFound fix (AC-8):** the hardcoded `"Document not found"` fallback is gone; the detail renders the existing `documents.notFound` view on error-with-no-data; `BoardDocumentNotFoundError` distinguishes 404s. No new i18n key.
+- **A79 deltas:** list `useQuery` keyed by every server filter; status/delete/tag/restore/upload/version-upload `useMutation` invalidating `all` (+`detail(id)` for status/tag/restore/version); folders/tags queries swallow `!success` (god-page silent-no-op parity); 3000 ms toast via `useRef` timer (cleared on unmount); sticky error banner; no optimistic updates; status-action visibility on the `DocumentStatus` enum.
+- **Gates:** full suite **811 passed / 96 files** (780 baseline + 31 new; zero regressions); `tsc --noEmit` clean; `eslint` exit 0; `prettier --check` clean on modified route files + specs (only NEW slice files `--write`, A72); LF (A73). Orchestrator re-verified full suite + tsc + eslint + service-untouched independently.
+
 ### File List
+
+**New — slice (`frontend/src/features/board-documents/`):**
+- `api/board-documents-api.ts`, `api/board-documents-api.test.ts`
+- `types/board-document.types.ts`
+- `schemas/board-document.schema.ts`
+- `hooks/use-board-documents.ts`, `hooks/use-board-document.ts`, `hooks/use-board-document-mutations.ts`, `hooks/use-board-document-download.ts`, `hooks/use-board-document.test.tsx`
+- `components/board-documents-page-content.tsx`, `board-documents-filter-bar.tsx`, `board-documents-table.tsx`, `board-document-upload-dialog.tsx`, `board-document-delete-dialog.tsx`, `board-document-detail.tsx`, `board-document-version-history.tsx`, `board-document-version-dialog.tsx`, `board-document-restore-dialog.tsx`, `board-document-tag-editor.tsx`, `board-document-tag-editor.test.tsx`, `board-document-download-button.tsx`
+
+**Modified — thin route entries + spec re-point:** `frontend/src/app/board/documents/page.tsx`, `frontend/src/app/board/documents/[id]/page.tsx`, `frontend/src/app/board/documents/[id]/page.test.tsx` (mechanism re-point only). `page.test.tsx` (list) UNCHANGED.
+
+**Untouched (A62 sibling-safe):** `frontend/src/lib/services/documents.ts`; `frontend/src/features/documents/` (E29-S2 slice).
+
+**Tracking:** `_bmad-output/implementation-artifacts/sprint-status.yaml` (e29-s3 → review).
 
 ## Change Log
 
-- 2026-06-12: Story created (board-documents list+detail full surface → `src/features/board-documents/` slice; DEC-1 wrap-shared-service, DEC-2 RHF+Zod tag/upload forms, DEC-3 type re-export; A62 shared `documents.ts`+`documents.*` + sibling re-verification; A86 destructive delete; A56 divergence — board surface is the LARGEST E29 slice, not the smallest). Status ready-for-dev.
+- 2026-06-12: Story created (board-documents list+detail full surface → `src/features/board-documents/` slice; DEC-1 wrap-shared-service, DEC-2 RHF+Zod forms, DEC-3 type re-export; A62 + A86; A56 divergence — LARGEST E29 slice). Status ready-for-dev.
+- 2026-06-12: Implemented. 21 new slice files (api/types/schemas/hooks/components); both pages → thin entries; DEC-1/2/3=A. A86 destructive delete dialog; `documents.notFound` fix. Board S1 suites 55 green (list unchanged; detail one `use(params)` re-point); +31 slice tests; full suite 811 green; tsc/eslint/prettier clean; service untouched (A62). Status → review.
+
+## Senior Developer Review (AI) — Epic-Boundary, 2026-06-12
+
+**Outcome: Approved with patches applied (3).** Behaviour-faithful full-surface slice; Vorstand/Admin gate verbatim; A86 destructive delete correct; A62 honoured. Both hunters flagged 3 error-path regressions FIXED at the boundary: **P1** upload dialog wiped file+form on error (now mount-on-open, preserved on error); **P2** version-upload dialog same; **P3** tag editor collapsed on a failed save (now collapses only on success). +3 regression tests added. 1 deferred (E29-CR-D2 unauth-flash, shared). Full review + patch detail: `epic-29-boundary-review-2026-06-12.md`.

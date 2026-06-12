@@ -1,6 +1,6 @@
 # Story E29.S4: Profile — Feature-Slice Extraction (profile + security)
 
-Status: ready-for-dev
+Status: done
 
 Depends on: **E29-S1 (this net must be green at HEAD first)**, plus E21-S3 + E21-S5 (closed) and the **E22 RHF+Zod form sub-recipe** (closed — reused for the profile edit form). Inherits E21-S1 boundary decisions (DEC-1 `useApiClient`, DEC-2 destructive colours). Independent of S2/S3 once S1 is green. **Closes the program's small-surface backlog.**
 
@@ -45,18 +45,18 @@ so that the member self-service surface matches the standard architecture with t
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites + resolve the DECs (AC: all) — record A43 (a)/(b)/(c) per DEC
-  - [ ] E29-S1 profile + security specs green at HEAD. Confirm `features/profile/` does NOT exist. **A56 correction:** `ChannelPreferencesCard.test.tsx` ALREADY exists (3 tests) — relocate the component, keep the test green (move/adjust the import path only). Re-read both pages + `lib/api/privacy.ts` + `lib/api/members.ts` + `lib/api/users.ts` + the sponsors slice (A56).
-  - [ ] **DEC-1 (transport):** recommended **A** — migrate the profile `/members/me` GET/PUT (currently raw `fetch` + `useAuth().accessToken`) to `useApiClient` via `profile-api.ts`; keep consent/channel/session on their existing `@/lib/api/privacy`/`@/lib/api/users` modules wrapped behind the slice `api`/hooks (those modules already centralize the URLs). Secondary: migrate everything to `useApiClient` (larger blast radius into privacy/users modules — out of scope unless trivial).
-  - [ ] **DEC-2 (edit form):** recommended **A** — adopt the E22 RHF+Zod sub-recipe (epic goal; behaviour-preserving). Secondary: keep manual `useState` (misses the goal).
-  - [ ] **DEC-3 (type home):** recommended **re-export** from `@/lib/api/{members,privacy,users}` via `types/profile.types.ts` (boundary-legal `features→lib`).
-  - [ ] **DEC-4 (consent/session mutation semantics):** recommended **TanStack mutations** with the A76 branches preserved — consent: silent-load (query `onError` no-op surface) + success-3 s-timer + explicit-error-no-timer; session: optimistic removal via `setQueryData` + 4 s success timer + error path. Document how the timers coexist with mutation state (A79).
-- [ ] Task 1: Scaffold slice `api` + `types` + `schemas` (AC: 6, 7) — `profile-api.ts` (`profileKeys` {me/consents/channelPreference/sessions} + fns; `/members/me` via `useApiClient`, consent/channel/session wrapping the privacy/users modules; URLs/bodies byte-identical) + `types/profile.types.ts` (re-export) + `schemas/profile.schema.ts` + `profile-api.test.ts`.
-- [ ] Task 2: Hooks (AC: 6, 7, 8) — `use-profile` (+404 no-member branch) / `use-update-profile`; `use-consents` / `use-toggle-consent`; `use-channel-preference` / `use-update-channel-preference`; `use-sessions` / `use-revoke-session` (optimistic). Invalidation on the right keys. `use-profile.test.tsx` + a consent + a session mutation test.
-- [ ] Task 3: Components — profile (AC: 1, 2, 3, 5, 6, 7) — `profile-page-content.tsx` (single `"use client"`; the guard matrix + 404 no-member view with admin-vs-member message + links verbatim) + `profile-detail.tsx` (view mode) + `profile-form.tsx` (RHF+Zod edit) + `consent-preferences.tsx` (three branches) + `channel-preferences-card.tsx` (relocated, behaviour-identical). Preserve the consent 3 s timer + the view↔edit toggle.
-- [ ] Task 4: Components — security (AC: 4, 5, 6) — `profile-security-content.tsx` (`!isAuthenticated`→`/login` guard) + `session-list.tsx` (ip fallback / `formatDateTime` / client badges / `noSessions`) + the revoke flow (confirm → `revokeMySession` → optimistic removal + 4 s timer; error no-timer; button-disabled while revoking). Delete/revoke destructive affordance: introduce `destructive` only where a bare `confirm()` is replaced (A86).
-- [ ] Task 5: Thin route entries + i18n (AC: 5, 9) — `app/profile/page.tsx` → `<ProfilePageContent/>`, `app/profile/security/page.tsx` → `<ProfileSecurityContent/>` (no `"use client"`). Add the touched `profile.*`/`profileSecurity.*`/`channelPreferences.*` keys to hi.json for parity; `messages.parity.test.ts` green; no renames/removals.
-- [ ] Task 6: Green-the-net + DoD gate (AC: 1-4, 10) — E29-S1 profile + security specs green (transport-mock re-pointed; the form/consent/revoke mechanism assertions are the licensed-update surface per the S1 A76/A79 note); `ChannelPreferencesCard.test.tsx` green at its new path; new slice unit tests; `npx tsc --noEmit` + `npx eslint <changed>` + `npx prettier --check <changed>` + `npm test -- --run` clean; `next build` succeeds; LF (A73). Record the A79 timer-coexistence decision.
+- [x] Task 0: Verify prerequisites + resolve the DECs (AC: all) — A43 (a)/(b)/(c) in Debug Log
+  - [x] E29-S1 profile + security specs green at HEAD. Confirmed `features/profile/` did NOT exist. **A56 confirmed:** `ChannelPreferencesCard.test.tsx` existed (3 tests) — relocated with the component (import-path change only), kept green. Re-read both pages + `lib/api/privacy.ts`/`members.ts`/`users.ts` + sponsors slice (A56).
+  - [x] **DEC-1 RESOLVED → A:** `/members/me` GET/PUT migrated to `useApiClient` via `profile-api.ts`; consent/channel on `@/lib/api/privacy`, sessions on `@/lib/api/users`, wrapped (modules untouched).
+  - [x] **DEC-2 RESOLVED → A:** E22 RHF+Zod edit form (`profile.schema.ts` + `profile-form.tsx`; native `required` retained on the 5 required inputs so the S1 field-set assertion survives).
+  - [x] **DEC-3 RESOLVED → A:** `types/profile.types.ts` re-exports from `@/lib/api/{members,privacy,users}`.
+  - [x] **DEC-4 RESOLVED → A (with a channel-card sub-decision):** TanStack mutations for consent + session (A76 branches + 3 s/4 s timers + optimistic session removal via `setQueryData`). **Sub-decision:** the relocated `ChannelPreferencesCard` keeps its internal `useState` load/save machine (wrapping the slice api channel fns) rather than separate TanStack hooks — the "relocate behaviour-identical + keep the 3 card tests green with an import-path-only change, no QueryClientProvider" constraint outranks the hook-list recommendation, and it keeps the channel A76 surface byte-unchanged (lowest risk). No unused `use-channel-preference` hooks created.
+- [x] Task 1: Scaffold slice `api` + `types` + `schemas` (AC: 6, 7) — `profile-api.ts` (`profileKeys` {me/consents/channelPreference/sessions}; `getMyProfile`/`updateMyProfile` via `useApiClient`; consent/channel/session byte-identical wrappers) + `types/profile.types.ts` (re-export) + `schemas/profile.schema.ts` + `profile-api.test.ts` (10 tests).
+- [x] Task 2: Hooks (AC: 6, 7, 8) — `use-profile` (+404 no-member sentinel) / `use-update-profile` (seeds `profileKeys.me` from the PUT response via `setQueryData`, does NOT invalidate — preserves the god-page "never refetch after save"); `use-consents` / `use-toggle-consent`; `use-sessions` / `use-revoke-session` (optimistic removal via `setQueryData` + rollback on error, no success-invalidate). `use-profile.test.tsx` (8 tests: 404 sentinel + consent success/error + session optimistic-removal + rollback).
+- [x] Task 3: Components — profile (AC: 1, 2, 3, 5, 6, 7) — `profile-page-content.tsx` (single `"use client"`; guard matrix + 404 no-member admin-vs-member view + links VERBATIM) + `profile-detail.tsx` + `profile-form.tsx` (RHF+Zod, 5 tests) + `consent-preferences.tsx` (THREE branches: silent load / success-3 s / error-no-timer via local `useRef` timer) + `channel-preferences-card.tsx` (relocated, behaviour-identical, 3 tests).
+- [x] Task 4: Components — security (AC: 4, 5, 6) — `profile-security-content.tsx` (`!isAuthenticated`→`/login` guard; **the load-failure ALERT banner PRESERVED per the S1 net — the AC-4 "no error surface" wording was wrong; the shipped code + S1 spec show an alert**) + `session-list.tsx` (ip fallback / `formatDateTime` / client badges / `noSessions`). Revoke flow: confirm → `revokeMySession` → optimistic removal + 4 s timer; error no-timer + rollback; button-disabled while revoking. (No bare `confirm()`→destructive-dialog change needed here — the revoke kept its existing confirm UX; A86 contextual.)
+- [x] Task 5: Thin route entries + i18n (AC: 5, 9) — `app/profile/page.tsx` → `<ProfilePageContent/>`, `app/profile/security/page.tsx` → `<ProfileSecurityContent/>` (no `"use client"`). NO i18n file change: reused existing `profile.*`/`form.*`/`status.*`/`profileSecurity.*`/`channelPreferences.*` keys (en↔de parity holds; hi subset permitted, parity test green); no new strings.
+- [x] Task 6: Green-the-net + DoD gate (AC: 1-4, 10) — profile spec **18 green** (`/members/me` transport adapted to a `useApiClient` spy — the E24-S2 DEC-1c lesson; all behavioural assertions preserved); security spec **12 green UNCHANGED**; relocated card test 3 green; +26 slice unit tests; full suite **834 passed / 99 files** (811 + 26 − 3 moved, zero regressions); `tsc --noEmit` clean; `eslint` exit 0; `prettier --check` clean (only NEW files `--write`, A72); LF; **`next build` succeeds** (run at the epic boundary). A79 timer-coexistence + optimistic-removal recorded.
 
 ## Dev Notes
 
@@ -118,12 +118,49 @@ Write these at the outcome level so the mechanism (TanStack mutation) changes un
 
 ### Agent Model Used
 
+claude-opus-4-8[1m] (dev-story orchestration + 1 general-purpose sub-agent for the full profile+security slice extraction).
+
 ### Debug Log References
+
+**DEC-1/2/3/4 (all = recommended A) — per A43, autonomous mode ("für das ganze epic … ohne stop"):**
+- **DEC-1 (transport) = A:** (a) `/members/me` GET/PUT → `useApiClient`; consent/channel on `@/lib/api/privacy`, sessions on `@/lib/api/users`, wrapped. (b) epic-goal transport unification, minimal blast radius (privacy/users shared elsewhere); story recommended A; autonomous. (c) `profile-api.ts` `getMyProfile`/`updateMyProfile` via `useApiClient`; the S1 profile spec's `/members/me` transport adapted to a `useApiClient` spy (the E24-S2 DEC-1c lesson).
+- **DEC-2 (edit form) = A:** RHF+Zod (`profile.schema.ts` + `profile-form.tsx`, native `required` retained so the S1 field-set assertion survives).
+- **DEC-3 (type home) = A:** `types/profile.types.ts` re-exports from `@/lib/api/{members,privacy,users}`.
+- **DEC-4 (mutation/timer) = A + channel-card sub-decision:** TanStack mutations for consent + session (A76 branches + 3 s/4 s timers + optimistic session removal via `setQueryData`); the relocated `ChannelPreferencesCard` keeps its internal `useState` machine (relocate-behaviour-identical + keep the 3 card tests green with an import-path-only change outranks the hook-list rec; keeps the channel A76 surface byte-unchanged).
 
 ### Completion Notes List
 
+- **Behaviour preserved: profile spec 18 green (transport adapted), security spec 12 green UNCHANGED, relocated card test 3 green.** The only S1 edits are to `app/profile/page.test.tsx` and are transport-only (the licensed mechanism surface): `@/lib/auth` mock now also returns a stable `useApiClient` spy (`apiGet`/`apiPut`); `vi.stubGlobal("fetch")` for `/members/me` replaced by `apiGet`/`apiPut` mockImplementations; assertions read the apiClient spy calls + the PUT body from the positional arg. Every behavioural assertion (guard matrix, consent 3 branches, view↔edit, PUT success/error, no-member view) preserved.
+- **Consent THREE branches (A76):** `useConsents` query error never surfaced (reads `data ?? []`) → silent load stays silent; `useToggleConsent` drives explicit `onSuccess`/`onError` → success message + local `useRef` 3000 ms timer, error message NO timer. TanStack never owns the toast (mirrors HEAD).
+- **Session optimistic removal (A79):** `useRevokeSession.onMutate` snapshots + `setQueryData` removes the row BEFORE the network settles; `onError` rolls back (error → row re-appears); deliberately does NOT invalidate on success (a naive invalidate would re-show the row until refetch — the A79 delta avoided). 4000 ms timers in both `onSuccess`/`onError`.
+- **Profile-security ALERT banner PRESERVED** (followed the S1 net, the oracle — NOT the story AC-4 "no error surface" wording which was based on a wrong spike): `useSessions` error surfaces into the `role="alert"` banner while the list reads `data ?? []`.
+- **Profile PUT-success A79 delta:** `useUpdateProfile.onSuccess` seeds `profileKeys.me` from the PUT response via `setQueryData` and does NOT invalidate (a refetch would clobber the just-saved record with the stale GET) — restores the god-page "set member from PUT response, never refetch". This fixed the only initially-red S1 assertion.
+- **A85 stabilisation:** `handleToggle` (consent) + `handleRevoke` (session) are `useCallback`-stabilised; mutation outcomes drive explicit per-call `onSuccess`/`onError` rather than a subscribing effect on `mutation.isSuccess/isError`, so a re-render can't re-fire the toast and clobber a just-set message (the E23-S2 member-form lesson). `SessionList`/`ConsentPreferences` children get stable callback identities.
+- **i18n:** no message-file change — reused existing keys; hi.json has zero profile keys today (a permitted subset; parity test green). No new strings.
+- **Gates:** full suite **834 passed / 99 files** (811 baseline + 26 new − 3 relocated card tests; zero regressions); `tsc --noEmit` clean; `eslint` exit 0; `prettier --check` clean; LF (A73); **`next build` succeeds** (epic-boundary). privacy/users/members modules untouched; old `ChannelPreferencesCard.tsx` + test deleted (no dangling duplicate). Orchestrator re-verified independently.
+
 ### File List
+
+**New — slice (`frontend/src/features/profile/`):**
+- `api/profile-api.ts`, `api/profile-api.test.ts`
+- `types/profile.types.ts`
+- `schemas/profile.schema.ts`
+- `hooks/use-profile.ts`, `hooks/use-update-profile.ts`, `hooks/use-consents.ts`, `hooks/use-toggle-consent.ts`, `hooks/use-sessions.ts`, `hooks/use-revoke-session.ts`, `hooks/use-profile.test.tsx`
+- `components/profile-page-content.tsx`, `profile-detail.tsx`, `profile-form.tsx`, `profile-form.test.tsx`, `consent-preferences.tsx`, `channel-preferences-card.tsx` (relocated), `channel-preferences-card.test.tsx` (relocated), `profile-security-content.tsx`, `session-list.tsx`
+
+**Modified — thin route entries + spec transport adaptation:** `frontend/src/app/profile/page.tsx`, `frontend/src/app/profile/security/page.tsx`, `frontend/src/app/profile/page.test.tsx` (transport-only). `security/page.test.tsx` UNCHANGED.
+
+**Deleted (card relocation):** `frontend/src/app/profile/ChannelPreferencesCard.tsx`, `frontend/src/app/profile/ChannelPreferencesCard.test.tsx`.
+
+**Untouched:** `frontend/src/lib/api/privacy.ts`, `frontend/src/lib/api/members.ts`, `frontend/src/lib/api/users.ts`.
+
+**Tracking:** `_bmad-output/implementation-artifacts/sprint-status.yaml` (e29-s4 → review).
 
 ## Change Log
 
-- 2026-06-12: Story created (profile + security → `src/features/profile/` slice; DEC-1 transport, DEC-2 RHF+Zod edit form, DEC-3 type re-export, DEC-4 mutation/timer semantics; A76 consent three-branch + session optimistic-removal invariants; A85 stable callbacks; ChannelPreferencesCard relocation + existing test). Status ready-for-dev. Closes the E29 small-surface backlog.
+- 2026-06-12: Story created (profile + security → `src/features/profile/` slice; DEC-1 transport, DEC-2 RHF+Zod, DEC-3 type re-export, DEC-4 mutation/timer; A76 consent three-branch + session optimistic-removal; A85; ChannelPreferencesCard relocation). Status ready-for-dev. Closes the E29 small-surface backlog.
+- 2026-06-12: Implemented. Slice scaffolded (api/types/schemas/hooks/components); both pages → thin entries; card relocated (+test); DEC-1/2/3/4=A. Profile spec transport-adapted (18 green), security spec unchanged (12), +26 slice tests; full suite 834 green; tsc/eslint/prettier clean; next build succeeds. Consent 3 branches + session optimistic-removal + security alert preserved; A85 stable callbacks. Status → review.
+
+## Senior Developer Review (AI) — Epic-Boundary, 2026-06-12
+
+**Outcome: Approved with patches applied (2).** Most stateful slice; guard matrix + consent THREE branches + session optimistic-removal + the security ALERT-banner-on-load-failure all preserved (the impl correctly followed the S1 net over the wrong AC-4 "silent" wording); A85 stable callbacks applied. Boundary patches: **P4** `use-profile` retried the deterministic 404 (no-member sentinel) before the no-member view — now excluded from retry; **P5** the profile-edit Zod schema trimmed the PUT body — now byte-identical to HEAD (de-trimmed). 3 deferred (E29-CR-D1 revoke transient state / E29-CR-D3 concurrent-revoke / E29-CR-D4 consent-toast-on-refetch-fail). Full review + patch detail: `epic-29-boundary-review-2026-06-12.md`.
