@@ -1398,6 +1398,7 @@
       "subject": "Betreffzeile",
       "subjectPlaceholder": "z.B. Willkommen bei '{{organizationName}}'",
       "htmlContent": "HTML Inhalt",
+      "editorPlaceholder": "E-Mail-Inhalt eingeben...",
       "textContent": "Text Inhalt",
       "variables": "Variablen",
       "variableNamePlaceholder": "Variablenname (z.B. name, eventTitle)",

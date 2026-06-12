@@ -1398,6 +1398,7 @@
       "subject": "Subject Line",
       "subjectPlaceholder": "e.g. Welcome to '{{organizationName}}'",
       "htmlContent": "HTML Content",
+      "editorPlaceholder": "Enter email content...",
       "textContent": "Text Content",
       "variables": "Variables",
       "variableNamePlaceholder": "Variable name (e.g. name, eventTitle)",
