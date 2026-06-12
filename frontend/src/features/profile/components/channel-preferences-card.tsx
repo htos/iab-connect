@@ -1,22 +1,29 @@
 "use client";
 
 /**
- * REQ-030 (E5-S5): Channel Preferences card for /profile — sibling to the Consent Preferences card,
- * reusing its save-then-refresh + success/error-message pattern. Lets a user pick their preferred
- * communication channel; channels whose provider is disabled are shown as unavailable ("coming
- * soon") so the user isn't offered an impossible choice (the eligibility gate is server-side).
+ * REQ-030 (E5-S5): Channel Preferences card for /profile — sibling to the Consent
+ * Preferences card, reusing its save-then-refresh + success/error-message
+ * pattern. Lets a user pick their preferred communication channel; channels whose
+ * provider is disabled are shown as unavailable ("coming soon") so the user isn't
+ * offered an impossible choice (the eligibility gate is server-side).
+ *
+ * E29-S4 relocation: moved from `app/profile/ChannelPreferencesCard.tsx` into the
+ * profile slice WITHOUT behaviour change (AC-3). The channel fns are now reached
+ * via the slice `api/profile-api` wrappers (which forward to `@/lib/api/privacy`
+ * byte-identically) so the route file carries no raw URL and the slice owns its
+ * transport surface; the internal load/save state machine is unchanged.
  */
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth";
 import {
-  ChannelPreferenceDto,
-  getChannelPreference,
+  fetchChannelPreference,
   updateChannelPreference,
-} from "@/lib/api/privacy";
+} from "../api/profile-api";
+import type { ChannelPreferenceDto } from "../types/profile.types";
 
-export default function ChannelPreferencesCard() {
+export function ChannelPreferencesCard() {
   const t = useTranslations("profile");
   const { accessToken } = useAuth();
 
@@ -30,7 +37,7 @@ export default function ChannelPreferencesCard() {
   const load = useCallback(async () => {
     if (!accessToken) return;
     try {
-      setData(await getChannelPreference(accessToken));
+      setData(await fetchChannelPreference(accessToken));
     } catch {
       setMessage({ type: "error", text: t("channelPreferences.loadError") });
     }

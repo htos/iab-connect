@@ -12,6 +12,12 @@ import "@testing-library/jest-dom/vitest";
 // REQ-030 (E5-S5) AC-7: the Channel Preferences card renders the current preference + available
 // channels, a change calls the helper → refresh → success message, and a disabled channel is shown
 // unavailable.
+//
+// E29-S4 relocation: moved with the component into the profile slice. The card is
+// behaviour-identical; it now reaches the channel fns via the slice `api/profile-api`
+// wrappers (which forward to `@/lib/api/privacy` byte-identically), so this mock of
+// `@/lib/api/privacy` STILL intercepts. Only the import (named export from the new
+// path) changed; all three assertions are unchanged.
 
 vi.mock("next-intl", () => {
   const translate = (key: string, vars?: Record<string, unknown>) =>
@@ -31,7 +37,7 @@ vi.mock("@/lib/api/privacy", () => ({
   updateChannelPreference: (...a: unknown[]) => updateChannelPreference(...a),
 }));
 
-import ChannelPreferencesCard from "./ChannelPreferencesCard";
+import { ChannelPreferencesCard } from "./channel-preferences-card";
 
 function pref(preferred = "Email") {
   return {
