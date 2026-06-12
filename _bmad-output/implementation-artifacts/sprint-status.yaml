@@ -1,5 +1,35 @@
 # generated: 2026-05-12
-# last_updated: 2026-06-12 (Epic-25 CLOSED — Frontend Feature-Slice Migration (Communication).
+# last_updated: 2026-06-12 (bmad-create-story BULK REFRESH for the ENTIRE Epic-26 (Frontend
+#   Feature-Slice Migration — Finance) per user directive "das nächste Epic und alle stories dazu
+#   implementierungs ready machen." (2026-06-12). All 6 stories backlog → ready-for-dev; epic-26
+#   backlog → in-progress. Heaviest characterization surface in the program: 26 Finance pages
+#   (vs Admin 15 / Communication 12) across 5 sub-areas → ONE `features/finance/` slice with a
+#   SHARED `finance-api.ts`/`finance.types.ts` foundation (contrast Admin's 5 independent dirs).
+#   S1 = char net (all 26 pages; only budgets/journal-entries/budget-vs-actual have tests today →
+#   extend, the other 23 written fresh). S2 = core ledger/accounting (OWNS the shared foundation +
+#   the shared `ActivityArea`/`TaxCode`/`Category` read-lookup types). S3 = receivables/payables
+#   (invoice form → E22 RHF+Zod). S4 = budgeting/reporting (BUILD over budgets.ts types/consts;
+#   owns activity-areas CRUD builders). S5 = banking/data (upload/download byte-for-byte). S6 =
+#   settings (profile/template/tax-code/activity-area forms; reuses S4 activity-areas + S2 type).
+#   **A56 load-bearing findings (spec over-generalised):** (1) finance read guards are NOT uniform
+#   — FIVE+ distinct shapes (canonical isAuthenticated+push("/")+null / lean canReadFinance-only
+#   replace("/")+null / inline "Not authorized" div no-redirect [payments/expense-claims/bank-import]
+#   / inline-error no-redirect [fiscal-periods] / spinner→null no-redirect / NO-return-null-renders-
+#   empty-form [settings profile/invoice-templates/tax-codes]) + FOUR redirect targets — the spec's
+#   "redirect to / + null render" holds for only 3 pages; S1 pins each AS-IS, slices preserve per
+#   page. (2) ALL pages use useApiClient DIRECT → slices BUILD-on-useApiClient (A94), S1 net's
+#   useApiClient mock keeps intercepting → ZERO transport-mock edits (like E27 admin-settings). (3)
+#   `lib/api/budgets.ts` is TYPES+CONSTANTS ONLY (zero functions) — S4 BUILDs, does not "wrap" (spec
+#   framing corrected). (4) DoubleEntry mode guard on ledger-accounts/journal-entries/accounting-
+#   reports/posting-mappings (GET profile → redirect /finance/settings). (5) A95 traps: invoices/new
+#   recipientType POSTs "Other" vs canonical "External"; settings/profile countryCode CH↔EU strand —
+#   Zod MUST use full union + extra-option, never z.enum(subset). (6) A96: no page trims submitted
+#   bytes. (7) Endpoint/behaviour divergences pinned not fixed: invoices list cancel DELETE vs detail
+#   cancel POST /cancel; bank-import POST vs PUT on /items/{id}/ignore; tax-code rate ×100/÷100;
+#   hardcoded-English errors (payments, activity-areas, bank-import). Files: e26-s1..s6 in
+#   implementation-artifacts. **NEXT = bmad-dev-story E26-S1 (the characterization net — blocks
+#   S2..S6), recommended in a fresh session per feedback_session_pacing_dev_cycles.** Independent of
+#   the still-open Beta go-live walkthrough.) ## Previously: 2026-06-12 (Epic-25 CLOSED — Frontend Feature-Slice Migration (Communication).
 #   Single autonomous session delivered all 4 stories (S1 characterization net over the 12
 #   Communication pages → S2 automations WRAP slice → S3 email-campaigns BUILD-on-useApiClient
 #   slice → S4 email-templates WRAP slice + EmailTemplateForm relocation + index thin-entry) +
@@ -1573,13 +1603,13 @@ development_status:
   e25-s4-email-templates-crud-slice-and-component-relocation: done
   epic-25-retrospective: done
 
-  epic-26: backlog
-  e26-s1-finance-characterization-tests: backlog
-  e26-s2-finance-core-ledger-accounting-slice: backlog
-  e26-s3-finance-receivables-payables-slice: backlog
-  e26-s4-finance-budgeting-reporting-slice: backlog
-  e26-s5-finance-banking-and-data-slice: backlog
-  e26-s6-finance-settings-slice: backlog
+  epic-26: in-progress  # 2026-06-12: bmad-create-story BULK REFRESH for the whole Epic-26 (Finance) — all 6 stories backlog → ready-for-dev
+  e26-s1-finance-characterization-tests: ready-for-dev
+  e26-s2-finance-core-ledger-accounting-slice: ready-for-dev
+  e26-s3-finance-receivables-payables-slice: ready-for-dev
+  e26-s4-finance-budgeting-reporting-slice: ready-for-dev
+  e26-s5-finance-banking-and-data-slice: ready-for-dev
+  e26-s6-finance-settings-slice: ready-for-dev
   epic-26-retrospective: optional
 
   epic-27: done  # 2026-06-12: implemented (S1-S6, all 15 admin pages → 5 feature-slices) + epic-boundary review (4 patches) + retro; Vitest 1057→1434/158, tsc/eslint/prettier green
