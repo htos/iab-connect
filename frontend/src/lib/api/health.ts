@@ -35,6 +35,13 @@ export async function getHealthDetail(
   const res = await fetch(`${API_BASE}/health/detail`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
+  // E27-S4 AC-8: guard `res.ok` before parsing. Previously this called
+  // `res.json()` unconditionally, so an error response (e.g. 401/503 with a
+  // non-JSON or empty body) threw a swallowed SyntaxError. A strict, behaviour-
+  // safe improvement: a real failure now surfaces. The success path is unchanged.
+  if (!res.ok) {
+    throw new Error("Failed to fetch health detail");
+  }
   return res.json();
 }
 

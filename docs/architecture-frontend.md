@@ -155,6 +155,18 @@ export default function SuppliersPage() {
 `src/lib` stays **technical infrastructure only** (auth, http client, config,
 utils) — it is not a home for feature services.
 
+**Area sub-slices (E27 precedent).** A broad route *area* that groups several
+distinct sub-domains under one URL prefix is migrated as one slice **per
+sub-area**, not a single mega-slice. `admin/*` (15 pages) became five
+mutually-independent slices — `features/admin-users`, `features/admin-settings`,
+`features/admin-system` (audit/backups/health/retention), `features/admin-integrations`
+(api-clients/webhooks/deliveries), and `features/admin-documents` (folder manager +
+public register). Each owns its own `{api,hooks,components,schemas,types}`, wraps
+its own `lib` transport (or builds on `useApiClient` where no `lib` module owns the
+URLs), and may not import a sibling `features/admin-*` (the generic `src/features/**`
+ESLint boundary covers them with no per-feature config entry). Naming convention:
+`features/admin-<sub-area>/`.
+
 ## Target Import Direction
 
 ```text
