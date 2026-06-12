@@ -1,6 +1,6 @@
 # Story E27.S1: Admin — Characterization Tests for All Fifteen Pages (Regression Net)
 
-Status: ready-for-dev
+Status: done
 
 Depends on: E21-S2 / E22-S1 (the characterization-net recipe — closed). **Blocks E27-S2..S6** (each extraction story keeps its sub-area's suites green). Inherits E21-S1 boundary decisions; applies A76/A78/A79/A80/A86/A87/A90/A97/A99 + harness rules A35/A46/A64/A78.
 
@@ -53,15 +53,15 @@ so that the E27-S2..S6 slice extractions are provably behaviour-preserving.
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Spike confirm + harness setup (AC: 1, 7)
-  - [ ] Re-confirm `features/admin-*` does NOT exist yet; confirm current full `vitest run` count at HEAD (the green baseline the net must preserve). Read the existing tests being extended: `admin/settings/page.test.tsx`, `admin/api-clients/page.test.tsx`, `admin/webhooks/page.test.tsx`, `admin/webhooks/deliveries/page.test.tsx`, `admin/register/page.test.tsx`.
-  - [ ] Establish the shared admin test harness (stable mocks per A64/A78 + `QueryClientProvider` per A87), mirroring `frontend/src/features/members` / `events` S1 nets.
-- [ ] Task 1: Users-area suites (AC: 1, 2, 7, 8) — 4 new suites; cover the two-step edit save, the conditional `temporaryPassword`, the `confirm`/`alert` flows, the 409 message, the sessions `data-testid`/ARIA hooks + 4s message timer.
-- [ ] Task 2: Settings-area suites (AC: 1, 3, 7, 8) — extend `settings/page.test.tsx` (Custom Roles tab + auth-redirect + settings error paths + persistent-banner + `refreshAppSettings`); new `admin/page.test.tsx` (static tiles + guard).
-- [ ] Task 3: System-area suites (AC: 1, 4, 7, 8) — 4 new suites; server-side audit filters + CSV export; backups inline-confirm restore(orange)/delete(red) + download + upload; health 30s interval + status; retention manual form + enforce.
-- [ ] Task 4: Integrations-area suites (AC: 1, 5, 7, 8) — verify the 9 existing tests green; extend webhooks (toggle/delete/edit + eventTypes round-trip) + confirm the secret-once list-refetch invariant.
-- [ ] Task 5: Documents-area suites (AC: 1, 6, 7, 8) — new `documents/page.test.tsx` (folder CRUD + permissions modal + delete-modal); extend `register/page.test.tsx` (form submit/validation/error). Record the reality corrections in Completion Notes.
-- [ ] Task 6: Green-the-net + DoD gate (AC: 9) — full `vitest run` green at HEAD; `tsc`/eslint(changed)/prettier-check(changed); record the A79 per-suite delta inventory + the per-page assertion inventory.
+- [x] Task 0: Spike confirm + harness setup (AC: 1, 7)
+  - [x] Re-confirm `features/admin-*` does NOT exist yet; confirm current full `vitest run` count at HEAD (the green baseline the net must preserve). Read the existing tests being extended: `admin/settings/page.test.tsx`, `admin/api-clients/page.test.tsx`, `admin/webhooks/page.test.tsx`, `admin/webhooks/deliveries/page.test.tsx`, `admin/register/page.test.tsx`.
+  - [x] Establish the shared admin test harness (stable mocks per A64/A78 + `QueryClientProvider` per A87), mirroring `frontend/src/features/members` / `events` S1 nets.
+- [x] Task 1: Users-area suites (AC: 1, 2, 7, 8) — 4 new suites; cover the two-step edit save, the conditional `temporaryPassword`, the `confirm`/`alert` flows, the 409 message, the sessions `data-testid`/ARIA hooks + 4s message timer.
+- [x] Task 2: Settings-area suites (AC: 1, 3, 7, 8) — extend `settings/page.test.tsx` (Custom Roles tab + auth-redirect + settings error paths + persistent-banner + `refreshAppSettings`); new `admin/page.test.tsx` (static tiles + guard).
+- [x] Task 3: System-area suites (AC: 1, 4, 7, 8) — 4 new suites; server-side audit filters + CSV export; backups inline-confirm restore(orange)/delete(red) + download + upload; health 30s interval + status; retention manual form + enforce.
+- [x] Task 4: Integrations-area suites (AC: 1, 5, 7, 8) — verify the 9 existing tests green; extend webhooks (toggle/delete/edit + eventTypes round-trip) + confirm the secret-once list-refetch invariant.
+- [x] Task 5: Documents-area suites (AC: 1, 6, 7, 8) — new `documents/page.test.tsx` (folder CRUD + permissions modal + delete-modal); extend `register/page.test.tsx` (form submit/validation/error). Record the reality corrections in Completion Notes.
+- [x] Task 6: Green-the-net + DoD gate (AC: 9) — full `vitest run` green at HEAD; `tsc`/eslint(changed)/prettier-check(changed); record the A79 per-suite delta inventory + the per-page assertion inventory.
 
 ## Dev Notes
 
@@ -118,12 +118,48 @@ The pre-refactor characterization net for the whole `admin/` route tree. Because
 
 ### Agent Model Used
 
+claude-opus-4-8[1m] (orchestrator) + 5 parallel general-purpose subagents (one per sub-area).
+
 ### Debug Log References
+
+- DEC-1 = A (extend the 5 existing suites in place + add 10 new files; green baseline preserved). DEC-2 = A (health 30s poll asserted via `vi.useFakeTimers()` + interval advance). DEC-3 = A (pin the ACTUAL surfaces — documents = folder/permission manager, register = public signup form; option B impossible, those skeleton surfaces don't exist).
+- Harness learning (A64 refinement): the `next-intl` mock MUST return a MODULE-STABLE translator (`const tFn = (key)=>key; useTranslations: () => tFn`), NOT a fresh arrow per render — admin pages put `t` in `useCallback`/effect dep chains, so an unstable translator caused infinite render loops (health "Maximum update depth exceeded") and non-deterministic refetch counts (audit clear-filters fired 5× not 2×). Same applies to a STABLE `useApiClient` object identity (pages list `api` in load-effect deps; a fresh bag per render re-triggers the initial fetch).
+- Transport boundary per page (mocked at the module boundary): users / audit / backup / health / retention pages call `@/lib/api/*` token-param functions (NOT `useApiClient`); api-clients / webhooks / settings use `useApiClient`; documents uses `@/lib/services/documents`; register uses `@/lib/api/registration`. Real colour/format helpers (`getRoleColor`, `getStatusColor`, `getSeverityColor`, `formatFileSize`, …) kept via `importActual` so badge-className assertions pin the real logic.
 
 ### Completion Notes List
 
+- **Characterization net complete for all 15 admin pages across 5 sub-areas; +223 tests; baseline 1057 → 1280, full `vitest run` deterministically green across 2 runs (132 files). No production code changed (test-only).**
+- Per-area: **Users +59** (4 NEW suites — list 24, new 12, edit 12, sessions 11); **Settings +19** (`settings/page.test.tsx` extended 13→25 with the Custom Roles tab + non-admin guard + load/save error + persistent-banner + `refreshAppSettings`; NEW `admin/page.test.tsx` +7 static tiles/hrefs + guard); **System +83** (audit 23, backups 31, health 12, retention 17 — all NEW); **Integrations +28** (api-clients 4→13, webhooks 3→16, deliveries 2→8 — extended); **Documents +34** (NEW `documents/page.test.tsx` 27, `register/page.test.tsx` extended 2→9).
+- **AC-1 guard** asserted in EVERY authenticated suite: authenticated-non-admin AND unauthenticated → `router.push("/")` (target is **`/`, NOT `/login`** — confirmed); the protected fetch is gated on `isAuthenticated && isAdmin && accessToken` (documents gates role-only — reads no `accessToken`). `admin/register` is the documented PUBLIC exception (no guard) — verified.
+- **AC-8 destructive affordances pinned AS-IS per surface (A80/A86):** users disable = conditional (`text-red-600` enabled / `text-green-600` disabled, no confirm), password-reset blue (`text-blue-600`, confirm+`alert`), mfa-reset orange (`text-orange-600`, confirm+`alert`), delete red (`text-red-600`, confirm, no alert, list preserved on FAILURE), session revoke bordered-red (`border-red-300 text-red-700`); backups restore trigger blue → confirm **ORANGE** (`text-orange-600`), delete RED, retry orange, disable-schedule red — restore/delete failure keeps the inline confirm state; retention enforce orange (`bg-orange-600`, NO confirm); webhooks delete red (`text-red-600`), toggle no-confirm. All asserted via the real className, never assuming a generic `destructive`.
+- **A56 reality corrections recorded (the epic skeleton diverged):** `admin/documents` is a **folder & permission manager (REQ-035)** — NO upload / doc-list / status badges; delete-folder is a **styled modal with RED confirm** (NOT `window.confirm`) and the handler closes the modal BEFORE awaiting, so a failed delete shows the error with the modal already closed. `admin/register` is the **public self-signup form** (`registerUser` → `POST /api/v1/registration`) — no list/filters/approve-reject, no guard. `admin/settings` is a **3-tab page** (branding/customRoles/modules); `admin/page` is static nav (7 tiles). Backups restore is orange (not red); health polls every 30s; audit's 7 filters are server-side; webhooks has NO regenerate action (secret shown only on create).
+- **A79 deltas (recorded in each file's `// A79 deltas:` header):** every admin god-page is pre-TanStack (`useState`/`useEffect`), so the `retry:false` `QueryClientProvider` wrapper is INERT — kept only for A87 forward-compat parity; no provider-retry double-fetch to mask. Timer-bound behaviours pinned with fake timers: sessions 4s message auto-clear (await-then-`setTimeout(4000)` — asserted the scheduled delay + collapsed that timer), retention 5s success-toast auto-dismiss, backups 5s toast, health 30s poll (1→2→3 refetch on interval advance), documents 3s banner. Gated-loading quirk pinned AS-IS: when not (auth && admin) the data effect never runs so `loading` stays its initial `true` and only the spinner renders (safe via `return null` on most pages; `documents/page` lacks the `return null` and renders the spinner during redirect). List-search re-runs the load effect (search in effect deps) briefly flipping to the spinner.
+- **Definition of Done:** all tasks/subtasks `[x]`; every AC satisfied; full `vitest run` green ×2 (deterministic); `tsc --noEmit` clean; eslint clean on all 15 changed files; prettier `--check` clean on all 15 (the 10 new files + 4 extended files `--write`-formatted per A72 — all 4 extended files were prettier-clean at HEAD, so the diff is purely the additions); only `*.test.tsx` files changed (verified via `git status`).
+
 ### File List
+
+NEW (10):
+
+- `frontend/src/app/admin/users/page.test.tsx`
+- `frontend/src/app/admin/users/new/page.test.tsx`
+- `frontend/src/app/admin/users/[id]/page.test.tsx`
+- `frontend/src/app/admin/users/[id]/sessions/page.test.tsx`
+- `frontend/src/app/admin/page.test.tsx`
+- `frontend/src/app/admin/audit/page.test.tsx`
+- `frontend/src/app/admin/backups/page.test.tsx`
+- `frontend/src/app/admin/health/page.test.tsx`
+- `frontend/src/app/admin/retention/page.test.tsx`
+- `frontend/src/app/admin/documents/page.test.tsx`
+
+MODIFIED / EXTENDED (5):
+
+- `frontend/src/app/admin/settings/page.test.tsx`
+- `frontend/src/app/admin/api-clients/page.test.tsx`
+- `frontend/src/app/admin/webhooks/page.test.tsx`
+- `frontend/src/app/admin/webhooks/deliveries/page.test.tsx`
+- `frontend/src/app/admin/register/page.test.tsx`
 
 ## Change Log
 
 - 2026-06-12: Story created (characterization net for all 15 admin pages across 5 sub-areas; reality-corrected ACs for documents/register/settings per A56; behaviour-lock secret panels + restore/delete affordances + two-step user save + 30s health poll). Status ready-for-dev.
+- 2026-06-12: Implemented — 15 co-located `*.test.tsx` suites (10 new + 5 extended) via 5 parallel sub-area subagents. +223 tests (1057 → 1280), full `vitest run` deterministically green ×2; tsc/eslint(changed)/prettier(changed) clean; test-only (no production change). DEC-1/2/3 = A. A56 reality corrections + A79 deltas + A80/A86 per-surface affordances pinned. Status review.

@@ -1,6 +1,6 @@
 # Story E27.S2: Admin Users — Feature-Slice Extraction
 
-Status: ready-for-dev
+Status: done
 
 Depends on: **E27-S1 (the users-area net must be green at HEAD first)**, plus E21-S3 (list recipe) + E21-S5 (import boundary) + the E22 RHF+Zod form sub-recipe (all closed). Inherits E21-S1 boundary decisions (DEC-1 transport, DEC-2 status colours). **This story CONFIRMS the area-vs-feature decision for admin** (recommended: `features/admin-users` sub-slice) and sets the `features/admin-*` naming + ESLint-boundary precedent S3..S6 follow. Independent of S3..S6 once S1 is green (the five sub-features are mutually independent).
 
@@ -34,15 +34,15 @@ so that user management matches the Suppliers/Sponsors/Members slices while the 
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites + resolve the DECs (AC: all) — A43 (a)/(b)/(c) recorded below
-  - [ ] E27-S1 users-area specs green at HEAD. Confirm `features/admin-users/` does NOT exist. Re-read the 4 pages + `lib/api/users.ts` + the members slice (form + two-step patterns) + sponsors form recipe (A56).
-  - [ ] Resolve DEC-1..DEC-4 (recommended options below).
-- [ ] Task 1: Scaffold slice `api` + `types` + `schemas` — `admin-users-api.ts` (`adminUsersKeys` + wrapped lib fns, URLs/params byte-identical, keep `createUser` 409→message + `getAvailableRoles` distinct) + `types/admin-user.types.ts` (re-export) + `schemas/admin-user.schema.ts` (no `.trim()`; create+edit field sets) + `admin-users-api.test.ts`.
-- [ ] Task 2: Hooks — list/detail(`retry:false`)/roles/sessions queries; create/update(two-step)/setEnabled/resetPassword/resetMfa/delete/revoke mutations + `adminUsersKeys` invalidation. `use-user.test.tsx`.
-- [ ] Task 3: Components — list — `admin-users-page-content` + filter-bar + table + role/status badges (Badge tokens, A77) + the per-row `confirm`/`alert` actions (preserve colours, A86).
-- [ ] Task 4: Components — new + edit — `admin-user-form` (RHF+Zod, E22 sub-recipe; A98 mode-divergent surfaces threaded; conditional `temporaryPassword`; `emailVerified` edit-only; role checkboxes reconciled against available roles) + `admin-user-new-content`/`admin-user-edit-content` (the `!user` terminal block) + `user-sessions` (revoke + 4s banner + `data-testid`s preserved). `admin-user-form.test.tsx`.
-- [ ] Task 5: Thin route entries — the 4 route files → content components (keep `params: Promise<{id}>` + `use(params)` so S1 specs stay green).
-- [ ] Task 6: Green-the-net + DoD gate — E27-S1 users specs green (transport mocks unchanged via A94 WRAP; adapt only the licensed A79 surface); new slice unit tests; `tsc` exit 0 / eslint(slice+changed, incl. E21-S5 boundary) clean / `vitest run` FULL green, no regressions; LF. A79 deltas recorded. (`next build` deferred to epic boundary per A58.)
+- [x] Task 0: Verify prerequisites + resolve the DECs (AC: all) — A43 (a)/(b)/(c) recorded below
+  - [x] E27-S1 users-area specs green at HEAD. Confirm `features/admin-users/` does NOT exist. Re-read the 4 pages + `lib/api/users.ts` + the members slice (form + two-step patterns) + sponsors form recipe (A56).
+  - [x] Resolve DEC-1..DEC-4 (recommended options below).
+- [x] Task 1: Scaffold slice `api` + `types` + `schemas` — `admin-users-api.ts` (`adminUsersKeys` + wrapped lib fns, URLs/params byte-identical, keep `createUser` 409→message + `getAvailableRoles` distinct) + `types/admin-user.types.ts` (re-export) + `schemas/admin-user.schema.ts` (no `.trim()`; create+edit field sets) + `admin-users-api.test.ts`.
+- [x] Task 2: Hooks — list/detail(`retry:false`)/roles/sessions queries; create/update(two-step)/setEnabled/resetPassword/resetMfa/delete/revoke mutations + `adminUsersKeys` invalidation. `use-user.test.tsx`.
+- [x] Task 3: Components — list — `admin-users-page-content` + filter-bar + table + role/status badges (Badge tokens, A77) + the per-row `confirm`/`alert` actions (preserve colours, A86).
+- [x] Task 4: Components — new + edit — `admin-user-form` (RHF+Zod, E22 sub-recipe; A98 mode-divergent surfaces threaded; conditional `temporaryPassword`; `emailVerified` edit-only; role checkboxes reconciled against available roles) + `admin-user-new-content`/`admin-user-edit-content` (the `!user` terminal block) + `user-sessions` (revoke + 4s banner + `data-testid`s preserved). `admin-user-form.test.tsx`.
+- [x] Task 5: Thin route entries — the 4 route files → content components (keep `params: Promise<{id}>` + `use(params)` so S1 specs stay green).
+- [x] Task 6: Green-the-net + DoD gate — E27-S1 users specs green (transport mocks unchanged via A94 WRAP; adapt only the licensed A79 surface); new slice unit tests; `tsc` exit 0 / eslint(slice+changed, incl. E21-S5 boundary) clean / `vitest run` FULL green, no regressions; LF. A79 deltas recorded. (`next build` deferred to epic boundary per A58.)
 
 ## Dev Notes
 
@@ -93,12 +93,38 @@ First `features/admin-*` sub-slice — sets the naming + boundary precedent for 
 
 ### Agent Model Used
 
+claude-opus-4-8[1m] (orchestrator) + a dedicated general-purpose subagent for the slice extraction.
+
 ### Debug Log References
+
+- DEC-1 transport = **A** (WRAP `@/lib/api/users` token-fns + `adminUsersKeys`) — keeps the 409/404 string sentinels + the S1 transport mocks intercepting; B rejected (loses the conflict/404 strings + orphans the profile-shared module).
+- DEC-2 type home = **A** (re-export DTOs via `types/admin-user.types.ts`; `features→lib` legal) — B rejected (lib still consumed by the self-service profile page).
+- DEC-3 404 sentinel = **A** (`retry:false` on `use-user` + parity-only `UserNotFoundError`) — the wrapped lib fn throws a generic `Error` with no status; B (typed `UserNotFoundError{status}` in the lib) recorded as residual debt.
+- DEC-4 delete/revoke dialog = **A** (keep `confirm()`/`alert()` as-is) — Radix upgrade (B) changes behaviour the net pins; recorded as residual debt.
 
 ### Completion Notes List
 
+- **Four admin-users pages extracted into `features/admin-users/{api,hooks,components,schemas,types}` following the members/sponsors recipe; behaviour preserved.** Scoped gate `vitest run src/app/admin/users src/features/admin-users` = 9 files / 98 tests green (59 S1 oracle + 39 new slice tests). Central full-suite + tsc + eslint + prettier all green.
+- `api/admin-users-api.ts` WRAPS `lib/api/users.ts` (URLs/params/bodies byte-identical; create-409→`A user with this email already exists` preserved; `getAvailableRoles` `/api/v1/users/roles` kept DISTINCT from `getUser`) + an `adminUsersKeys` factory (all/list/detail/roles/sessions). Excluded the self-service `getMySessions`/`revokeMySession`.
+- Hooks: list/detail(`retry:false`, A99)/available-roles/sessions queries + create/update(TWO-STEP: `updateUser` → conditional `updateUserRoles` via Set-diff)/setEnabled/resetPassword/resetMfa/delete/revoke mutations, each invalidating `adminUsersKeys`. The list's "list-preserved-on-failure" is kept by deriving rows during render from query data + a `deletedIds` set + `overrides` map (avoids the repo's `react-hooks/set-state-in-effect` error).
+- Shared `admin-user-form` (RHF+Zod, `<form noValidate>`, A96 no-`.trim()`) threads the mode-divergent surfaces (title/submit-label/redirect-vs-banner/`emailVerified`/`sendInvitation`/`temporaryPassword`) through props (A98); validation gates render as per-field errors. Role/status badges use literal-Tailwind-class components (A77 exception — the S1 net pins exact `bg-red-100` etc.; all 5 roles, kassier/auditor gray fallback intentional). Action colours preserved (A86): delete=red, disable=conditional, password-reset=blue, mfa-reset=orange, revoke=bordered-red.
+- 4 thin route entries delegate to content components; `params: Promise<{id}>` + `use(params)` kept on the `[id]` pages. Non-admin `return null` added to all four (A90/A97).
+- **S1 oracle changes: NONE** (WRAP kept the mocks intercepting). **Residual debt:** DEC-3(b) typed `UserNotFoundError{status}`; DEC-4(b) Radix dialog upgrade.
+
 ### File List
+
+NEW — `frontend/src/features/admin-users/`:
+
+- `api/admin-users-api.ts`, `api/admin-users-api.test.ts`
+- `types/admin-user.types.ts`, `schemas/admin-user.schema.ts`
+- `hooks/`: `use-users.ts`, `use-user.ts`, `use-available-roles.ts`, `use-create-user.ts`, `use-update-user.ts`, `use-set-user-enabled.ts`, `use-reset-password.ts`, `use-reset-mfa.ts`, `use-delete-user.ts`, `use-user-sessions.ts`, `use-user.test.tsx`
+- `components/`: `admin-users-page-content.tsx`, `admin-users-table.tsx`, `admin-users-filter-bar.tsx`, `user-role-badge.tsx`, `user-status-badge.tsx`, `admin-user-form.tsx`, `admin-user-new-content.tsx`, `admin-user-edit-content.tsx`, `user-sessions.tsx`, `admin-user-form.test.tsx`, `user-role-badge.test.tsx`, `user-status-badge.test.tsx`
+
+MODIFIED (thin route entries):
+
+- `frontend/src/app/admin/users/page.tsx`, `frontend/src/app/admin/users/new/page.tsx`, `frontend/src/app/admin/users/[id]/page.tsx`, `frontend/src/app/admin/users/[id]/sessions/page.tsx`
 
 ## Change Log
 
 - 2026-06-12: Story created (admin users 4 pages → `features/admin-users/` slice; DEC-1 WRAP `lib/api/users`, DEC-2 type re-export, DEC-3 `retry:false`+parity sentinel, DEC-4 keep `confirm`/`alert`; shared RHF+Zod form with A98 mode props + two-step edit save; Badge tokens A77; preserve action colours A86; confirms admin=area). Status ready-for-dev.
+- 2026-06-12: Implemented — 4 admin-users pages → `features/admin-users/` slice (WRAP `lib/api/users` + `adminUsersKeys`; two-step edit save; shared RHF+Zod form A98; literal-class badges A77/A86; `confirm`/`alert` preserved). +39 slice tests; S1 oracle unchanged (59 green); central full-suite 1434 / tsc / eslint / prettier green. DEC-1..4 = A. Status review.

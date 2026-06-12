@@ -1,6 +1,6 @@
 # Story E27.S6: Admin Documents (Folder Manager) and Register (Public Signup) — Feature-Slice Extraction
 
-Status: ready-for-dev
+Status: done
 
 Depends on: **E27-S1 (the documents-area net must be green at HEAD first)**, plus E21-S3 + E21-S5 + the E22 RHF+Zod form sub-recipe (closed). Inherits E21-S1 boundary decisions + the `features/admin-*` precedent from E27-S2. Independent of S2..S5 once S1 is green. **Final admin sub-slice — closes the area and enables the E27 boundary review.**
 
@@ -34,14 +34,14 @@ so that they match the proven slice pattern with behaviour preserved — based o
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites + resolve the DECs (AC: all) — A43 (a)/(b)/(c) recorded below
-  - [ ] E27-S1 documents specs green at HEAD. Confirm `features/admin-documents/` does NOT exist. Re-read `admin/documents/page.tsx` (folder manager) + `admin/register/page.tsx` (public form) + `@/lib/services/documents` (shared with member slice) + `@/lib/api/registration` + the existing member `features/documents` slice (A62 sibling-safety) + sponsors form recipe (A56).
-  - [ ] Resolve DEC-1..DEC-3 (recommended options below).
-- [ ] Task 1: Scaffold slice `api` (`admin-folders-api.ts` wrapping `@/lib/services/documents` folder fns + `registration-api.ts` wrapping `registerUser`) + `types` (re-export) + the 3 schemas + `*-api.test.ts`.
-- [ ] Task 2: Hooks — folders list + folder CRUD + permissions mutations (invalidation); register mutation. `use-folders.test.tsx`.
-- [ ] Task 3: Components — folders (page-content + table + drill-down/back + create/edit/permissions dialogs + RED delete modal + chips + search). `folder-permissions-dialog.test.tsx` (A95 out-of-set round-trip).
-- [ ] Task 4: Components — register (`register-form` RHF+Zod + `register-success` + the `already exists` mapping). `register-form.test.tsx`.
-- [ ] Task 5: Thin route entries (2 files) + Green-the-net + DoD gate — E27-S1 documents specs green (the existing `register/page.test.tsx` branding test stays green; documents folder specs added in S1 stay green); new slice unit tests; `tsc`/eslint(slice+changed, E21-S5 boundary)/`vitest run` FULL green; LF. A79 deltas recorded. **With S2..S6 merged the whole `admin/` route tree is feature-sliced → enables the E27 boundary review.**
+- [x] Task 0: Verify prerequisites + resolve the DECs (AC: all) — A43 (a)/(b)/(c) recorded below
+  - [x] E27-S1 documents specs green at HEAD. Confirm `features/admin-documents/` does NOT exist. Re-read `admin/documents/page.tsx` (folder manager) + `admin/register/page.tsx` (public form) + `@/lib/services/documents` (shared with member slice) + `@/lib/api/registration` + the existing member `features/documents` slice (A62 sibling-safety) + sponsors form recipe (A56).
+  - [x] Resolve DEC-1..DEC-3 (recommended options below).
+- [x] Task 1: Scaffold slice `api` (`admin-folders-api.ts` wrapping `@/lib/services/documents` folder fns + `registration-api.ts` wrapping `registerUser`) + `types` (re-export) + the 3 schemas + `*-api.test.ts`.
+- [x] Task 2: Hooks — folders list + folder CRUD + permissions mutations (invalidation); register mutation. `use-folders.test.tsx`.
+- [x] Task 3: Components — folders (page-content + table + drill-down/back + create/edit/permissions dialogs + RED delete modal + chips + search). `folder-permissions-dialog.test.tsx` (A95 out-of-set round-trip).
+- [x] Task 4: Components — register (`register-form` RHF+Zod + `register-success` + the `already exists` mapping). `register-form.test.tsx`.
+- [x] Task 5: Thin route entries (2 files) + Green-the-net + DoD gate — E27-S1 documents specs green (the existing `register/page.test.tsx` branding test stays green; documents folder specs added in S1 stay green); new slice unit tests; `tsc`/eslint(slice+changed, E21-S5 boundary)/`vitest run` FULL green; LF. A79 deltas recorded. **With S2..S6 merged the whole `admin/` route tree is feature-sliced → enables the E27 boundary review.**
 
 ## Dev Notes
 
@@ -91,12 +91,37 @@ The final admin sub-slice. The two pages share NOTHING functionally (a folder/pe
 
 ### Agent Model Used
 
+claude-opus-4-8[1m] (orchestrator) + a dedicated general-purpose subagent for the slice extraction.
+
 ### Debug Log References
+
+- DEC-1 = **A** (WRAP the shared `@/lib/services/documents` folder fns + own `adminFoldersKeys`; A62/A94 — module stays shared-safe with the members slice).
+- DEC-2 = **A** (bring the public register form INTO the slice as a thin unguarded sub-area).
+- DEC-3 = **A** (preserve the documents page's CURRENT non-`return null` redirect — renders the spinner shell while `push("/")`; flagged for the boundary review).
 
 ### Completion Notes List
 
+- **The documents folder/permission manager + the public register signup form extracted into `features/admin-documents/{api,hooks,components,schemas,types}`; the A56 reality corrections carried through.** Scoped gate = 7 files / 61 tests green (36 S1 oracle + 25 new slice tests). Central full-suite + tsc + eslint + prettier all green.
+- Reality preserved: documents = folder/permission manager (NO upload / doc-list / status badges); register = public unauthenticated signup (NO guard / approve-reject). `api/admin-folders-api.ts` wraps the shared service folder fns + `adminFoldersKeys`; `api/registration-api.ts` wraps public `registerUser`. Folder mutations (create/update/delete/set-permissions) go through TanStack hooks with invalidation; the imperative folder-list useState/useEffect + subfolder-count `Promise.all` probe is kept verbatim (S1 pins it).
+- Behaviour-locked: the RED delete-folder STYLED modal (`bg-red-600`, not `window.confirm`) + the close-before-await failure path (modal closed before the error surfaces); permission chips remapped raw `bg-blue-*` → token-backed `Badge variant="secondary"` (text unchanged, A77); A95 out-of-set `permissionType` round-trip (extra `<option>` + verbatim re-save); A96 no-`.trim()` on folder name + register fields.
+- **A79 deltas:** the register form keeps the god-page's SYNCHRONOUS single-banner validation — RHF+zodResolver is async and drops the HTML `required`/`minLength=8` the oracle pins, so the register form uses controlled inputs + a synchronous Zod `safeParse` (schema-sourced per A96) while preserving the HTML attributes + the mismatch-then-too-short priority; and it calls `registerUser` with local `isSubmitting` (NOT a TanStack mutation) because the register oracle renders with no `QueryClientProvider`. A `key={editFolder.id}` re-inits RHF `defaultValues` across folders.
+- **S1 oracle changes: NONE** (documents 27/27, register 9/9 unmodified; the service/registration mocks keep intercepting). **Residual debt:** the documents non-`return null` redirect divergence from sibling admin pages (DEC-3=A — deferred to the E27 boundary review).
+
 ### File List
+
+NEW — `frontend/src/features/admin-documents/`:
+
+- `types/admin-documents.types.ts`
+- `api/admin-folders-api.ts`, `api/admin-folders-api.test.ts`, `api/registration-api.ts`, `api/registration-api.test.ts`
+- `schemas/folder.schema.ts`, `schemas/folder-permissions.schema.ts`, `schemas/registration.schema.ts`
+- `hooks/use-folders.ts`, `hooks/use-folder-mutations.ts`, `hooks/use-folder-mutations.test.tsx`
+- `components/`: `admin-folders-page-content.tsx`, `folders-table.tsx`, `folder-form-dialog.tsx`, `folder-permissions-dialog.tsx`, `folder-permissions-dialog.test.tsx`, `delete-folder-dialog.tsx`, `register-page-content.tsx`, `register-form.tsx`, `register-form.test.tsx`, `register-success.tsx`
+
+MODIFIED (thin route entries):
+
+- `frontend/src/app/admin/documents/page.tsx`, `frontend/src/app/admin/register/page.tsx`
 
 ## Change Log
 
 - 2026-06-12: Story created (admin documents folder-manager + public register form → `features/admin-documents/` slice; REALITY-CORRECTED per A56 — no upload/no approve-reject; DEC-1 WRAP shared @/lib/services/documents (A62), DEC-2 bring register in as RHF+Zod thin slice, DEC-3 preserve documents non-return-null redirect; A95 permission-select widening, A96 no-trim, A89 register error mapping; preserve RED delete-folder modal). Status ready-for-dev. Final sub-slice → enables E27 boundary review.
+- 2026-06-12: Implemented — documents folder-manager + public register form → `features/admin-documents/` slice (WRAP shared `lib/services/documents`; RED delete-folder modal + close-before-await preserved; register sync-safeParse validation A96; A95 permission round-trip). +25 slice tests; S1 oracle unchanged (36 green); central full-suite / tsc / eslint / prettier green. DEC-1..3 = A. Status review. Final sub-slice → whole admin/ tree is feature-sliced; enables E27 boundary review.

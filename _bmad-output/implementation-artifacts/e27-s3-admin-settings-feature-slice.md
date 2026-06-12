@@ -1,6 +1,6 @@
 # Story E27.S3: Admin Settings — Feature-Slice Extraction
 
-Status: ready-for-dev
+Status: done
 
 Depends on: **E27-S1 (the settings-area net must be green at HEAD first)**, plus E21-S3 + E21-S5 + the E22 RHF+Zod form sub-recipe (closed). Inherits E21-S1 boundary decisions + the `features/admin-*` naming/boundary precedent set by E27-S2. Independent of S2/S4/S5/S6 once S1 is green.
 
@@ -39,15 +39,15 @@ so that they match the proven slice pattern with behaviour preserved — INCLUDI
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites + resolve the DECs (AC: all) — A43 (a)/(b)/(c) recorded below
-  - [ ] E27-S1 settings specs green at HEAD. Confirm `features/admin-settings/` does NOT exist. Re-read `settings/page.tsx` (all 3 tabs) + `admin/page.tsx` + `AppSettingsProvider` + the sponsors/members form recipe (A56).
-  - [ ] Resolve DEC-1..DEC-4 (recommended options below).
-- [ ] Task 1: Scaffold slice `api` + `types` + `schemas` — `admin-settings-api.ts` (`adminSettingsKeys` + the 9 endpoints, URLs/bodies byte-identical; logo via `api.upload`) + types + the two schemas + `admin-settings-api.test.ts`.
-- [ ] Task 2: Hooks — settings/customRoles/modules queries + their mutations + invalidation + `refreshAppSettings()` side effect on branding/module saves. `use-modules.test.tsx`.
-- [ ] Task 3: Components — `admin-dashboard` (static tiles) + thin `admin/page.tsx` entry.
-- [ ] Task 4: Components — `admin-settings-page-content` tab shell + `branding-settings-form` (RHF+Zod; hex/email `.refine`; logo upload machine + allowlist; live preview) + thin `admin/settings/page.tsx` entry.
-- [ ] Task 5: Components — `custom-roles-tab` (table + `custom-role-form` RHF+Zod with A95 `linkedRole` widening + A98 mode props + inline delete-confirm + role badge A77) + `modules-tab` (toggles + disable-confirm modal + dependency warning). `custom-role-form.test.tsx`.
-- [ ] Task 6: Green-the-net + DoD gate — E27-S1 settings specs green (extend only the licensed A79 surface; the existing `settings/page.test.tsx` mocks `useApiClient` — keep that seam working); new slice unit tests; `tsc`/eslint(slice+changed, E21-S5 boundary)/`vitest run` FULL green; LF. A79 deltas recorded.
+- [x] Task 0: Verify prerequisites + resolve the DECs (AC: all) — A43 (a)/(b)/(c) recorded below
+  - [x] E27-S1 settings specs green at HEAD. Confirm `features/admin-settings/` does NOT exist. Re-read `settings/page.tsx` (all 3 tabs) + `admin/page.tsx` + `AppSettingsProvider` + the sponsors/members form recipe (A56).
+  - [x] Resolve DEC-1..DEC-4 (recommended options below).
+- [x] Task 1: Scaffold slice `api` + `types` + `schemas` — `admin-settings-api.ts` (`adminSettingsKeys` + the 9 endpoints, URLs/bodies byte-identical; logo via `api.upload`) + types + the two schemas + `admin-settings-api.test.ts`.
+- [x] Task 2: Hooks — settings/customRoles/modules queries + their mutations + invalidation + `refreshAppSettings()` side effect on branding/module saves. `use-modules.test.tsx`.
+- [x] Task 3: Components — `admin-dashboard` (static tiles) + thin `admin/page.tsx` entry.
+- [x] Task 4: Components — `admin-settings-page-content` tab shell + `branding-settings-form` (RHF+Zod; hex/email `.refine`; logo upload machine + allowlist; live preview) + thin `admin/settings/page.tsx` entry.
+- [x] Task 5: Components — `custom-roles-tab` (table + `custom-role-form` RHF+Zod with A95 `linkedRole` widening + A98 mode props + inline delete-confirm + role badge A77) + `modules-tab` (toggles + disable-confirm modal + dependency warning). `custom-role-form.test.tsx`.
+- [x] Task 6: Green-the-net + DoD gate — E27-S1 settings specs green (extend only the licensed A79 surface; the existing `settings/page.test.tsx` mocks `useApiClient` — keep that seam working); new slice unit tests; `tsc`/eslint(slice+changed, E21-S5 boundary)/`vitest run` FULL green; LF. A79 deltas recorded.
 
 ## Dev Notes
 
@@ -97,12 +97,36 @@ The settings page is the second-largest admin surface (3 tabs, 5 endpoints, 2 mo
 
 ### Agent Model Used
 
+claude-opus-4-8[1m] (orchestrator) + a dedicated general-purpose subagent for the slice extraction.
+
 ### Debug Log References
+
+- DEC-1 transport = **A** (build on `useApiClient`; the page is already on it, no token-param module to wrap).
+- DEC-2 forms = **A** (RHF+Zod for branding + custom-role forms; A96 no-`.trim()`, A95 `linkedRole` widened to `string` on the write request types so an out-of-set stored value round-trips).
+- DEC-3 badges = **A** (`custom-role-badge` with literal semantic-colour classes — A77 documented exception per `member-status-badge`, since S1 pins Admin=red/Member=green as literals; the only colour S1 does NOT pin, Vorstand, was corrected blue→amber).
+- DEC-4 scope = **A** (one `features/admin-settings` slice for both the settings page and the static dashboard). The legacy `apiRef`/`tRef` dance is removed (TanStack obviates it).
 
 ### Completion Notes List
 
+- **The 3-tab settings page (branding/customRoles/modules) + the static dashboard extracted into `features/admin-settings/{api,hooks,components,schemas,types}`; behaviour preserved.** Scoped gate = 7 files / 61 tests green (32 S1 oracle + 29 new slice tests). Central full-suite + tsc + eslint + prettier all green.
+- `api/admin-settings-api.ts` builds 9 endpoint fns on `useApiClient` (byte-identical URLs/bodies; logo via `api.upload` field `"file"`; custom-role create POSTs the subset, edit PUTs the full form) + `adminSettingsKeys` (settings/customRoles/modules). Hooks: 3 queries (one GET each on mount, gated `isAuthenticated && isAdmin`) + create/update-settings (+`LogoUploadError`) + role create/update/delete + module update, manual refetch → invalidate-on-mutate.
+- Preserved EXACTLY: the 3 tabs, branding live preview + logo upload (invalid-type inline + failed-upload surfaced), `refreshAppSettings()` on branding + module saves, the 7 module toggles + disable-confirm modal gating + finance↔events advisory + single GET on mount + error-keeps-modal-open, custom-roles list/create/edit/inline-delete, PERSISTENT (no-timer) success/error banners, `loadError`/`saveError`, and the dashboard's 7 tiles/hrefs. Feature-local `QueryClientProvider` (retry:false) lives inside `AdminSettingsPageContent` so the S1 oracle's provider-less `render(<SettingsPage/>)` keeps working.
+- **S1 oracle changes: NONE** (the `@/lib/auth` `useApiClient` mock keeps intercepting). **Residual/deliberate:** `CustomRole.linkedRole` write types widened to `string` (A95); the Vorstand badge colour intentionally changed blue→amber (the only visual delta; S1 doesn't pin it).
+
 ### File List
+
+NEW — `frontend/src/features/admin-settings/`:
+
+- `api/admin-settings-api.ts`, `api/admin-settings-api.test.ts`
+- `types/admin-settings.types.ts`, `schemas/admin-settings.schema.ts`, `schemas/custom-role.schema.ts`
+- `hooks/`: `use-settings.ts`, `use-update-settings.ts`, `use-custom-roles.ts`, `use-role-mutations.ts`, `use-modules.ts`, `use-modules.test.tsx`
+- `components/`: `admin-dashboard-content.tsx`, `admin-settings-page-content.tsx`, `branding-settings-form.tsx`, `branding-settings-form.test.tsx`, `custom-roles-tab.tsx`, `custom-role-form.tsx`, `custom-role-form.test.tsx`, `custom-role-badge.tsx`, `custom-role-badge.test.tsx`, `modules-tab.tsx`
+
+MODIFIED (thin route entries):
+
+- `frontend/src/app/admin/page.tsx`, `frontend/src/app/admin/settings/page.tsx`
 
 ## Change Log
 
 - 2026-06-12: Story created (admin settings 3-tab page + static dashboard → `features/admin-settings/` slice; DEC-1 build on useApiClient, DEC-2 RHF+Zod branding+role forms, DEC-3 Badge tokens incl. Vorstand-blue fix, DEC-4 one slice; A95 linkedRole widening, A96 no-trim, A98 role-form mode props; preserve refreshAppSettings + persistent banners + logo upload machine). Status ready-for-dev.
+- 2026-06-12: Implemented — settings 3-tab page + static dashboard → `features/admin-settings/` slice (build on useApiClient + `adminSettingsKeys`; branding + custom-role RHF+Zod; `refreshAppSettings` + persistent banners + module disable-confirm preserved; Vorstand badge blue→amber). +29 slice tests; S1 oracle unchanged (32 green); central full-suite / tsc / eslint / prettier green. DEC-1..4 = A. Status review.

@@ -1,6 +1,6 @@
 # Story E27.S5: Admin Integrations — Feature-Slice Extraction (Api-Clients / Webhooks / Deliveries)
 
-Status: ready-for-dev
+Status: done
 
 Depends on: **E27-S1 (the integrations-area net must be green at HEAD first)**, plus E21-S3 + E21-S5 + the E22 RHF+Zod form sub-recipe (closed). Inherits E21-S1 boundary decisions + the `features/admin-*` precedent from E27-S2. Independent of S2/S3/S4/S6 once S1 is green. **Highest data-loss risk in the epic: the two show-once secret panels (behaviour-LOCKED).**
 
@@ -34,15 +34,15 @@ so that integration management matches the proven slice pattern with behaviour p
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites + resolve the DECs (AC: all) — A43 (a)/(b)/(c) recorded below
-  - [ ] E27-S1 integrations specs (9 tests) green at HEAD. Confirm `features/admin-integrations/` does NOT exist. Re-read the 3 pages + `lib/api/apiClients.ts` + `lib/api/webhooks.ts` (types + URL constants only) + the communication slice (nesting) + sponsors form recipe (A56).
-  - [ ] Resolve DEC-1..DEC-3 (recommended options below).
-- [ ] Task 1: Scaffold slice `api` (3 useApiClient-based modules + keys, exact trailing-slash URLs) + `types` (re-export the DTOs from `lib/api/apiClients`+`webhooks`) + `schemas/webhook.schema.ts` + `*-api.test.ts` (URL/key shape incl. trailing slashes + the separate deliveries base).
-- [ ] Task 2: Hooks — api-clients (list+scopes+create+revoke), webhooks (list+event-types+create+update+toggle+delete), deliveries (paged); invalidation. `use-webhooks.test.tsx`.
-- [ ] Task 3: Components — api-clients (table + create dialog + **`api-client-secret-panel`** behaviour-locked). `api-client-secret-panel.test.tsx`.
-- [ ] Task 4: Components — webhooks (table + `webhook-dialog` RHF+Zod shared create+edit + **`webhook-secret-panel`** create-only + `confirm()` delete + toggle). `webhook-dialog.test.tsx` + `webhook-secret-panel.test.tsx`.
-- [ ] Task 5: Components — deliveries (table + pagination, NO filters/retry) + thin route entries (3 files).
-- [ ] Task 6: Green-the-net + DoD gate — the 9 E27-S1 integrations specs green (they mock `@/lib/auth`'s `useApiClient` — keep that seam; the secret-once tests stay locked) + the S1 webhooks extensions; new slice unit tests; `tsc`/eslint(slice+changed, E21-S5 boundary)/`vitest run` FULL green; LF. A79 deltas recorded.
+- [x] Task 0: Verify prerequisites + resolve the DECs (AC: all) — A43 (a)/(b)/(c) recorded below
+  - [x] E27-S1 integrations specs (9 tests) green at HEAD. Confirm `features/admin-integrations/` does NOT exist. Re-read the 3 pages + `lib/api/apiClients.ts` + `lib/api/webhooks.ts` (types + URL constants only) + the communication slice (nesting) + sponsors form recipe (A56).
+  - [x] Resolve DEC-1..DEC-3 (recommended options below).
+- [x] Task 1: Scaffold slice `api` (3 useApiClient-based modules + keys, exact trailing-slash URLs) + `types` (re-export the DTOs from `lib/api/apiClients`+`webhooks`) + `schemas/webhook.schema.ts` + `*-api.test.ts` (URL/key shape incl. trailing slashes + the separate deliveries base).
+- [x] Task 2: Hooks — api-clients (list+scopes+create+revoke), webhooks (list+event-types+create+update+toggle+delete), deliveries (paged); invalidation. `use-webhooks.test.tsx`.
+- [x] Task 3: Components — api-clients (table + create dialog + **`api-client-secret-panel`** behaviour-locked). `api-client-secret-panel.test.tsx`.
+- [x] Task 4: Components — webhooks (table + `webhook-dialog` RHF+Zod shared create+edit + **`webhook-secret-panel`** create-only + `confirm()` delete + toggle). `webhook-dialog.test.tsx` + `webhook-secret-panel.test.tsx`.
+- [x] Task 5: Components — deliveries (table + pagination, NO filters/retry) + thin route entries (3 files).
+- [x] Task 6: Green-the-net + DoD gate — the 9 E27-S1 integrations specs green (they mock `@/lib/auth`'s `useApiClient` — keep that seam; the secret-once tests stay locked) + the S1 webhooks extensions; new slice unit tests; `tsc`/eslint(slice+changed, E21-S5 boundary)/`vitest run` FULL green; LF. A79 deltas recorded.
 
 ## Dev Notes
 
@@ -92,12 +92,37 @@ The two show-once secret panels are the highest data-loss risk in the whole prog
 
 ### Agent Model Used
 
+claude-opus-4-8[1m] (orchestrator) + a dedicated general-purpose subagent for the slice extraction.
+
 ### Debug Log References
+
+- DEC-1 transport = **A** (build the slice api directly on `useApiClient`; `lib/api/{apiClients,webhooks}.ts` export only types + URL bases — nothing to wrap, A56 confirmed. URL bases moved into the slice `api/` with exact trailing slashes preserved: list/create `/`; PUT/DELETE/enable/disable no slash; deliveries `/?page=`).
+- DEC-2 badges = **A** (status colours → Badge variants; delivery badge TEXT stays the raw server string; delete/revoke kept red, A86).
+- DEC-3 delete dialog = **A** (keep `window.confirm()` for delete + revoke; Radix out of scope — residual debt).
 
 ### Completion Notes List
 
+- **The 3 integrations pages extracted into one `features/admin-integrations/{api,hooks,components,schemas,types}` slice; behaviour preserved, both show-once secret panels behaviour-LOCKED.** Scoped gate = 7 files / 65 tests green (37 S1 oracle + 28 new slice tests). Central full-suite + tsc + eslint + prettier all green.
+- api built on `useApiClient` (`api-clients-api.ts`, `webhooks-api.ts`, `webhook-deliveries-api.ts` + keys); 11 hooks (api-clients list/scopes/create/revoke; webhooks list/event-types/create/update/toggle/delete; deliveries list). Manual `useState` list + `refresh*()` → TanStack reads + invalidate-on-success only (failure branches never invalidate → preserves the pinned no-refetch-on-error). Read-error→banner is DERIVED (`mutationError ?? readError`), not effect-synced (satisfies `react-hooks/set-state-in-effect`).
+- Preserved EXACTLY (S1-pinned): api-clients show-once secret (create→shown once, `clipboard.writeText`→`copied`, dismiss→cleared, list-refetch does NOT reintroduce — secret lives only in `createdSecret` component state sourced only from the create response) + scope checkboxes + revoke(confirm, red, hidden when revoked); webhooks signing-secret only on create (NO regenerate; edit PUT shows none) + enable/disable(no confirm) + delete(confirm, red) + shared edit dialog + the no-touch-edit eventTypes round-trip (A95 — stored type not in `availableEventTypes` survives) + dialog save-disabled gate (name.trim()+targetUrl.trim()+≥1 type); deliveries list+pagination(20, prev/next on hasPrev/hasNext), NO filters/NO retry/payload not rendered.
+- Webhook dialog → RHF+Zod (A96 no-`.trim()`); unused `formState.errors` removed (god-page rendered no field errors → avoids `noUnusedLocals`).
+- **S1 oracle changes: NO assertion changes** — only a `QueryClientProvider` (retry:false) `renderPage()` wrapper added to the 3 oracle suites (A88 harness adaptation, mirrors the E25-S1/S3 admission). **Residual debt:** DEC-3 `confirm()`→Radix; one benign derived-error edge (a list-read error stays visible if the create dialog is then opened — no oracle covers it).
+
 ### File List
+
+NEW — `frontend/src/features/admin-integrations/`:
+
+- `types/admin-integrations.types.ts`, `schemas/webhook.schema.ts`
+- `api/`: `api-clients-api.ts`, `webhooks-api.ts`, `webhook-deliveries-api.ts`, `admin-integrations-api.test.ts`
+- `hooks/`: `use-api-clients.ts`, `use-scopes.ts`, `use-create-api-client.ts`, `use-revoke-api-client.ts`, `use-webhooks.ts`, `use-event-types.ts`, `use-create-webhook.ts`, `use-update-webhook.ts`, `use-toggle-webhook.ts`, `use-delete-webhook.ts`, `use-webhook-deliveries.ts`
+- `components/`: api-clients (`api-clients-page-content`, `api-clients-table`, `create-api-client-dialog`, `api-client-secret-panel` + test, `api-client-status-badge`); webhooks (`webhooks-page-content`, `webhooks-table`, `webhook-dialog` + test, `webhook-secret-panel` + test, `webhook-status-badge`); deliveries (`webhook-deliveries-page-content`, `deliveries-table`, `delivery-status-badge`)
+
+MODIFIED:
+
+- `frontend/src/app/admin/api-clients/page.tsx`, `frontend/src/app/admin/webhooks/page.tsx`, `frontend/src/app/admin/webhooks/deliveries/page.tsx` (thin entries)
+- `frontend/src/app/admin/api-clients/page.test.tsx`, `frontend/src/app/admin/webhooks/page.test.tsx`, `frontend/src/app/admin/webhooks/deliveries/page.test.tsx` (S1 oracle — `QueryClientProvider` wrapper only, zero assertion changes)
 
 ## Change Log
 
 - 2026-06-12: Story created (admin integrations 3 pages → ONE `features/admin-integrations/` slice; DEC-1 build on useApiClient (nothing to wrap), DEC-2 Badge tokens, DEC-3 keep confirm() delete; behaviour-LOCK both show-once secret panels; webhook dialog → RHF+Zod with save-disabled parity + A95 eventTypes round-trip + A96 no-trim + no url-format-tightening; no regenerate/filters/retry invented; exact trailing-slash URLs). Status ready-for-dev.
+- 2026-06-12: Implemented — 3 integrations pages → one `features/admin-integrations/` slice (build on useApiClient; both show-once secret panels behaviour-LOCKED; webhook dialog RHF+Zod with eventTypes round-trip A95; deliveries no-filters/no-retry preserved). +28 slice tests; S1 oracle: zero assertion changes (only a QueryClientProvider wrapper, A88); central full-suite / tsc / eslint / prettier green. DEC-1..3 = A. Status review.

@@ -1,6 +1,6 @@
 # Story E27.S4: Admin System — Feature-Slice Extraction (Audit / Backups / Health / Retention)
 
-Status: ready-for-dev
+Status: done
 
 Depends on: **E27-S1 (the system-area net must be green at HEAD first)**, plus E21-S3 + E21-S5 + the E22 RHF+Zod form sub-recipe (closed). Inherits E21-S1 boundary decisions + the `features/admin-*` precedent from E27-S2. Independent of S2/S3/S5/S6 once S1 is green.
 
@@ -36,15 +36,15 @@ so that operational admin tooling matches the proven slice pattern with behaviou
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites + resolve the DECs (AC: all) — A43 (a)/(b)/(c) recorded below
-  - [ ] E27-S1 system specs green at HEAD. Confirm `features/admin-system/` does NOT exist. Re-read the 4 pages + `lib/api/{audit,backup,retention,health}.ts` (note `health.ts` already exists at `/health*`) + members/sponsors form recipe (A56).
-  - [ ] Resolve DEC-1..DEC-4 (recommended options below).
-- [ ] Task 1: Scaffold slice `api` (4 per-resource files + keys) + `types` + `schemas/retention.schema.ts` + `*-api.test.ts` (URL/key shape; the audit querystring; the `/health*` non-`/api/v1` paths).
-- [ ] Task 2: Hooks — audit (filters-in-key) + export; backups CRUD + schedule + download(blob); health (`refetchInterval:30_000` + `res.ok`); retention + enforce; invalidation. `use-health.test.tsx` (interval), `use-backups.test.tsx` (restore/delete invalidation).
-- [ ] Task 3: Components — audit (server-side filter bar + table + export + badges).
-- [ ] Task 4: Components — backups (list + create/upload dialogs + inline restore(DEC-4 affordance)/delete confirms + download + retry + schedule + badges).
-- [ ] Task 5: Components — health (status cards + dot + 30s refresh display) + retention (`retention-form` RHF+Zod with A95 action widening + `isSaving` guard + enforce). `retention-form.test.tsx`.
-- [ ] Task 6: Thin route entries (4 files) + Green-the-net + DoD gate — E27-S1 system specs green (transport mocks per DEC-1); new slice unit tests; `tsc`/eslint(slice+changed, E21-S5 boundary)/`vitest run` FULL green; LF. A79 deltas recorded.
+- [x] Task 0: Verify prerequisites + resolve the DECs (AC: all) — A43 (a)/(b)/(c) recorded below
+  - [x] E27-S1 system specs green at HEAD. Confirm `features/admin-system/` does NOT exist. Re-read the 4 pages + `lib/api/{audit,backup,retention,health}.ts` (note `health.ts` already exists at `/health*`) + members/sponsors form recipe (A56).
+  - [x] Resolve DEC-1..DEC-4 (recommended options below).
+- [x] Task 1: Scaffold slice `api` (4 per-resource files + keys) + `types` + `schemas/retention.schema.ts` + `*-api.test.ts` (URL/key shape; the audit querystring; the `/health*` non-`/api/v1` paths).
+- [x] Task 2: Hooks — audit (filters-in-key) + export; backups CRUD + schedule + download(blob); health (`refetchInterval:30_000` + `res.ok`); retention + enforce; invalidation. `use-health.test.tsx` (interval), `use-backups.test.tsx` (restore/delete invalidation).
+- [x] Task 3: Components — audit (server-side filter bar + table + export + badges).
+- [x] Task 4: Components — backups (list + create/upload dialogs + inline restore(DEC-4 affordance)/delete confirms + download + retry + schedule + badges).
+- [x] Task 5: Components — health (status cards + dot + 30s refresh display) + retention (`retention-form` RHF+Zod with A95 action widening + `isSaving` guard + enforce). `retention-form.test.tsx`.
+- [x] Task 6: Thin route entries (4 files) + Green-the-net + DoD gate — E27-S1 system specs green (transport mocks per DEC-1); new slice unit tests; `tsc`/eslint(slice+changed, E21-S5 boundary)/`vitest run` FULL green; LF. A79 deltas recorded.
 
 ## Dev Notes
 
@@ -94,12 +94,39 @@ Four loosely-related operational pages in ONE `admin-system` slice (sibling sets
 
 ### Agent Model Used
 
+claude-opus-4-8[1m] (orchestrator) + a dedicated general-purpose subagent for the slice extraction.
+
 ### Debug Log References
+
+- DEC-1 transport = **A** (WRAP the `lib/api/{audit,backup,retention,health}` token-param fns + per-resource keys; A94, zero transport-mock edits).
+- DEC-2 badges = **A** (consolidate the 5 colour helpers + the health dot into feature-local literal-class badge components — the `member-status-badge` A77 precedent; literal Tailwind classes kept verbatim, not mapped onto the 4 generic `ui/badge` variants which resolve to different tokens than S1 pins).
+- DEC-3 health poll = **A** (`refetchInterval: 30_000` + `refetchOnWindowFocus:false` replaces `setInterval`; added a non-breaking `res.ok` guard to `getHealthDetail` in `lib/api/health.ts`).
+- DEC-4 restore affordance = **A** (flip restore trigger + confirm blue/orange → RED — A86 promotes the highest-risk action to a destructive affordance; delete stays red, enforce stays orange). This is the one licensed S1 change.
 
 ### Completion Notes List
 
+- **The 4 admin-system pages extracted into one `features/admin-system/{api,hooks,components,schemas,types}` slice, organised by sub-area; behaviour preserved.** Scoped gate = 11 files / 116 tests green (83 S1 oracle + 33 new slice tests). Central full-suite + tsc + eslint + prettier all green. Confirmed: the health 30s-poll fake-timer test and the retention 5s-toast fake-timer test stayed green under `refetchInterval` + the toast effect.
+- Per-resource `api/{audit,backups,health,retention}-api.ts` WRAP the lib fns + `*Keys` factories; hooks per surface with invalidate-on-mutation (create/delete/restore/upload→`backupsKeys.list()`; retention update→`retentionKeys.all`; enforce + download deliberately no invalidation); `retry:false` everywhere (generic `Error`, no status, A99). Inline-confirm "failure-keeps-confirm-state" preserved (confirm id cleared only in the success branch).
+- Preserved EXACTLY: audit 7 server-side filters (each change resets `page:1` + refetches) + collapsible panel + pagination(50) + CSV Blob/anchor export + badges; backups list/stats + create/upload modals + restore/delete inline-confirm + download(Completed)/retry(Failed)/disable-schedule + badges; health overall+per-service cards + exception box + status badges/dots + 30s refresh + manual refresh; retention list + edit form(action `<select>` A95-widened, no-`.trim()` A96) + save+5s toast + enforce(no confirm, orange)+count. AC-8 fixes shipped: `getHealthDetail` `res.ok` guard; the backups schedule preset folded into `useBackupSchedule` (degrades to disabled on a missing-schedule throw — god-page parity).
+- **S1 oracle changes:** only the licensed DEC-4 A86 change — 2 assertions in `backups/page.test.tsx` (restore trigger `text-blue-600`→`text-red-600`; restore confirm orange→red). Audit/health/retention suites: ZERO assertion changes. **Residual debt:** none material (load-error banners are derived from the query rather than dismissable-via-effect — the net doesn't test load-error dismissal; action errors stay dismissable).
+
 ### File List
+
+NEW — `frontend/src/features/admin-system/`:
+
+- `types/`: `audit.types.ts`, `backups.types.ts`, `health.types.ts`, `retention.types.ts`
+- `api/`: `audit-api.ts`, `backups-api.ts`, `health-api.ts`, `retention-api.ts` (+ `audit-api.test.ts`, `backups-api.test.ts`, `health-api.test.ts`, `retention-api.test.ts`)
+- `schemas/retention.schema.ts`
+- `hooks/`: `use-audit-log.ts`, `use-audit-filter-options.ts`, `use-export-audit.ts`, `use-backups.ts`, `use-backup-schedule.ts`, `use-backup-mutations.ts`, `use-health.ts`, `use-retention.ts`, `use-retention-mutations.ts` (+ `use-health.test.tsx`, `use-backup-mutations.test.tsx`)
+- `components/`: audit (`audit-page-content`, `audit-table`, `audit-filter-bar`, `audit-badges`); backups (`backups-page-content`, `backups-table`, `create-backup-dialog`, `upload-backup-dialog`, `backup-badges`); health (`health-page-content`, `health-status`, `health-badges`); retention (`retention-page-content`, `retention-form`, `retention-badges`) (+ `retention-form.test.tsx`)
+
+MODIFIED:
+
+- `frontend/src/app/admin/{audit,backups,health,retention}/page.tsx` (thin entries)
+- `frontend/src/lib/api/health.ts` (non-breaking `res.ok` guard on `getHealthDetail`)
+- `frontend/src/app/admin/backups/page.test.tsx` (S1 oracle — licensed DEC-4 A86: 2 restore assertions orange/blue → red)
 
 ## Change Log
 
 - 2026-06-12: Story created (admin system 4 pages → ONE `features/admin-system/` slice; DEC-1 WRAP token-param modules incl. existing health.ts, DEC-2 Badge tokens, DEC-3 30s refetchInterval + res.ok fix, DEC-4 restore→destructive-red; server-side audit filters, A95 retention action widening, isSaving guard; preserve inline-confirm failure-keeps-state + token-blob download). Status ready-for-dev.
+- 2026-06-12: Implemented — 4 admin-system pages → one `features/admin-system/` slice (WRAP audit/backup/health/retention; health 30s `refetchInterval` + `res.ok` guard; literal-class badges A77/A86; restore→RED per DEC-4). +33 slice tests; S1 oracle: only the licensed 2 backups restore-colour assertions (DEC-4); health-poll + retention-toast timers stayed green; central full-suite / tsc / eslint / prettier green. DEC-1..4 = A. Status review.

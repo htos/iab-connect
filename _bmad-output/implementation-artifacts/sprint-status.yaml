@@ -1582,14 +1582,14 @@ development_status:
   e26-s6-finance-settings-slice: backlog
   epic-26-retrospective: optional
 
-  epic-27: in-progress
-  e27-s1-admin-characterization-tests: ready-for-dev
-  e27-s2-admin-users-feature-slice: ready-for-dev
-  e27-s3-admin-settings-feature-slice: ready-for-dev
-  e27-s4-admin-system-audit-backups-health-retention-slice: ready-for-dev
-  e27-s5-admin-integrations-api-clients-webhooks-slice: ready-for-dev
-  e27-s6-admin-documents-and-register-slice: ready-for-dev
-  epic-27-retrospective: optional
+  epic-27: done  # 2026-06-12: implemented (S1-S6, all 15 admin pages → 5 feature-slices) + epic-boundary review (4 patches) + retro; Vitest 1057→1434/158, tsc/eslint/prettier green
+  e27-s1-admin-characterization-tests: done
+  e27-s2-admin-users-feature-slice: done
+  e27-s3-admin-settings-feature-slice: done
+  e27-s4-admin-system-audit-backups-health-retention-slice: done
+  e27-s5-admin-integrations-api-clients-webhooks-slice: done
+  e27-s6-admin-documents-and-register-slice: done
+  epic-27-retrospective: done
 
   epic-28: backlog
   e28-s1-public-characterization-tests: backlog
