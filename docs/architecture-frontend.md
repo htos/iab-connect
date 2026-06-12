@@ -167,6 +167,27 @@ URLs), and may not import a sibling `features/admin-*` (the generic `src/feature
 ESLint boundary covers them with no per-feature config entry). Naming convention:
 `features/admin-<sub-area>/`.
 
+**One slice + shared foundation (E26 Finance precedent).** Where a route area is
+**one cohesive feature** whose pages share DTOs, query keys, and endpoint families
+(rather than several independent sub-domains), it is migrated as a **single
+`features/finance/` slice with a shared foundation** — contrast the admin area's five
+*mutually-independent* sub-slices above. The foundation story (E26-S2) OWNS
+`api/finance-api.ts` (`FINANCE_BASE` + a `financeKeys` root key-factory with a `scope`
+namespacing helper + all the ledger/accounting URL builders + the shared read-lookup
+builders activity-areas/tax-codes/categories/profile) and `types/finance.types.ts`
+(re-export of `@/types/finance` per A83 + the new ledger/accounting + shared read-lookup
+types). The api layer is **URL builders + keys only — no fetching**; the hooks own the
+`useApiClient` calls, so a BUILD-on-`useApiClient` characterization net survives the
+migration with zero transport edits (A94). Later finance stories (E26-S3..S6) ADD their
+own `<sub>-api.ts`/`<sub>.types.ts` that **import** the foundation root and never edit
+it — keeping the sibling slice extractions parallel-safe (A91/A101). Each page-content
+composition root is the only `"use client"` and self-embeds its own
+`QueryClientProvider` (`new QueryClient({ defaultOptions: { queries: { retry: false } } })`,
+the admin-settings precedent); the app-router `page.tsx` files are thin server entries
+importing the content root. Intra-slice imports are relative (it is one feature). Naming
+convention: `features/finance/` (one slice; sub-resources live in files, not sibling
+features).
+
 ## Target Import Direction
 
 ```text
@@ -476,6 +497,44 @@ distinct from [`frontend/e2e/module-enforcement.spec.ts`](../frontend/e2e/module
 which is a *runtime Playwright behaviour test* asserting module-enablement
 gating (UX rewrite + backend 403). Do not conflate the two: the E2E test is not
 an import-boundary check, and the ESLint rules are not a behaviour check.
+
+---
+
+## Finance feature slice — one shared foundation (E26)
+
+Added: 2026-06-12. The entire `app/finance/**` tree is now **thin server-entry
+shells** over a single shared feature slice at `src/features/finance/` (the
+"one-slice-shared-foundation" pattern, A101 — NOT one dir per page). E26-S2 owns
+the foundation (`api/finance-api.ts` = `FINANCE_BASE` + the `financeKeys` root +
+the ledger/accounting/profile/activity-areas URL builders; `types/finance.types.ts`
+= the re-exported `@/types/finance` DTOs + the shared `ActivityArea`/`TaxCode`
+lookups). The four sub-slices add their OWN `<sub>-api.ts`/`<sub>.types.ts`
+importing that root and NEVER edit it (parallel-safe, A91): S3 receivables
+(invoices), S4 budgeting (budgets/budget-vs-actual/categories + the
+activity-areas `/report` builder), S5 payments/expense-claims/bank-import, and
+**S6 settings** (the FINAL slice — `api/settings-api.ts` + `types/settings.types.ts`
++ `schemas/{finance-profile,invoice-template,tax-code,settings-activity-area}.schema.ts`
++ the `components/settings/*` content roots for the hub, profile form,
+invoice-templates, settings/activity-areas, and tax-codes). Each content root is
+the only `"use client"` boundary and self-embeds its own
+`QueryClient({ retry:false })` `QueryClientProvider`; the route files are server
+entries (`export default () => <XContent/>`).
+
+The settings forms use the E22 RHF+Zod sub-recipe with the program's load-bearing
+traps preserved verbatim (A56): the profile `countryCode`/`currency`/`jurisdiction`
++ invoice-template `language`/`jurisdiction` are FULL `z.string()` unions with the
+raw stored value in `defaultValues` and an extra `<option>` for an out-of-set
+value (A95 — never `z.enum(renderedSubset)`); no submitted byte is `.trim()`ed and
+optionals map `"" → null` at the wire boundary (A96); the profile 404→POST vs
+PUT `/profile/{id}` branch, the `finance-profile-changed` CustomEvent, the
+read-only render (every field `disabled` + hidden footer), the tax-code rate
+×100/÷100 round-trip, and the invoice-template create-only-jurisdiction /
+edit-locked-countryCode immutability (A98) are all pinned by the E26-S1
+characterization net and survive the migration with ZERO transport-mock edits
+(A94 BUILD). `settings/activity-areas` REUSES the foundation's `ActivityArea`
+type + the activity-areas CRUD builders (DEC-3 — single owner; its form omits
+`isActive`, edit hard-codes `isActive:true`). The Finance domain is now fully
+migrated.
 
 ---
 
