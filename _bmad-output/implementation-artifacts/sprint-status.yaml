@@ -1,5 +1,39 @@
 # generated: 2026-05-12
-# last_updated: 2026-06-07 (bmad-create-epics-and-stories — BULK MATERIALISATION of the
+# last_updated: 2026-06-12 (bmad-create-story BULK REFRESH for entire Epic-29 (Frontend
+#   Feature-Slice Migration — Smaller Features): COMPLETE. Resumed per the roadmap wave order
+#   (E23->E24 closed; E29 next, NOT the numeric E25 — user picked E29 via AskUserQuestion).
+#   User directive "für das ganze nächste Epic. wichtig es ist kein mvp mehr." (2026-06-12) →
+#   post-MVP-comprehensive scope (the E4/E5/E7/E8/E22/E24 directive shape). All 4 stories authored
+#   dev-ready from the E29 skeleton via 4 parallel A56 existing-implementation spikes (documents /
+#   board-documents list+detail / profile+security / shared sponsors-slice recipe). **A56 spike
+#   divergences from the skeleton (load-bearing, recorded in each story):** (1) BOARD DOCUMENTS is
+#   the OPPOSITE of the skeleton's "smallest slice, no forms" — it is the LARGEST E29 slice: list
+#   has an upload modal (FormData) + status workflow (review/publish/archive) + delete + folder nav;
+#   detail has version history + restore + tag editing (a form) + version upload + status
+#   transitions. E29-S3 scoped to the FULL surface w/ RHF+Zod (kein MVP). (2) PROFILE is NOT
+#   zero-tested — ChannelPreferencesCard.test.tsx exists (relocate+keep green). (3) DOCUMENTS uses
+#   @/lib/services/documents (NOT useApiClient) + a raw-fetch+getSession download; single-tag filter
+#   is a STRING (not array); pageSize=20 (not 12). (4) /documents (S2) + /board/documents (S3) SHARE
+#   @/lib/services/documents.ts + the documents.* i18n namespace → A62 sibling-safe constraints
+#   (S3 Task 0 re-verifies what S2 shipped). (5) Profile/Security data layer is non-uniform: raw
+#   fetch+useAuth token for /members/me, @/lib/api/privacy for consent/channel, @/lib/api/users for
+#   sessions; the consent THREE branches (silent-load / success-3s-timer / explicit-error-no-timer)
+#   + the session optimistic-removal+4s-timer are the A76/A79 invariants. **Cross-cutting:** (a)
+#   dev-story order S1 -> {S2,S3,S4} (S2/S3/S4 each need S1 green at HEAD; S2/S3/S4 mutually
+#   independent; recommend S2 then S3 (shares the documents module) then S4). (b) Each story carries
+#   a Decision-Needed block (DEC-1..4) w/ recommended options for A41/A32 + A43 (a)/(b)/(c); recurring
+#   recs: DEC-1=wrap-shared-service (not useApiClient-rewrite), DEC type-home=re-export from lib
+#   (features->lib legal; lib->features violates E21-S5), DEC form=adopt E22 RHF+Zod (epic goal).
+#   (c) Frontend gates per A58/A72 (changed-files eslint/prettier, prettier --write only on NEW
+#   files, never npm run format) + A73 LF + A78 stable mocks; A35/A46 cleanup; A85 stable
+#   parent->child callbacks; A86 contextual destructive colour. (d) hi.json has zero profile keys +
+#   only nav.documents today → parity is a net-add for the touched sets (messages.parity.test.ts
+#   tolerates a hi subset). **Status transitions:** epic-29 backlog -> in-progress; e29-s1..s4
+#   backlog -> ready-for-dev; epic-29-retrospective optional. Sprint state: 24 epics done (E1-E24) +
+#   E29 in-progress (4 ready-for-dev); E25/E26/E27/E28/E30/E31 still backlog. NEXT per workflow +
+#   feedback_session_pacing_dev_cycles + A34: commit this 4-story bulk-context refresh + sprint-status
+#   update, then bmad-dev-story for e29-s1 in a fresh session (S1 net green at HEAD first). Independent
+#   of the still-open Beta go-live walkthrough.) ## Previously: 2026-06-07 (bmad-create-epics-and-stories — BULK MATERIALISATION of the
 #   remaining Frontend Refactoring Program epics E23-E31: COMPLETE. User directive "add all
 #   from frontend-refactoring-roadmap now" — the roadmap's documented just-in-time, one-epic-
 #   per-boundary-review rule was deliberately overridden to author the whole remaining program
@@ -1503,11 +1537,11 @@ development_status:
   e28-s4-public-static-and-layout-slice: backlog
   epic-28-retrospective: optional
 
-  epic-29: backlog
-  e29-s1-smaller-features-characterization-tests: backlog
-  e29-s2-documents-feature-slice: backlog
-  e29-s3-board-documents-feature-slice: backlog
-  e29-s4-profile-feature-slice: backlog
+  epic-29: in-progress  # 2026-06-12: resumed per roadmap order (E24->E29); bulk create-story for all 4 stories
+  e29-s1-smaller-features-characterization-tests: ready-for-dev
+  e29-s2-documents-feature-slice: ready-for-dev
+  e29-s3-board-documents-feature-slice: ready-for-dev
+  e29-s4-profile-feature-slice: ready-for-dev
   epic-29-retrospective: optional
 
   epic-30: backlog
