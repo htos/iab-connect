@@ -1,5 +1,43 @@
 # generated: 2026-05-12
-# last_updated: 2026-06-12 (bmad-create-story BULK REFRESH for the ENTIRE Epic-26 (Frontend
+# last_updated: 2026-06-12 (bmad-create-story BULK REFRESH for the ENTIRE Epic-28 (Frontend
+#   Feature-Slice Migration — Public Site) per user directive "das ganze nächste epic mit allen
+#   stories dazu implemenations ready machen. es ist kein mvp mehr" (2026-06-12). All 4 stories
+#   backlog → ready-for-dev; epic-28 backlog → in-progress. NEXT per roadmap (E28 is next after
+#   E26/E27/E29 closed). Authored from the E28 skeleton via 4 parallel A56 existing-implementation
+#   spikes (content / forms / static+layout+harness / cross-cutting transport+RSC). **Epic shape —
+#   the program's FIRST genuine client→RSC migration + the ONLY unauthenticated/SEO surface (9 pages
+#   under the separate public/layout.tsx shell).** **A56 load-bearing findings (spec over-generalised
+#   / corrected):** (1) `useApiClient` is UNUSABLE here — it 401-gates on no-auth (auth.ts:178) and
+#   the public endpoints are anonymous → slices use plain SERVER `fetch` (RSC) / the existing
+#   `lib/api/privacy.ts` plain-fetch (writes), NOT TanStack/useApiClient. Big divergence from the
+#   sponsors/suppliers recipe. (2) NO `QueryClientProvider` in the char-net (no public page uses
+#   React Query) → A103 self-wrap recipe does NOT apply; DEC-1 in S1 = render pages directly. (3)
+#   the S1 net does NOT survive 100% unchanged (first in the program): the 5 read-only pages flip
+#   client→RSC in S2, so their render harness adapts `render(<Page/>)`→`render(await Page())` +
+#   mock next-intl/server — A88-LICENSED, behavioural assertions unchanged. (4) `license/page.tsx`
+#   is ALREADY an async Server Component (getTranslations + fs.readFileSync of repo LICENSE + gnu.org
+#   fallback) with an existing test → S4 is RELOCATE+KEEP not "convert"; it's the RSC reference the
+#   other stories mirror. (5) transport split: newsletter/unsubscribe WRAP privacy.ts (zero-edit,
+#   A94); blog/events/sponsors/contact BUILD (raw inline fetch, baseURL dup'd 7-8×); events has
+#   UNUSED `services/events.ts` public helpers explicitly "reserved for E28" (S2-DEC-1 wrap-vs-build,
+#   reconcile requireAuth + EventDto superset/enum-widening). (6) two detail pages collapse
+#   missing/unpublished into ONE generic error block — NO Next notFound() today; preserve, don't add.
+#   (7) honeypot (contact `website`) silent-success short-circuit runs PRE-fetch on the raw value +
+#   `website` STAYS in the payload — A95/A96 hazards (no `.trim()`, no z.enum(subset)); newsletter
+#   `||undefined` name-coercion must survive RHF. (8) unsubscribe[token] is a confirm STATE-MACHINE,
+#   NOT an RHF form (S3-DEC-5). (9) event-detail registration form stays MANUAL (S2, NOT RHF — RHF is
+#   S3's contact/newsletter scope). (10) public sponsors page fully INDEPENDENT of features/sponsors/
+#   (different DTO/endpoint/tier vocab). (11) NO PageShell exists → S4 references @/components/
+#   navigation/PublicHeader|PublicFooter + leaves an E30 deferral TODO (A82). (12) i18n DONE — en↔de
+#   parity, hi tolerated subset; server getTranslations reuses the same namespaces (no i18n work).
+#   **Cross-cutting:** dev-story order S1 → {S2,S3,S4} (S2/S3/S4 each need S1 green; mutually
+#   independent — S2 establishes the slice foundation, S3/S4 build in their own files, A91; may
+#   parallel). Recommend S1 → S4 (simplest, the RSC reference) → S2 (bulk RSC) → S3 (RHF forms).
+#   Each story carries a DEC block w/ recommended options (A41/A32 + A43 (a)/(b)/(c)). Frontend gates
+#   A58/A72 (changed-files eslint/prettier, --write NEW files only) + A73 LF + A78/A64 stable mocks +
+#   A35/A46 cleanup. Files: e28-s1..s4 in implementation-artifacts. **NEXT = bmad-dev-story E28-S1
+#   (the char net — blocks S2..S4), recommended in a fresh session per feedback_session_pacing_dev_
+#   cycles.** Independent of the still-open Beta go-live walkthrough.) ## Previously: 2026-06-12 (bmad-create-story BULK REFRESH for the ENTIRE Epic-26 (Frontend
 #   Feature-Slice Migration — Finance) per user directive "das nächste Epic und alle stories dazu
 #   implementierungs ready machen." (2026-06-12). All 6 stories backlog → ready-for-dev; epic-26
 #   backlog → in-progress. Heaviest characterization surface in the program: 26 Finance pages
@@ -1621,11 +1659,11 @@ development_status:
   e27-s6-admin-documents-and-register-slice: done
   epic-27-retrospective: done
 
-  epic-28: backlog
-  e28-s1-public-characterization-tests: backlog
-  e28-s2-public-content-server-components-slice: backlog
-  e28-s3-public-forms-feature-slice: backlog
-  e28-s4-public-static-and-layout-slice: backlog
+  epic-28: in-progress  # 2026-06-12: bulk-refreshed to ready-for-dev (4 stories) per A34; Public site feature-slice migration — program's FIRST client→RSC epic
+  e28-s1-public-characterization-tests: ready-for-dev
+  e28-s2-public-content-server-components-slice: ready-for-dev
+  e28-s3-public-forms-feature-slice: ready-for-dev
+  e28-s4-public-static-and-layout-slice: ready-for-dev
   epic-28-retrospective: optional
 
   epic-29: done  # 2026-06-12: implemented (S1-S4) + epic-boundary review (5 patches) + retro; Vitest 839/101, next build green
