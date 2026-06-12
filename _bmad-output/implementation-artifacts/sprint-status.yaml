@@ -1603,14 +1603,14 @@ development_status:
   e25-s4-email-templates-crud-slice-and-component-relocation: done
   epic-25-retrospective: done
 
-  epic-26: in-progress  # 2026-06-12: bmad-create-story BULK REFRESH for the whole Epic-26 (Finance) — all 6 stories backlog → ready-for-dev
-  e26-s1-finance-characterization-tests: ready-for-dev
-  e26-s2-finance-core-ledger-accounting-slice: ready-for-dev
-  e26-s3-finance-receivables-payables-slice: ready-for-dev
-  e26-s4-finance-budgeting-reporting-slice: ready-for-dev
-  e26-s5-finance-banking-and-data-slice: ready-for-dev
-  e26-s6-finance-settings-slice: ready-for-dev
-  epic-26-retrospective: optional
+  epic-26: done  # 2026-06-12: implemented (S1 char-net 26 pages + S2 foundation + S3-S6 slices, all 26 Finance pages → features/finance) + epic-boundary review (2 MED consistency patches, APPROVED) + retro; Vitest 192/1840, tsc/eslint(--max-warnings=0) clean
+  e26-s1-finance-characterization-tests: done
+  e26-s2-finance-core-ledger-accounting-slice: done
+  e26-s3-finance-receivables-payables-slice: done
+  e26-s4-finance-budgeting-reporting-slice: done
+  e26-s5-finance-banking-and-data-slice: done
+  e26-s6-finance-settings-slice: done
+  epic-26-retrospective: done
 
   epic-27: done  # 2026-06-12: implemented (S1-S6, all 15 admin pages → 5 feature-slices) + epic-boundary review (4 patches) + retro; Vitest 1057→1434/158, tsc/eslint/prettier green
   e27-s1-admin-characterization-tests: done

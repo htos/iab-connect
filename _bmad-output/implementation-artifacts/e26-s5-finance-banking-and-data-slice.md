@@ -1,6 +1,6 @@
 # Story E26.S5: Finance Banking/Data — Feature-Slice Extraction
 
-Status: ready-for-dev
+Status: done
 
 Depends on: **E26-S1 (the S5 banking/data suites green at HEAD)** + **E26-S2 (the shared `finance-api.ts`/`finance.types.ts` foundation)**. Mutually independent of S3/S4/S6 once S2's foundation lands.
 
@@ -31,16 +31,16 @@ so that bank-import, transactions and exports migrate while their file UPLOAD (m
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites + resolve the DECs (AC: all) — A43 (a)/(b)/(c) recorded below
-  - [ ] E26-S1 banking suites green at HEAD; E26-S2 foundation present. Re-read the 3 pages + `lib/auth.ts` (`upload` + the blob branch of `get`) + the S2 foundation (A56). Confirm the upload field names + the POST-vs-PUT `/ignore` divergence + the two download anchor styles.
-  - [ ] Resolve DEC-1..DEC-2 (recommended options below).
-- [ ] Task 1: Scaffold `api/banking-api.ts` (import S2 `FINANCE_BASE`/`financeKeys`; bank-imports incl. the item-action sub-paths with the POST-vs-PUT `/ignore` split, transactions incl. `?from&to&type&accountId&categoryId`, exports journal/open-items blob URLs, receipts upload/download) + `types/banking.types.ts` + `api/banking-api.test.ts` (URL/key shape incl. the POST/PUT `/ignore` distinction + the string-interpolated journal query).
-- [ ] Task 2: Hooks — queries (bank-imports list, import detail, transactions `?filters`, accounts/categories/activity-areas selectors, receipts list) + mutations (bank-import upload (`api.upload`, `file`), camt upload (`api.upload`, `file`), item accept-match/reject-match/match/ignore(POST)/unmatch(PUT); transaction create/edit/delete; receipt upload (`api.upload`, `file`+`notes`) + transaction receipt attach/detach) each invalidating `financeKeys`; the receipt + export **blob-download** helpers as imperative functions (NOT queries). Hook tests: the upload mutation (multipart body shape + `onSuccess` reset, A92), the POST-vs-PUT `/ignore` mutations, the blob-download helper.
-- [ ] Task 3: Components — `bank-import` (list + upload/camt buttons (write-gated, hardcoded-English errors preserved) + import-detail item-match panel (accept-green/reject-red/ignore/match) + match modal; the inline "Not authorized" guard preserved).
-- [ ] Task 4: Components — `transactions` (table + filter-bar (server filters + client search) + create/edit form RHF+Zod + delete modal + receipt-attach modal (mutually-exclusive pick/upload) + preview modal (image/PDF, deferred revoke); the canonical guard preserved).
-- [ ] Task 5: Components — `exports` (two export cards: journal with from/to dates (string-interpolated query) + open-items; both blob-download via `api.get<Blob>` + non-appended anchor + hardcoded filenames; the read-only `router.replace("/")` guard preserved).
-- [ ] Task 6: Thin route entries — the 3 route files → content components.
-- [ ] Task 7: Green-the-net + DoD gate — E26-S1 banking suites green (transport mocks unchanged — BUILD per A94; the `upload`/blob mocks must keep intercepting); new slice unit tests; `tsc`/eslint(changed+boundary)/`vitest run` FULL green; LF; A79/A92 deltas recorded + the upload/download fidelity confirmed. (`next build` deferred to epic boundary.)
+- [x] Task 0: Verify prerequisites + resolve the DECs (AC: all) — A43 (a)/(b)/(c) recorded below
+  - [x] E26-S1 banking suites green at HEAD; E26-S2 foundation present. Re-read the 3 pages + `lib/auth.ts` (`upload` + the blob branch of `get`) + the S2 foundation (A56). Confirm the upload field names + the POST-vs-PUT `/ignore` divergence + the two download anchor styles.
+  - [x] Resolve DEC-1..DEC-2 (recommended options below).
+- [x] Task 1: Scaffold `api/banking-api.ts` (import S2 `FINANCE_BASE`/`financeKeys`; bank-imports incl. the item-action sub-paths with the POST-vs-PUT `/ignore` split, transactions incl. `?from&to&type&accountId&categoryId`, exports journal/open-items blob URLs, receipts upload/download) + `types/banking.types.ts` + `api/banking-api.test.ts` (URL/key shape incl. the POST/PUT `/ignore` distinction + the string-interpolated journal query).
+- [x] Task 2: Hooks — queries (bank-imports list, import detail, transactions `?filters`, accounts/categories/activity-areas selectors, receipts list) + mutations (bank-import upload (`api.upload`, `file`), camt upload (`api.upload`, `file`), item accept-match/reject-match/match/ignore(POST)/unmatch(PUT); transaction create/edit/delete; receipt upload (`api.upload`, `file`+`notes`) + transaction receipt attach/detach) each invalidating `financeKeys`; the receipt + export **blob-download** helpers as imperative functions (NOT queries). Hook tests: the upload mutation (multipart body shape + `onSuccess` reset, A92), the POST-vs-PUT `/ignore` mutations, the blob-download helper.
+- [x] Task 3: Components — `bank-import` (list + upload/camt buttons (write-gated, hardcoded-English errors preserved) + import-detail item-match panel (accept-green/reject-red/ignore/match) + match modal; the inline "Not authorized" guard preserved).
+- [x] Task 4: Components — `transactions` (table + filter-bar (server filters + client search) + create/edit form RHF+Zod + delete modal + receipt-attach modal (mutually-exclusive pick/upload) + preview modal (image/PDF, deferred revoke); the canonical guard preserved).
+- [x] Task 5: Components — `exports` (two export cards: journal with from/to dates (string-interpolated query) + open-items; both blob-download via `api.get<Blob>` + non-appended anchor + hardcoded filenames; the read-only `router.replace("/")` guard preserved).
+- [x] Task 6: Thin route entries — the 3 route files → content components.
+- [x] Task 7: Green-the-net + DoD gate — E26-S1 banking suites green (transport mocks unchanged — BUILD per A94; the `upload`/blob mocks must keep intercepting); new slice unit tests; `tsc`/eslint(changed+boundary)/`vitest run` FULL green; LF; A79/A92 deltas recorded + the upload/download fidelity confirmed. (`next build` deferred to epic boundary.)
 
 ## Dev Notes
 
@@ -86,14 +86,31 @@ The banking/data group — three pages but the HIGHEST-RISK behaviours in the ep
 
 ### Agent Model Used
 
-_(to be filled by dev-story)_
+claude-opus-4-8[1m] orchestrator + 1 parallel general-purpose subagent (S3/S4/S5/S6 concurrent on the S2 foundation, A87/A101). Autonomous mode (A41).
 
 ### Debug Log References
 
+**DEC resolutions (A43 (a)/(b)/(c)) — all = A:**
+- **DEC-1 = A (upload/download transport, A76/A94):** (a) keep upload on `api.upload` (multipart, field `file`/`file`+`notes`, NO Content-Type) + downloads on `api.get<Blob>`→object-URL→anchor, wrapped in dedicated hook/api functions but NOT TanStack-JSON-ified. (b) these stream files; JSON-ifying is the exact A76 silent-regression class the net guards. (c) thin hooks wrap the imperative functions; file handling byte-identical.
+- **DEC-2 = A (POST-vs-PUT `/ignore`):** (a) preserve BOTH — `useIgnoreItem` (POST) + `useUnmatchItem` (PUT) against the same `/items/{id}/ignore` path. (b) the god-page distinguishes them; collapsing changes behaviour. (c) both pinned at api-shape + hook + S1 net.
+
+**Licensed A79 change (data-mechanism timing, NOT a transport-mock edit):** in `bank-import/page.test.tsx` the post-`waitFor(apiGet)` synchronous `getByText("statement-june.csv")` was wrapped in `waitFor` — the TanStack list query commits resolved data one render after the `apiGet` call is observed (god-page fetched+setState in one awaited pass). Behaviour identical; only the assertion timing wrapper changed, with an inline comment.
+
 ### Completion Notes List
+
+- 3 god-pages → thin server route shells; behaviour in `features/finance/components/banking/*` content roots, each self-wrapping `QueryClientProvider({retry:false})`.
+- Preserved BYTE-FOR-BYTE (the epic's highest-risk class): **upload** FormData `"file"` (bank-import/camt) + `"file"`+`"notes"` (receipt), Content-Type omitted, camt auto-trigger, single-shot bank-import; **download** `api.get<Blob>`→`createObjectURL`→anchor→click→revoke with `exports` `journal.csv`/`open-items.csv` anchor **NOT DOM-appended** (journal URL **string-interpolated**) vs transactions receipt anchor **appended+removed** + image/PDF **preview-modal branch** with deferred revoke; the **POST-vs-PUT `/ignore`** split; transactions `?from&to&type&accountId&categoryId` via `URLSearchParams`.
+- Guards preserved AS-IS: transactions canonical (`push("/")`+spinner→null); bank-import **inline "Not authorized" div** (no redirect/null); exports `replace("/")`+null with no isLoading wait (premature-redirect quirk). bank-import **hardcoded-English errors** verbatim; A86 colours (accept=green, reject=red, delete=red, primary=orange).
+- **Transaction-form trim:** the Zod schema does NOT trim (A96); the form's submit handler trims `description`/`reference`/`notes` EXACTLY as the god-page's `handleSubmit` (`.trim()` / `.trim() || null`) so the outbound payload is byte-identical (matching the god-page, not adding/removing trimming). A95 selects keep raw stored values on edit. Upload mutation resets the file input from `onSuccess` (A92 — error keeps the file).
 
 ### File List
 
+- NEW: `frontend/src/features/finance/api/banking-api.ts` (+`.test.ts`); `types/banking.types.ts`; `schemas/transaction.schema.ts`; `hooks/{use-bank-imports,use-transactions,use-transaction-receipts,use-exports}.ts` (+`banking-hooks.test.tsx`); `components/banking/{exports-content,bank-import-content,transactions-content,transaction-form}.tsx`
+- MODIFIED (thin shells): `frontend/src/app/finance/{exports,bank-import,transactions}/page.tsx`; one licensed A79 timing wrapper in `app/finance/bank-import/page.test.tsx`
+- **DoD:** 3 S1 suites GREEN (37 tests, ×2; transport mocks unchanged); slice tests GREEN (banking-api 13 + banking-hooks 7 = 20); central `tsc --noEmit` exit 0; eslint clean (fixed `react-hooks/refs` + `set-state-in-effect` via derived banners); prettier `--check` clean; LF.
+
 ## Change Log
+
+- 2026-06-12: Implemented (parallel with S3/S4/S6 on the S2 foundation). Upload/download kept byte-for-byte (DEC-1=A); POST-vs-PUT `/ignore` both preserved (DEC-2=A); transaction-form trim matches god-page. 3 S1 suites green (1 licensed A79 timing wrapper); full suite 192/1840 green. Status → review.
 
 - 2026-06-12: Story created (3 banking/data pages → `features/finance/` reusing the S2 foundation; BUILD over `useApiClient` keeping `api.upload` multipart (`file`/`file`+`notes`) + `api.get<Blob>` downloads byte-identical — NOT JSON-ified; preserve the bank-import single-shot upload + POST-vs-PUT `/ignore` split + inline guard, the exports hardcoded filenames + non-appended anchor + premature-redirect guard, the transactions canonical guard + preview branch; transaction form → RHF+Zod enable-gate-matching + A96 no-`.trim()`; upload reset from onSuccess A92). Status ready-for-dev.

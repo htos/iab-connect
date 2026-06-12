@@ -1,6 +1,6 @@
 # Story E26.S6: Finance Settings — Feature-Slice Extraction
 
-Status: ready-for-dev
+Status: done
 
 Depends on: **E26-S1 (the S6 settings suites green at HEAD)** + **E26-S2 (the shared `finance-api.ts`/`finance.types.ts` foundation, incl. the shared `ActivityArea` type)** + **E26-S4 (the activity-areas CRUD/report builders it owns)**. Mutually independent of S3/S5 once S2's foundation lands. **Final E26 slice** — closes out the shared foundation so the whole Finance domain lives under `src/features/finance/` with thin app-router shells.
 
@@ -28,16 +28,16 @@ so that the settings forms migrate to the shared E22 form sub-recipe with no beh
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites + resolve the DECs (AC: all) — A43 (a)/(b)/(c) recorded below
-  - [ ] E26-S1 settings suites green at HEAD; E26-S2 foundation + E26-S4's shared `ActivityArea` type present. Re-read the 5 pages + the S2 foundation + S4's activity-areas type + the E22 form sub-recipe (A56). Confirm the profile countryCode A95 surface + the tax-code rate ×100/÷100 + the invoice-template edit-immutability + the hub's two operational panels.
-  - [ ] Resolve DEC-1..DEC-3 (recommended options below).
-- [ ] Task 1: Scaffold `api/settings-api.ts` (import S2 `FINANCE_BASE`/`financeKeys`; profile incl. `/{id}` + backfill + reset, invoice-templates, tax-codes URL builders; REUSE S4's activity-areas builders) + `types/settings.types.ts` (re-export `@/types/finance` + new) + `schemas/{finance-profile,invoice-template,tax-code,settings-activity-area}.schema.ts` (A95 full unions for countryCode/currency/jurisdiction/language; A96 no-`.trim()`; required-ness matching the god-page enable-gates) + `api/settings-api.test.ts`.
-- [ ] Task 2: Hooks — queries (profile, invoice-templates, tax-codes, activity-areas (reuse S4 hook or a settings-scoped one)) + mutations (profile create/update + backfill + reset; invoice-template/tax-code/activity-area CRUD) each invalidating `financeKeys`; preserve the tax-code rate ×100/÷100 mapping at the hook/schema boundary; dispatch `finance-profile-changed` on profile save + reset. Hook tests: the profile POST-vs-PUT 404 branch + one mutation-invalidation + the tax-code rate round-trip.
-- [ ] Task 3: Components — settings hub (`settings-hub-content`: static nav-card sections + DoubleEntry-derived enable/disable + backfill panel + danger-zone reset modal with typed-word gate + `finance-profile-changed` dispatch).
-- [ ] Task 4: Components — `finance-profile-form` (RHF+Zod, the big form; A95 countryCode full-union + extra-option + raw default; A96 no-`.trim()` + `"" → null` optional mapping preserved; jurisdiction→currency/countryCode side-effect; `disabled={!canWriteFinance}` on every field + hidden save footer; the read-only render is this page's canonical case).
-- [ ] Task 5: Components — `invoice-templates` (list + form, A98 create-only jurisdiction + edit-locked countryCode, modal delete) + `settings/activity-areas` (list + form REUSING S4's `ActivityArea` type, inline-confirm delete, hardcoded-English errors preserved, omit `isActive` in the form) + `tax-codes` (list + form, rate ×100/÷100, modal delete).
-- [ ] Task 6: Thin route entries — the 5 route files → content components.
-- [ ] Task 7: Green-the-net + DoD gate — E26-S1 settings suites green (transport mocks unchanged — BUILD per A94); new slice unit tests; `tsc`/eslint(changed+boundary)/`vitest run` FULL green; LF; A79/A92/A95 deltas recorded. **Close-out:** confirm the whole `app/finance/**` tree is thin shells over `features/finance/`; update `docs/architecture-frontend.md` with the finance one-slice-shared-foundation result note. (`next build` deferred to epic boundary.)
+- [x] Task 0: Verify prerequisites + resolve the DECs (AC: all) — A43 (a)/(b)/(c) recorded below
+  - [x] E26-S1 settings suites green at HEAD; E26-S2 foundation + E26-S4's shared `ActivityArea` type present. Re-read the 5 pages + the S2 foundation + S4's activity-areas type + the E22 form sub-recipe (A56). Confirm the profile countryCode A95 surface + the tax-code rate ×100/÷100 + the invoice-template edit-immutability + the hub's two operational panels.
+  - [x] Resolve DEC-1..DEC-3 (recommended options below).
+- [x] Task 1: Scaffold `api/settings-api.ts` (import S2 `FINANCE_BASE`/`financeKeys`; profile incl. `/{id}` + backfill + reset, invoice-templates, tax-codes URL builders; REUSE S4's activity-areas builders) + `types/settings.types.ts` (re-export `@/types/finance` + new) + `schemas/{finance-profile,invoice-template,tax-code,settings-activity-area}.schema.ts` (A95 full unions for countryCode/currency/jurisdiction/language; A96 no-`.trim()`; required-ness matching the god-page enable-gates) + `api/settings-api.test.ts`.
+- [x] Task 2: Hooks — queries (profile, invoice-templates, tax-codes, activity-areas (reuse S4 hook or a settings-scoped one)) + mutations (profile create/update + backfill + reset; invoice-template/tax-code/activity-area CRUD) each invalidating `financeKeys`; preserve the tax-code rate ×100/÷100 mapping at the hook/schema boundary; dispatch `finance-profile-changed` on profile save + reset. Hook tests: the profile POST-vs-PUT 404 branch + one mutation-invalidation + the tax-code rate round-trip.
+- [x] Task 3: Components — settings hub (`settings-hub-content`: static nav-card sections + DoubleEntry-derived enable/disable + backfill panel + danger-zone reset modal with typed-word gate + `finance-profile-changed` dispatch).
+- [x] Task 4: Components — `finance-profile-form` (RHF+Zod, the big form; A95 countryCode full-union + extra-option + raw default; A96 no-`.trim()` + `"" → null` optional mapping preserved; jurisdiction→currency/countryCode side-effect; `disabled={!canWriteFinance}` on every field + hidden save footer; the read-only render is this page's canonical case).
+- [x] Task 5: Components — `invoice-templates` (list + form, A98 create-only jurisdiction + edit-locked countryCode, modal delete) + `settings/activity-areas` (list + form REUSING S4's `ActivityArea` type, inline-confirm delete, hardcoded-English errors preserved, omit `isActive` in the form) + `tax-codes` (list + form, rate ×100/÷100, modal delete).
+- [x] Task 6: Thin route entries — the 5 route files → content components.
+- [x] Task 7: Green-the-net + DoD gate — E26-S1 settings suites green (transport mocks unchanged — BUILD per A94); new slice unit tests; `tsc`/eslint(changed+boundary)/`vitest run` FULL green; LF; A79/A92/A95 deltas recorded. **Close-out:** confirm the whole `app/finance/**` tree is thin shells over `features/finance/`; update `docs/architecture-frontend.md` with the finance one-slice-shared-foundation result note. (`next build` deferred to epic boundary.)
 
 ## Dev Notes
 
@@ -85,14 +85,31 @@ The final E26 slice — closes the Finance domain under `features/finance/`. Set
 
 ### Agent Model Used
 
-_(to be filled by dev-story)_
+claude-opus-4-8[1m] orchestrator + 1 parallel general-purpose subagent (S3/S4/S5/S6 concurrent on the S2 foundation, A87/A101). Autonomous mode (A41). FINAL E26 slice.
 
 ### Debug Log References
 
+**DEC resolutions (A43 (a)/(b)/(c)) — all = A:**
+- **DEC-1 = A (profile countryCode union, A95):** (a) `countryCode`/`currency`/`jurisdiction` + invoice-template `language`/`jurisdiction` are FULL `z.string()` unions (NEVER `z.enum(EU_COUNTRIES)`); raw stored value in `defaultValues`; out-of-set stored value rendered as an extra `<option>`; jurisdiction→currency/countryCode reset preserved; POST/PUT byte-identical. (b) a `z.enum(EU_COUNTRIES)` would reject/blank a stale CH-side value + silently rewrite on save (the A95 recurrence). (c) a stranded "GB" under EU re-submits verbatim.
+- **DEC-2 = A (required-ness, A96 companion):** (a) Zod required-set MATCHES each god-page enable-gate exactly — profile PERMISSIVE (`*` decorative, server validates), invoice-template name+language, tax-code code+label, activity-area name+code; no `.trim()`; `"" → null` mapped at the wire boundary; `<form noValidate>`. (b) preserve-over-improve. (c) net green.
+- **DEC-3 = A (activity-areas type source, A62/A101):** (a) REUSE the foundation's `ActivityArea` type + activity-areas CRUD builders; settings form OMITS `isActive` (edit hard-codes `isActive:true` at the hook); distinct route/component. (b) single type source + single endpoint owner. (c) `settings-api.ts` re-exports `financeUrls.activityAreas`/`activityArea`/`profile` by reference (same-reference assertion in tests) — not re-declared.
+
 ### Completion Notes List
+
+- 5 god-pages → thin server route shells; behaviour in `features/finance/components/settings/*` content roots, each self-wrapping `QueryClientProvider({retry:false})`. Closes the whole `app/finance/**` tree as thin shells over `features/finance/`.
+- Preserved EXACTLY: profile **404→POST (create) vs PUT `/profile/{id}` (existing)** branch (chosen from `profileId` presence); profile **`jurisdiction`→`currency`/`countryCode` reset side-effect** + the **`finance-profile-changed` CustomEvent** (dispatched on profile-save + reset `onSuccess`, success-only, NOT on error); profile **read-only-render** (every field `disabled={!canWriteFinance}` + hidden save footer); **tax-code rate ×100 (display)/÷100 (wire)** round-trip (a no-touch edit re-submits the original fraction); **invoice-template `jurisdiction`/`countryCode` edit-immutability** (A98 — jurisdiction `<select>` only when `!editing`, countryCode `disabled={editing}`, both modes pinned); the `{items}` GET envelope; activity-areas **inline-confirm delete** vs invoice-templates/tax-codes **MODAL delete**; activity-areas **hardcoded-English errors** verbatim; hub static nav-cards + DoubleEntry-derived enable/disable + backfill (`isDoubleEntry && canWriteFinance`) + danger-zone reset (typed-word gate); A97 profile query `enabled` matches the god-page fetch gate; A86 colours.
+- **no-`return null` guards (the 3 pages):** profile/invoice-templates/tax-codes derive `loading = authLoading || !canReadFinance || isPending` so a non-read user stays on the loading state with NO GET (no `!canReadFinance` early-return added — preserved AS-IS, the S1 invariant being "no finance GET fires"); hub keeps spinner-while-`!profileLoaded`→`return null`; activity-areas keeps skeleton→`return null`.
+- The foundation's `FinanceProfile` is minimal (accountingMode-only); S6's full ~17-field profile shape is defined distinctly in `types/settings.types.ts` (no collision).
 
 ### File List
 
+- NEW: `frontend/src/features/finance/api/settings-api.ts` (+`.test.ts`); `types/settings.types.ts`; `schemas/{finance-profile,invoice-template,tax-code,settings-activity-area}.schema.ts`; `hooks/{use-finance-profile,use-finance-settings-admin,use-tax-codes-admin,use-invoice-templates,use-settings-activity-areas}.ts` (+`settings-hooks.test.tsx`); `components/settings/{settings-hub-content,finance-profile-content,invoice-templates-content,settings-activity-areas-content,tax-codes-content}.tsx`
+- MODIFIED: `frontend/src/app/finance/settings/{page,profile,invoice-templates,activity-areas,tax-codes}/page.tsx` (thin shells); `docs/architecture-frontend.md` (close-out note)
+- **DoD:** 5 S1 suites GREEN (71 tests, ×2; transport mocks unchanged — no licensed A79 change needed); slice tests GREEN (settings-api 12 + settings-hooks 11 = 23); central `tsc --noEmit` exit 0; eslint clean (0 errors; RHF `watch()` advisory warnings only); prettier `--check` clean on changed; LF.
+
 ## Change Log
+
+- 2026-06-12: Story created (5 settings pages → `features/finance/` reusing the S2 foundation + the shared `ActivityArea` type; settings forms → E22 RHF+Zod; preserve the hub nav+backfill+reset+`finance-profile-changed` event, the profile 404→POST branch + read-only-render, the tax-code rate ×100/÷100, the invoice-template edit-immutability, the no-`return null` guards; closes the Finance domain under features/finance). Status ready-for-dev.
+- 2026-06-12: Implemented (final slice, parallel with S3/S4/S5). Reuses foundation activity-areas CRUD + profile builders (DEC-3=A); countryCode A95 full-union + tax-code ×100/÷100 preserved. 5 S1 suites green (no licensed change); full suite 192/1840 green; `app/finance/**` fully thin-shelled. Status → review.
 
 - 2026-06-12: Story created (5 settings pages → `features/finance/` reusing the S2 foundation + S4's shared `ActivityArea` type; settings forms → E22 RHF+Zod with the A95 countryCode full-union round-trip + A96 permissive-no-`.trim()`+`""→null` + A98 mode props + A92 input-preserved-on-error; preserve the hub nav+backfill+reset+`finance-profile-changed` event, the profile 404→POST branch + read-only-render, the tax-code rate ×100/÷100, the invoice-template edit-immutability, the no-`return null` guards, the inline-vs-modal deletes, the hardcoded-English activity-areas errors; closes the Finance domain under features/finance). Status ready-for-dev.

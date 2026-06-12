@@ -1,6 +1,6 @@
 # Story E26.S2: Finance Core Ledger/Accounting — Feature-Slice Extraction
 
-Status: ready-for-dev
+Status: done
 
 Depends on: **E26-S1 (the S2 ledger/accounting suites must be green at HEAD first)**, plus E21-S3 (list recipe) + E21-S5 (import boundary) + the E22 RHF+Zod form sub-recipe (all closed). Inherits E21-S1 boundary decisions. **This story OWNS the shared `features/finance/` foundation** (`api/finance-api.ts` base + `financeKeys`, `types/finance.types.ts`) that S3..S6 reuse, and sets the `features/finance` slice-structure + thin-route-shell precedent for the rest of the epic. HARD-ordered FIRST among the slice stories; S3..S6 depend on this foundation but are mutually independent once it lands (A101 area-as-one-slice-with-shared-foundation).
 
@@ -31,16 +31,14 @@ so that user-visible behaviour is unchanged, the `canReadFinance`/`canWriteFinan
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites + resolve the DECs (AC: all) — A43 (a)/(b)/(c) recorded below
-  - [ ] E26-S1 ledger/accounting suites green at HEAD. Confirm `features/finance/` does NOT exist. Re-read the 7 pages + `@/types/finance.ts` + `lib/api/budgets.ts` (types/consts pattern) + a reference BUILD-on-`useApiClient` slice (`features/admin-settings` / `features/admin-integrations`) + the members form/two-step patterns (A56).
-  - [ ] Resolve DEC-1..DEC-3 (recommended options below).
-- [ ] Task 1: Scaffold the shared foundation — `api/finance-api.ts` (`FINANCE_BASE` + `financeKeys` root + ledger/accounting URL builders) + `types/finance.types.ts` (re-export `@/types/finance` + new ledger/accounting types) + `api/finance-api.test.ts` (URL/key shape, incl. the action sub-paths + `?status=`/`?year=` query builders).
-- [ ] Task 2: Hooks — list queries (accounts/ledger-accounts/journal-entries(`?status=`)/fiscal-periods(`?year=`)/posting-mappings/accounting-report/dashboard composite + shared lookups), `retry:false` journal detail/edit-load (A99); mutations (account/ledger/mapping CRUD, journal create/update/post/reverse, fiscal generate/close/reopen/lock/unlock) each invalidating `financeKeys`. Hook tests for one query + one mutation-invalidation + the journal no-retry.
-- [ ] Task 3: Components — read-only pages — `finance-dashboard-content` (KPI cards/open-items/recent-tx), `accounting-reports-content` (3 tabs + filter dates + client-side PDF print preserved). Preserve the dashboard's `apiRef` empty-dep load pattern via the hook equivalent.
-- [ ] Task 4: Components — CRUD pages — `accounts`, `ledger-accounts`, `posting-mappings`, `journal-entries` content + their modal forms (manual-form parity OR E22 RHF+Zod per DEC-3; if RHF+Zod, apply A95 to the `isActive`-filtered `<select>`s + A96 no-`.trim()`). Badges via the page-local helpers preserved (classBadge/typeBadge/statusBadge — A77 literal-class exception, the S1 net pins exact classes). Post=green / Reverse=red / Delete=red colours preserved (A86). The journal **balance gate** + min-2-lines + line add/remove preserved.
-- [ ] Task 5: Components — `fiscal-periods` content (year select, generate/close/lock/reopen/unlock confirm modals, the 409 `noProfileError` amber banner + `/finance/settings` link, the 4s success auto-dismiss, the `isAdmin`-only unlock). Preserve the inline-error guard (no redirect).
-- [ ] Task 6: Thin route entries — the 7 route files → content components. Preserve the DoubleEntry mode guard placement (in the slice content/hook, redirect target `/finance/settings`).
-- [ ] Task 7: Green-the-net + DoD gate — E26-S1 ledger/accounting suites green (transport mocks unchanged — BUILD-on-`useApiClient` per A94; adapt only the licensed A79 surface if any); new slice unit tests; `tsc` exit 0 / eslint(slice+changed, incl. the generic `features/**` boundary) clean / `vitest run` FULL green, no regressions; LF. A79/A99 deltas recorded. (`next build` deferred to epic boundary per A58.)
+- [x] Task 0: Verify prerequisites + resolve the DECs — A43 (a)/(b)/(c) in Debug Log. E26-S1 S2-group suites green at HEAD; `features/finance/` confirmed absent at start; DEC-1/2/3 = A/A/A.
+- [x] Task 1: Scaffolded the shared foundation — `api/finance-api.ts` (`FINANCE_BASE` + `financeKeys` root + `scope` helper + `financeUrls` ledger/accounting builders + the shared activity-areas FULL CRUD / tax-codes GET / categories GET) + `types/finance.types.ts` (re-export `@/types/finance` per A83 + new dashboard/operating-account/profile/Category types) + `api/finance-api.test.ts`.
+- [x] Task 2: Hooks — list queries (accounts/ledger-accounts/journal-entries(`?status=`)/fiscal-periods(`?year=`)/posting-mappings/accounting-report/dashboard composite + shared lookups), `retry:false` journal detail/edit-load (A99); mutations each invalidating `financeKeys`. `finance-hooks.test.tsx` covers the no-retry + a mutation-invalidation + the dashboard composite.
+- [x] Task 3: Components — read-only — `finance-dashboard-content`, `accounting-reports-content` (3 tabs + date filters + client-side PDF print preserved; Generate-driven, no auto-load).
+- [x] Task 4: Components — CRUD — `accounts`, `ledger-accounts`, `posting-mappings`, `journal-entries` content + manual modal forms (DEC-3=A). Post=green/Reverse=red/Delete=red preserved (A86); journal balance gate `<0.005` + min-2-lines preserved; the silent-swallow-vs-modal-open asymmetry reproduced via mutation design.
+- [x] Task 5: Components — `fiscal-periods` content (year select, generate/close/lock/reopen/unlock confirm modals, 409 `noProfileError` amber banner + `/finance/settings` link via `FiscalActionError{status}`, 4s auto-dismiss, `isAdmin`-only unlock, inline-error guard no-redirect preserved).
+- [x] Task 6: Thin route entries — the 7 route files → server shells. DoubleEntry mode guard preserved as `use-double-entry-guard.ts` imperative effect, redirect `/finance/settings`; list `enabled` gated `modeChecked && canReadFinance` (A97).
+- [x] Task 7: Green-the-net + DoD gate — E26-S1 S2-group suites GREEN (67/67) with ZERO transport-mock edits (BUILD-on-`useApiClient` held; no licensed A79 change needed); new slice unit tests; `tsc` exit 0 / eslint(slice+changed incl. generic `features/**` boundary) clean / FULL `vitest run` **183 files / 1755 tests** green, zero regressions; LF (A73); pre-drifted files untouched (A72). `next build` deferred to epic boundary (A58).
 
 ## Dev Notes
 
@@ -88,14 +86,30 @@ First `features/finance/` slice — OWNS the shared `api`/`types` foundation S3.
 
 ### Agent Model Used
 
-_(to be filled by dev-story)_
+claude-opus-4-8[1m] orchestrator + 1 focused general-purpose subagent (foundation-critical; orchestrator reviewed the foundation files before fan-out). Autonomous mode (A41/A47) — DECs auto-resolved to recommended options.
 
 ### Debug Log References
 
+**DEC resolutions (A41 autonomous; A43 (a)/(b)/(c)):**
+- **DEC-1 = A** — (a) one `financeKeys` root + `FINANCE_BASE` in `finance-api.ts`; (b) story-recommended A + A91 parallel-safety (S3..S6 add their own `<sub>-api.ts` importing the root, never editing the foundation) + user autonomous directive; (c) S3..S6 are pure consumers → fan out in ONE parallel phase.
+- **DEC-2 = A** — (a) re-export `@/types/finance` via `types/finance.types.ts`; (b) A83 (`features→lib` legal; `@/types/finance` consumed app-wide); (c) `@/types/finance` untouched; slice imports all types from one place.
+- **DEC-3 = A** — (a) keep the 4 CRUD modal forms manual `useState` (NOT RHF+Zod); (b) story-recommended A; minimises net-break risk; the form sub-recipe is scoped to S3/S6; (c) the `isActive`-filtered-select A95 concern stays pin-only here; manual-form→RHF migration recorded as residual debt (a later consistency pass may migrate).
+- **Foundation-ownership DEC (orchestrator, A101):** (a) the foundation `finance-api.ts` OWNS the activity-areas FULL CRUD + tax-codes/categories GET (not just S2's lookups); (b) makes S4 & S6 (both touch `/activity-areas`) pure consumers → fully parallel-safe (honours the A62/A101 "shared surface lives below both" intent); (c) S4 adds only `/report`; S6 imports activity-areas CRUD as-is.
+
 ### Completion Notes List
+
+- **Shared foundation (S3..S6 import, never edit):** `finance-api.ts` exports `FINANCE_BASE`, `financeKeys` (root + `scope(...)` helper + per-resource keys), `financeUrls` (all ledger/accounting builders + activity-areas FULL CRUD `activityAreas()`/`activityArea(id)` + tax-codes/categories GET). `finance.types.ts` re-exports the canonical `@/types/finance` DTOs (A83) + adds dashboard composite / operating-account / `FinanceProfile` (minimal, accountingMode-only, for the mode guard) / `Category` types + the shared `ActivityArea`/`TaxCode` re-exports.
+- **BUILD-on-`useApiClient` (A94):** api layer is URL builders + keys only (no fetching); hooks own the `useApiClient` calls. The E26-S1 S2-group suites stayed **67/67 green with ZERO transport-mock edits** (no test file opened). No licensed A79 change needed.
+- **Preserved behaviours (S1-pinned):** heterogeneous guards + redirect targets; DoubleEntry mode guard (`use-double-entry-guard.ts` imperative effect, `enabled` gated `modeChecked && canReadFinance` per A97); journal balance gate `<0.005` + min-2-lines; fiscal 409 `noProfileError` via `FiscalActionError{status}` + 4s auto-dismiss + inline-error-no-redirect; `isAdmin`-only fiscal unlock; the **silent `res.error` swallow vs modal-stays-open asymmetry** reproduced via mutation design (swallow pages don't throw + close-modal-in-onSuccess; inspect pages throw + keep-modal-open); post=green/reverse=red/delete=red/fiscal-close=yellow colours (A86). All `/api/v1/finance/*` URLs + i18n keys byte-identical.
+- **Each content composition root self-embeds its own `QueryClientProvider`** (`new QueryClient({ defaultOptions:{ queries:{ retry:false } } })`, admin-settings precedent) → the S1 net renders `<Page/>` directly and survives unchanged. Journal detail/edit-load query `retry:false` (A99).
+- **DoD:** full `vitest run` **183 files / 1755 tests** green (was 181/1737 → +2 files/+18 tests, the new slice unit tests; zero regressions). `tsc --noEmit` exit 0; eslint(slice+changed, incl. generic `features/**` boundary) clean; prettier `--check` clean on changed files (75 repo-wide pre-drifted files NOT touched — A72/A58); LF (A73). `docs/architecture-frontend.md` updated with the finance one-slice-shared-foundation convention.
 
 ### File List
 
+- NEW (20): `frontend/src/features/finance/api/finance-api.ts` (+`.test.ts`), `types/finance.types.ts`, `hooks/{use-finance-dashboard,use-accounts,use-ledger-accounts,use-journal-entries,use-posting-mappings,use-fiscal-periods,use-accounting-reports,use-finance-lookups,use-double-entry-guard}.ts` (+`finance-hooks.test.tsx`), `components/{finance-dashboard-content,accounts-content,ledger-accounts-content,posting-mappings-content,journal-entries-content,accounting-reports-content,fiscal-periods-content}.tsx`
+- MODIFIED (8): the 7 `frontend/src/app/finance/{page,accounts,ledger-accounts,journal-entries,accounting-reports,fiscal-periods,posting-mappings}/page.tsx` → thin server shells; `docs/architecture-frontend.md`
+
 ## Change Log
 
-- 2026-06-12: Story created (7 core ledger/accounting pages → `features/finance/` slice establishing the shared `finance-api.ts`/`finance.types.ts` foundation; BUILD-on-`useApiClient` so the S1 net survives transport-unchanged; preserve heterogeneous guards + DoubleEntry mode guard + journal post/reverse/balance + fiscal 409 branch; manual CRUD forms kept (DEC-3=A recommended)). Status ready-for-dev.
+- 2026-06-12: Story created (7 core ledger/accounting pages → `features/finance/` slice + shared foundation; manual CRUD forms DEC-3=A). Status ready-for-dev.
+- 2026-06-12: Implemented (foundation + 7 pages). BUILD-on-`useApiClient`; S1 net green with zero transport edits; full suite 181/1737 → 183/1755. DECs A/A/A + foundation-ownership DEC. Status → review.

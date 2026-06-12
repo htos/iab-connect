@@ -1,6 +1,6 @@
 # Story E26.S3: Finance Receivables/Payables — Feature-Slice Extraction
 
-Status: ready-for-dev
+Status: done
 
 Depends on: **E26-S1 (the S3 receivables/payables suites green at HEAD)** + **E26-S2 (the shared `finance-api.ts`/`finance.types.ts` foundation)** + the E22 RHF+Zod form sub-recipe (closed). Mutually independent of S4..S6 once S2's foundation lands (each extends the shared foundation with its own `<sub>-api.ts`/`<sub>.types.ts`, touching different files).
 
@@ -29,16 +29,16 @@ so that the invoice/payment/receipt/dunning/expense-claim flows and the invoice 
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites + resolve the DECs (AC: all) — A43 (a)/(b)/(c) recorded below
-  - [ ] E26-S1 receivables suites green at HEAD; E26-S2 foundation present. Re-read the 7 pages + the S2 `finance-api.ts`/`finance.types.ts` + the E22 form sub-recipe (`features/sponsors`/`members` forms) (A56). Note the recipientType `"Other"` vs `"External"` mismatch + the no-validation invoice form.
-  - [ ] Resolve DEC-1..DEC-4 (recommended options below).
-- [ ] Task 1: Scaffold `api/receivables-api.ts` (import S2 `FINANCE_BASE`+`financeKeys`; invoices/payments/receipts/dunning/expense-claims URL builders incl. the action sub-paths + the blob endpoints + the members lookup) + `types/receivables.types.ts` (re-export `@/types/finance` + new) + `schemas/invoice.schema.ts` (A95 full union for `recipientType`, A96 no-`.trim()`, required-ness matching the god-page enable-gate) + `api/receivables-api.test.ts`.
-- [ ] Task 2: Hooks — queries (invoices list `?status=&from=&to=`, invoices/open, invoice detail (`retry:false` A99) + payment history, payments, receipts(+download blob), dunning, expense-claims `?status=&myClaimsOnly=`) + mutations (invoice create/send/cancel(both DELETE+POST variants)/dunning-generate; payment create/edit/submit/approve/reject/mark-paid/delete/receipt-attach-detach; receipt upload/delete; dunning create/send; expense-claim create/edit/submit/review/approve/reject/reimburse/delete) each invalidating `financeKeys`. Hook tests: invoice-detail no-retry + one mutation-invalidation + the optimistic-list-patch-preservation.
-- [ ] Task 3: Components — invoices list — `invoices-page-content` + filter-bar (client search + server status/date) + table + status-badge + the Send/Cancel confirmation dialogs (blue/red affordances, orange/red confirm buttons preserved A86) + the `actionLoading` per-id state + the optimistic patch (A100).
-- [ ] Task 4: Components — invoice form (`invoice-form` RHF+Zod, E22 sub-recipe; A95 recipientType full-union + extra-option; A96 no-`.trim()`; A98 mode-divergent props: Draft/Send buttons, create-navigate, Member/Other conditional fields; line-items editor + live VAT calc preserved) + `invoice-new-content`/`invoice-detail-content` (the action block, POST `/cancel` no-confirm, PDF/e-invoice blob downloads, 409 `noProfileError`).
-- [ ] Task 5: Components — `receipts` (grid + upload modal `api.upload` `file`+`notes` + delete dialog) + `payments` (the status×role action matrix, record/edit/reject/attach/preview modals, immediate Delete/detach, hardcoded-English errors preserved) + `dunning` (table + create modal) + `expense-claims` (table + create/edit + action modals + detail modal, ownership/role predicates).
-- [ ] Task 6: Thin route entries — the 7 route files → content components (keep `params: Promise<{id}>` + `use(params)` on `invoices/[id]`).
-- [ ] Task 7: Green-the-net + DoD gate — E26-S1 receivables suites green (transport mocks unchanged — BUILD per A94; adapt only the licensed A79 surface, e.g. the RHF form-mechanism assertions); new slice unit tests; `tsc`/eslint(changed+boundary)/`vitest run` FULL green; LF; A79/A92/A99/A100 deltas recorded. (`next build` deferred to epic boundary.)
+- [x] Task 0: Verify prerequisites + resolve the DECs (AC: all) — A43 (a)/(b)/(c) recorded below
+  - [x] E26-S1 receivables suites green at HEAD; E26-S2 foundation present. Re-read the 7 pages + the S2 `finance-api.ts`/`finance.types.ts` + the E22 form sub-recipe (`features/sponsors`/`members` forms) (A56). Note the recipientType `"Other"` vs `"External"` mismatch + the no-validation invoice form.
+  - [x] Resolve DEC-1..DEC-4 (recommended options below).
+- [x] Task 1: Scaffold `api/receivables-api.ts` (import S2 `FINANCE_BASE`+`financeKeys`; invoices/payments/receipts/dunning/expense-claims URL builders incl. the action sub-paths + the blob endpoints + the members lookup) + `types/receivables.types.ts` (re-export `@/types/finance` + new) + `schemas/invoice.schema.ts` (A95 full union for `recipientType`, A96 no-`.trim()`, required-ness matching the god-page enable-gate) + `api/receivables-api.test.ts`.
+- [x] Task 2: Hooks — queries (invoices list `?status=&from=&to=`, invoices/open, invoice detail (`retry:false` A99) + payment history, payments, receipts(+download blob), dunning, expense-claims `?status=&myClaimsOnly=`) + mutations (invoice create/send/cancel(both DELETE+POST variants)/dunning-generate; payment create/edit/submit/approve/reject/mark-paid/delete/receipt-attach-detach; receipt upload/delete; dunning create/send; expense-claim create/edit/submit/review/approve/reject/reimburse/delete) each invalidating `financeKeys`. Hook tests: invoice-detail no-retry + one mutation-invalidation + the optimistic-list-patch-preservation.
+- [x] Task 3: Components — invoices list — `invoices-page-content` + filter-bar (client search + server status/date) + table + status-badge + the Send/Cancel confirmation dialogs (blue/red affordances, orange/red confirm buttons preserved A86) + the `actionLoading` per-id state + the optimistic patch (A100).
+- [x] Task 4: Components — invoice form (`invoice-form` RHF+Zod, E22 sub-recipe; A95 recipientType full-union + extra-option; A96 no-`.trim()`; A98 mode-divergent props: Draft/Send buttons, create-navigate, Member/Other conditional fields; line-items editor + live VAT calc preserved) + `invoice-new-content`/`invoice-detail-content` (the action block, POST `/cancel` no-confirm, PDF/e-invoice blob downloads, 409 `noProfileError`).
+- [x] Task 5: Components — `receipts` (grid + upload modal `api.upload` `file`+`notes` + delete dialog) + `payments` (the status×role action matrix, record/edit/reject/attach/preview modals, immediate Delete/detach, hardcoded-English errors preserved) + `dunning` (table + create modal) + `expense-claims` (table + create/edit + action modals + detail modal, ownership/role predicates).
+- [x] Task 6: Thin route entries — the 7 route files → content components (keep `params: Promise<{id}>` + `use(params)` on `invoices/[id]`).
+- [x] Task 7: Green-the-net + DoD gate — E26-S1 receivables suites green (transport mocks unchanged — BUILD per A94; adapt only the licensed A79 surface, e.g. the RHF form-mechanism assertions); new slice unit tests; `tsc`/eslint(changed+boundary)/`vitest run` FULL green; LF; A79/A92/A99/A100 deltas recorded. (`next build` deferred to epic boundary.)
 
 ## Dev Notes
 
@@ -86,14 +86,46 @@ The receivables/payables group — the form-heavy, mutation-heavy half of financ
 
 ### Agent Model Used
 
-_(to be filled by dev-story)_
+claude-opus-4-8[1m] (Claude Opus 4.8, 1M context) — bmad-dev-story, autonomous mode.
 
 ### Debug Log References
 
+**DEC resolutions (A43 record — all = A, per the harness brief autonomous-mode directive):**
+
+- **DEC-1 = A (recipientType union, A95):** (a) chose `recipientType: z.string()` (full transport union, NOT `z.enum(["Member","External"])`); (b) rejected option B ("fix" to send "External") as a wire-contract behaviour change; (c) impact: the invoice-form keeps the RAW stored value in `defaultValues`, renders an out-of-set value (e.g. canonical "External" on edit-load) as an EXTRA `<option value={recipientType}>`, and POSTs it byte-identically — the god-page's `"Other"` round-trips unchanged. Pinned by `invoice-form.test.tsx` + the green S1 `invoices/new` suite.
+- **DEC-2 = A (form validation strictness, A96 companion):** (a) Zod schema is permissive — every field `z.string()`/`z.number()`, NO `.min(1)`/`.trim()` — matching the god-page's only enable-gate (`disabled={loading}`); (b) rejected option B (add "sensible" required validation) as a behaviour change that would reject inputs the god-page accepted; (c) impact: submit stays possible with empty recipient/items; `<form noValidate>` would render any per-field error but produces none for the accepted inputs. Pinned by the "permissive schema" + "A96 untrimmed" form tests.
+- **DEC-3 = A (optimistic list patch, A100):** (a) preserved the local status patch via a derived `statusOverrides` overlay keyed on the active FILTER (`${status}|${from}|${to}`), reset on filter change (NOT on `data` identity), applied over the server rows; Send→"Sent", Cancel→"Cancelled"; the send/cancel mutations do NOT invalidate the list (no refetch); on error the overlay is left unchanged; (b) rejected option B (plain `invalidateQueries` refetch) as a change to the god-page's no-refetch behaviour; (c) impact: matches the S1 "no refetch on the patched action + no change on error" pins. Verified by `receivables-hooks.test.tsx` (no-list-refetch) + the green S1 invoices-list suite.
+- **DEC-4 = A (modal reset from onSuccess, A92):** (a) every payment/expense-claim/receipt/dunning/invoice-form modal reset+close driven from `onSuccess` (never synchronously after `mutate()`); the error path keeps the modal open with input intact; (b) rejected option B (synchronous reset) as wiping input on error; (c) impact: pinned by the `invoice-form.test.tsx` "input-preserved-on-submit (no synchronous reset)" test + the green S1 payments/expense-claims suites.
+
+**A94 BUILD confirmation:** all 7 S1 suites stayed GREEN with ZERO transport-mock (`useApiClient`) edits and ZERO suite edits — no licensed A79 form-mechanism change was needed (the RHF+Zod form is mechanism-agnostic to the suite's `getByDisplayValue`/`getByPlaceholderText`/`getByText` queries).
+
 ### Completion Notes List
+
+- All 7 god-pages → thin server route shells; behaviour moved into `features/finance/components/{invoices,receipts,payments,dunning,expense-claims}/*` content roots, each self-wrapping its own `QueryClientProvider({retry:false})` (journal-entries-content precedent).
+- Imported the S2 foundation (`FINANCE_BASE`, `financeKeys`, canonical DTOs) — NEVER edited S2 files. Added own `api/receivables-api.ts`, `types/receivables.types.ts`, `schemas/invoice.schema.ts`.
+- Preserved EXACTLY: heterogeneous guards + redirect targets (list `push("/")`; new `replace("/finance/invoices")`; detail `replace("/finance")`; receipts/dunning `replace("/")`; payments/expense-claims inline "Not authorized" div); the two cancel endpoints (list `DELETE /invoices/{id}` vs detail `POST /invoices/{id}/cancel`, detail no-confirm); no-confirm payments delete + receipt-detach; PDF + e-invoice(UBL) blob downloads + 409→`noProfileError` (A99); payments hardcoded-English error strings VERBATIM; payments role matrix + expense-claims ownership/role predicates; receipt upload `api.upload` `file`+`notes`; affordance colours (A86); invoice-detail `retry:false` (A99); `useParams<{id}>()` read shape.
+- Two `react-hooks/set-state-in-effect` lints (payments + expense-claims load errors) resolved by converting to DERIVED error banners (the journal-entries precedent) — no behaviour change, suites stayed green.
 
 ### File List
 
+**New (slice):**
+- `frontend/src/features/finance/api/receivables-api.ts` (+ `receivables-api.test.ts`)
+- `frontend/src/features/finance/types/receivables.types.ts`
+- `frontend/src/features/finance/schemas/invoice.schema.ts`
+- `frontend/src/features/finance/hooks/use-invoices.ts`, `use-invoice-detail.ts`, `use-invoice-form-lookups.ts`, `use-payments.ts`, `use-receipts.ts`, `use-dunning.ts`, `use-expense-claims.ts` (+ `receivables-hooks.test.tsx`)
+- `frontend/src/features/finance/components/invoices/{invoices-page-content,invoice-form,invoice-new-content,invoice-detail-content}.tsx` (+ `invoice-form.test.tsx`)
+- `frontend/src/features/finance/components/receipts/receipts-page-content.tsx`
+- `frontend/src/features/finance/components/payments/payments-page-content.tsx`
+- `frontend/src/features/finance/components/dunning/dunning-page-content.tsx`
+- `frontend/src/features/finance/components/expense-claims/expense-claims-page-content.tsx`
+
+**Modified (route shells → thin server entries):**
+- `frontend/src/app/finance/invoices/page.tsx`, `invoices/new/page.tsx`, `invoices/[id]/page.tsx`, `receipts/page.tsx`, `payments/page.tsx`, `dunning/page.tsx`, `expense-claims/page.tsx`
+
+**DoD:** 7 S1 suites GREEN (82 tests, run twice, ZERO transport/suite edits); new slice tests GREEN (receivables-api 14, receivables-hooks 4, invoice-form 5 = 23); combined 105/105 deterministic ×2; `tsc --noEmit` 0 errors (project-wide); `eslint` exit 0 (changed files); `prettier --check` clean; LF (A73). `next build` deferred to epic boundary (A58).
+
 ## Change Log
+
+- 2026-06-12: **Dev-story complete.** 7 receivables/payables pages extracted to `features/finance/` reusing the S2 foundation; invoice form → E22 RHF+Zod (A95 recipientType "Other" full-union round-trip + extra-option + raw default; A96 permissive/no-`.trim()`; A98 Draft/Send + create-navigate + Member/Other conditional fields; A92 reset-from-onSuccess). Preserved the list-DELETE/detail-POST cancel divergence, no-confirm deletes, A100 optimistic list overlay (filter-keyed), blob downloads + 409 branch, role/ownership predicates, hardcoded-English payment errors. DEC-1..4 = A. All gates green.
 
 - 2026-06-12: Story created (7 receivables/payables pages → `features/finance/` reusing the S2 foundation; invoice form → E22 RHF+Zod with the A95 recipientType `"Other"` full-union round-trip + A96 permissive-no-`.trim()` + A98 mode props + A92 input-preserved-on-error; preserve the list-DELETE/detail-POST cancel divergence, the no-confirm deletes, the optimistic list patch A100, the blob downloads + 409 branch, the role/ownership predicates + hardcoded-English payment errors). Status ready-for-dev.

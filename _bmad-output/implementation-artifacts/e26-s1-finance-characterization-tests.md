@@ -1,6 +1,6 @@
 # Story E26.S1: Finance — Characterization Tests for All Twenty-Six Pages (Regression Net)
 
-Status: ready-for-dev
+Status: done
 
 Depends on: E21-S2 / E22-S1 / E27-S1 (the characterization-net recipe — closed). **Blocks E26-S2..S6** (each extraction story keeps its sub-area's suites green). Inherits E21-S1 boundary decisions; applies A76/A78/A79/A80/A86/A87/A90/A95/A96/A97/A99/A100/A101 + harness rules A35/A46/A64/A78. This is the **heaviest characterization story in the program** (26 pages — vs Admin's 15, Communication's 12).
 
@@ -52,16 +52,16 @@ so that the E26-S2..S6 slice extractions are provably behaviour-preserving and t
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Spike confirm + shared harness setup (AC: 1, 7, 8)
-  - [ ] Re-confirm `src/features/finance/` does NOT exist yet; capture the current full `vitest run` count at HEAD (the green baseline the net must preserve). Read the 3 existing finance suites being extended: `budgets/page.test.tsx`, `journal-entries/page.test.tsx`, `budget-vs-actual/page.test.tsx` (note what each already covers — see Dev Notes).
-  - [ ] Establish the shared finance test harness (stable `useAuth`/`useApiClient`/`useTranslations`/`useRouter` mocks per A64/A78 + `QueryClientProvider` per A87), mirroring `frontend/src/features/members` / `admin-*` S1 nets. The `useApiClient` mock returns a stable `{get,post,put,delete,upload}` bag with per-URL routing.
-  - [ ] Record the per-page guard reality table (AC-2) as the harness's source of truth so each suite asserts the right deny surface.
-- [ ] Task 1: S2 sub-area suites — ledger/accounting (AC: 1-5, 7, 8) — `finance/page` (dashboard, read-only), `accounts`, `ledger-accounts`, `journal-entries` (EXTEND existing), `accounting-reports` (read-only), `fiscal-periods`, `posting-mappings`. Pin the DoubleEntry mode guard on the 4 mode-gated pages; the journal post/reverse colours + balance gate; the silent-swallow save/delete on accounts/posting-mappings.
-- [ ] Task 2: S3 sub-area suites — receivables/payables (AC: 1-5, 7, 8) — `invoices` (list: New-invoice link, per-row Send/Cancel modals, client search + server status/date filters, optimistic local-status patch, DELETE-on-cancel), `invoices/new` (recipientType `"Other"` A95, line items, no validation), `invoices/[id]` (POST `/cancel` divergence, immediate-no-confirm Cancel, PDF/e-invoice blob, 409 e-invoice `noProfileError`), `receipts`, `payments` (status×role action matrix, immediate Delete/detach, hardcoded-English errors), `dunning`, `expense-claims` (ownership predicates).
-- [ ] Task 3: S4 sub-area suites — budgeting/reporting (AC: 1-5, 7, 8) — `budgets` (EXTEND), `budget-vs-actual` (EXTEND; server-computed rows, CSV export blob), `activity-areas` (manage+report tabs, toggle-active, inline-confirm delete, hardcoded-English errors, local `formatCurrency`), `categories` (outlier redirect guard, modal delete).
-- [ ] Task 4: S5 sub-area suites — banking/data (AC: 1-6, 7, 8) — `bank-import` (upload `file` field, camt, POST-vs-PUT `/ignore`, inline "Not authorized"), `transactions` (canonical guard, receipt upload `file`+`notes` + blob download/preview), `exports` (read-only, blob download, hardcoded filenames, no-append anchor). **This task owns the upload/download mechanism pins (AC-6).**
-- [ ] Task 5: S6 sub-area suites — settings (AC: 1-5, 7, 8) — `settings` (nav hub + backfill + danger-zone reset + `finance-profile-changed` event), `settings/profile` (the big form, no-`return null` guard, countryCode A95, disabled-when-read-only), `settings/invoice-templates` (create-vs-edit field immutability), `settings/activity-areas` (CRUD-only, shares endpoints/type/namespace with S4 activity-areas), `settings/tax-codes` (rate ×100/÷100 round-trip).
-- [ ] Task 6: Green-the-net + DoD gate (AC: 9) — full `vitest run` green at HEAD (×2 deterministic); `tsc`/eslint(changed)/prettier-check(changed); record the A79/A95/A96/A99/A100 per-suite delta inventory + the per-page guard-variant + assertion inventory.
+- [x] Task 0: Spike confirm + shared harness setup (AC: 1, 7, 8)
+  - [x] Re-confirmed `src/features/finance/` does NOT exist; baseline `vitest run` at HEAD = **158 files / 1434 tests green**. Read the 3 existing finance suites being extended.
+  - [x] Established the shared harness RECIPE (`e26-harness-brief.md`) — stable `useAuth`/`useApiClient`/`useTranslations`/`useRouter` mocks per A64/A78. **DEC-resolution (QueryClientProvider):** the S1 net renders `<Page/>` DIRECTLY with NO provider; each S2..S6 slice content composition root self-embeds its own `QueryClientProvider` (the `features/admin-settings` E27-S3 precedent) → the net survives the migration with ZERO transport edits (A94 BUILD case). This is cleaner than wrapping in the test and BETTER achieves AC-8's stated goal ("net survives transport-unchanged"). Mocks inlined per-file per the admin precedent (vi.mock hoisting precludes a shared mock module).
+  - [x] Recorded the per-page guard reality table (AC-2) in the brief; each suite pins its page's ACTUAL deny surface.
+- [x] Task 1: S2 sub-area suites — ledger/accounting (67 tests, 7 files; journal-entries EXTENDED). DoubleEntry mode guard + journal post/reverse colours + balance gate + silent-swallow asymmetry all pinned.
+- [x] Task 2: S3 sub-area suites — receivables/payables (82 tests, 7 files). recipientType `"Other"` round-trip, DELETE-vs-POST cancel divergence, no-confirm deletes, optimistic list patch, blob downloads + 409 `noProfileError`, payments hardcoded-English errors all pinned.
+- [x] Task 3: S4 sub-area suites — budgeting/reporting (52 tests, 4 files; budgets + budget-vs-actual EXTENDED). categories outlier guard, toggle-active, inline-vs-modal delete, server-computed rows, CSV export blob, hardcoded-English errors, page-local `formatCurrency` all pinned.
+- [x] Task 4: S5 sub-area suites — banking/data (37 tests, 3 files). AC-6 upload/download mechanism pins owned: FormData `file`/`file`+`notes`, blob URLs + hardcoded filenames + appended-vs-not anchor + preview branch, POST-vs-PUT `/ignore` divergence.
+- [x] Task 5: S6 sub-area suites — settings (71 tests, 5 files). profile 404→POST branch + countryCode A95 round-trip + read-only-render, tax-code ×100/÷100 round-trip, invoice-template edit-immutability, no-`return null` guards, inline-vs-modal deletes all pinned.
+- [x] Task 6: Green-the-net + DoD gate (AC: 9) — full `vitest run` green at HEAD: **181 files / 1737 tests** (+23 files / +303 tests, zero regressions). Deterministic (sub-area agents ran each ×2; central run confirms together). `tsc --noEmit` exit 0; eslint(changed) clean; prettier-check(NEW) clean. A79/A95/A96/A99/A100 delta inventory recorded per-suite + in Completion Notes.
 
 ## Dev Notes
 
@@ -132,14 +132,32 @@ The pre-refactor characterization net for the whole `finance/` route tree — 26
 
 ### Agent Model Used
 
-_(to be filled by dev-story)_
+claude-opus-4-8[1m] orchestrator (dev-story) + 5 parallel general-purpose subagents (one per sub-area, A87/A101). Autonomous mode pre-declared by user ("alle stories im epic umsetzen bis sie implementiert sind ohne stopp") — A41/A47 escape applies; DECs auto-resolved to recommended options with the (a)/(b)/(c) record below.
 
 ### Debug Log References
 
+**DEC resolutions (A41 autonomous escape; A43 (a)/(b)/(c)):**
+- **DEC-1 (existing-test strategy):** (a) Option **A** — EXTEND the 3 existing suites in place + ADD 23 new files. (b) Rationale: story-recommended A; user autonomous directive "alle stories ... ohne stopp"; A keeps the green baseline (the 6 existing finance tests stayed green) while filling the 23 gaps. (c) Consequence: budgets 3→14, budget-vs-actual 2→7, journal-entries 1→13 extended; 23 new suites authored.
+- **DEC-2 (guard heterogeneity):** (a) Option **A** — pin each page's ACTUAL guard shape + deny surface + redirect target AS-IS. (b) Rationale: story-recommended A; A56/A87 (a faithful oracle); B would make the net a false oracle for ~15 pages. (c) Consequence: 5+ guard shapes pinned per-page; sub-agents flagged real divergences (e.g. several "no-early-return" pages are actually stuck-on-loading for a non-read user — pinned AS-IS, the load-bearing guarantee being "no finance GET fires for a read-denied user").
+- **DEC-3 (upload/download fidelity):** (a) Option **A** — pin exact `api.upload` FormData field names + `api.get<Blob>`→object-URL→anchor incl. hardcoded filenames + POST-vs-PUT `/ignore`. (b) Rationale: story-recommended A; A76 highest-risk class. (c) Consequence: S5 suite asserts FormData `file`/`file`+`notes`, blob URLs + `journal.csv`/`open-items.csv`/receipt filenames, appended-vs-not anchor, preview-vs-download branch, POST-vs-PUT `/ignore`.
+- **QueryClientProvider DEC (new, foundation-shaping):** (a) S1 renders directly (no provider); slices self-wrap (admin-settings precedent). (b) Rationale: achieves AC-8's "net survives transport-unchanged" goal better than test-wrapping; nested-provider-nearest-wins makes a test wrapper inert anyway once the content self-wraps. (c) Consequence: ZERO `@tanstack` imports in any S1 suite; the S2..S6 brief mandates each content root embed its own `QueryClient({retry:false})`.
+
 ### Completion Notes List
+
+- **Central verification (A87 orchestrator-verifies):** full `vitest run` = **181 files / 1737 tests green** (baseline 158/1434 → +23 files / +303 new tests, zero regressions). Test-only diff confirmed (`git status`: only 3 existing test files modified + 23 new + brief; NO production `page.tsx` touched). Extended-file diffs are sane (784 insertions total — not an A72 balloon).
+- **Per-sub-area:** S2 ledger/accounting 67 (7 files), S3 receivables/payables 82 (7), S4 budgeting/reporting 52 (4), S5 banking/data 37 (3), S6 settings 71 (5).
+- **Guard-map confirmations + AS-IS divergences pinned:** all 26 guards verified against source. Notable AS-IS pins: `categories` premature-redirect-on-cold-session; `accounting-reports` `null`-while-`!modeChecked`; `fiscal-periods` has NO `useRouter` import (inline error, no redirect); several "no-early-return"/hub pages are actually **stuck-on-loading** for a non-read user (loading inits true + fetch is guard-gated) rather than rendering an empty form — pinned AS-IS, the invariant being "no finance GET fires for read-denied".
+- **A79/A95/A96/A99/A100 deltas recorded** (per-suite headers + here for S2..S6): A95 — invoices/new `recipientType "Other"` (vs canonical `"Member"|"External"`) round-trip pinned; settings/profile `countryCode` out-of-set (`"GB"` under `jurisdiction:"EU"`) round-trip + CH↔EU side-effect pinned; `isActive`-filtered ledger/journal/posting selects. A96 — no page trims submitted bytes; profile maps `""→null` for optionals (pinned); reject/action-reason `.trim()`s are enable-guards only. A99 — only `invoices/[id]` is a real detail route (no not-found sentinel; 409→`noProfileError` amber). A100 — invoices-list + fiscal-periods optimistic local-list patch with no refetch. Endpoint divergences pinned: list-DELETE vs detail-POST `/cancel`; bank-import POST vs PUT `/ignore`; tax-code rate ×100/÷100.
+- **Failure-branch asymmetry pinned (AC-5):** accounts/posting-mappings save+delete silently swallow `res.error`; ledger-accounts save checks but delete swallows; journal/fiscal keep-modal-open-on-error; fiscal closes-modal-in-finally. Destructive colours pinned heterogeneously (A86): post=green, reverse/delete=red, fiscal close=yellow, payment approve=blue/reject=red/mark-paid=green/submit=yellow, invoice send=blue-icon+orange-confirm, dunning send=orange, bank accept=green/reject=red.
+- **Harness note for S2..S6 (A78):** the `next/navigation#useRouter` mock MUST return a module-stable object — a fresh `{push,replace,refresh}` literal per call churns god-pages' `useEffect([...,router])` deps and re-fires the data fetch (infinite-loop/non-deterministic refetch). All suites define the router object once.
 
 ### File List
 
+- NEW: `_bmad-output/implementation-artifacts/e26-harness-brief.md` (shared harness recipe + slice conventions)
+- NEW (23 co-located suites): `frontend/src/app/finance/page.test.tsx`, `accounts/page.test.tsx`, `ledger-accounts/page.test.tsx`, `accounting-reports/page.test.tsx`, `fiscal-periods/page.test.tsx`, `posting-mappings/page.test.tsx`, `invoices/page.test.tsx`, `invoices/new/page.test.tsx`, `invoices/[id]/page.test.tsx`, `receipts/page.test.tsx`, `payments/page.test.tsx`, `dunning/page.test.tsx`, `expense-claims/page.test.tsx`, `activity-areas/page.test.tsx`, `categories/page.test.tsx`, `bank-import/page.test.tsx`, `transactions/page.test.tsx`, `exports/page.test.tsx`, `settings/page.test.tsx`, `settings/profile/page.test.tsx`, `settings/invoice-templates/page.test.tsx`, `settings/activity-areas/page.test.tsx`, `settings/tax-codes/page.test.tsx`
+- MODIFIED (3 extended in place, DEC-1=A): `frontend/src/app/finance/budgets/page.test.tsx`, `budget-vs-actual/page.test.tsx`, `journal-entries/page.test.tsx`
+
 ## Change Log
 
-- 2026-06-12: Story created (characterization net for all 26 finance pages across 5 sub-areas; reality-corrected guard inventory per A56 — five+ heterogeneous guard shapes + four redirect targets pinned AS-IS; behaviour-lock the `canReadFinance`/`canWriteFinance` split, the upload/download flows, the DoubleEntry mode guard, the A95 out-of-set selects, and the endpoint divergences). Status ready-for-dev. Blocks S2..S6.
+- 2026-06-12: Story created (characterization net for all 26 finance pages across 5 sub-areas; reality-corrected guard inventory per A56). Status ready-for-dev. Blocks S2..S6.
+- 2026-06-12: Implemented via 5 parallel sub-area subagents (A87/A101). 26 co-located suites (23 new + 3 extended), +303 tests; full suite 158/1434 → 181/1737 green, zero regressions, test-only. DECs auto-resolved A/A/A under A41. Status → review.

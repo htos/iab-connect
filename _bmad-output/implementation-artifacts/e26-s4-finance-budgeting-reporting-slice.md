@@ -1,6 +1,6 @@
 # Story E26.S4: Finance Budgeting/Reporting — Feature-Slice Extraction
 
-Status: ready-for-dev
+Status: done
 
 Depends on: **E26-S1 (the S4 budgeting/reporting suites green at HEAD)** + **E26-S2 (the shared `finance-api.ts`/`finance.types.ts` foundation)**. Mutually independent of S3/S5/S6 once S2's foundation lands. **This story OWNS the shared `activity-areas` type + keys + URL builders** in the foundation (S6 settings/activity-areas reuses them — A62/A101 cross-slice shared sub-decision).
 
@@ -29,15 +29,15 @@ so that budget views migrate with no behaviour change and the activity-area type
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Verify prerequisites + resolve the DECs (AC: all) — A43 (a)/(b)/(c) recorded below
-  - [ ] E26-S1 budgeting suites green at HEAD; E26-S2 foundation present. Re-read the 4 pages + `lib/api/budgets.ts` (confirm types-only) + the S2 foundation + a reference RHF+Zod form (A56). Confirm the activity-areas type/endpoint/namespace OVERLAP with S6's `settings/activity-areas`.
-  - [ ] Resolve DEC-1..DEC-3 (recommended options below).
-- [ ] Task 1: Scaffold `api/budgeting-api.ts` (import S2 `FINANCE_BASE`/`financeKeys` + `budgets.ts` consts; budgets/budget-vs-actual/export/categories URL builders + the SHARED activity-areas builders incl. `/report`) + `types/budgeting.types.ts` (re-export `budgets.ts` + new) + the SHARED `ActivityArea` type/keys (owned here) + `api/budgeting-api.test.ts`.
-- [ ] Task 2: Hooks — queries (budgets list `?activityAreaId=&fiscalPeriodId=`, activity-areas list + `/report`, fiscal-periods + activity-areas selectors, categories list, budget-vs-actual on-demand report) + mutations (budget CRUD; activity-area CRUD + toggle-active; category CRUD) each invalidating `financeKeys`; the CSV export as a raw-blob function (not a query). Hook tests: budget mutation-invalidation + the on-demand report `enabled` gate + the blob export.
-- [ ] Task 3: Components — `budgets` (table + cost-center/period filters + budget-form RHF+Zod, selects disabled-on-edit, inline-confirm delete) + `budget-vs-actual` (report view, server rows, variance colours, CSV export blob, area filter).
-- [ ] Task 4: Components — `activity-areas` (manage+report tabs, form + color presets + toggle-active + inline-confirm delete + the local `formatCurrency` + the hardcoded-English errors preserved) + `categories` (table + form + MODAL delete + the outlier redirect guard preserved).
-- [ ] Task 5: Thin route entries — the 4 route files → content components.
-- [ ] Task 6: Green-the-net + DoD gate — E26-S1 budgeting suites green (incl. the 3 EXTENDED existing suites — transport mocks unchanged per A94); new slice unit tests; `tsc`/eslint(changed+boundary)/`vitest run` FULL green; LF; A79/A92 deltas recorded. (`next build` deferred to epic boundary.)
+- [x] Task 0: Verify prerequisites + resolve the DECs (AC: all) — A43 (a)/(b)/(c) recorded below
+  - [x] E26-S1 budgeting suites green at HEAD; E26-S2 foundation present. Re-read the 4 pages + `lib/api/budgets.ts` (confirm types-only) + the S2 foundation + a reference RHF+Zod form (A56). Confirm the activity-areas type/endpoint/namespace OVERLAP with S6's `settings/activity-areas`.
+  - [x] Resolve DEC-1..DEC-3 (recommended options below).
+- [x] Task 1: Scaffold `api/budgeting-api.ts` (import S2 `FINANCE_BASE`/`financeKeys` + `budgets.ts` consts; budgets/budget-vs-actual/export/categories URL builders + the SHARED activity-areas builders incl. `/report`) + `types/budgeting.types.ts` (re-export `budgets.ts` + new) + the SHARED `ActivityArea` type/keys (owned here) + `api/budgeting-api.test.ts`.
+- [x] Task 2: Hooks — queries (budgets list `?activityAreaId=&fiscalPeriodId=`, activity-areas list + `/report`, fiscal-periods + activity-areas selectors, categories list, budget-vs-actual on-demand report) + mutations (budget CRUD; activity-area CRUD + toggle-active; category CRUD) each invalidating `financeKeys`; the CSV export as a raw-blob function (not a query). Hook tests: budget mutation-invalidation + the on-demand report `enabled` gate + the blob export.
+- [x] Task 3: Components — `budgets` (table + cost-center/period filters + budget-form RHF+Zod, selects disabled-on-edit, inline-confirm delete) + `budget-vs-actual` (report view, server rows, variance colours, CSV export blob, area filter).
+- [x] Task 4: Components — `activity-areas` (manage+report tabs, form + color presets + toggle-active + inline-confirm delete + the local `formatCurrency` + the hardcoded-English errors preserved) + `categories` (table + form + MODAL delete + the outlier redirect guard preserved).
+- [x] Task 5: Thin route entries — the 4 route files → content components.
+- [x] Task 6: Green-the-net + DoD gate — E26-S1 budgeting suites green (incl. the 3 EXTENDED existing suites — transport mocks unchanged per A94); new slice unit tests; `tsc`/eslint(changed+boundary)/`vitest run` FULL green; LF; A79/A92 deltas recorded. (`next build` deferred to epic boundary.)
 
 ## Dev Notes
 
@@ -85,14 +85,30 @@ The budgeting/reporting group. `lib/api/budgets.ts` is the one finance "lib modu
 
 ### Agent Model Used
 
-_(to be filled by dev-story)_
+claude-opus-4-8[1m] orchestrator + 1 parallel general-purpose subagent (S3/S4/S5/S6 ran concurrently on the shared S2 foundation, A87/A101). Autonomous mode (A41) — DECs auto-resolved to recommended options.
 
 ### Debug Log References
 
+**DEC resolutions (A43 (a)/(b)/(c)) — all = A:**
+- **DEC-1 = A (budgets.ts disposition):** (a) KEEP `lib/api/budgets.ts` as the types+constants source; BUILD slice hooks over `useApiClient` reusing it. (b) it is types-only (no function-wrap exists); `features→lib` legal. (c) `budgets.ts` untouched.
+- **DEC-2 = A (activity-areas ownership):** (a) REUSE the foundation's activity-areas FULL CRUD builders (`financeUrls.activityAreas()`/`activityArea(id)`) — re-exported by IDENTITY in `budgetingUrls` (verified `===` in the slice test); add ONLY the `/report` builder + categories CRUD here. (b) single owner (A62/A101); S6 imports the same foundation builders. (c) no two-slice ownership of `/activity-areas`.
+- **DEC-3 = A (form mechanism):** (a) migrate budget/activity-area/category forms to E22 RHF+Zod; required-set MATCHES each god-page enable-gate EXACTLY (budgets: 2 selects + amount≥0 via refine; activity-areas: name+code; categories: name); A96 no `.trim()`; A95 area/period `z.string()` disabled-on-edit. (b) the spec's improvements AC asks for it; permissive-matching preserves behaviour. (c) net stayed green.
+
+**Licensed A79 change (form/data-mechanism surface only — NOT a transport-mock edit):** in `categories-content.tsx` the New button gates on `!loading` so the TanStack list query has settled when the suite's `waitFor(newCategory)` resolves (one observer-notification hop vs the god-page's single-await effect); the header stays always-visible; observable output otherwise identical. Also derived `loading = !query.isFetched` on budgets/activity-areas to reproduce the god-page init-true skeleton (read-denied cold session stays on skeleton; NO finance GET fires).
+
 ### Completion Notes List
+
+- 4 god-pages → thin server route shells; behaviour in `features/finance/components/budgeting/*` content roots, each self-wrapping `QueryClientProvider({retry:false})`.
+- Preserved EXACTLY: the **categories outlier guard** (premature-redirect-on-cold-session); activity-areas **toggle-active** (PUT same `/{id}` full payload, isActive flipped); **inline two-step confirm delete** (budgets + activity-areas, armed on failure) vs **MODAL delete** (categories); **server-computed** budget-vs-actual rows (variance<0→`text-red-600`); on-demand report `enabled` only after Generate (`!!fiscalPeriodId`); the **CSV export** raw `api.get<Blob>`→object-URL→anchor `download="budget-vs-actual.csv"`→click→revoke (NOT a query, A76); activity-areas **hardcoded-English errors** verbatim; the page-local de-CH-no-symbol `formatCurrency` (NOT consolidated — not byte-identical); A92 form reset from mutation OUTCOME; A86 colours.
+- REUSED the foundation activity-areas CRUD builders (re-exported for S6); OWNS the `/report` builder + categories CRUD + budget-vs-actual + budgets builders.
 
 ### File List
 
+- NEW: `frontend/src/features/finance/api/budgeting-api.ts` (+`.test.ts`); `types/budgeting.types.ts`; `schemas/{budget,activity-area,category}.schema.ts`; `hooks/{use-budgets,use-budgeting-selectors,use-budget-vs-actual,use-activity-areas-crud,use-finance-categories}.ts` (+`budgeting-hooks.test.tsx`); `components/budgeting/{budget-form,budgets-content,budget-vs-actual-content,activity-area-form,activity-areas-content,category-form,categories-content}.tsx`
+- MODIFIED (thin shells): `frontend/src/app/finance/{budgets,budget-vs-actual,activity-areas,categories}/page.tsx`
+- **DoD:** 4 S1 suites GREEN (52 tests, ×2); slice tests GREEN (budgeting-api + budgeting-hooks = 19); central `tsc --noEmit` exit 0; eslint clean (0 errors); prettier `--check` clean on changed; LF.
+
 ## Change Log
 
-- 2026-06-12: Story created (4 budgeting/reporting pages → `features/finance/` reusing the S2 foundation; BUILD over `useApiClient`+`budgets.ts` types/consts (NOT a function-wrap — budgets.ts is types-only); OWN the shared `ActivityArea` type/keys for S6; preserve the categories outlier guard, the server-computed report rows + CSV export blob, the toggle-active, the inline-confirm delete, the hardcoded-English activity-areas errors + page-local formatCurrency; forms → RHF+Zod with enable-gate-matching required set + A96 no-`.trim()`). Status ready-for-dev.
+- 2026-06-12: Story created (4 budgeting/reporting pages → `features/finance/` reusing the S2 foundation; BUILD over `useApiClient`+`budgets.ts` types/consts; OWN the shared `ActivityArea` type/keys for S6; preserve the categories outlier guard, the server-computed report rows + CSV export blob, the toggle-active, the inline-confirm delete, the hardcoded-English activity-areas errors + page-local formatCurrency; forms → RHF+Zod). Status ready-for-dev.
+- 2026-06-12: Implemented (parallel with S3/S5/S6 on the S2 foundation). Activity-areas builders REUSED from foundation (DEC-2=A); forms→RHF+Zod (DEC-3=A). 4 S1 suites green (1 licensed A79 timing accommodation); full suite 192/1840 green. Status → review.
