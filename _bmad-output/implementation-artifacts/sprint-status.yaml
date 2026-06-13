@@ -1723,7 +1723,7 @@ development_status:
   e30-s5-pageshell-retrofit-migrated-pages: done
   epic-30-retrospective: done  # 2026-06-13: epic-30-retro-2026-06-13.md; A108-A112 promoted to project-context.md
 
-  epic-31: in-progress  # 2026-06-13: bmad-create-story bulk-refresh, 2-story shape kept per user; FINAL epic of the Frontend Refactoring Program
-  e31-s1-migrate-residual-consumers-to-standard-http-contract: ready-for-dev
-  e31-s2-delete-legacy-api-client-and-shims: ready-for-dev
-  epic-31-retrospective: optional
+  epic-31: done  # 2026-06-13: FINAL epic of the Frontend Refactoring Program CLOSED — boundary review APPROVED 0 HIGH/MED, ORACLE-INTACT; retro done; A113-A117 promoted
+  e31-s1-migrate-residual-consumers-to-standard-http-contract: done  # 2026-06-13: importers→0 across 10 clusters; api-client retired; 2022 tests; boundary review APPROVED
+  e31-s2-delete-legacy-api-client-and-shims: done  # 2026-06-13: 18 modules deleted (lib/=auth/modules/utils only) + no-restricted-imports ban + next build exit 0; boundary review APPROVED
+  epic-31-retrospective: done  # 2026-06-13: epic-31-retro-2026-06-13.md; PROGRAM CLOSED (E21-E31)

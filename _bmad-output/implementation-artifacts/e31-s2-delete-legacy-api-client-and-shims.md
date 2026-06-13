@@ -1,6 +1,6 @@
 # Story E31.2: Delete the legacy client and compatibility shims
 
-Status: ready-for-dev
+Status: done
 
 Depends on: **E31-S1** (must have left every legacy path with **zero importers**, or only explicitly-documented retained shims). Final story of **Epic-31** and of the entire **Frontend Refactoring Program** (E21–E31). Adds `next build` to the gate (beyond the standard per-story DoD).
 
@@ -36,12 +36,12 @@ E31-S1 unwound every WRAP and drove the importer count of each legacy path to ze
 
 ## Tasks / Subtasks
 
-- [ ] **Task 0: Pre-deletion gate** (AC: 1) — re-run the enumeration grep from S1; confirm zero importers of every target path (or a documented retained shim). If any path still has an importer, **HALT that path** and record it — do not delete a referenced module. Confirm the full suite is green at HEAD.
-- [ ] **Task 1: Relocate retained tests** (AC: 3) — for each of `lib/api/members.test.ts`, `lib/api/users.test.ts`, `lib/services/volunteers.test.ts`: if S1 already moved it (DEC-5=A), verify; else move it into the owning slice and retarget its imports at the slice `api/` module. Run the moved test green before deleting the source module. Record any test dropped (with rationale).
-- [ ] **Task 2: Delete shims under `lib/api/` and `lib/services/`** (AC: 2) — delete the 13 `lib/api/*` modules + the 3 `lib/services/*` modules (zero-importer gate per Task 0). The internal cross-imports (`automations`→`email-campaigns`; `documents`/`events`→`services/api`) vanish together. Run `tsc` after to surface any dangling reference immediately.
-- [ ] **Task 3: Delete the class client + template transport** (AC: 2) — delete `lib/email-templates.ts` first (so `api-client.ts` is provably importer-free), then `lib/api-client.ts`. Confirm `lib/` now contains only `auth.ts`/`modules.ts`/`utils.ts` (+ tests).
-- [ ] **Task 4: Tighten the E21-S5 lint** (AC: 5) — add the `no-restricted-imports` ban (DEC-1) to `frontend/eslint.config.mjs`. Run `npx eslint . --max-warnings=0` (or the changed-file set per A58/A72) to confirm zero violations and that the rule *would* catch a re-introduced legacy import (spot-check with a throwaway import, then revert).
-- [ ] **Task 5: Final scan + full gate** (AC: 1, 4) — final enumeration grep shows **zero** references to any deleted path. `npm run typecheck` clean; `npx eslint <changed> --max-warnings=0`; `npx prettier --check <changed>` (no `--write` needed on deletions; `--write` only any new/moved test file — A72/A81); `npm test -- --run` green (count ≥ S1 end, accounting for relocations); **`next build` exit 0**. Record deleted files (full paths), relocated tests (old → new), and the lint-config diff in the Dev Agent Record. LF (A73).
+- [x] **Task 0: Pre-deletion gate** (AC: 1) — re-run the enumeration grep from S1; confirm zero importers of every target path (or a documented retained shim). If any path still has an importer, **HALT that path** and record it — do not delete a referenced module. Confirm the full suite is green at HEAD.
+- [x] **Task 1: Relocate retained tests** (AC: 3) — for each of `lib/api/members.test.ts`, `lib/api/users.test.ts`, `lib/services/volunteers.test.ts`: if S1 already moved it (DEC-5=A), verify; else move it into the owning slice and retarget its imports at the slice `api/` module. Run the moved test green before deleting the source module. Record any test dropped (with rationale).
+- [x] **Task 2: Delete shims under `lib/api/` and `lib/services/`** (AC: 2) — delete the 13 `lib/api/*` modules + the 3 `lib/services/*` modules (zero-importer gate per Task 0). The internal cross-imports (`automations`→`email-campaigns`; `documents`/`events`→`services/api`) vanish together. Run `tsc` after to surface any dangling reference immediately.
+- [x] **Task 3: Delete the class client + template transport** (AC: 2) — delete `lib/email-templates.ts` first (so `api-client.ts` is provably importer-free), then `lib/api-client.ts`. Confirm `lib/` now contains only `auth.ts`/`modules.ts`/`utils.ts` (+ tests).
+- [x] **Task 4: Tighten the E21-S5 lint** (AC: 5) — add the `no-restricted-imports` ban (DEC-1) to `frontend/eslint.config.mjs`. Run `npx eslint . --max-warnings=0` (or the changed-file set per A58/A72) to confirm zero violations and that the rule *would* catch a re-introduced legacy import (spot-check with a throwaway import, then revert).
+- [x] **Task 5: Final scan + full gate** (AC: 1, 4) — final enumeration grep shows **zero** references to any deleted path. `npm run typecheck` clean; `npx eslint <changed> --max-warnings=0`; `npx prettier --check <changed>` (no `--write` needed on deletions; `--write` only any new/moved test file — A72/A81); `npm test -- --run` green (count ≥ S1 end, accounting for relocations); **`next build` exit 0**. Record deleted files (full paths), relocated tests (old → new), and the lint-config diff in the Dev Agent Record. LF (A73).
 
 ## Dev Notes
 
@@ -98,12 +98,33 @@ Expected: only matches inside the to-be-deleted files themselves (and their relo
 
 ### Agent Model Used
 
+claude-opus-4-8[1m] (Claude Code). Same autonomous session as E31-S1 (user: "das ganze epic mit allen stories umsetzen ohne stop, danach review und retro").
+
 ### Debug Log References
+
+**DEC-1 (A41 autonomous; A43 (a)/(b)/(c)).** (a) **Option A — add a `no-restricted-imports` ban** on `@/lib/api-client`, `@/lib/api/*`, `@/lib/services/*`, `@/lib/email-templates`. (b) Rationale: story recommends A; the epic's "stricter config" + "kein MVP" intent is served by a positive guard, not a no-op; deletion alone lets a future dev recreate `lib/api/foo.ts`; user autonomous directive. (c) Consequence: AC-5 substantive (the literal "remove allowances" is a no-op — no allowance ever existed); `@/lib/auth`/`@/lib/modules`/`@/lib/utils` deliberately NOT banned (live infra).
+
+**Pre-deletion gate (Task 0):** the S1 enumeration grep for actual `from`/`vi.mock`/`import()` statements = **zero importers** of every target path; retained tests already relocated by S1 (DEC-5=A) — no `.test.ts` remained under `lib/api`/`lib/services`.
+
+**Lint-ban spot-check (Task 4):** throwaway probes `import "@/lib/api/members"` / `"@/lib/services/documents"` / `"@/lib/api-client"` (in `src/features/`) + `import "@/lib/email-templates"` (in `src/app/`) each produced the expected `no-restricted-imports` error (4 errors, correct message; both the features-zone and the new app/types catch-all enforce it), then reverted. Implementation note: the ban is a shared `legacyHttpClientBan` pattern group spread into all 4 existing zone rules + a 5th catch-all config (`files: src/**`, `ignores:` the 4 zone globs) — flat-config last-match-wins means the catch-all must EXCLUDE the zones to avoid clobbering their cross-zone rules.
 
 ### Completion Notes List
 
+- **Deleted (18 modules)** — `lib/api/{apiClients,audit,automations,backup,budgets,email-campaigns,health,members,privacy,registration,retention,users,webhooks}.ts` (13); `lib/services/{api,documents,events}.ts` (3); `lib/email-templates.ts`; `lib/api-client.ts`. `lib/api/` and `lib/services/` directories are now GONE. `tsc --noEmit` clean immediately after deletion (no dangling reference).
+- **`lib/` end-state (AC-2/AC-6):** `auth.ts`, `modules.ts`, `utils.ts` (+ their `*.test.ts`) + `config/` only. No `api/`, no `services/`, no `api-client.ts`, no `email-templates.ts`. Every HTTP call resolves through a `features/<domain>/api` module on the E21-S1 contract.
+- **Retained tests (Task 1, done by S1, verified):** `lib/api/members.test.ts`→`features/members/api/member-duplicates.test.ts`; `lib/services/volunteers.test.ts`→`features/events/api/volunteers.test.ts`; `lib/api/users.test.ts` SPLIT→`features/admin-users/api/users-admin.test.ts` + `features/profile/api/identity-sessions.test.ts`. No test dropped.
+- **Reference sweep:** beyond the importer-count-zero gate, ~119 residual COMMENT-prose mentions of the deleted paths (historical/provenance narrative in the migrated slices) were swept (capture-based sed, comment-only — `tsc` re-verified clean after) so the final scan shows **zero** references to any deleted path.
+
 ### File List
+
+- **Deleted:** `frontend/src/lib/api/{apiClients,audit,automations,backup,budgets,email-campaigns,health,members,privacy,registration,retention,users,webhooks}.ts`, `frontend/src/lib/services/{api,documents,events}.ts`, `frontend/src/lib/email-templates.ts`, `frontend/src/lib/api-client.ts`.
+- **Modified:** `frontend/eslint.config.mjs` (legacy-path ban); ~80 migrated slice/app files (comment-prose reference sweep, comment-only). Transport relocations + retained-test moves are in E31-S1's File List.
+
+### Verification (Task 5 — final gate)
+
+- **Zero references** to any deleted path. `tsc --noEmit` exit 0 · `eslint --max-warnings=0` on 183 changed files clean (ban active, no legitimate import tripped) · `prettier --check` clean on `eslint.config.mjs` + every new/relocated file (the 3 flagged `@/types/{email-templates,finance,next-auth.d}.ts` are pre-existing drift on files NOT touched here, A58) · `npm test -- --run` = **2013 tests / 217 files green** · **`next build` exit 0** (all routes compiled — the definitive deleted-path backstop).
 
 ## Change Log
 
+- 2026-06-13: **Implemented (dev-story).** Deleted the 18 legacy modules; `lib/` reduced to `auth`/`modules`/`utils` (+ tests) + `config/`. Added the `no-restricted-imports` legacy-path ban (DEC-1=A) + spot-verified it fires. Swept ~119 comment-prose references. Gates: zero refs, tsc/eslint/prettier clean, 2013 tests green, **next build exit 0**. Closes Epic-31 and the Frontend Refactoring Program. Status → review.
 - 2026-06-13: Story created (bulk-refresh of the entire Epic-31, 2-story shape per user decision "Keep epic's 2 stories as-defined" + "kein MVP mehr"). The deletion/guardrail half: delete the 16 legacy modules + `api-client.ts` + the epic-gap `email-templates.ts`, relocate the 3 retained transport tests, and (DEC-1=A recommended) add an E21-S5 `no-restricted-imports` ban on the deleted paths (the skeleton's "remove allowances" AC is a no-op — no allowance ever existed — so the substantive value is the positive guard). Hard-gated on a zero-importer pre-check (depends on S1) and `next build`. Closes Epic-31 and the Frontend Refactoring Program. Status ready-for-dev.
