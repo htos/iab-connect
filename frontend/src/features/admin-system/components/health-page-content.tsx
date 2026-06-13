@@ -15,6 +15,7 @@
  */
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { PageShell, PageHeader } from "@/components/layout";
@@ -24,6 +25,7 @@ import { HealthStatus } from "./health-status";
 
 export function HealthPageContent() {
   const t = useTranslations("admin.health");
+  const tCommon = useTranslations("common");
   const router = useRouter();
   const { isAuthenticated, isLoading, isAdmin, accessToken } = useAuth();
 
@@ -69,6 +71,13 @@ export function HealthPageContent() {
 
   return (
     <PageShell>
+      <Link
+        href="/admin"
+        className="mb-6 inline-flex items-center gap-2 text-gray-600 transition-colors hover:text-orange-600"
+      >
+        ← {tCommon("back")}
+      </Link>
+
       {/* Header */}
       <PageHeader
         title={t("title")}

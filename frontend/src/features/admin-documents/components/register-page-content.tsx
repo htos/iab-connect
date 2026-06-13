@@ -67,6 +67,13 @@ export function RegisterPageContent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-orange-50 to-amber-100 px-4 py-8">
       <div className="w-full max-w-md">
+        <Link
+          href="/login"
+          className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-gray-600 transition-colors hover:text-orange-600"
+        >
+          ← {t("common.back")}
+        </Link>
+
         {/* Logo and Title */}
         <div className="mb-8 text-center">
           <div
