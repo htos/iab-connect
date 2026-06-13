@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth";
+import { PageShell } from "@/components/layout";
 import { SegmentForm } from "./segment-form";
 import { useSegment } from "../hooks/use-segment";
 import { useUpdateSegment } from "../hooks/use-update-segment";
@@ -153,49 +154,47 @@ export function SegmentEditContent() {
   };
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-2xl">
-        {/* Header */}
-        <div className="mb-8">
-          <Link
-            href={`/members/segments/${segmentId}`}
-            className="mb-2 inline-flex items-center gap-1 text-sm text-orange-600 hover:text-orange-800"
+    <PageShell maxWidth="2xl">
+      {/* Header */}
+      <div className="mb-8">
+        <Link
+          href={`/members/segments/${segmentId}`}
+          className="mb-2 inline-flex items-center gap-1 text-sm text-orange-600 hover:text-orange-800"
+        >
+          <svg
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
           >
-            <svg
-              className="h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-            {t("segments.backToDetail")}
-          </Link>
-          <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-            {t("segments.editSegment")}
-          </h1>
-        </div>
-
-        <SegmentForm
-          mode="edit"
-          defaultValues={segment ? toFormValues(segment) : EMPTY_VALUES}
-          defaultCriteria={parseCriteria(segment?.criteriaJson)}
-          onSubmit={handleSubmit}
-          onPreview={handlePreview}
-          preview={preview}
-          previewing={previewMutation.isPending}
-          submitIdleLabel="common.save"
-          submitPendingLabel="common.saving"
-          pending={updateMutation.isPending}
-          errorMessage={error}
-          cancelHref={`/members/segments/${segmentId}`}
-        />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+          {t("segments.backToDetail")}
+        </Link>
+        <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
+          {t("segments.editSegment")}
+        </h1>
       </div>
-    </main>
+
+      <SegmentForm
+        mode="edit"
+        defaultValues={segment ? toFormValues(segment) : EMPTY_VALUES}
+        defaultCriteria={parseCriteria(segment?.criteriaJson)}
+        onSubmit={handleSubmit}
+        onPreview={handlePreview}
+        preview={preview}
+        previewing={previewMutation.isPending}
+        submitIdleLabel="common.save"
+        submitPendingLabel="common.saving"
+        pending={updateMutation.isPending}
+        errorMessage={error}
+        cancelHref={`/members/segments/${segmentId}`}
+      />
+    </PageShell>
   );
 }

@@ -18,6 +18,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { PageShell } from "@/components/layout";
 import { useAuth } from "@/lib/auth";
 import {
   FiscalActionError,
@@ -449,381 +450,375 @@ function FiscalPeriodsBody() {
   }
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-7xl">
-        {/* Breadcrumb */}
-        <nav className="mb-6 flex items-center gap-2 text-sm text-gray-500">
-          <Link href="/" className="hover:text-gray-700">
-            <HomeIcon className="h-4 w-4" />
-          </Link>
-          <ChevronRightIcon className="h-3 w-3" />
-          <Link href="/finance" className="hover:text-gray-700">
-            {tn("finance")}
-          </Link>
-          <ChevronRightIcon className="h-3 w-3" />
-          <span className="font-medium text-gray-900">{t("title")}</span>
-        </nav>
+    <PageShell>
+      {/* Breadcrumb */}
+      <nav className="mb-6 flex items-center gap-2 text-sm text-gray-500">
+        <Link href="/" className="hover:text-gray-700">
+          <HomeIcon className="h-4 w-4" />
+        </Link>
+        <ChevronRightIcon className="h-3 w-3" />
+        <Link href="/finance" className="hover:text-gray-700">
+          {tn("finance")}
+        </Link>
+        <ChevronRightIcon className="h-3 w-3" />
+        <span className="font-medium text-gray-900">{t("title")}</span>
+      </nav>
 
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-100">
-                <CalendarIcon className="h-5 w-5 text-orange-600" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  {t("title")}
-                </h1>
-                <p className="text-sm text-gray-500">{t("subtitle")}</p>
-              </div>
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-100">
+              <CalendarIcon className="h-5 w-5 text-orange-600" />
             </div>
-            <div className="flex items-center gap-3">
-              {/* Year selector */}
-              <div className="flex items-center gap-2">
-                <label
-                  htmlFor="year-select"
-                  className="text-sm font-medium text-gray-700"
-                >
-                  {t("year")}:
-                </label>
-                <select
-                  id="year-select"
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(Number(e.target.value))}
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:outline-none"
-                >
-                  {yearOptions.map((y) => (
-                    <option key={y} value={y}>
-                      {y}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {/* Generate button */}
-              {canWriteFinance && (
-                <button
-                  onClick={handleGenerate}
-                  disabled={generating}
-                  className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:opacity-50"
-                >
-                  {generating ? (
-                    <>
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                      {t("generating")}
-                    </>
-                  ) : (
-                    <>
-                      <CalendarIcon className="h-4 w-4" />
-                      {t("generate")}
-                    </>
-                  )}
-                </button>
-              )}
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">{t("title")}</h1>
+              <p className="text-sm text-gray-500">{t("subtitle")}</p>
             </div>
           </div>
-        </div>
-
-        {/* Success message */}
-        {success && (
-          <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-green-800">{success}</p>
-              <button
-                onClick={() => setSuccess(null)}
-                className="text-green-600 hover:text-green-800"
+          <div className="flex items-center gap-3">
+            {/* Year selector */}
+            <div className="flex items-center gap-2">
+              <label
+                htmlFor="year-select"
+                className="text-sm font-medium text-gray-700"
               >
-                <span className="sr-only">{tc("dismiss")}</span>
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* No finance profile error */}
-        {noProfileError && (
-          <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-amber-800">
-                  {tfe("noFinanceProfile")}
-                </p>
-                <Link
-                  href="/finance/settings"
-                  className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-orange-600 underline hover:text-orange-700"
-                >
-                  {tfe("goToSettings")} →
-                </Link>
-              </div>
-              <button
-                onClick={() => setNoProfileError(false)}
-                className="text-amber-600 hover:text-amber-800"
+                {t("year")}:
+              </label>
+              <select
+                id="year-select"
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:outline-none"
               >
-                <span className="sr-only">{tc("dismiss")}</span>
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
+                {yearOptions.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
             </div>
-          </div>
-        )}
-
-        {/* Error message */}
-        {banner && (
-          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-red-800">{banner}</p>
-              <button
-                onClick={() => setError(null)}
-                className="text-red-600 hover:text-red-800"
-              >
-                <span className="sr-only">{tc("dismiss")}</span>
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Search */}
-        <div className="mb-6 rounded-xl bg-white p-4 shadow-sm">
-          <div className="relative">
-            <svg
-              className="absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-            <input
-              type="text"
-              placeholder={t("searchFiscalPeriods")}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-10 transition-colors outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
-            />
-          </div>
-        </div>
-
-        {/* Loading */}
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-orange-600 border-t-transparent" />
-          </div>
-        ) : filteredPeriods.length === 0 ? (
-          /* Empty state */
-          <div className="rounded-xl bg-white p-12 text-center shadow-sm">
-            <CalendarIcon className="mx-auto h-12 w-12 text-gray-300" />
-            <h3 className="mt-4 text-lg font-medium text-gray-900">
-              {t("noPeriodsTitle")}
-            </h3>
-            <p className="mt-2 text-sm text-gray-500">
-              {t("noPeriodsMessage")}
-            </p>
+            {/* Generate button */}
             {canWriteFinance && (
               <button
                 onClick={handleGenerate}
                 disabled={generating}
-                className="mt-6 inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:opacity-50"
               >
-                <CalendarIcon className="h-4 w-4" />
-                {t("generate")}
+                {generating ? (
+                  <>
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    {t("generating")}
+                  </>
+                ) : (
+                  <>
+                    <CalendarIcon className="h-4 w-4" />
+                    {t("generate")}
+                  </>
+                )}
               </button>
             )}
           </div>
-        ) : (
-          /* Periods table */
-          <div className="overflow-hidden rounded-xl bg-white shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                      {t("period")}
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                      {t("startDate")}
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                      {t("endDate")}
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                      {t("status")}
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
-                      {t("totalIncome")}
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
-                      {t("totalExpense")}
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
-                      {t("closingBalance")}
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
-                      {t("actions")}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 bg-white">
-                  {filteredPeriods.map((period) => (
-                    <tr
-                      key={period.id}
-                      className="transition-colors hover:bg-gray-50"
-                    >
-                      <td className="px-6 py-4 text-sm font-medium whitespace-nowrap text-gray-900">
-                        {period.name}
-                      </td>
-                      <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
-                        {formatDate(period.startDate)}
-                      </td>
-                      <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
-                        {formatDate(period.endDate)}
-                      </td>
-                      <td className="px-6 py-4 text-sm whitespace-nowrap">
-                        <StatusBadge status={period.status} t={t} />
-                      </td>
-                      <td className="px-6 py-4 text-right text-sm whitespace-nowrap text-gray-500">
-                        {period.status !== "Open" ? (
-                          <span className="font-medium text-green-700">
-                            {formatCHF(period.totalIncome)}
-                          </span>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-right text-sm whitespace-nowrap text-gray-500">
-                        {period.status !== "Open" ? (
-                          <span className="font-medium text-red-700">
-                            {formatCHF(period.totalExpense)}
-                          </span>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-right text-sm whitespace-nowrap text-gray-500">
-                        {period.status !== "Open" ? (
-                          <span
-                            className={`font-semibold ${
-                              (period.closingBalance ?? 0) >= 0
-                                ? "text-green-700"
-                                : "text-red-700"
-                            }`}
-                          >
-                            {formatCHF(period.closingBalance)}
-                          </span>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-right text-sm whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-2">
-                          {/* Open → Close button */}
-                          {canWriteFinance && period.status === "Open" && (
-                            <button
-                              onClick={() => {
-                                setModalType("close");
-                                setModalPeriod(period);
-                                setModalNotes("");
-                              }}
-                              className="inline-flex items-center gap-1 rounded-lg border border-yellow-300 bg-yellow-50 px-3 py-1.5 text-xs font-medium text-yellow-800 transition-colors hover:bg-yellow-100"
-                              title={t("close")}
-                            >
-                              <CheckCircleIcon className="h-3.5 w-3.5" />
-                              {t("close")}
-                            </button>
-                          )}
-                          {/* Closed → Lock button */}
-                          {canWriteFinance && period.status === "Closed" && (
-                            <button
-                              onClick={() => {
-                                setModalType("lock");
-                                setModalPeriod(period);
-                                setModalNotes("");
-                              }}
-                              className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
-                              title={t("lock")}
-                            >
-                              <LockIcon className="h-3.5 w-3.5" />
-                              {t("lock")}
-                            </button>
-                          )}
-                          {/* Closed → Reopen button */}
-                          {canWriteFinance && period.status === "Closed" && (
-                            <button
-                              onClick={() => {
-                                setModalType("reopen");
-                                setModalPeriod(period);
-                              }}
-                              className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-50"
-                              title={t("reopen")}
-                            >
-                              <RefreshIcon className="h-3.5 w-3.5" />
-                              {t("reopen")}
-                            </button>
-                          )}
-                          {/* Locked → Unlock button (admin only) */}
-                          {isAdmin && period.status === "Locked" && (
-                            <button
-                              onClick={() => {
-                                setModalType("unlock");
-                                setModalPeriod(period);
-                              }}
-                              className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
-                              title={t("unlock")}
-                            >
-                              <UnlockIcon className="h-3.5 w-3.5" />
-                              {t("unlock")}
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
+
+      {/* Success message */}
+      {success && (
+        <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-green-800">{success}</p>
+            <button
+              onClick={() => setSuccess(null)}
+              className="text-green-600 hover:text-green-800"
+            >
+              <span className="sr-only">{tc("dismiss")}</span>
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* No finance profile error */}
+      {noProfileError && (
+        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-amber-800">
+                {tfe("noFinanceProfile")}
+              </p>
+              <Link
+                href="/finance/settings"
+                className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-orange-600 underline hover:text-orange-700"
+              >
+                {tfe("goToSettings")} →
+              </Link>
+            </div>
+            <button
+              onClick={() => setNoProfileError(false)}
+              className="text-amber-600 hover:text-amber-800"
+            >
+              <span className="sr-only">{tc("dismiss")}</span>
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Error message */}
+      {banner && (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-red-800">{banner}</p>
+            <button
+              onClick={() => setError(null)}
+              className="text-red-600 hover:text-red-800"
+            >
+              <span className="sr-only">{tc("dismiss")}</span>
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Search */}
+      <div className="mb-6 rounded-xl bg-white p-4 shadow-sm">
+        <div className="relative">
+          <svg
+            className="absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+          <input
+            type="text"
+            placeholder={t("searchFiscalPeriods")}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-10 transition-colors outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
+          />
+        </div>
+      </div>
+
+      {/* Loading */}
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-orange-600 border-t-transparent" />
+        </div>
+      ) : filteredPeriods.length === 0 ? (
+        /* Empty state */
+        <div className="rounded-xl bg-white p-12 text-center shadow-sm">
+          <CalendarIcon className="mx-auto h-12 w-12 text-gray-300" />
+          <h3 className="mt-4 text-lg font-medium text-gray-900">
+            {t("noPeriodsTitle")}
+          </h3>
+          <p className="mt-2 text-sm text-gray-500">{t("noPeriodsMessage")}</p>
+          {canWriteFinance && (
+            <button
+              onClick={handleGenerate}
+              disabled={generating}
+              className="mt-6 inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:opacity-50"
+            >
+              <CalendarIcon className="h-4 w-4" />
+              {t("generate")}
+            </button>
+          )}
+        </div>
+      ) : (
+        /* Periods table */
+        <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                    {t("period")}
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                    {t("startDate")}
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                    {t("endDate")}
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                    {t("status")}
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
+                    {t("totalIncome")}
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
+                    {t("totalExpense")}
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
+                    {t("closingBalance")}
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
+                    {t("actions")}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 bg-white">
+                {filteredPeriods.map((period) => (
+                  <tr
+                    key={period.id}
+                    className="transition-colors hover:bg-gray-50"
+                  >
+                    <td className="px-6 py-4 text-sm font-medium whitespace-nowrap text-gray-900">
+                      {period.name}
+                    </td>
+                    <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
+                      {formatDate(period.startDate)}
+                    </td>
+                    <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
+                      {formatDate(period.endDate)}
+                    </td>
+                    <td className="px-6 py-4 text-sm whitespace-nowrap">
+                      <StatusBadge status={period.status} t={t} />
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm whitespace-nowrap text-gray-500">
+                      {period.status !== "Open" ? (
+                        <span className="font-medium text-green-700">
+                          {formatCHF(period.totalIncome)}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm whitespace-nowrap text-gray-500">
+                      {period.status !== "Open" ? (
+                        <span className="font-medium text-red-700">
+                          {formatCHF(period.totalExpense)}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm whitespace-nowrap text-gray-500">
+                      {period.status !== "Open" ? (
+                        <span
+                          className={`font-semibold ${
+                            (period.closingBalance ?? 0) >= 0
+                              ? "text-green-700"
+                              : "text-red-700"
+                          }`}
+                        >
+                          {formatCHF(period.closingBalance)}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-2">
+                        {/* Open → Close button */}
+                        {canWriteFinance && period.status === "Open" && (
+                          <button
+                            onClick={() => {
+                              setModalType("close");
+                              setModalPeriod(period);
+                              setModalNotes("");
+                            }}
+                            className="inline-flex items-center gap-1 rounded-lg border border-yellow-300 bg-yellow-50 px-3 py-1.5 text-xs font-medium text-yellow-800 transition-colors hover:bg-yellow-100"
+                            title={t("close")}
+                          >
+                            <CheckCircleIcon className="h-3.5 w-3.5" />
+                            {t("close")}
+                          </button>
+                        )}
+                        {/* Closed → Lock button */}
+                        {canWriteFinance && period.status === "Closed" && (
+                          <button
+                            onClick={() => {
+                              setModalType("lock");
+                              setModalPeriod(period);
+                              setModalNotes("");
+                            }}
+                            className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                            title={t("lock")}
+                          >
+                            <LockIcon className="h-3.5 w-3.5" />
+                            {t("lock")}
+                          </button>
+                        )}
+                        {/* Closed → Reopen button */}
+                        {canWriteFinance && period.status === "Closed" && (
+                          <button
+                            onClick={() => {
+                              setModalType("reopen");
+                              setModalPeriod(period);
+                            }}
+                            className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-50"
+                            title={t("reopen")}
+                          >
+                            <RefreshIcon className="h-3.5 w-3.5" />
+                            {t("reopen")}
+                          </button>
+                        )}
+                        {/* Locked → Unlock button (admin only) */}
+                        {isAdmin && period.status === "Locked" && (
+                          <button
+                            onClick={() => {
+                              setModalType("unlock");
+                              setModalPeriod(period);
+                            }}
+                            className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
+                            title={t("unlock")}
+                          >
+                            <UnlockIcon className="h-3.5 w-3.5" />
+                            {t("unlock")}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Unified Confirmation Modal */}
       {modalType && (
@@ -846,7 +841,7 @@ function FiscalPeriodsBody() {
           tc={tc}
         />
       )}
-    </main>
+    </PageShell>
   );
 }
 

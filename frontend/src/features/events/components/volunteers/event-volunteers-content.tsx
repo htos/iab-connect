@@ -21,6 +21,7 @@ import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/lib/auth";
+import { PageShell } from "@/components/layout";
 import {
   Dialog,
   DialogContent,
@@ -444,12 +445,10 @@ export function EventVolunteersContent({ id: eventId }: { id: string }) {
 
   if (authLoading || loading) {
     return (
-      <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-6 h-8 w-64 animate-pulse rounded bg-gray-200" />
-          <div className="h-96 animate-pulse rounded-xl bg-gray-200" />
-        </div>
-      </main>
+      <PageShell maxWidth="6xl">
+        <div className="mb-6 h-8 w-64 animate-pulse rounded bg-gray-200" />
+        <div className="h-96 animate-pulse rounded-xl bg-gray-200" />
+      </PageShell>
     );
   }
 
@@ -457,187 +456,183 @@ export function EventVolunteersContent({ id: eventId }: { id: string }) {
 
   if (!canManage) {
     return (
-      <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-        <div className="mx-auto max-w-6xl">
-          <div
-            role="alert"
-            className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-yellow-800"
-          >
-            {t("permissionDenied")}
-          </div>
+      <PageShell maxWidth="6xl">
+        <div
+          role="alert"
+          className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-yellow-800"
+        >
+          {t("permissionDenied")}
         </div>
-      </main>
+      </PageShell>
     );
   }
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-6xl">
-        <Link
-          href={`/events/${eventId}`}
-          className="mb-6 inline-flex items-center gap-2 text-gray-600 transition-colors hover:text-orange-600"
+    <PageShell maxWidth="6xl">
+      <Link
+        href={`/events/${eventId}`}
+        className="mb-6 inline-flex items-center gap-2 text-gray-600 transition-colors hover:text-orange-600"
+      >
+        ← {t("backToEvent")}
+      </Link>
+
+      <header className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">{t("pageTitle")}</h1>
+        <p className="mt-1 text-gray-500">{t("pageDescription")}</p>
+      </header>
+
+      {error && (
+        <div
+          role="alert"
+          className="mb-4 flex justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800"
         >
-          ← {t("backToEvent")}
-        </Link>
-
-        <header className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">{t("pageTitle")}</h1>
-          <p className="mt-1 text-gray-500">{t("pageDescription")}</p>
-        </header>
-
-        {error && (
-          <div
-            role="alert"
-            className="mb-4 flex justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800"
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={() => setError(null)}
+            className="font-medium"
           >
-            <span>{error}</span>
-            <button
-              type="button"
-              onClick={() => setError(null)}
-              className="font-medium"
-            >
-              ×
-            </button>
-          </div>
-        )}
+            ×
+          </button>
+        </div>
+      )}
 
-        {/* Role create form */}
-        <section className="mb-6 rounded-xl bg-white p-4 shadow-sm">
-          <h2 className="mb-3 text-lg font-semibold text-gray-900">
-            {t("newRole")}
-          </h2>
-          <div className="grid gap-3 md:grid-cols-2">
-            <label className="block">
-              <span className="mb-1 block text-sm font-medium text-gray-700">
-                {t("roleName")}
-              </span>
-              <input
-                type="text"
-                value={newRoleName}
-                onChange={(e) => setNewRoleName(e.target.value)}
-                className={inputClass}
-                maxLength={100}
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-sm font-medium text-gray-700">
-                {t("roleDescription")}
-              </span>
-              <input
-                type="text"
-                value={newRoleDescription}
-                onChange={(e) => setNewRoleDescription(e.target.value)}
-                className={inputClass}
-                maxLength={500}
-              />
-            </label>
-          </div>
-          <div className="mt-3 flex justify-end">
-            <button
-              type="button"
-              onClick={handleCreateRole}
-              disabled={!newRoleName.trim() || actionInFlight === "createRole"}
-              className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:opacity-50"
-            >
-              {t("save")}
-            </button>
-          </div>
-        </section>
+      {/* Role create form */}
+      <section className="mb-6 rounded-xl bg-white p-4 shadow-sm">
+        <h2 className="mb-3 text-lg font-semibold text-gray-900">
+          {t("newRole")}
+        </h2>
+        <div className="grid gap-3 md:grid-cols-2">
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-gray-700">
+              {t("roleName")}
+            </span>
+            <input
+              type="text"
+              value={newRoleName}
+              onChange={(e) => setNewRoleName(e.target.value)}
+              className={inputClass}
+              maxLength={100}
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-gray-700">
+              {t("roleDescription")}
+            </span>
+            <input
+              type="text"
+              value={newRoleDescription}
+              onChange={(e) => setNewRoleDescription(e.target.value)}
+              className={inputClass}
+              maxLength={500}
+            />
+          </label>
+        </div>
+        <div className="mt-3 flex justify-end">
+          <button
+            type="button"
+            onClick={handleCreateRole}
+            disabled={!newRoleName.trim() || actionInFlight === "createRole"}
+            className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:opacity-50"
+          >
+            {t("save")}
+          </button>
+        </div>
+      </section>
 
-        {/* Shift create / edit dialog — mounted only while a target is set. The
+      {/* Shift create / edit dialog — mounted only while a target is set. The
             `key` forces a fresh react-hook-form instance (with the right
             defaults) when the target changes. */}
-        {shiftFormTarget && (
-          <ShiftFormDialog
-            key={shiftFormTarget.shiftId ?? `new-${shiftFormTarget.roleId}`}
-            target={shiftFormTarget}
-            roles={roles}
-            eventId={eventId}
-            onClose={() => setShiftFormTarget(null)}
-            onSaved={() => setShiftFormTarget(null)}
-            onError={() => setError(t("saveFailed"))}
-          />
-        )}
+      {shiftFormTarget && (
+        <ShiftFormDialog
+          key={shiftFormTarget.shiftId ?? `new-${shiftFormTarget.roleId}`}
+          target={shiftFormTarget}
+          roles={roles}
+          eventId={eventId}
+          onClose={() => setShiftFormTarget(null)}
+          onSaved={() => setShiftFormTarget(null)}
+          onError={() => setError(t("saveFailed"))}
+        />
+      )}
 
-        {/* Roles + shifts table */}
-        {roles.length === 0 && shifts.length === 0 && (
-          <div className="rounded-xl bg-white p-8 text-center text-gray-500 shadow-sm">
-            {t("noShifts")}
-          </div>
-        )}
+      {/* Roles + shifts table */}
+      {roles.length === 0 && shifts.length === 0 && (
+        <div className="rounded-xl bg-white p-8 text-center text-gray-500 shadow-sm">
+          {t("noShifts")}
+        </div>
+      )}
 
-        {roles.map((role) => {
-          const roleShifts = shiftsByRoleId.get(role.id) ?? [];
-          return (
-            <section
-              key={role.id}
-              className="mb-4 rounded-xl bg-white p-4 shadow-sm"
-            >
-              <div className="mb-3 flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">
-                    {role.name}
-                  </h2>
-                  {role.description && (
-                    <p className="text-sm text-gray-500">{role.description}</p>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => openCreateShift(role.id)}
-                  className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-orange-700"
-                >
-                  {t("newShift")}
-                </button>
+      {roles.map((role) => {
+        const roleShifts = shiftsByRoleId.get(role.id) ?? [];
+        return (
+          <section
+            key={role.id}
+            className="mb-4 rounded-xl bg-white p-4 shadow-sm"
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  {role.name}
+                </h2>
+                {role.description && (
+                  <p className="text-sm text-gray-500">{role.description}</p>
+                )}
               </div>
-              {roleShifts.length === 0 ? (
-                <p className="text-sm text-gray-500">{t("noShifts")}</p>
-              ) : (
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-left text-gray-500">
-                      <th className="py-2">{t("title")}</th>
-                      <th className="py-2">{t("start")}</th>
-                      <th className="py-2">{t("end")}</th>
-                      <th className="py-2">{t("assigned")}</th>
-                      <th className="py-2"></th>
+              <button
+                type="button"
+                onClick={() => openCreateShift(role.id)}
+                className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-orange-700"
+              >
+                {t("newShift")}
+              </button>
+            </div>
+            {roleShifts.length === 0 ? (
+              <p className="text-sm text-gray-500">{t("noShifts")}</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-gray-500">
+                    <th className="py-2">{t("title")}</th>
+                    <th className="py-2">{t("start")}</th>
+                    <th className="py-2">{t("end")}</th>
+                    <th className="py-2">{t("assigned")}</th>
+                    <th className="py-2"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {roleShifts.map((shift) => (
+                    <tr key={shift.id} className="border-b last:border-0">
+                      <td className="py-2">{shift.title}</td>
+                      <td className="py-2">{formatZurich(shift.startsAt)}</td>
+                      <td className="py-2">{formatZurich(shift.endsAt)}</td>
+                      <td className="py-2">
+                        {shift.confirmedCount} / {shift.capacity}
+                      </td>
+                      <td className="py-2 text-right">
+                        <button
+                          type="button"
+                          onClick={() => openEditShift(shift)}
+                          className="mr-3 text-sm font-medium text-orange-700 hover:text-orange-800"
+                        >
+                          {t("editShift")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleCancelShift(shift.id)}
+                          disabled={actionInFlight === shift.id}
+                          className="text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+                        >
+                          {t("cancelShift")}
+                        </button>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {roleShifts.map((shift) => (
-                      <tr key={shift.id} className="border-b last:border-0">
-                        <td className="py-2">{shift.title}</td>
-                        <td className="py-2">{formatZurich(shift.startsAt)}</td>
-                        <td className="py-2">{formatZurich(shift.endsAt)}</td>
-                        <td className="py-2">
-                          {shift.confirmedCount} / {shift.capacity}
-                        </td>
-                        <td className="py-2 text-right">
-                          <button
-                            type="button"
-                            onClick={() => openEditShift(shift)}
-                            className="mr-3 text-sm font-medium text-orange-700 hover:text-orange-800"
-                          >
-                            {t("editShift")}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleCancelShift(shift.id)}
-                            disabled={actionInFlight === shift.id}
-                            className="text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
-                          >
-                            {t("cancelShift")}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </section>
-          );
-        })}
-      </div>
-    </main>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </section>
+        );
+      })}
+    </PageShell>
   );
 }

@@ -27,6 +27,7 @@
 import { useEffect, useState, useCallback, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { PageShell } from "@/components/layout";
 import { useAuth } from "@/lib/auth";
 import { fetchFolders } from "../api/admin-folders-api";
 import {
@@ -228,237 +229,232 @@ export function AdminFoldersPageContent() {
   }
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-7xl">
-        {/* Header */}
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-              {t("documents.adminTitle")}
-            </h1>
-            <p className="mt-1 text-gray-600">{t("documents.adminSubtitle")}</p>
-          </div>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-700"
-          >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            {t("documents.createFolder")}
-          </button>
+    <PageShell>
+      {/* Header */}
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
+            {t("documents.adminTitle")}
+          </h1>
+          <p className="mt-1 text-gray-600">{t("documents.adminSubtitle")}</p>
         </div>
-
-        {/* Breadcrumbs */}
-        {breadcrumbs.length > 1 && (
-          <nav className="mb-4 flex items-center gap-1 text-sm">
-            {breadcrumbs.map((crumb, index) => (
-              <span
-                key={crumb.id ?? "root"}
-                className="flex items-center gap-1"
-              >
-                {index > 0 && (
-                  <svg
-                    className="h-4 w-4 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                )}
-                {index < breadcrumbs.length - 1 ? (
-                  <button
-                    onClick={() => navigateToBreadcrumb(index)}
-                    className="font-medium text-orange-600 hover:text-orange-800 hover:underline"
-                  >
-                    {index === 0 ? (
-                      <span className="flex items-center gap-1">
-                        <svg
-                          className="h-4 w-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-                          />
-                        </svg>
-                        {t("documents.allFolders")}
-                      </span>
-                    ) : (
-                      crumb.name
-                    )}
-                  </button>
-                ) : (
-                  <span className="font-semibold text-gray-900">
-                    {crumb.name}
-                  </span>
-                )}
-              </span>
-            ))}
-          </nav>
-        )}
-
-        {/* Back Button (when inside a folder) */}
-        {currentFolderId && (
-          <button
-            onClick={() => navigateToBreadcrumb(breadcrumbs.length - 2)}
-            className="mb-4 inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+        <button
+          onClick={() => setShowCreate(true)}
+          className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-700"
+        >
+          <svg
+            className="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
           >
-            <svg
-              className="h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-            {t("documents.backToParent")}
-          </button>
-        )}
-
-        {success && (
-          <div className="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-green-700">
-            {success}
-          </div>
-        )}
-        {error && (
-          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
-            {error}
-            <button
-              onClick={() => setError(null)}
-              className="ml-2 font-medium text-red-800 hover:underline"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-
-        {/* Create Folder Modal */}
-        {showCreate && (
-          <FolderFormDialog
-            titleKey="documents.createFolder"
-            defaultValues={{ name: "", description: "" }}
-            parentHint={
-              currentFolderId ? breadcrumbs[breadcrumbs.length - 1]?.name : null
-            }
-            onSubmit={handleCreateFolder}
-            onCancel={() => setShowCreate(false)}
-          />
-        )}
-
-        {/* Edit Folder Modal */}
-        {editFolder && (
-          <FolderFormDialog
-            key={editFolder.id}
-            titleKey="documents.editFolder"
-            defaultValues={{
-              name: editFolder.name,
-              description: editFolder.description || "",
-            }}
-            onSubmit={handleEditFolder}
-            onCancel={() => setEditFolder(null)}
-          />
-        )}
-
-        {/* Permissions Modal */}
-        {selectedFolder && (
-          <FolderPermissionsDialog
-            folder={selectedFolder}
-            onSave={handleSavePermissions}
-            onCancel={() => setSelectedFolder(null)}
-          />
-        )}
-
-        {/* Search */}
-        <div className="mb-6 rounded-xl bg-white p-4 shadow-sm">
-          <div className="relative">
-            <svg
-              className="absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-            <input
-              type="text"
-              placeholder={t("documents.searchDocuments")}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-10 transition-colors outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 4v16m8-8H4"
             />
-          </div>
-        </div>
-
-        {/* Folder Table */}
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-orange-600"></div>
-          </div>
-        ) : filteredFolders.length === 0 ? (
-          <div className="rounded-lg bg-white p-12 text-center shadow">
-            <svg
-              className="mx-auto h-12 w-12 text-gray-300"
-              fill="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" />
-            </svg>
-            <p className="mt-4 text-gray-500">
-              {currentFolderId
-                ? t("documents.noSubfolders")
-                : t("documents.noFolders")}
-            </p>
-          </div>
-        ) : (
-          <FoldersTable
-            folders={filteredFolders}
-            subfolderCounts={subfolderCounts}
-            onOpen={navigateToFolder}
-            onEdit={(folder) => setEditFolder(folder)}
-            onPermissions={(folder) => setSelectedFolder(folder)}
-            onDelete={(id) => setDeleteFolderId(id)}
-          />
-        )}
-
-        {/* Delete Folder Confirmation Modal */}
-        {deleteFolderId && (
-          <DeleteFolderDialog
-            onConfirm={() => handleDeleteFolder(deleteFolderId)}
-            onCancel={() => setDeleteFolderId(null)}
-          />
-        )}
+          </svg>
+          {t("documents.createFolder")}
+        </button>
       </div>
-    </main>
+
+      {/* Breadcrumbs */}
+      {breadcrumbs.length > 1 && (
+        <nav className="mb-4 flex items-center gap-1 text-sm">
+          {breadcrumbs.map((crumb, index) => (
+            <span key={crumb.id ?? "root"} className="flex items-center gap-1">
+              {index > 0 && (
+                <svg
+                  className="h-4 w-4 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              )}
+              {index < breadcrumbs.length - 1 ? (
+                <button
+                  onClick={() => navigateToBreadcrumb(index)}
+                  className="font-medium text-orange-600 hover:text-orange-800 hover:underline"
+                >
+                  {index === 0 ? (
+                    <span className="flex items-center gap-1">
+                      <svg
+                        className="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                        />
+                      </svg>
+                      {t("documents.allFolders")}
+                    </span>
+                  ) : (
+                    crumb.name
+                  )}
+                </button>
+              ) : (
+                <span className="font-semibold text-gray-900">
+                  {crumb.name}
+                </span>
+              )}
+            </span>
+          ))}
+        </nav>
+      )}
+
+      {/* Back Button (when inside a folder) */}
+      {currentFolderId && (
+        <button
+          onClick={() => navigateToBreadcrumb(breadcrumbs.length - 2)}
+          className="mb-4 inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+        >
+          <svg
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+          {t("documents.backToParent")}
+        </button>
+      )}
+
+      {success && (
+        <div className="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-green-700">
+          {success}
+        </div>
+      )}
+      {error && (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+          {error}
+          <button
+            onClick={() => setError(null)}
+            className="ml-2 font-medium text-red-800 hover:underline"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Create Folder Modal */}
+      {showCreate && (
+        <FolderFormDialog
+          titleKey="documents.createFolder"
+          defaultValues={{ name: "", description: "" }}
+          parentHint={
+            currentFolderId ? breadcrumbs[breadcrumbs.length - 1]?.name : null
+          }
+          onSubmit={handleCreateFolder}
+          onCancel={() => setShowCreate(false)}
+        />
+      )}
+
+      {/* Edit Folder Modal */}
+      {editFolder && (
+        <FolderFormDialog
+          key={editFolder.id}
+          titleKey="documents.editFolder"
+          defaultValues={{
+            name: editFolder.name,
+            description: editFolder.description || "",
+          }}
+          onSubmit={handleEditFolder}
+          onCancel={() => setEditFolder(null)}
+        />
+      )}
+
+      {/* Permissions Modal */}
+      {selectedFolder && (
+        <FolderPermissionsDialog
+          folder={selectedFolder}
+          onSave={handleSavePermissions}
+          onCancel={() => setSelectedFolder(null)}
+        />
+      )}
+
+      {/* Search */}
+      <div className="mb-6 rounded-xl bg-white p-4 shadow-sm">
+        <div className="relative">
+          <svg
+            className="absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+          <input
+            type="text"
+            placeholder={t("documents.searchDocuments")}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-10 transition-colors outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
+          />
+        </div>
+      </div>
+
+      {/* Folder Table */}
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-orange-600"></div>
+        </div>
+      ) : filteredFolders.length === 0 ? (
+        <div className="rounded-lg bg-white p-12 text-center shadow">
+          <svg
+            className="mx-auto h-12 w-12 text-gray-300"
+            fill="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" />
+          </svg>
+          <p className="mt-4 text-gray-500">
+            {currentFolderId
+              ? t("documents.noSubfolders")
+              : t("documents.noFolders")}
+          </p>
+        </div>
+      ) : (
+        <FoldersTable
+          folders={filteredFolders}
+          subfolderCounts={subfolderCounts}
+          onOpen={navigateToFolder}
+          onEdit={(folder) => setEditFolder(folder)}
+          onPermissions={(folder) => setSelectedFolder(folder)}
+          onDelete={(id) => setDeleteFolderId(id)}
+        />
+      )}
+
+      {/* Delete Folder Confirmation Modal */}
+      {deleteFolderId && (
+        <DeleteFolderDialog
+          onConfirm={() => handleDeleteFolder(deleteFolderId)}
+          onCancel={() => setDeleteFolderId(null)}
+        />
+      )}
+    </PageShell>
   );
 }

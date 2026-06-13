@@ -20,6 +20,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
+import { PageShell, PageHeader } from "@/components/layout";
 import { useSuppliers } from "../hooks/use-suppliers";
 import { useDeleteSupplier } from "../hooks/use-delete-supplier";
 import { SuppliersFilterBar } from "./suppliers-filter-bar";
@@ -84,60 +85,57 @@ export function SuppliersPageContent() {
   }
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-7xl">
-        {/* Header */}
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-              {t("suppliers.title")}
-            </h1>
-            <p className="mt-1 text-gray-600">{t("suppliers.subtitle")}</p>
-          </div>
-          <Link
-            href="/suppliers/new"
-            className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-700"
-          >
-            + {t("suppliers.create")}
-          </Link>
-        </div>
-
-        <SuppliersFilterBar
-          searchTerm={searchTerm}
-          onSearchChange={(value) => {
-            if (deleteMutation.error) deleteMutation.reset();
-            setSearchTerm(value);
-          }}
-          statusFilter={statusFilter}
-          onStatusChange={(value) => {
-            if (deleteMutation.error) deleteMutation.reset();
-            setStatusFilter(value);
-          }}
+    <PageShell
+      header={
+        <PageHeader
+          title={t("suppliers.title")}
+          description={t("suppliers.subtitle")}
+          actions={
+            <Link
+              href="/suppliers/new"
+              className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-700"
+            >
+              + {t("suppliers.create")}
+            </Link>
+          }
         />
+      }
+    >
+      <SuppliersFilterBar
+        searchTerm={searchTerm}
+        onSearchChange={(value) => {
+          if (deleteMutation.error) deleteMutation.reset();
+          setSearchTerm(value);
+        }}
+        statusFilter={statusFilter}
+        onStatusChange={(value) => {
+          if (deleteMutation.error) deleteMutation.reset();
+          setStatusFilter(value);
+        }}
+      />
 
-        {errorMessage && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
-            <p className="text-sm text-red-700">{errorMessage}</p>
-          </div>
-        )}
+      {errorMessage && (
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
+          <p className="text-sm text-red-700">{errorMessage}</p>
+        </div>
+      )}
 
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-orange-600" />
-          </div>
-        ) : filteredSuppliers.length === 0 ? (
-          <div className="rounded-xl bg-white p-12 text-center shadow-sm">
-            <p className="text-lg font-medium text-gray-500">
-              {t("suppliers.empty")}
-            </p>
-          </div>
-        ) : (
-          <SuppliersTable
-            suppliers={filteredSuppliers}
-            onDelete={setDeleteTarget}
-          />
-        )}
-      </div>
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-orange-600" />
+        </div>
+      ) : filteredSuppliers.length === 0 ? (
+        <div className="rounded-xl bg-white p-12 text-center shadow-sm">
+          <p className="text-lg font-medium text-gray-500">
+            {t("suppliers.empty")}
+          </p>
+        </div>
+      ) : (
+        <SuppliersTable
+          suppliers={filteredSuppliers}
+          onDelete={setDeleteTarget}
+        />
+      )}
 
       <DeleteSupplierDialog
         target={deleteTarget}
@@ -147,6 +145,6 @@ export function SuppliersPageContent() {
           if (!open) setDeleteTarget(null);
         }}
       />
-    </main>
+    </PageShell>
   );
 }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
+import { PageShell } from "@/components/layout";
 import { useCreateSponsor } from "../hooks/use-create-sponsor";
 import { SponsorForm } from "./sponsor-form";
 import type { SponsorFormValues } from "../schemas/sponsor.schema";
@@ -60,42 +61,40 @@ export function SponsorNewContent() {
   };
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-2xl">
-        <div className="mb-8">
-          <Link
-            href="/sponsors"
-            className="mb-4 inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"
+    <PageShell maxWidth="2xl">
+      <div className="mb-8">
+        <Link
+          href="/sponsors"
+          className="mb-4 inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"
+        >
+          <svg
+            className="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
           >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-            {t("common.backToList")}
-          </Link>
-          <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-            {t("sponsors.newSponsor")}
-          </h1>
-          <p className="mt-1 text-gray-600">{t("sponsors.addSponsorDesc")}</p>
-        </div>
-
-        <SponsorForm
-          defaultValues={EMPTY_VALUES}
-          onSubmit={handleSubmit}
-          submitLabel="sponsors.createSponsor"
-          pending={createMutation.isPending}
-          errorMessage={createMutation.error?.message ?? null}
-        />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+          {t("common.backToList")}
+        </Link>
+        <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
+          {t("sponsors.newSponsor")}
+        </h1>
+        <p className="mt-1 text-gray-600">{t("sponsors.addSponsorDesc")}</p>
       </div>
-    </main>
+
+      <SponsorForm
+        defaultValues={EMPTY_VALUES}
+        onSubmit={handleSubmit}
+        submitLabel="sponsors.createSponsor"
+        pending={createMutation.isPending}
+        errorMessage={createMutation.error?.message ?? null}
+      />
+    </PageShell>
   );
 }

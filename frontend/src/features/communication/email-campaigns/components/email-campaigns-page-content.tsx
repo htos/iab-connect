@@ -24,6 +24,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
+import { PageShell, PageHeader } from "@/components/layout";
 import { useEmailCampaigns } from "../hooks/use-email-campaigns";
 import { useDeleteEmailCampaign } from "../hooks/use-delete-email-campaign";
 import { EmailCampaignsFilterBar } from "./email-campaigns-filter-bar";
@@ -121,85 +122,80 @@ export function EmailCampaignsPageContent() {
   }
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-7xl">
-        {/* Header */}
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-              {t("title")}
-            </h1>
-            <p className="mt-1 text-gray-600">
-              {t("totalCampaigns", { count: totalCount })}
-            </p>
-          </div>
-          <Link
-            href="/communication/email-campaigns/new"
-            className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-700"
-          >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+    <PageShell
+      header={
+        <PageHeader
+          title={t("title")}
+          description={t("totalCampaigns", { count: totalCount })}
+          actions={
+            <Link
+              href="/communication/email-campaigns/new"
+              className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-700"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            {t("newCampaign")}
-          </Link>
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+              {t("newCampaign")}
+            </Link>
+          }
+        />
+      }
+    >
+      <EmailCampaignsFilterBar
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        statusFilter={statusFilter}
+        onStatusChange={(value) => {
+          setStatusFilter(value);
+          setPage(1);
+        }}
+      />
+
+      {/* Error */}
+      {error && (
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+          {error instanceof Error ? error.message : t("loadError")}
         </div>
+      )}
 
-        <EmailCampaignsFilterBar
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          statusFilter={statusFilter}
-          onStatusChange={(value) => {
-            setStatusFilter(value);
-            setPage(1);
-          }}
-        />
+      {/* Campaign List */}
+      <EmailCampaignsTable
+        campaigns={filteredCampaigns}
+        onDelete={handleDelete}
+      />
 
-        {/* Error */}
-        {error && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
-            {error instanceof Error ? error.message : t("loadError")}
-          </div>
-        )}
-
-        {/* Campaign List */}
-        <EmailCampaignsTable
-          campaigns={filteredCampaigns}
-          onDelete={handleDelete}
-        />
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="mt-6 flex items-center justify-center gap-4">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {t("previous")}
-            </button>
-            <span className="text-gray-600">
-              {t("pagination", { current: page, total: totalPages })}
-            </span>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {t("next")}
-            </button>
-          </div>
-        )}
-      </div>
-    </main>
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-6 flex items-center justify-center gap-4">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {t("previous")}
+          </button>
+          <span className="text-gray-600">
+            {t("pagination", { current: page, total: totalPages })}
+          </span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {t("next")}
+          </button>
+        </div>
+      )}
+    </PageShell>
   );
 }

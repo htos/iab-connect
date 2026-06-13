@@ -22,6 +22,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth";
+import { PageShell, PageHeader } from "@/components/layout";
 import {
   getMembershipStatusColor,
   getMembershipTypeColor,
@@ -112,51 +113,47 @@ export function ProfilePageContent() {
   if (isNoMemberRecord && !member) {
     const showAdminLink = isAdmin || isVorstand;
     return (
-      <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-        <div className="mx-auto max-w-2xl">
-          <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-2 text-xl font-semibold text-gray-900">
-              {t("profile.noProfileTitle")}
-            </h2>
-            <p className="mb-6 text-gray-600">
-              {showAdminLink
-                ? t("profile.noProfileMessageAdmin")
-                : t("profile.noProfileMessageMember")}
-            </p>
-            <div className="flex flex-wrap gap-3">
+      <PageShell maxWidth="2xl">
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h2 className="mb-2 text-xl font-semibold text-gray-900">
+            {t("profile.noProfileTitle")}
+          </h2>
+          <p className="mb-6 text-gray-600">
+            {showAdminLink
+              ? t("profile.noProfileMessageAdmin")
+              : t("profile.noProfileMessageMember")}
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/profile/security"
+              className="inline-flex items-center rounded-lg bg-orange-600 px-4 py-2 text-white transition-colors hover:bg-orange-700"
+            >
+              {t("profile.goToSecurity")}
+            </Link>
+            {showAdminLink && (
               <Link
-                href="/profile/security"
-                className="inline-flex items-center rounded-lg bg-orange-600 px-4 py-2 text-white transition-colors hover:bg-orange-700"
+                href="/admin"
+                className="inline-flex items-center rounded-lg border border-gray-300 px-4 py-2 transition-colors hover:bg-gray-50"
               >
-                {t("profile.goToSecurity")}
+                {t("profile.goToAdmin")}
               </Link>
-              {showAdminLink && (
-                <Link
-                  href="/admin"
-                  className="inline-flex items-center rounded-lg border border-gray-300 px-4 py-2 transition-colors hover:bg-gray-50"
-                >
-                  {t("profile.goToAdmin")}
-                </Link>
-              )}
-            </div>
+            )}
           </div>
         </div>
-      </main>
+      </PageShell>
     );
   }
 
   if (loadErrorMessage && !member) {
     return (
-      <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-        <div className="mx-auto max-w-2xl">
-          <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-6">
-            <h2 className="mb-2 text-xl font-semibold text-yellow-700">
-              {t("error.notice")}
-            </h2>
-            <p className="text-yellow-600">{loadErrorMessage}</p>
-          </div>
+      <PageShell maxWidth="2xl">
+        <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-6">
+          <h2 className="mb-2 text-xl font-semibold text-yellow-700">
+            {t("error.notice")}
+          </h2>
+          <p className="text-yellow-600">{loadErrorMessage}</p>
         </div>
-      </main>
+      </PageShell>
     );
   }
 
@@ -174,19 +171,12 @@ export function ProfilePageContent() {
     : null;
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-4xl">
-        {/* Header */}
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-              {t("profile.title")}
-            </h1>
-            <p className="mt-1 text-gray-600">
-              {t("profile.managePersonalData")}
-            </p>
-          </div>
-          {!editing && (
+    <PageShell maxWidth="4xl">
+      <PageHeader
+        title={t("profile.title")}
+        description={t("profile.managePersonalData")}
+        actions={
+          !editing && (
             <button
               onClick={() => setEditing(true)}
               className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-white transition-colors hover:bg-orange-700"
@@ -206,79 +196,79 @@ export function ProfilePageContent() {
               </svg>
               {t("common.edit")}
             </button>
-          )}
-        </div>
+          )
+        }
+      />
 
-        {/* Content Grid */}
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          {/* Profile Card */}
-          <div className="md:col-span-1">
-            <div className="rounded-xl bg-white p-6 shadow-sm">
-              <div className="flex flex-col items-center text-center">
-                <div className="mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-orange-100">
-                  <span className="text-3xl font-bold text-orange-600">
-                    {member.firstName[0]}
-                    {member.lastName[0]}
-                  </span>
-                </div>
-                <h2 className="text-xl font-semibold text-gray-900">
-                  {member.firstName} {member.lastName}
-                </h2>
-                <p className="mb-4 text-gray-500">{member.email}</p>
-
-                <div className="flex flex-wrap justify-center gap-2">
-                  <span
-                    className={`rounded-full px-3 py-1 text-sm font-medium ${getMembershipStatusColor(member.status)}`}
-                  >
-                    {t(`status.${getStatusTranslationKey(member.status)}`)}
-                  </span>
-                  <span
-                    className={`rounded-full px-3 py-1 text-sm font-medium ${getMembershipTypeColor(member.membershipType)}`}
-                  >
-                    {t(
-                      `membershipType.${getTypeTranslationKey(member.membershipType)}`
-                    )}
-                  </span>
-                </div>
-
-                <p className="mt-4 text-sm text-gray-500">
-                  {t("profile.memberSince", {
-                    date: new Date(member.memberSince).toLocaleDateString(
-                      "de-CH",
-                      {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                      }
-                    ),
-                  })}
-                </p>
+      {/* Content Grid */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        {/* Profile Card */}
+        <div className="md:col-span-1">
+          <div className="rounded-xl bg-white p-6 shadow-sm">
+            <div className="flex flex-col items-center text-center">
+              <div className="mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-orange-100">
+                <span className="text-3xl font-bold text-orange-600">
+                  {member.firstName[0]}
+                  {member.lastName[0]}
+                </span>
               </div>
+              <h2 className="text-xl font-semibold text-gray-900">
+                {member.firstName} {member.lastName}
+              </h2>
+              <p className="mb-4 text-gray-500">{member.email}</p>
+
+              <div className="flex flex-wrap justify-center gap-2">
+                <span
+                  className={`rounded-full px-3 py-1 text-sm font-medium ${getMembershipStatusColor(member.status)}`}
+                >
+                  {t(`status.${getStatusTranslationKey(member.status)}`)}
+                </span>
+                <span
+                  className={`rounded-full px-3 py-1 text-sm font-medium ${getMembershipTypeColor(member.membershipType)}`}
+                >
+                  {t(
+                    `membershipType.${getTypeTranslationKey(member.membershipType)}`
+                  )}
+                </span>
+              </div>
+
+              <p className="mt-4 text-sm text-gray-500">
+                {t("profile.memberSince", {
+                  date: new Date(member.memberSince).toLocaleDateString(
+                    "de-CH",
+                    {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                    }
+                  ),
+                })}
+              </p>
             </div>
           </div>
+        </div>
 
-          {/* Details / Edit Form */}
-          <div className="md:col-span-2">
-            {editing ? (
-              <>
-                {submitErrorMessage && (
-                  <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
-                    <p className="text-red-700">{submitErrorMessage}</p>
-                  </div>
-                )}
-                <ProfileForm
-                  defaultValues={toFormValues(member)}
-                  onSubmit={handleSubmit}
-                  onCancel={handleCancel}
-                  pending={updateMutation.isPending}
-                />
-              </>
-            ) : (
-              <ProfileDetail member={member} consentEnabled={gateOpen} />
-            )}
-          </div>
+        {/* Details / Edit Form */}
+        <div className="md:col-span-2">
+          {editing ? (
+            <>
+              {submitErrorMessage && (
+                <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
+                  <p className="text-red-700">{submitErrorMessage}</p>
+                </div>
+              )}
+              <ProfileForm
+                defaultValues={toFormValues(member)}
+                onSubmit={handleSubmit}
+                onCancel={handleCancel}
+                pending={updateMutation.isPending}
+              />
+            </>
+          ) : (
+            <ProfileDetail member={member} consentEnabled={gateOpen} />
+          )}
         </div>
       </div>
-    </main>
+    </PageShell>
   );
 }

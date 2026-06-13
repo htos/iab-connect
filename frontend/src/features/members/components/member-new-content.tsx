@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
+import { PageShell } from "@/components/layout";
 import {
   findMemberDuplicates,
   type DuplicateCandidateDto,
@@ -175,61 +176,59 @@ export function MemberNewContent() {
     (hasLikelyOnly && !confirmedProceed);
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-2xl">
-        <div className="mb-8">
-          <Link
-            href="/members"
-            className="mb-4 inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"
+    <PageShell maxWidth="2xl">
+      <div className="mb-8">
+        <Link
+          href="/members"
+          className="mb-4 inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"
+        >
+          <svg
+            className="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
           >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-            {t("common.backToList")}
-          </Link>
-          <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-            {t("members.newMember")}
-          </h1>
-          <p className="mt-1 text-gray-600">{t("members.addMemberDesc")}</p>
-        </div>
-
-        {error && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
-            <p className="text-red-700">{error}</p>
-          </div>
-        )}
-
-        {(duplicateCandidates.length > 0 || duplicateLoading) && (
-          <DuplicateWarning
-            candidates={duplicateCandidates}
-            hasExactMatch={hasExactMatch}
-            confirmRequired={hasLikelyOnly}
-            loading={duplicateLoading}
-            onConfirmProceed={() => setConfirmedProceed(true)}
-          />
-        )}
-
-        <MemberForm
-          defaultValues={EMPTY_VALUES}
-          showMembershipType
-          onSubmit={handleSubmit}
-          onWatch={handleWatch}
-          submitIdleLabel="members.createMember"
-          submitPendingLabel="members.creating"
-          submitDisabled={submitDisabled}
-          pending={createMutation.isPending}
-        />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+          {t("common.backToList")}
+        </Link>
+        <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
+          {t("members.newMember")}
+        </h1>
+        <p className="mt-1 text-gray-600">{t("members.addMemberDesc")}</p>
       </div>
-    </main>
+
+      {error && (
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
+          <p className="text-red-700">{error}</p>
+        </div>
+      )}
+
+      {(duplicateCandidates.length > 0 || duplicateLoading) && (
+        <DuplicateWarning
+          candidates={duplicateCandidates}
+          hasExactMatch={hasExactMatch}
+          confirmRequired={hasLikelyOnly}
+          loading={duplicateLoading}
+          onConfirmProceed={() => setConfirmedProceed(true)}
+        />
+      )}
+
+      <MemberForm
+        defaultValues={EMPTY_VALUES}
+        showMembershipType
+        onSubmit={handleSubmit}
+        onWatch={handleWatch}
+        submitIdleLabel="members.createMember"
+        submitPendingLabel="members.creating"
+        submitDisabled={submitDisabled}
+        pending={createMutation.isPending}
+      />
+    </PageShell>
   );
 }

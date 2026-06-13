@@ -19,6 +19,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth";
+import { PageShell, PageHeader } from "@/components/layout";
 import { useAutomations } from "../hooks/use-automations";
 import { AutomationsFilterBar } from "./automations-filter-bar";
 import { AutomationsTable } from "./automations-table";
@@ -82,65 +83,61 @@ export function AutomationsPageContent() {
   if (!isVorstand && !isAdmin) return null;
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-              {t("title")}
-            </h1>
-            <p className="mt-1 text-gray-600">
-              {t("totalAutomations", { count: totalCount })}
-            </p>
-          </div>
-          <Link
-            href="/communication/automations/new"
-            className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-700"
-          >
-            {t("newAutomation")}
-          </Link>
-        </div>
-
-        <AutomationsFilterBar
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          statusFilter={statusFilter}
-          onStatusChange={(value) => {
-            setStatusFilter(value);
-            setPage(1);
-          }}
+    <PageShell
+      header={
+        <PageHeader
+          title={t("title")}
+          description={t("totalAutomations", { count: totalCount })}
+          actions={
+            <Link
+              href="/communication/automations/new"
+              className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-700"
+            >
+              {t("newAutomation")}
+            </Link>
+          }
         />
+      }
+    >
+      <AutomationsFilterBar
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        statusFilter={statusFilter}
+        onStatusChange={(value) => {
+          setStatusFilter(value);
+          setPage(1);
+        }}
+      />
 
-        {error && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
-            {t("loadError")}
-          </div>
-        )}
+      {error && (
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+          {t("loadError")}
+        </div>
+      )}
 
-        <AutomationsTable automations={filtered} />
+      <AutomationsTable automations={filtered} />
 
-        {totalPages > 1 && (
-          <div className="mt-6 flex items-center justify-center gap-4">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {t("previous")}
-            </button>
-            <span className="text-gray-600">
-              {t("pagination", { current: page, total: totalPages })}
-            </span>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {t("next")}
-            </button>
-          </div>
-        )}
-      </div>
-    </main>
+      {totalPages > 1 && (
+        <div className="mt-6 flex items-center justify-center gap-4">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {t("previous")}
+          </button>
+          <span className="text-gray-600">
+            {t("pagination", { current: page, total: totalPages })}
+          </span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {t("next")}
+          </button>
+        </div>
+      )}
+    </PageShell>
   );
 }

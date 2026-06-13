@@ -27,6 +27,25 @@ const boundaryRules = [
     },
   },
   {
+    // components/layout is a shared presentational layer (PageShell/PageHeader,
+    // E30-S1): a true leaf like components/ui — must not import features or app.
+    files: ["src/components/layout/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/features", "@/features/**", "@/app", "@/app/**"],
+              message:
+                "components/layout is a shared presentational layer and must not import from features or app (E21 boundary).",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // lib is leaf infrastructure: must not import from app or features.
     files: ["src/lib/**/*.{ts,tsx}"],
     rules: {
@@ -65,10 +84,12 @@ const boundaryRules = [
   },
 ];
 
-export default [
+const config = [
   ...nextConfig,
   ...boundaryRules,
   {
     ignores: ["node_modules/", ".next/"],
   },
 ];
+
+export default config;

@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
+import { PageShell } from "@/components/layout";
 import {
   findMemberDuplicates,
   type DuplicateCandidateDto,
@@ -184,35 +185,33 @@ export function MemberEditContent() {
         ? t("members.memberNotFound")
         : t("error.loadingError");
     return (
-      <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-        <div className="mx-auto max-w-2xl">
-          <Link
-            href="/members"
-            className="mb-4 inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"
+      <PageShell maxWidth="2xl">
+        <Link
+          href="/members"
+          className="mb-4 inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"
+        >
+          <svg
+            className="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
           >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-            {t("common.backToList")}
-          </Link>
-          <div className="rounded-xl border border-red-200 bg-red-50 p-6">
-            <h2 className="mb-2 text-xl font-semibold text-red-700">
-              {t("common.error")}
-            </h2>
-            <p className="text-red-600">{loadError}</p>
-          </div>
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+          {t("common.backToList")}
+        </Link>
+        <div className="rounded-xl border border-red-200 bg-red-50 p-6">
+          <h2 className="mb-2 text-xl font-semibold text-red-700">
+            {t("common.error")}
+          </h2>
+          <p className="text-red-600">{loadError}</p>
         </div>
-      </main>
+      </PageShell>
     );
   }
 
@@ -267,65 +266,63 @@ export function MemberEditContent() {
     (hasLikelyOnly && !confirmedProceed);
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-2xl">
-        <div className="mb-8">
-          <Link
-            href={`/members/${memberId}`}
-            className="mb-4 inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"
+    <PageShell maxWidth="2xl">
+      <div className="mb-8">
+        <Link
+          href={`/members/${memberId}`}
+          className="mb-4 inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"
+        >
+          <svg
+            className="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
           >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-            {t("common.backToMember")}
-          </Link>
-          <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-            {t("members.editMember")}
-          </h1>
-          {member && (
-            <p className="mt-1 text-gray-600">
-              {member.firstName} {member.lastName}
-            </p>
-          )}
-        </div>
-
-        {error && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
-            <p className="text-red-700">{error}</p>
-          </div>
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+          {t("common.backToMember")}
+        </Link>
+        <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
+          {t("members.editMember")}
+        </h1>
+        {member && (
+          <p className="mt-1 text-gray-600">
+            {member.firstName} {member.lastName}
+          </p>
         )}
-
-        {(duplicateCandidates.length > 0 || duplicateLoading) && (
-          <DuplicateWarning
-            candidates={duplicateCandidates}
-            hasExactMatch={hasExactMatch}
-            confirmRequired={hasLikelyOnly}
-            loading={duplicateLoading}
-            onConfirmProceed={() => setConfirmedProceed(true)}
-          />
-        )}
-
-        <MemberForm
-          defaultValues={member ? toFormValues(member) : EMPTY_VALUES}
-          showMembershipType={false}
-          onSubmit={handleSubmit}
-          onWatch={handleWatch}
-          submitIdleLabel="common.save"
-          submitPendingLabel="common.saving"
-          submitDisabled={submitDisabled}
-          pending={updateMutation.isPending}
-        />
       </div>
-    </main>
+
+      {error && (
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
+          <p className="text-red-700">{error}</p>
+        </div>
+      )}
+
+      {(duplicateCandidates.length > 0 || duplicateLoading) && (
+        <DuplicateWarning
+          candidates={duplicateCandidates}
+          hasExactMatch={hasExactMatch}
+          confirmRequired={hasLikelyOnly}
+          loading={duplicateLoading}
+          onConfirmProceed={() => setConfirmedProceed(true)}
+        />
+      )}
+
+      <MemberForm
+        defaultValues={member ? toFormValues(member) : EMPTY_VALUES}
+        showMembershipType={false}
+        onSubmit={handleSubmit}
+        onWatch={handleWatch}
+        submitIdleLabel="common.save"
+        submitPendingLabel="common.saving"
+        submitDisabled={submitDisabled}
+        pending={updateMutation.isPending}
+      />
+    </PageShell>
   );
 }

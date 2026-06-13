@@ -26,6 +26,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth";
+import { PageShell } from "@/components/layout";
 import { useSessions } from "../hooks/use-sessions";
 import { useRevokeSession } from "../hooks/use-revoke-session";
 import { SessionList } from "./session-list";
@@ -111,73 +112,69 @@ export function ProfileSecurityContent() {
   }
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-4xl">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-            {t("profileSecurity.title")}
-          </h1>
-          <p className="mt-1 text-gray-600">
-            {t("profileSecurity.description")}
-          </p>
+    <PageShell maxWidth="4xl">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
+          {t("profileSecurity.title")}
+        </h1>
+        <p className="mt-1 text-gray-600">{t("profileSecurity.description")}</p>
+      </div>
+
+      {loadError && (
+        <div
+          role="alert"
+          className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4"
+        >
+          <p className="text-red-700">{loadError}</p>
+        </div>
+      )}
+
+      {message && (
+        <div
+          role="status"
+          className={`mb-6 rounded-xl p-4 text-sm ${
+            message.type === "success"
+              ? "border border-green-200 bg-green-50 text-green-700"
+              : "border border-red-200 bg-red-50 text-red-700"
+          }`}
+        >
+          {message.text}
+        </div>
+      )}
+
+      <section
+        aria-labelledby="sessions-heading"
+        className="rounded-xl bg-white p-6 shadow-sm"
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <h2
+            id="sessions-heading"
+            className="text-lg font-semibold text-gray-900"
+          >
+            {t("profileSecurity.activeSessionsTitle")}
+          </h2>
+          <button
+            type="button"
+            onClick={() => sessionsQuery.refetch()}
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm transition-colors hover:bg-gray-50"
+          >
+            {t("common.refresh")}
+          </button>
         </div>
 
-        {loadError && (
-          <div
-            role="alert"
-            className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4"
-          >
-            <p className="text-red-700">{loadError}</p>
-          </div>
-        )}
+        <SessionList
+          sessions={sessions}
+          revokingSessionId={revokingSessionId}
+          onRevoke={handleRevoke}
+        />
 
-        {message && (
-          <div
-            role="status"
-            className={`mb-6 rounded-xl p-4 text-sm ${
-              message.type === "success"
-                ? "border border-green-200 bg-green-50 text-green-700"
-                : "border border-red-200 bg-red-50 text-red-700"
-            }`}
-          >
-            {message.text}
-          </div>
-        )}
-
-        <section
-          aria-labelledby="sessions-heading"
-          className="rounded-xl bg-white p-6 shadow-sm"
-        >
-          <div className="mb-4 flex items-center justify-between">
-            <h2
-              id="sessions-heading"
-              className="text-lg font-semibold text-gray-900"
-            >
-              {t("profileSecurity.activeSessionsTitle")}
-            </h2>
-            <button
-              type="button"
-              onClick={() => sessionsQuery.refetch()}
-              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm transition-colors hover:bg-gray-50"
-            >
-              {t("common.refresh")}
-            </button>
-          </div>
-
-          <SessionList
-            sessions={sessions}
-            revokingSessionId={revokingSessionId}
-            onRevoke={handleRevoke}
-          />
-
-          <p className="mt-6 text-xs text-gray-400">
-            {t("profileSecurity.dataLimitsNote")}
-          </p>
-          <p className="mt-2 text-xs text-gray-400">
-            {t("profileSecurity.timeoutsNote")}
-          </p>
-        </section>
-      </div>
-    </main>
+        <p className="mt-6 text-xs text-gray-400">
+          {t("profileSecurity.dataLimitsNote")}
+        </p>
+        <p className="mt-2 text-xs text-gray-400">
+          {t("profileSecurity.timeoutsNote")}
+        </p>
+      </section>
+    </PageShell>
   );
 }

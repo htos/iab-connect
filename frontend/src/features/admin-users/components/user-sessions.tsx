@@ -27,6 +27,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { PageShell } from "@/components/layout";
 import { useAuth } from "@/lib/auth";
 import { fetchUserSessions } from "../api/admin-users-api";
 import { useRevokeSession } from "../hooks/use-user-sessions";
@@ -154,159 +155,157 @@ export function UserSessions({ userId }: { userId: string }) {
   }
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-4xl">
-        <div className="mb-6">
-          <Link
-            href={`/admin/users/${userId}`}
-            className="text-sm text-orange-700 hover:underline"
-          >
-            {t("common.back")}
-          </Link>
-        </div>
-
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-            {t("profileSecurity.adminTitle")}
-          </h1>
-          <p className="mt-1 break-all text-gray-600">{userId}</p>
-        </div>
-
-        {error && (
-          <div
-            role="alert"
-            className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4"
-          >
-            <p className="text-red-700">{error}</p>
-          </div>
-        )}
-
-        {message && (
-          <div
-            role="status"
-            className={`mb-6 rounded-xl p-4 text-sm ${
-              message.type === "success"
-                ? "border border-green-200 bg-green-50 text-green-700"
-                : "border border-red-200 bg-red-50 text-red-700"
-            }`}
-          >
-            {message.text}
-          </div>
-        )}
-
-        <section
-          aria-labelledby="admin-sessions-heading"
-          className="rounded-xl bg-white p-6 shadow-sm"
+    <PageShell maxWidth="4xl">
+      <div className="mb-6">
+        <Link
+          href={`/admin/users/${userId}`}
+          className="text-sm text-orange-700 hover:underline"
         >
-          <div className="mb-4 flex items-center justify-between">
-            <h2
-              id="admin-sessions-heading"
-              className="text-lg font-semibold text-gray-900"
-            >
-              {t("profileSecurity.activeSessionsTitle")}
-            </h2>
-            <button
-              type="button"
-              onClick={fetchSessions}
-              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm transition-colors hover:bg-gray-50"
-            >
-              {t("common.refresh")}
-            </button>
-          </div>
-
-          {sessions.length === 0 ? (
-            <p className="text-gray-500" data-testid="admin-sessions-empty">
-              {t("profileSecurity.adminEmpty")}
-            </p>
-          ) : (
-            <ul
-              className="divide-y divide-gray-200"
-              data-testid="admin-sessions-list"
-            >
-              {sessions.map((session) => (
-                <li key={session.id} className="py-4">
-                  <div className="grid grid-cols-1 gap-2 md:grid-cols-3 md:gap-4">
-                    <div>
-                      <dt className="text-xs font-medium text-gray-500 uppercase">
-                        {t("profileSecurity.ipAddress")}
-                      </dt>
-                      <dd className="mt-1 text-sm text-gray-900">
-                        {session.ipAddress ?? (
-                          <span className="text-gray-400">
-                            {t("profileSecurity.notAvailable")}
-                          </span>
-                        )}
-                      </dd>
-                      <p className="mt-1 text-xs text-gray-500 italic">
-                        {t("profileSecurity.ipPrivacyNoteAdmin")}
-                      </p>
-                    </div>
-                    <div>
-                      <dt className="text-xs font-medium text-gray-500 uppercase">
-                        {t("profileSecurity.start")}
-                      </dt>
-                      <dd className="mt-1 text-sm text-gray-900">
-                        {formatDateTime(
-                          session.start,
-                          t("profileSecurity.notAvailable")
-                        )}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs font-medium text-gray-500 uppercase">
-                        {t("profileSecurity.lastAccess")}
-                      </dt>
-                      <dd className="mt-1 text-sm text-gray-900">
-                        {formatDateTime(
-                          session.lastAccess,
-                          t("profileSecurity.notAvailable")
-                        )}
-                      </dd>
-                    </div>
-                  </div>
-                  {session.clients.length > 0 && (
-                    <div className="mt-2">
-                      <dt className="text-xs font-medium text-gray-500 uppercase">
-                        {t("profileSecurity.clients")}
-                      </dt>
-                      <dd className="mt-1 flex flex-wrap gap-2">
-                        {session.clients.map((client) => (
-                          <span
-                            key={`${session.id}-${client}`}
-                            className="rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-xs text-orange-700"
-                          >
-                            {client}
-                          </span>
-                        ))}
-                      </dd>
-                    </div>
-                  )}
-                  <div className="mt-3 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => handleRevoke(session.id)}
-                      disabled={revokingSessionId === session.id}
-                      className="rounded-lg border border-red-300 px-3 py-1.5 text-sm text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-                      data-testid={`admin-revoke-session-${session.id}`}
-                    >
-                      {revokingSessionId === session.id
-                        ? t("profileSecurity.revoking")
-                        : t("profileSecurity.revoke")}
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <p className="mt-6 text-xs text-gray-400">
-            {t("profileSecurity.dataLimitsNote")}
-          </p>
-          <p className="mt-2 text-xs text-gray-400">
-            {t("profileSecurity.timeoutsNote")}
-          </p>
-        </section>
+          {t("common.back")}
+        </Link>
       </div>
-    </main>
+
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
+          {t("profileSecurity.adminTitle")}
+        </h1>
+        <p className="mt-1 break-all text-gray-600">{userId}</p>
+      </div>
+
+      {error && (
+        <div
+          role="alert"
+          className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4"
+        >
+          <p className="text-red-700">{error}</p>
+        </div>
+      )}
+
+      {message && (
+        <div
+          role="status"
+          className={`mb-6 rounded-xl p-4 text-sm ${
+            message.type === "success"
+              ? "border border-green-200 bg-green-50 text-green-700"
+              : "border border-red-200 bg-red-50 text-red-700"
+          }`}
+        >
+          {message.text}
+        </div>
+      )}
+
+      <section
+        aria-labelledby="admin-sessions-heading"
+        className="rounded-xl bg-white p-6 shadow-sm"
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <h2
+            id="admin-sessions-heading"
+            className="text-lg font-semibold text-gray-900"
+          >
+            {t("profileSecurity.activeSessionsTitle")}
+          </h2>
+          <button
+            type="button"
+            onClick={fetchSessions}
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm transition-colors hover:bg-gray-50"
+          >
+            {t("common.refresh")}
+          </button>
+        </div>
+
+        {sessions.length === 0 ? (
+          <p className="text-gray-500" data-testid="admin-sessions-empty">
+            {t("profileSecurity.adminEmpty")}
+          </p>
+        ) : (
+          <ul
+            className="divide-y divide-gray-200"
+            data-testid="admin-sessions-list"
+          >
+            {sessions.map((session) => (
+              <li key={session.id} className="py-4">
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-3 md:gap-4">
+                  <div>
+                    <dt className="text-xs font-medium text-gray-500 uppercase">
+                      {t("profileSecurity.ipAddress")}
+                    </dt>
+                    <dd className="mt-1 text-sm text-gray-900">
+                      {session.ipAddress ?? (
+                        <span className="text-gray-400">
+                          {t("profileSecurity.notAvailable")}
+                        </span>
+                      )}
+                    </dd>
+                    <p className="mt-1 text-xs text-gray-500 italic">
+                      {t("profileSecurity.ipPrivacyNoteAdmin")}
+                    </p>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium text-gray-500 uppercase">
+                      {t("profileSecurity.start")}
+                    </dt>
+                    <dd className="mt-1 text-sm text-gray-900">
+                      {formatDateTime(
+                        session.start,
+                        t("profileSecurity.notAvailable")
+                      )}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium text-gray-500 uppercase">
+                      {t("profileSecurity.lastAccess")}
+                    </dt>
+                    <dd className="mt-1 text-sm text-gray-900">
+                      {formatDateTime(
+                        session.lastAccess,
+                        t("profileSecurity.notAvailable")
+                      )}
+                    </dd>
+                  </div>
+                </div>
+                {session.clients.length > 0 && (
+                  <div className="mt-2">
+                    <dt className="text-xs font-medium text-gray-500 uppercase">
+                      {t("profileSecurity.clients")}
+                    </dt>
+                    <dd className="mt-1 flex flex-wrap gap-2">
+                      {session.clients.map((client) => (
+                        <span
+                          key={`${session.id}-${client}`}
+                          className="rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-xs text-orange-700"
+                        >
+                          {client}
+                        </span>
+                      ))}
+                    </dd>
+                  </div>
+                )}
+                <div className="mt-3 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => handleRevoke(session.id)}
+                    disabled={revokingSessionId === session.id}
+                    className="rounded-lg border border-red-300 px-3 py-1.5 text-sm text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    data-testid={`admin-revoke-session-${session.id}`}
+                  >
+                    {revokingSessionId === session.id
+                      ? t("profileSecurity.revoking")
+                      : t("profileSecurity.revoke")}
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <p className="mt-6 text-xs text-gray-400">
+          {t("profileSecurity.dataLimitsNote")}
+        </p>
+        <p className="mt-2 text-xs text-gray-400">
+          {t("profileSecurity.timeoutsNote")}
+        </p>
+      </section>
+    </PageShell>
   );
 }

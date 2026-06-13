@@ -28,6 +28,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
+import { PageShell } from "@/components/layout";
 import { useAppSettings } from "@/components/providers/AppSettingsProvider";
 import { EmailCampaignForm } from "./email-campaign-form";
 import { useEmailCampaign } from "../hooks/use-email-campaign";
@@ -132,20 +133,18 @@ export function EmailCampaignEditContent() {
   // Only Draft campaigns can be edited (god-page: `campaign && status !== Draft`).
   if (campaign && campaign.status !== "Draft") {
     return (
-      <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="rounded-xl border border-yellow-200 bg-yellow-50 px-6 py-4 text-yellow-800 shadow-sm">
-            <h2 className="mb-2 font-semibold">{t("form.editNotPossible")}</h2>
-            <p>{t("form.editNotPossibleReason")}</p>
-            <Link
-              href={`/communication/email-campaigns/${campaignId}`}
-              className="mt-4 inline-block text-gray-600 hover:text-gray-900"
-            >
-              {t("backToCampaign")}
-            </Link>
-          </div>
+      <PageShell>
+        <div className="rounded-xl border border-yellow-200 bg-yellow-50 px-6 py-4 text-yellow-800 shadow-sm">
+          <h2 className="mb-2 font-semibold">{t("form.editNotPossible")}</h2>
+          <p>{t("form.editNotPossibleReason")}</p>
+          <Link
+            href={`/communication/email-campaigns/${campaignId}`}
+            className="mt-4 inline-block text-gray-600 hover:text-gray-900"
+          >
+            {t("backToCampaign")}
+          </Link>
         </div>
-      </main>
+      </PageShell>
     );
   }
 

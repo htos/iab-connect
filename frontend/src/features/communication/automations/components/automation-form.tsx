@@ -19,6 +19,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth";
+import { PageShell } from "@/components/layout";
 import { emailTemplatesApi } from "@/lib/email-templates";
 import { isTimeRelative } from "@/lib/api/automations";
 import { fetchMemberSegments } from "../api/automations-api";
@@ -156,251 +157,246 @@ export function AutomationForm({
   const bannerError = errorMessage ?? previewError;
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-2xl">
-        <h1 className="mb-6 text-2xl font-bold text-gray-900 md:text-3xl">
-          {mode === "create" ? t("createTitle") : t("editTitle")}
-        </h1>
+    <PageShell maxWidth="2xl">
+      <h1 className="mb-6 text-2xl font-bold text-gray-900 md:text-3xl">
+        {mode === "create" ? t("createTitle") : t("editTitle")}
+      </h1>
 
-        {bannerError && (
-          <div
-            className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700"
-            role="alert"
+      {bannerError && (
+        <div
+          className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700"
+          role="alert"
+        >
+          {bannerError}
+        </div>
+      )}
+
+      <form
+        onSubmit={handleSubmit((values) => onSubmit(toRequest(values)))}
+        noValidate
+        className="space-y-5 rounded-xl bg-white p-6 shadow-sm"
+      >
+        <div>
+          <label
+            className="mb-1 block text-sm font-medium text-gray-700"
+            htmlFor="name"
           >
-            {bannerError}
+            {t("form.name")}
+          </label>
+          <input id="name" className={inputClass} {...register("name")} />
+          {errors.name && (
+            <p className="mt-1 text-sm text-red-600" role="alert">
+              {t(errors.name.message ?? "validation.nameRequired")}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label
+            className="mb-1 block text-sm font-medium text-gray-700"
+            htmlFor="description"
+          >
+            {t("form.description")}
+          </label>
+          <textarea
+            id="description"
+            className={inputClass}
+            rows={2}
+            {...register("description")}
+          />
+        </div>
+
+        <div>
+          <label
+            className="mb-1 block text-sm font-medium text-gray-700"
+            htmlFor="template"
+          >
+            {t("form.template")}
+          </label>
+          <select
+            id="template"
+            className={inputClass}
+            {...register("templateId", {
+              setValueAs: (v) => (v === "" ? "" : Number(v)),
+            })}
+          >
+            <option value="">{t("form.selectTemplate")}</option>
+            {templates.map((tpl) => (
+              <option key={tpl.id} value={tpl.id}>
+                {tpl.name}
+              </option>
+            ))}
+          </select>
+          {errors.templateId && (
+            <p className="mt-1 text-sm text-red-600" role="alert">
+              {t(errors.templateId.message ?? "validation.templateRequired")}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label
+            className="mb-1 block text-sm font-medium text-gray-700"
+            htmlFor="triggerType"
+          >
+            {t("form.trigger")}
+          </label>
+          <select
+            id="triggerType"
+            className={inputClass}
+            {...register("triggerType")}
+          >
+            {TRIGGER_TYPES.map((tt) => (
+              <option key={tt} value={tt}>
+                {t(`trigger.${tt}`)}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {isTimeRelative(triggerType) && (
+          <div>
+            <label
+              className="mb-1 block text-sm font-medium text-gray-700"
+              htmlFor="offsetDays"
+            >
+              {t("form.offsetDays")}
+            </label>
+            <input
+              id="offsetDays"
+              type="number"
+              min={0}
+              className={inputClass}
+              {...register("offsetDays", {
+                setValueAs: (v) => (v === "" ? "" : Number(v)),
+              })}
+            />
+            {errors.offsetDays && (
+              <p className="mt-1 text-sm text-red-600" role="alert">
+                {t(errors.offsetDays.message ?? "validation.offsetRequired")}
+              </p>
+            )}
           </div>
         )}
 
-        <form
-          onSubmit={handleSubmit((values) => onSubmit(toRequest(values)))}
-          noValidate
-          className="space-y-5 rounded-xl bg-white p-6 shadow-sm"
-        >
+        <div>
+          <label
+            className="mb-1 block text-sm font-medium text-gray-700"
+            htmlFor="segmentType"
+          >
+            {t("form.recipients")}
+          </label>
+          <select
+            id="segmentType"
+            className={inputClass}
+            {...register("segmentType")}
+          >
+            {SEGMENT_TYPES.map((st) => (
+              <option key={st} value={st}>
+                {t(`segment.${st}`)}
+              </option>
+            ))}
+            {extraSegmentType && (
+              <option value={extraSegmentType}>
+                {t(`segment.${extraSegmentType}`)}
+              </option>
+            )}
+          </select>
+        </div>
+
+        {segmentType === "MemberSegment" && (
           <div>
             <label
               className="mb-1 block text-sm font-medium text-gray-700"
-              htmlFor="name"
+              htmlFor="segment"
             >
-              {t("form.name")}
+              {t("form.segment")}
             </label>
-            <input id="name" className={inputClass} {...register("name")} />
-            {errors.name && (
+            <select
+              id="segment"
+              className={inputClass}
+              {...register("segmentFilter")}
+            >
+              <option value="">{t("form.selectSegment")}</option>
+              {segments.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+            {errors.segmentFilter && (
               <p className="mt-1 text-sm text-red-600" role="alert">
-                {t(errors.name.message ?? "validation.nameRequired")}
+                {t(
+                  errors.segmentFilter.message ?? "validation.segmentRequired"
+                )}
               </p>
             )}
           </div>
+        )}
 
-          <div>
-            <label
-              className="mb-1 block text-sm font-medium text-gray-700"
-              htmlFor="description"
-            >
-              {t("form.description")}
-            </label>
-            <textarea
-              id="description"
-              className={inputClass}
-              rows={2}
-              {...register("description")}
-            />
-          </div>
-
-          <div>
-            <label
-              className="mb-1 block text-sm font-medium text-gray-700"
-              htmlFor="template"
-            >
-              {t("form.template")}
-            </label>
-            <select
-              id="template"
-              className={inputClass}
-              {...register("templateId", {
-                setValueAs: (v) => (v === "" ? "" : Number(v)),
-              })}
-            >
-              <option value="">{t("form.selectTemplate")}</option>
-              {templates.map((tpl) => (
-                <option key={tpl.id} value={tpl.id}>
-                  {tpl.name}
-                </option>
-              ))}
-            </select>
-            {errors.templateId && (
-              <p className="mt-1 text-sm text-red-600" role="alert">
-                {t(errors.templateId.message ?? "validation.templateRequired")}
-              </p>
+        <div>
+          <label
+            className="mb-1 block text-sm font-medium text-gray-700"
+            htmlFor="consent"
+          >
+            {t("form.consentFilter")}
+          </label>
+          <select
+            id="consent"
+            className={inputClass}
+            {...register("consentFilter")}
+          >
+            <option value="">{t("form.noConsentFilter")}</option>
+            {CONSENT_TYPES.map((c) => (
+              <option key={c} value={c}>
+                {t(`consent.${c}`)}
+              </option>
+            ))}
+            {extraConsentFilter && (
+              <option value={extraConsentFilter}>
+                {t(`consent.${extraConsentFilter}`)}
+              </option>
             )}
-          </div>
+          </select>
+        </div>
 
-          <div>
-            <label
-              className="mb-1 block text-sm font-medium text-gray-700"
-              htmlFor="triggerType"
-            >
-              {t("form.trigger")}
-            </label>
-            <select
-              id="triggerType"
-              className={inputClass}
-              {...register("triggerType")}
-            >
-              {TRIGGER_TYPES.map((tt) => (
-                <option key={tt} value={tt}>
-                  {t(`trigger.${tt}`)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {isTimeRelative(triggerType) && (
-            <div>
-              <label
-                className="mb-1 block text-sm font-medium text-gray-700"
-                htmlFor="offsetDays"
-              >
-                {t("form.offsetDays")}
-              </label>
-              <input
-                id="offsetDays"
-                type="number"
-                min={0}
-                className={inputClass}
-                {...register("offsetDays", {
-                  setValueAs: (v) => (v === "" ? "" : Number(v)),
-                })}
-              />
-              {errors.offsetDays && (
-                <p className="mt-1 text-sm text-red-600" role="alert">
-                  {t(errors.offsetDays.message ?? "validation.offsetRequired")}
-                </p>
-              )}
-            </div>
+        <div className="flex items-center gap-3 pt-2">
+          <button
+            type="button"
+            onClick={handlePreview}
+            disabled={preview.isPending}
+            className="rounded-lg border border-orange-600 px-4 py-2 text-sm font-semibold text-orange-700 transition-colors hover:bg-orange-50 disabled:opacity-50"
+          >
+            {preview.isPending ? t("previewing") : t("previewRecipients")}
+          </button>
+          {preview.data && (
+            <span className="text-sm text-gray-600" data-testid="preview-count">
+              {t("previewCount", { count: preview.data.totalCount })}
+            </span>
           )}
+        </div>
 
-          <div>
-            <label
-              className="mb-1 block text-sm font-medium text-gray-700"
-              htmlFor="segmentType"
-            >
-              {t("form.recipients")}
-            </label>
-            <select
-              id="segmentType"
-              className={inputClass}
-              {...register("segmentType")}
-            >
-              {SEGMENT_TYPES.map((st) => (
-                <option key={st} value={st}>
-                  {t(`segment.${st}`)}
-                </option>
-              ))}
-              {extraSegmentType && (
-                <option value={extraSegmentType}>
-                  {t(`segment.${extraSegmentType}`)}
-                </option>
-              )}
-            </select>
-          </div>
+        {preview.data && preview.data.preview.length > 0 && (
+          <ul className="list-disc pl-5 text-sm text-gray-600">
+            {preview.data.preview.map((p, i) => (
+              <li key={i}>
+                {p.firstName} {p.lastName} ({p.email})
+              </li>
+            ))}
+          </ul>
+        )}
 
-          {segmentType === "MemberSegment" && (
-            <div>
-              <label
-                className="mb-1 block text-sm font-medium text-gray-700"
-                htmlFor="segment"
-              >
-                {t("form.segment")}
-              </label>
-              <select
-                id="segment"
-                className={inputClass}
-                {...register("segmentFilter")}
-              >
-                <option value="">{t("form.selectSegment")}</option>
-                {segments.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-              {errors.segmentFilter && (
-                <p className="mt-1 text-sm text-red-600" role="alert">
-                  {t(
-                    errors.segmentFilter.message ?? "validation.segmentRequired"
-                  )}
-                </p>
-              )}
-            </div>
-          )}
-
-          <div>
-            <label
-              className="mb-1 block text-sm font-medium text-gray-700"
-              htmlFor="consent"
-            >
-              {t("form.consentFilter")}
-            </label>
-            <select
-              id="consent"
-              className={inputClass}
-              {...register("consentFilter")}
-            >
-              <option value="">{t("form.noConsentFilter")}</option>
-              {CONSENT_TYPES.map((c) => (
-                <option key={c} value={c}>
-                  {t(`consent.${c}`)}
-                </option>
-              ))}
-              {extraConsentFilter && (
-                <option value={extraConsentFilter}>
-                  {t(`consent.${extraConsentFilter}`)}
-                </option>
-              )}
-            </select>
-          </div>
-
-          <div className="flex items-center gap-3 pt-2">
-            <button
-              type="button"
-              onClick={handlePreview}
-              disabled={preview.isPending}
-              className="rounded-lg border border-orange-600 px-4 py-2 text-sm font-semibold text-orange-700 transition-colors hover:bg-orange-50 disabled:opacity-50"
-            >
-              {preview.isPending ? t("previewing") : t("previewRecipients")}
-            </button>
-            {preview.data && (
-              <span
-                className="text-sm text-gray-600"
-                data-testid="preview-count"
-              >
-                {t("previewCount", { count: preview.data.totalCount })}
-              </span>
-            )}
-          </div>
-
-          {preview.data && preview.data.preview.length > 0 && (
-            <ul className="list-disc pl-5 text-sm text-gray-600">
-              {preview.data.preview.map((p, i) => (
-                <li key={i}>
-                  {p.firstName} {p.lastName} ({p.email})
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <div className="flex items-center gap-3 border-t pt-4">
-            <button
-              type="submit"
-              disabled={pending}
-              className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-700 disabled:opacity-50"
-            >
-              {pending ? t("saving") : t("save")}
-            </button>
-          </div>
-        </form>
-      </div>
-    </main>
+        <div className="flex items-center gap-3 border-t pt-4">
+          <button
+            type="submit"
+            disabled={pending}
+            className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-700 disabled:opacity-50"
+          >
+            {pending ? t("saving") : t("save")}
+          </button>
+        </div>
+      </form>
+    </PageShell>
   );
 }
 

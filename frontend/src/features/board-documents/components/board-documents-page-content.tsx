@@ -29,6 +29,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth";
+import { PageShell, PageHeader } from "@/components/layout";
 import {
   useBoardDocuments,
   useBoardFolders,
@@ -207,16 +208,11 @@ export function BoardDocumentsPageContent() {
   }
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-7xl">
-        {/* Header */}
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-              {t("documents.boardTitle")}
-            </h1>
-            <p className="mt-1 text-gray-600">{t("documents.boardSubtitle")}</p>
-          </div>
+    <PageShell>
+      <PageHeader
+        title={t("documents.boardTitle")}
+        description={t("documents.boardSubtitle")}
+        actions={
           <button
             onClick={() => setShowUpload(true)}
             disabled={!selectedFolder}
@@ -237,185 +233,185 @@ export function BoardDocumentsPageContent() {
             </svg>
             {t("documents.upload")}
           </button>
+        }
+      />
+
+      {/* Success/Error messages */}
+      {success && (
+        <div className="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-green-700">
+          {success}
         </div>
-
-        {/* Success/Error messages */}
-        {success && (
-          <div className="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-green-700">
-            {success}
-          </div>
-        )}
-        {errorMessage && (
-          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
-            {errorMessage}
-          </div>
-        )}
-
-        {/* Upload Modal */}
-        <BoardDocumentUploadDialog
-          open={showUpload}
-          pending={mutations.upload.isPending}
-          onCancel={() => setShowUpload(false)}
-          onSubmit={handleUpload}
-        />
-
-        {/* Breadcrumb */}
-        <div className="mb-4 flex items-center gap-2 text-sm text-gray-600">
-          <button
-            onClick={navigateToRoot}
-            className="text-orange-600 hover:underline"
-          >
-            {t("documents.root")}
-          </button>
-          {currentPath.map((folder, index) => (
-            <span key={folder.id} className="flex items-center gap-2">
-              <span>/</span>
-              {index === currentPath.length - 1 ? (
-                <span className="font-medium text-gray-900">{folder.name}</span>
-              ) : (
-                <button
-                  onClick={() => {
-                    setCurrentPath(currentPath.slice(0, index + 1));
-                    setSelectedFolder(folder.id);
-                    setPage(1);
-                  }}
-                  className="text-orange-600 hover:underline"
-                >
-                  {folder.name}
-                </button>
-              )}
-            </span>
-          ))}
+      )}
+      {errorMessage && (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+          {errorMessage}
         </div>
+      )}
 
-        {/* Filters */}
-        <BoardDocumentsFilterBar
-          searchTerm={searchTerm}
-          onSearchChange={(value) => {
-            setSearchTerm(value);
-            setPage(1);
-          }}
-          statusFilter={statusFilter}
-          onStatusChange={(value) => {
-            setStatusFilter(value);
-            setPage(1);
-          }}
-          categoryFilter={categoryFilter}
-          onCategoryChange={(value) => {
-            setCategoryFilter(value);
-            setPage(1);
-          }}
-        />
+      {/* Upload Modal */}
+      <BoardDocumentUploadDialog
+        open={showUpload}
+        pending={mutations.upload.isPending}
+        onCancel={() => setShowUpload(false)}
+        onSubmit={handleUpload}
+      />
 
-        {/* Folders */}
-        {folders.length > 0 && (
-          <div className="mb-6">
-            <h2 className="mb-3 text-lg font-semibold text-gray-900">
-              {t("documents.folders")}
-            </h2>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
-              {currentPath.length > 0 && (
-                <button
-                  onClick={navigateUp}
-                  className="flex flex-col items-center gap-2 rounded-lg border border-gray-200 p-4 transition-colors hover:bg-gray-50"
-                >
-                  <svg
-                    className="h-10 w-10 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
-                    />
-                  </svg>
-                  <span className="text-sm text-gray-600">..</span>
-                </button>
-              )}
-              {folders.map((folder) => (
-                <button
-                  key={folder.id}
-                  onClick={() => navigateToFolder(folder)}
-                  className="flex flex-col items-center gap-2 rounded-lg border border-gray-200 p-4 transition-colors hover:border-orange-200 hover:bg-orange-50"
-                >
-                  <svg
-                    className="h-10 w-10 text-orange-500"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" />
-                  </svg>
-                  <span className="w-full truncate text-center text-sm font-medium text-gray-700">
-                    {folder.name}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Documents Table */}
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-orange-600"></div>
-          </div>
-        ) : documents.length === 0 ? (
-          <div className="rounded-lg bg-white p-12 text-center shadow">
-            <p className="text-gray-500">{t("documents.noDocuments")}</p>
-            {selectedFolder && (
-              <p className="mt-2 text-sm text-gray-400">
-                {t("documents.uploadHint")}
-              </p>
+      {/* Breadcrumb */}
+      <div className="mb-4 flex items-center gap-2 text-sm text-gray-600">
+        <button
+          onClick={navigateToRoot}
+          className="text-orange-600 hover:underline"
+        >
+          {t("documents.root")}
+        </button>
+        {currentPath.map((folder, index) => (
+          <span key={folder.id} className="flex items-center gap-2">
+            <span>/</span>
+            {index === currentPath.length - 1 ? (
+              <span className="font-medium text-gray-900">{folder.name}</span>
+            ) : (
+              <button
+                onClick={() => {
+                  setCurrentPath(currentPath.slice(0, index + 1));
+                  setSelectedFolder(folder.id);
+                  setPage(1);
+                }}
+                className="text-orange-600 hover:underline"
+              >
+                {folder.name}
+              </button>
             )}
-          </div>
-        ) : (
-          <BoardDocumentsTable
-            documents={documents}
-            onStatusChange={handleStatusChange}
-            onDetails={(id) => router.push(`/board/documents/${id}`)}
-            onDelete={(id) => setDeleteConfirmId(id)}
-          />
-        )}
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="mt-6 flex items-center justify-between">
-            <p className="text-sm text-gray-600">
-              {t("common.page")} {page} {t("common.of")} {totalPages} (
-              {totalCount} {t("common.entries")})
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setPage(Math.max(1, page - 1))}
-                disabled={page === 1}
-                className="rounded-lg border px-4 py-2 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-              >
-                {t("common.previous")}
-              </button>
-              <button
-                onClick={() => setPage(Math.min(totalPages, page + 1))}
-                disabled={page === totalPages}
-                className="rounded-lg border px-4 py-2 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-              >
-                {t("common.next")}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Delete Confirmation (A86 — destructive Radix dialog) */}
-        <BoardDocumentDeleteDialog
-          targetId={deleteConfirmId}
-          pending={mutations.deleteDoc.isPending}
-          onConfirm={handleDelete}
-          onOpenChange={(open) => {
-            if (!open) setDeleteConfirmId(null);
-          }}
-        />
+          </span>
+        ))}
       </div>
-    </main>
+
+      {/* Filters */}
+      <BoardDocumentsFilterBar
+        searchTerm={searchTerm}
+        onSearchChange={(value) => {
+          setSearchTerm(value);
+          setPage(1);
+        }}
+        statusFilter={statusFilter}
+        onStatusChange={(value) => {
+          setStatusFilter(value);
+          setPage(1);
+        }}
+        categoryFilter={categoryFilter}
+        onCategoryChange={(value) => {
+          setCategoryFilter(value);
+          setPage(1);
+        }}
+      />
+
+      {/* Folders */}
+      {folders.length > 0 && (
+        <div className="mb-6">
+          <h2 className="mb-3 text-lg font-semibold text-gray-900">
+            {t("documents.folders")}
+          </h2>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
+            {currentPath.length > 0 && (
+              <button
+                onClick={navigateUp}
+                className="flex flex-col items-center gap-2 rounded-lg border border-gray-200 p-4 transition-colors hover:bg-gray-50"
+              >
+                <svg
+                  className="h-10 w-10 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                  />
+                </svg>
+                <span className="text-sm text-gray-600">..</span>
+              </button>
+            )}
+            {folders.map((folder) => (
+              <button
+                key={folder.id}
+                onClick={() => navigateToFolder(folder)}
+                className="flex flex-col items-center gap-2 rounded-lg border border-gray-200 p-4 transition-colors hover:border-orange-200 hover:bg-orange-50"
+              >
+                <svg
+                  className="h-10 w-10 text-orange-500"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" />
+                </svg>
+                <span className="w-full truncate text-center text-sm font-medium text-gray-700">
+                  {folder.name}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Documents Table */}
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-orange-600"></div>
+        </div>
+      ) : documents.length === 0 ? (
+        <div className="rounded-lg bg-white p-12 text-center shadow">
+          <p className="text-gray-500">{t("documents.noDocuments")}</p>
+          {selectedFolder && (
+            <p className="mt-2 text-sm text-gray-400">
+              {t("documents.uploadHint")}
+            </p>
+          )}
+        </div>
+      ) : (
+        <BoardDocumentsTable
+          documents={documents}
+          onStatusChange={handleStatusChange}
+          onDetails={(id) => router.push(`/board/documents/${id}`)}
+          onDelete={(id) => setDeleteConfirmId(id)}
+        />
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-6 flex items-center justify-between">
+          <p className="text-sm text-gray-600">
+            {t("common.page")} {page} {t("common.of")} {totalPages} (
+            {totalCount} {t("common.entries")})
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage(Math.max(1, page - 1))}
+              disabled={page === 1}
+              className="rounded-lg border px-4 py-2 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              {t("common.previous")}
+            </button>
+            <button
+              onClick={() => setPage(Math.min(totalPages, page + 1))}
+              disabled={page === totalPages}
+              className="rounded-lg border px-4 py-2 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              {t("common.next")}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation (A86 — destructive Radix dialog) */}
+      <BoardDocumentDeleteDialog
+        targetId={deleteConfirmId}
+        pending={mutations.deleteDoc.isPending}
+        onConfirm={handleDelete}
+        onOpenChange={(open) => {
+          if (!open) setDeleteConfirmId(null);
+        }}
+      />
+    </PageShell>
   );
 }

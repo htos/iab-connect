@@ -21,6 +21,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { PageShell } from "@/components/layout";
 import { useAuth } from "@/lib/auth";
 import { formatFileSize } from "@/lib/api/backup";
 import { useBackups } from "../hooks/use-backups";
@@ -283,14 +284,101 @@ export function BackupsPageContent() {
     .reduce((sum, b) => sum + b.fileSizeBytes, 0);
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-7xl">
-        <Link
-          href="/admin"
-          className="mb-6 inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"
+    <PageShell>
+      <Link
+        href="/admin"
+        className="mb-6 inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"
+      >
+        <svg
+          className="h-5 w-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
         >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M15 19l-7-7 7-7"
+          />
+        </svg>
+        {t("backToAdmin")}
+      </Link>
+
+      {/* Header */}
+      <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
+            {t("title")}
+          </h1>
+          <p className="mt-1 text-gray-600">{t("subtitle")}</p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => refetchBackups()}
+            className="flex items-center gap-2 rounded-xl bg-gray-100 px-4 py-2 hover:bg-gray-200 focus:ring-2 focus:ring-orange-500 focus:outline-none"
+          >
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+            {t("refresh")}
+          </button>
+          <button
+            onClick={() => setShowUploadModal(true)}
+            className="flex items-center gap-2 rounded-xl bg-gray-100 px-4 py-2 hover:bg-gray-200 focus:ring-2 focus:ring-orange-500 focus:outline-none"
+          >
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+              />
+            </svg>
+            {t("uploadBackup")}
+          </button>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2 text-white hover:bg-orange-700 focus:ring-2 focus:ring-orange-500 focus:outline-none"
+          >
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            {t("createBackup")}
+          </button>
+        </div>
+      </div>
+
+      {/* Success Message */}
+      {successMessage && (
+        <div className="mb-6 flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 p-4">
           <svg
-            className="h-5 w-5"
+            className="h-5 w-5 shrink-0 text-green-600"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -299,84 +387,151 @@ export function BackupsPageContent() {
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={2}
-              d="M15 19l-7-7 7-7"
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
             />
           </svg>
-          {t("backToAdmin")}
-        </Link>
+          <span className="text-green-800">{successMessage}</span>
+        </div>
+      )}
 
-        {/* Header */}
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-              {t("title")}
-            </h1>
-            <p className="mt-1 text-gray-600">{t("subtitle")}</p>
+      {/* Error Message */}
+      {error && (
+        <div className="mb-6 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-4">
+          <svg
+            className="h-5 w-5 shrink-0 text-red-600"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <span className="text-red-800">{error}</span>
+          <button
+            onClick={() => setActionError(null)}
+            className="ml-auto text-red-600 hover:text-red-800"
+          >
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* Stats Summary */}
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="rounded-xl bg-white p-4 shadow-sm">
+          <p className="text-sm text-gray-600">{t("stats.total")}</p>
+          <p className="text-2xl font-bold text-gray-900">{backups.length}</p>
+        </div>
+        <div className="rounded-xl bg-white p-4 shadow-sm">
+          <p className="text-sm text-gray-600">{t("stats.completed")}</p>
+          <p className="text-2xl font-bold text-green-600">{completedCount}</p>
+        </div>
+        <div className="rounded-xl bg-white p-4 shadow-sm">
+          <p className="text-sm text-gray-600">{t("stats.totalSize")}</p>
+          <p className="text-2xl font-bold text-gray-900">
+            {formatFileSize(totalSize)}
+          </p>
+        </div>
+      </div>
+
+      {/* Schedule Section */}
+      <div className="mb-6 rounded-xl bg-white p-6 shadow-sm">
+        <h2 className="mb-4 text-lg font-semibold text-gray-900">
+          {t("schedule.title")}
+        </h2>
+        <p className="mb-4 text-sm text-gray-600">
+          {t("schedule.description")}
+        </p>
+
+        <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-end">
+          <div className="flex-1">
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              {t("schedule.interval")}
+            </label>
+            <select
+              value={schedulePreset}
+              onChange={(e) => setSchedulePreset(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
+            >
+              <option value="daily">{t("schedule.daily")}</option>
+              <option value="weekly">{t("schedule.weekly")}</option>
+              <option value="monthly">{t("schedule.monthly")}</option>
+              <option value="custom">{t("schedule.custom")}</option>
+            </select>
           </div>
+
+          {schedulePreset === "custom" && (
+            <div className="flex-1">
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                {t("schedule.cronExpression")}
+              </label>
+              <input
+                type="text"
+                value={customCron}
+                onChange={(e) => setCustomCron(e.target.value)}
+                placeholder="0 2 * * *"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
+              />
+            </div>
+          )}
+
           <div className="flex gap-2">
             <button
-              onClick={() => refetchBackups()}
-              className="flex items-center gap-2 rounded-xl bg-gray-100 px-4 py-2 hover:bg-gray-200 focus:ring-2 focus:ring-orange-500 focus:outline-none"
+              onClick={handleSaveSchedule}
+              disabled={
+                isSavingSchedule || (schedulePreset === "custom" && !customCron)
+              }
+              className="flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2 text-sm text-white hover:bg-orange-700 disabled:opacity-50"
             >
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-              {t("refresh")}
+              {isSavingSchedule ? (
+                <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
+              ) : (
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              )}
+              {t("schedule.save")}
             </button>
-            <button
-              onClick={() => setShowUploadModal(true)}
-              className="flex items-center gap-2 rounded-xl bg-gray-100 px-4 py-2 hover:bg-gray-200 focus:ring-2 focus:ring-orange-500 focus:outline-none"
-            >
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+            {schedule?.enabled && (
+              <button
+                onClick={handleDisableSchedule}
+                disabled={isSavingSchedule}
+                className="rounded-xl bg-red-100 px-4 py-2 text-sm text-red-700 hover:bg-red-200 disabled:opacity-50"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-                />
-              </svg>
-              {t("uploadBackup")}
-            </button>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2 text-white hover:bg-orange-700 focus:ring-2 focus:ring-orange-500 focus:outline-none"
-            >
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              {t("createBackup")}
-            </button>
+                {t("schedule.disable")}
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Success Message */}
-        {successMessage && (
-          <div className="mb-6 flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 p-4">
+        {schedule?.enabled && (
+          <div className="mt-4 flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3">
             <svg
               className="h-5 w-5 shrink-0 text-green-600"
               fill="none"
@@ -390,15 +545,25 @@ export function BackupsPageContent() {
                 d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <span className="text-green-800">{successMessage}</span>
+            <span className="text-sm text-green-800">
+              {t("schedule.active", {
+                cron: cronToLabel(schedule.cronExpression),
+              })}
+            </span>
           </div>
         )}
+      </div>
 
-        {/* Error Message */}
-        {error && (
-          <div className="mb-6 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-4">
+      {/* Backup Table */}
+      <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+        {isLoading ? (
+          <div className="flex items-center justify-center p-12">
+            <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-orange-600"></div>
+          </div>
+        ) : backups.length === 0 ? (
+          <div className="p-12 text-center">
             <svg
-              className="h-5 w-5 shrink-0 text-red-600"
+              className="mx-auto h-12 w-12 text-gray-400"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -407,235 +572,66 @@ export function BackupsPageContent() {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
               />
             </svg>
-            <span className="text-red-800">{error}</span>
-            <button
-              onClick={() => setActionError(null)}
-              className="ml-auto text-red-600 hover:text-red-800"
-            >
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
-        )}
-
-        {/* Stats Summary */}
-        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="rounded-xl bg-white p-4 shadow-sm">
-            <p className="text-sm text-gray-600">{t("stats.total")}</p>
-            <p className="text-2xl font-bold text-gray-900">{backups.length}</p>
-          </div>
-          <div className="rounded-xl bg-white p-4 shadow-sm">
-            <p className="text-sm text-gray-600">{t("stats.completed")}</p>
-            <p className="text-2xl font-bold text-green-600">
-              {completedCount}
+            <h3 className="mt-2 text-sm font-medium text-gray-900">
+              {t("noBackups")}
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              {t("noBackupsDescription")}
             </p>
           </div>
-          <div className="rounded-xl bg-white p-4 shadow-sm">
-            <p className="text-sm text-gray-600">{t("stats.totalSize")}</p>
-            <p className="text-2xl font-bold text-gray-900">
-              {formatFileSize(totalSize)}
-            </p>
-          </div>
-        </div>
-
-        {/* Schedule Section */}
-        <div className="mb-6 rounded-xl bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900">
-            {t("schedule.title")}
-          </h2>
-          <p className="mb-4 text-sm text-gray-600">
-            {t("schedule.description")}
-          </p>
-
-          <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-end">
-            <div className="flex-1">
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                {t("schedule.interval")}
-              </label>
-              <select
-                value={schedulePreset}
-                onChange={(e) => setSchedulePreset(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
-              >
-                <option value="daily">{t("schedule.daily")}</option>
-                <option value="weekly">{t("schedule.weekly")}</option>
-                <option value="monthly">{t("schedule.monthly")}</option>
-                <option value="custom">{t("schedule.custom")}</option>
-              </select>
-            </div>
-
-            {schedulePreset === "custom" && (
-              <div className="flex-1">
-                <label className="mb-1 block text-sm font-medium text-gray-700">
-                  {t("schedule.cronExpression")}
-                </label>
-                <input
-                  type="text"
-                  value={customCron}
-                  onChange={(e) => setCustomCron(e.target.value)}
-                  placeholder="0 2 * * *"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
-                />
-              </div>
-            )}
-
-            <div className="flex gap-2">
-              <button
-                onClick={handleSaveSchedule}
-                disabled={
-                  isSavingSchedule ||
-                  (schedulePreset === "custom" && !customCron)
-                }
-                className="flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2 text-sm text-white hover:bg-orange-700 disabled:opacity-50"
-              >
-                {isSavingSchedule ? (
-                  <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
-                ) : (
-                  <svg
-                    className="h-4 w-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                )}
-                {t("schedule.save")}
-              </button>
-              {schedule?.enabled && (
-                <button
-                  onClick={handleDisableSchedule}
-                  disabled={isSavingSchedule}
-                  className="rounded-xl bg-red-100 px-4 py-2 text-sm text-red-700 hover:bg-red-200 disabled:opacity-50"
-                >
-                  {t("schedule.disable")}
-                </button>
-              )}
-            </div>
-          </div>
-
-          {schedule?.enabled && (
-            <div className="mt-4 flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3">
-              <svg
-                className="h-5 w-5 shrink-0 text-green-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <span className="text-sm text-green-800">
-                {t("schedule.active", {
-                  cron: cronToLabel(schedule.cronExpression),
-                })}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Backup Table */}
-        <div className="overflow-hidden rounded-xl bg-white shadow-sm">
-          {isLoading ? (
-            <div className="flex items-center justify-center p-12">
-              <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-orange-600"></div>
-            </div>
-          ) : backups.length === 0 ? (
-            <div className="p-12 text-center">
-              <svg
-                className="mx-auto h-12 w-12 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
-                />
-              </svg>
-              <h3 className="mt-2 text-sm font-medium text-gray-900">
-                {t("noBackups")}
-              </h3>
-              <p className="mt-1 text-sm text-gray-500">
-                {t("noBackupsDescription")}
-              </p>
-            </div>
-          ) : (
-            <BackupsTable
-              backups={backups}
-              restoreConfirmId={restoreConfirmId}
-              deleteConfirmId={deleteConfirmId}
-              isRestoring={restoreBackup.isPending}
-              onDownload={handleDownload}
-              onRestoreConfirm={setRestoreConfirmId}
-              onRestore={handleRestore}
-              onRestoreCancel={() => setRestoreConfirmId(null)}
-              onRetry={handleRetry}
-              onDeleteConfirm={setDeleteConfirmId}
-              onDelete={handleDelete}
-              onDeleteCancel={() => setDeleteConfirmId(null)}
-            />
-          )}
-        </div>
-
-        {/* Create Backup Modal */}
-        {showCreateModal && (
-          <CreateBackupDialog
-            notes={createNotes}
-            isCreating={createBackup.isPending}
-            onNotesChange={setCreateNotes}
-            onConfirm={handleCreateBackup}
-            onCancel={() => {
-              setShowCreateModal(false);
-              setCreateNotes("");
-            }}
-          />
-        )}
-
-        {/* Upload Backup Modal */}
-        {showUploadModal && (
-          <UploadBackupDialog
-            fileInputRef={fileInputRef}
-            notes={uploadNotes}
-            hasFile={!!uploadFile}
-            isUploading={uploadBackup.isPending}
-            onFileChange={setUploadFile}
-            onNotesChange={setUploadNotes}
-            onConfirm={handleUpload}
-            onCancel={() => {
-              setShowUploadModal(false);
-              setUploadFile(null);
-              setUploadNotes("");
-              if (fileInputRef.current) fileInputRef.current.value = "";
-            }}
+        ) : (
+          <BackupsTable
+            backups={backups}
+            restoreConfirmId={restoreConfirmId}
+            deleteConfirmId={deleteConfirmId}
+            isRestoring={restoreBackup.isPending}
+            onDownload={handleDownload}
+            onRestoreConfirm={setRestoreConfirmId}
+            onRestore={handleRestore}
+            onRestoreCancel={() => setRestoreConfirmId(null)}
+            onRetry={handleRetry}
+            onDeleteConfirm={setDeleteConfirmId}
+            onDelete={handleDelete}
+            onDeleteCancel={() => setDeleteConfirmId(null)}
           />
         )}
       </div>
-    </main>
+
+      {/* Create Backup Modal */}
+      {showCreateModal && (
+        <CreateBackupDialog
+          notes={createNotes}
+          isCreating={createBackup.isPending}
+          onNotesChange={setCreateNotes}
+          onConfirm={handleCreateBackup}
+          onCancel={() => {
+            setShowCreateModal(false);
+            setCreateNotes("");
+          }}
+        />
+      )}
+
+      {/* Upload Backup Modal */}
+      {showUploadModal && (
+        <UploadBackupDialog
+          fileInputRef={fileInputRef}
+          notes={uploadNotes}
+          hasFile={!!uploadFile}
+          isUploading={uploadBackup.isPending}
+          onFileChange={setUploadFile}
+          onNotesChange={setUploadNotes}
+          onConfirm={handleUpload}
+          onCancel={() => {
+            setShowUploadModal(false);
+            setUploadFile(null);
+            setUploadNotes("");
+            if (fileInputRef.current) fileInputRef.current.value = "";
+          }}
+        />
+      )}
+    </PageShell>
   );
 }

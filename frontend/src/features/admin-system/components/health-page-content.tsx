@@ -17,6 +17,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { PageShell, PageHeader } from "@/components/layout";
 import { useAuth } from "@/lib/auth";
 import { useHealth } from "../hooks/use-health";
 import { HealthStatus } from "./health-status";
@@ -52,13 +53,11 @@ export function HealthPageContent() {
 
   if (isLoading) {
     return (
-      <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="flex min-h-100 items-center justify-center">
-            <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-orange-600"></div>
-          </div>
+      <PageShell>
+        <div className="flex min-h-100 items-center justify-center">
+          <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-orange-600"></div>
         </div>
-      </main>
+      </PageShell>
     );
   }
 
@@ -69,16 +68,12 @@ export function HealthPageContent() {
   const lastChecked = dataUpdatedAt ? new Date(dataUpdatedAt) : null;
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-7xl">
-        {/* Header */}
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-              {t("title")}
-            </h1>
-            <p className="mt-1 text-gray-600">{t("subtitle")}</p>
-          </div>
+    <PageShell>
+      {/* Header */}
+      <PageHeader
+        title={t("title")}
+        description={t("subtitle")}
+        actions={
           <div className="flex items-center gap-3">
             {lastChecked && (
               <span className="text-sm text-gray-500">
@@ -93,21 +88,21 @@ export function HealthPageContent() {
               {isRefreshing ? t("refreshing") : t("refresh")}
             </button>
           </div>
+        }
+      />
+
+      {isError && (
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+          {t("fetchError")}
         </div>
+      )}
 
-        {isError && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
-            {t("fetchError")}
-          </div>
-        )}
+      {health && <HealthStatus health={health} />}
 
-        {health && <HealthStatus health={health} />}
-
-        {/* Info Banner */}
-        <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-4">
-          <p className="text-sm text-blue-700">{t("autoRefreshInfo")}</p>
-        </div>
+      {/* Info Banner */}
+      <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-4">
+        <p className="text-sm text-blue-700">{t("autoRefreshInfo")}</p>
       </div>
-    </main>
+    </PageShell>
   );
 }

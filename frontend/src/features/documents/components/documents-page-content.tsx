@@ -25,6 +25,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth";
+import { PageShell, PageHeader } from "@/components/layout";
 import { useDocuments } from "../hooks/use-documents";
 import { useDocumentFolders } from "../hooks/use-document-folders";
 import { useDocumentTags } from "../hooks/use-document-tags";
@@ -137,108 +138,101 @@ export function DocumentsPageContent() {
   }
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-7xl">
-        {/* Header */}
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-              {t("documents.title")}
-            </h1>
-            <p className="mt-1 text-gray-600">{t("documents.subtitle")}</p>
+    <PageShell>
+      <PageHeader
+        title={t("documents.title")}
+        description={t("documents.subtitle")}
+      />
+
+      <DocumentsBreadcrumb
+        currentPath={currentPath}
+        onNavigateToRoot={navigateToRoot}
+        onNavigateToSegment={navigateToSegment}
+      />
+
+      <DocumentsFilterBar
+        searchTerm={searchTerm}
+        onSearchChange={(value) => {
+          clearTransientErrors();
+          setSearchTerm(value);
+          setPage(1);
+        }}
+        selectedTag={selectedTag}
+        onTagChange={(value) => {
+          clearTransientErrors();
+          setSelectedTag(value);
+          setPage(1);
+        }}
+        allTags={allTags}
+      />
+
+      {errorMessage && (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+          {errorMessage}
+        </div>
+      )}
+
+      <DocumentsFolderGrid
+        folders={folders}
+        showUpButton={currentPath.length > 0}
+        onNavigateUp={navigateUp}
+        onNavigateToFolder={navigateToFolder}
+      />
+
+      {/* Documents */}
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-orange-600"></div>
+        </div>
+      ) : documents.length === 0 ? (
+        <div className="rounded-lg bg-white p-12 text-center shadow">
+          <svg
+            className="mx-auto mb-4 h-16 w-16 text-gray-300"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
+          </svg>
+          <p className="text-gray-500">{t("documents.noDocuments")}</p>
+        </div>
+      ) : (
+        <DocumentsTable
+          documents={documents}
+          onDownloadError={() => setDownloadError(true)}
+        />
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-6 flex items-center justify-between">
+          <p className="text-sm text-gray-600">
+            {t("common.page")} {page} {t("common.of")} {totalPages} (
+            {totalCount} {t("common.entries")})
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage(Math.max(1, page - 1))}
+              disabled={page === 1}
+              className="rounded-lg border px-4 py-2 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              {t("common.previous")}
+            </button>
+            <button
+              onClick={() => setPage(Math.min(totalPages, page + 1))}
+              disabled={page === totalPages}
+              className="rounded-lg border px-4 py-2 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              {t("common.next")}
+            </button>
           </div>
         </div>
-
-        <DocumentsBreadcrumb
-          currentPath={currentPath}
-          onNavigateToRoot={navigateToRoot}
-          onNavigateToSegment={navigateToSegment}
-        />
-
-        <DocumentsFilterBar
-          searchTerm={searchTerm}
-          onSearchChange={(value) => {
-            clearTransientErrors();
-            setSearchTerm(value);
-            setPage(1);
-          }}
-          selectedTag={selectedTag}
-          onTagChange={(value) => {
-            clearTransientErrors();
-            setSelectedTag(value);
-            setPage(1);
-          }}
-          allTags={allTags}
-        />
-
-        {errorMessage && (
-          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
-            {errorMessage}
-          </div>
-        )}
-
-        <DocumentsFolderGrid
-          folders={folders}
-          showUpButton={currentPath.length > 0}
-          onNavigateUp={navigateUp}
-          onNavigateToFolder={navigateToFolder}
-        />
-
-        {/* Documents */}
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-orange-600"></div>
-          </div>
-        ) : documents.length === 0 ? (
-          <div className="rounded-lg bg-white p-12 text-center shadow">
-            <svg
-              className="mx-auto mb-4 h-16 w-16 text-gray-300"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              />
-            </svg>
-            <p className="text-gray-500">{t("documents.noDocuments")}</p>
-          </div>
-        ) : (
-          <DocumentsTable
-            documents={documents}
-            onDownloadError={() => setDownloadError(true)}
-          />
-        )}
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="mt-6 flex items-center justify-between">
-            <p className="text-sm text-gray-600">
-              {t("common.page")} {page} {t("common.of")} {totalPages} (
-              {totalCount} {t("common.entries")})
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setPage(Math.max(1, page - 1))}
-                disabled={page === 1}
-                className="rounded-lg border px-4 py-2 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-              >
-                {t("common.previous")}
-              </button>
-              <button
-                onClick={() => setPage(Math.min(totalPages, page + 1))}
-                disabled={page === totalPages}
-                className="rounded-lg border px-4 py-2 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-              >
-                {t("common.next")}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </main>
+      )}
+    </PageShell>
   );
 }

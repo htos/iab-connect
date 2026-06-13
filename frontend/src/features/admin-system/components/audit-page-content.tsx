@@ -18,6 +18,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { PageShell } from "@/components/layout";
 import { useAuth } from "@/lib/auth";
 import { useAuditLog } from "../hooks/use-audit-log";
 import { useAuditFilterOptions } from "../hooks/use-audit-filter-options";
@@ -125,41 +126,63 @@ export function AuditPageContent() {
   }
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-7xl">
-        <Link
-          href="/admin"
-          className="mb-6 inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"
+    <PageShell>
+      <Link
+        href="/admin"
+        className="mb-6 inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"
+      >
+        <svg
+          className="h-5 w-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
         >
-          <svg
-            className="h-5 w-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
-          {t("backToAdmin")}
-        </Link>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M15 19l-7-7 7-7"
+          />
+        </svg>
+        {t("backToAdmin")}
+      </Link>
 
-        {/* Header */}
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-              {t("title")}
-            </h1>
-            <p className="mt-1 text-gray-600">{t("subtitle")}</p>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 rounded-xl bg-gray-100 px-4 py-2 hover:bg-gray-200 focus:ring-2 focus:ring-orange-500 focus:outline-none"
+      {/* Header */}
+      <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
+            {t("title")}
+          </h1>
+          <p className="mt-1 text-gray-600">{t("subtitle")}</p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2 rounded-xl bg-gray-100 px-4 py-2 hover:bg-gray-200 focus:ring-2 focus:ring-orange-500 focus:outline-none"
+          >
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+              />
+            </svg>
+            {t("filters.toggle")}
+          </button>
+          <button
+            onClick={handleExport}
+            disabled={exportAudit.isPending}
+            className="flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2 text-white hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:outline-none disabled:opacity-50"
+          >
+            {exportAudit.isPending ? (
+              <div className="h-5 w-5 animate-spin rounded-full border-b-2 border-white"></div>
+            ) : (
               <svg
                 className="h-5 w-5"
                 fill="none"
@@ -170,92 +193,68 @@ export function AuditPageContent() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
                 />
               </svg>
-              {t("filters.toggle")}
+            )}
+            {t("export")}
+          </button>
+        </div>
+      </div>
+
+      {/* Filters Panel */}
+      {showFilters && (
+        <AuditFilterBar
+          filters={filters}
+          categories={categories}
+          eventTypes={eventTypes}
+          onFilterChange={handleFilterChange}
+          onClear={clearFilters}
+        />
+      )}
+
+      {/* Error Message */}
+      {error && (
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+          <p>{error}</p>
+        </div>
+      )}
+
+      {/* Results Summary */}
+      <div className="mb-4 text-sm text-gray-600">
+        {t("results.showing", { count: events.length, total: totalCount })}
+      </div>
+
+      {/* Table */}
+      <AuditTable events={events} isLoading={isLoading} />
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-between">
+          <div className="text-sm text-gray-600">
+            {t("pagination.page", {
+              current: filters.page || 1,
+              total: totalPages,
+            })}
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => handlePageChange((filters.page || 1) - 1)}
+              disabled={filters.page === 1}
+              className="rounded-xl border border-gray-300 px-3 py-1 hover:bg-gray-50 focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {tCommon("previous")}
             </button>
             <button
-              onClick={handleExport}
-              disabled={exportAudit.isPending}
-              className="flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2 text-white hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:outline-none disabled:opacity-50"
+              onClick={() => handlePageChange((filters.page || 1) + 1)}
+              disabled={filters.page === totalPages}
+              className="rounded-xl border border-gray-300 px-3 py-1 hover:bg-gray-50 focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {exportAudit.isPending ? (
-                <div className="h-5 w-5 animate-spin rounded-full border-b-2 border-white"></div>
-              ) : (
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                  />
-                </svg>
-              )}
-              {t("export")}
+              {tCommon("next")}
             </button>
           </div>
         </div>
-
-        {/* Filters Panel */}
-        {showFilters && (
-          <AuditFilterBar
-            filters={filters}
-            categories={categories}
-            eventTypes={eventTypes}
-            onFilterChange={handleFilterChange}
-            onClear={clearFilters}
-          />
-        )}
-
-        {/* Error Message */}
-        {error && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
-            <p>{error}</p>
-          </div>
-        )}
-
-        {/* Results Summary */}
-        <div className="mb-4 text-sm text-gray-600">
-          {t("results.showing", { count: events.length, total: totalCount })}
-        </div>
-
-        {/* Table */}
-        <AuditTable events={events} isLoading={isLoading} />
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="mt-4 flex items-center justify-between">
-            <div className="text-sm text-gray-600">
-              {t("pagination.page", {
-                current: filters.page || 1,
-                total: totalPages,
-              })}
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => handlePageChange((filters.page || 1) - 1)}
-                disabled={filters.page === 1}
-                className="rounded-xl border border-gray-300 px-3 py-1 hover:bg-gray-50 focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {tCommon("previous")}
-              </button>
-              <button
-                onClick={() => handlePageChange((filters.page || 1) + 1)}
-                disabled={filters.page === totalPages}
-                className="rounded-xl border border-gray-300 px-3 py-1 hover:bg-gray-50 focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {tCommon("next")}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </main>
+      )}
+    </PageShell>
   );
 }

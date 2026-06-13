@@ -20,6 +20,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
+import { PageShell } from "@/components/layout";
 import { EmailTemplateForm } from "./email-template-form";
 import { useCreateEmailTemplate } from "../hooks/use-create-email-template";
 import type { CreateEmailTemplateRequest } from "../types/email-template.types";
@@ -70,59 +71,57 @@ export function EmailTemplateNewContent() {
   }
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-4xl">
-        {/* Back link */}
-        <Link
-          href="/communication/email-templates"
-          className="mb-6 inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"
+    <PageShell maxWidth="4xl">
+      {/* Back link */}
+      <Link
+        href="/communication/email-templates"
+        className="mb-6 inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"
+      >
+        <svg
+          className="h-4 w-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
         >
-          <svg
-            className="h-4 w-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
-          {t("backToTemplates")}
-        </Link>
-
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-            {t("newTitle")}
-          </h1>
-          <p className="mt-1 text-gray-600">{t("newSubtitle")}</p>
-        </div>
-
-        {/* Error Alert */}
-        {error && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
-            <p className="text-red-700">{error}</p>
-          </div>
-        )}
-
-        {/* Success Alert */}
-        {success && (
-          <div className="mb-6 rounded-xl border border-green-200 bg-green-50 p-4">
-            <p className="text-green-700">{success}</p>
-          </div>
-        )}
-
-        {/* Form content wrapped in card */}
-        <div className="rounded-xl bg-white p-6 shadow-sm">
-          <EmailTemplateForm
-            onSave={handleSave}
-            isSaving={createMutation.isPending}
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M15 19l-7-7 7-7"
           />
-        </div>
+        </svg>
+        {t("backToTemplates")}
+      </Link>
+
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
+          {t("newTitle")}
+        </h1>
+        <p className="mt-1 text-gray-600">{t("newSubtitle")}</p>
       </div>
-    </main>
+
+      {/* Error Alert */}
+      {error && (
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
+          <p className="text-red-700">{error}</p>
+        </div>
+      )}
+
+      {/* Success Alert */}
+      {success && (
+        <div className="mb-6 rounded-xl border border-green-200 bg-green-50 p-4">
+          <p className="text-green-700">{success}</p>
+        </div>
+      )}
+
+      {/* Form content wrapped in card */}
+      <div className="rounded-xl bg-white p-6 shadow-sm">
+        <EmailTemplateForm
+          onSave={handleSave}
+          isSaving={createMutation.isPending}
+        />
+      </div>
+    </PageShell>
   );
 }

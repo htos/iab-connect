@@ -10,13 +10,18 @@ import PublicFooter from "@/components/navigation/PublicFooter";
  * /`components` imports are boundary-legal (E21-S5). The `pt-16` on `<main>`
  * offsets the `fixed h-16` PublicHeader; preserve it.
  *
- * TODO(E30): extract `PublicHeader`/`PublicFooter` into a slice-owned `PageShell`
- * and reference the E30 `PageShell` once it exists — do NOT build a competing
- * shell here (no `PageShell` primitive exists today). DEC-3=A residual debt.
+ * E30-S1 RESOLUTION (was TODO(E30)): `PublicHeader`/`PublicFooter` intentionally
+ * STAY in `@/components/navigation/` — they are public chrome (like `Header`/
+ * `Sidebar`), and moving header logic out of `components/navigation` is a hard
+ * constraint. The E30 `PageShell` primitive is the AUTHENTICATED inner content
+ * frame (the `<main>` inside `MainLayout`); it does NOT apply to the public
+ * surface, whose shell is this distinct `public-layout-shell.tsx`. No competing
+ * shell is built here — this debt is closed, not deferred.
  *
- * Keeps the `"use client"` directive (DEC-2=A) — harmless here, and converting the
- * shell to a Server Component is E30's call once `PageShell` lands. A client layout
- * legally renders the async `license` Server Component via the `children` slot.
+ * Keeps the `"use client"` directive (DEC-2=A) — harmless here; the public shell
+ * stays a client layout (no Server-Component conversion is pursued — out of the
+ * E30 authenticated scope). A client layout legally renders the async `license`
+ * Server Component via the `children` slot.
  */
 export function PublicLayoutShell({ children }: { children: React.ReactNode }) {
   return (

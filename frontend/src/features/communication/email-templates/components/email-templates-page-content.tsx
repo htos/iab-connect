@@ -25,6 +25,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth";
+import { PageShell, PageHeader } from "@/components/layout";
 import { useEmailTemplates } from "../hooks/use-email-templates";
 import { useDeleteEmailTemplate } from "../hooks/use-delete-email-template";
 import { EmailTemplatesSearchBar } from "./email-templates-search-bar";
@@ -75,55 +76,28 @@ export function EmailTemplatesPageContent() {
 
   if (showSpinner) {
     return (
-      <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="flex items-center justify-center py-12">
-            <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-orange-600"></div>
-            <span className="ml-3 text-gray-600">{tCommon("loading")}</span>
-          </div>
+      <PageShell>
+        <div className="flex items-center justify-center py-12">
+          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-orange-600"></div>
+          <span className="ml-3 text-gray-600">{tCommon("loading")}</span>
         </div>
-      </main>
+      </PageShell>
     );
   }
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-7xl">
-        {/* Header */}
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-              {t("title")}
-            </h1>
-            <p className="mt-1 text-gray-600">{t("subtitle")}</p>
-          </div>
-          <Link
-            href="/communication/email-templates/new"
-            className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-700"
-          >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+    <PageShell
+      header={
+        <PageHeader
+          title={t("title")}
+          description={t("subtitle")}
+          actions={
+            <Link
+              href="/communication/email-templates/new"
+              className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-700"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            {t("createTemplate")}
-          </Link>
-        </div>
-
-        {/* Error message */}
-        {bannerError && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
-            <div className="flex items-center gap-3">
               <svg
-                className="h-5 w-5 text-red-600"
+                className="h-5 w-5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -132,36 +106,21 @@ export function EmailTemplatesPageContent() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  d="M12 4v16m8-8H4"
                 />
               </svg>
-              <span className="text-red-700">{bannerError}</span>
-            </div>
-          </div>
-        )}
-
-        {/* Search */}
-        <EmailTemplatesSearchBar
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
+              {t("createTemplate")}
+            </Link>
+          }
         />
-
-        {/* Templates list */}
-        <div className="grid gap-4">
-          {filteredTemplates.map((template) => (
-            <EmailTemplateCard
-              key={template.id}
-              template={template}
-              onDelete={handleDelete}
-            />
-          ))}
-        </div>
-
-        {/* Empty state */}
-        {filteredTemplates.length === 0 && (
-          <div className="rounded-xl bg-white p-8 text-center shadow-sm">
+      }
+    >
+      {/* Error message */}
+      {bannerError && (
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
+          <div className="flex items-center gap-3">
             <svg
-              className="mx-auto h-12 w-12 text-gray-400"
+              className="h-5 w-5 text-red-600"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -169,40 +128,77 @@ export function EmailTemplatesPageContent() {
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <h3 className="mt-4 text-lg font-medium text-gray-900">
-              {t("noTemplates")}
-            </h3>
-            <p className="mt-2 text-gray-500">
-              {searchTerm ? t("noSearchResults") : t("noTemplatesDescription")}
-            </p>
-            {!searchTerm && (
-              <Link
-                href="/communication/email-templates/new"
-                className="mt-4 inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-700"
-              >
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4v16m8-8H4"
-                  />
-                </svg>
-                {t("createFirstTemplate")}
-              </Link>
-            )}
+            <span className="text-red-700">{bannerError}</span>
           </div>
-        )}
+        </div>
+      )}
+
+      {/* Search */}
+      <EmailTemplatesSearchBar
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+      />
+
+      {/* Templates list */}
+      <div className="grid gap-4">
+        {filteredTemplates.map((template) => (
+          <EmailTemplateCard
+            key={template.id}
+            template={template}
+            onDelete={handleDelete}
+          />
+        ))}
       </div>
-    </main>
+
+      {/* Empty state */}
+      {filteredTemplates.length === 0 && (
+        <div className="rounded-xl bg-white p-8 text-center shadow-sm">
+          <svg
+            className="mx-auto h-12 w-12 text-gray-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+            />
+          </svg>
+          <h3 className="mt-4 text-lg font-medium text-gray-900">
+            {t("noTemplates")}
+          </h3>
+          <p className="mt-2 text-gray-500">
+            {searchTerm ? t("noSearchResults") : t("noTemplatesDescription")}
+          </p>
+          {!searchTerm && (
+            <Link
+              href="/communication/email-templates/new"
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-700"
+            >
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+              {t("createFirstTemplate")}
+            </Link>
+          )}
+        </div>
+      )}
+    </PageShell>
   );
 }

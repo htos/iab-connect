@@ -15,6 +15,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { PageShell, PageHeader } from "@/components/layout";
 import { useAuth } from "@/lib/auth";
 import Link from "next/link";
 
@@ -167,13 +168,11 @@ export function AdminDashboardContent() {
 
   if (isLoading) {
     return (
-      <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="flex min-h-100 items-center justify-center">
-            <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-orange-600"></div>
-          </div>
+      <PageShell>
+        <div className="flex min-h-100 items-center justify-center">
+          <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-orange-600"></div>
         </div>
-      </main>
+      </PageShell>
     );
   }
 
@@ -227,57 +226,48 @@ export function AdminDashboardContent() {
   ];
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-7xl">
-        {/* Header */}
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-              {t("title")}
-            </h1>
-            <p className="mt-1 text-gray-600">{t("subtitle")}</p>
-          </div>
-        </div>
+    <PageShell>
+      {/* Header */}
+      <PageHeader title={t("title")} description={t("subtitle")} />
 
-        {/* Admin Cards Grid */}
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {adminSections.map((section) => {
-            const IconComponent = section.icon;
-            return (
-              <Link
-                key={section.href}
-                href={section.href}
-                className="group rounded-xl bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="rounded-xl bg-orange-100 p-3">
-                    <IconComponent className="h-6 w-6 text-orange-600" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 transition-colors group-hover:text-orange-600">
-                      {t(section.titleKey)}
-                    </h3>
-                    <p className="mt-1 text-sm text-gray-600">
-                      {t(section.descriptionKey)}
-                    </p>
-                  </div>
-                  <ChevronRightIcon className="mt-1 h-5 w-5 shrink-0 text-gray-400 transition-colors group-hover:text-orange-600" />
+      {/* Admin Cards Grid */}
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {adminSections.map((section) => {
+          const IconComponent = section.icon;
+          return (
+            <Link
+              key={section.href}
+              href={section.href}
+              className="group rounded-xl bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+            >
+              <div className="flex items-start gap-4">
+                <div className="rounded-xl bg-orange-100 p-3">
+                  <IconComponent className="h-6 w-6 text-orange-600" />
                 </div>
-              </Link>
-            );
-          })}
-        </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 transition-colors group-hover:text-orange-600">
+                    {t(section.titleKey)}
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-600">
+                    {t(section.descriptionKey)}
+                  </p>
+                </div>
+                <ChevronRightIcon className="mt-1 h-5 w-5 shrink-0 text-gray-400 transition-colors group-hover:text-orange-600" />
+              </div>
+            </Link>
+          );
+        })}
+      </div>
 
-        {/* Quick Stats Section */}
-        <div className="mt-8">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900">
-            {t("quickInfo.title")}
-          </h2>
-          <div className="rounded-xl bg-white p-6 shadow-sm">
-            <p className="text-gray-600">{t("quickInfo.description")}</p>
-          </div>
+      {/* Quick Stats Section */}
+      <div className="mt-8">
+        <h2 className="mb-4 text-lg font-semibold text-gray-900">
+          {t("quickInfo.title")}
+        </h2>
+        <div className="rounded-xl bg-white p-6 shadow-sm">
+          <p className="text-gray-600">{t("quickInfo.description")}</p>
         </div>
       </div>
-    </main>
+    </PageShell>
   );
 }

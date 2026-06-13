@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth";
+import { PageShell } from "@/components/layout";
 import { formatCurrency } from "@/lib/utils";
 import type {
   EventFeeCategoryDto,
@@ -146,12 +147,10 @@ export function EventFeesContent({ id: eventId }: { id: string }) {
 
   if (authLoading || loading) {
     return (
-      <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-        <div className="mx-auto max-w-5xl">
-          <div className="mb-6 h-8 w-64 animate-pulse rounded bg-gray-200" />
-          <div className="h-96 animate-pulse rounded-xl bg-gray-200" />
-        </div>
-      </main>
+      <PageShell maxWidth="5xl">
+        <div className="mb-6 h-8 w-64 animate-pulse rounded bg-gray-200" />
+        <div className="h-96 animate-pulse rounded-xl bg-gray-200" />
+      </PageShell>
     );
   }
 
@@ -159,16 +158,14 @@ export function EventFeesContent({ id: eventId }: { id: string }) {
 
   if (!canManage) {
     return (
-      <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-        <div className="mx-auto max-w-5xl">
-          <div
-            role="alert"
-            className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-yellow-800"
-          >
-            {t("permissionDenied")}
-          </div>
+      <PageShell maxWidth="5xl">
+        <div
+          role="alert"
+          className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-yellow-800"
+        >
+          {t("permissionDenied")}
         </div>
-      </main>
+      </PageShell>
     );
   }
 
@@ -217,81 +214,77 @@ export function EventFeesContent({ id: eventId }: { id: string }) {
   );
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-5xl">
-        <Link
-          href={`/events/${eventId}`}
-          className="mb-6 inline-flex items-center gap-2 text-gray-600 transition-colors hover:text-orange-600"
-        >
-          ← {t("backToEvent")}
-        </Link>
+    <PageShell maxWidth="5xl">
+      <Link
+        href={`/events/${eventId}`}
+        className="mb-6 inline-flex items-center gap-2 text-gray-600 transition-colors hover:text-orange-600"
+      >
+        ← {t("backToEvent")}
+      </Link>
 
-        <header className="mb-6 flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              {t("pageTitle")}
-            </h1>
-            <p className="mt-1 text-gray-500">{t("pageDescription")}</p>
-          </div>
+      <header className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">{t("pageTitle")}</h1>
+          <p className="mt-1 text-gray-500">{t("pageDescription")}</p>
+        </div>
+        <button
+          type="button"
+          onClick={openCreate}
+          className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700"
+        >
+          {t("newCategory")}
+        </button>
+      </header>
+
+      {error && (
+        <div
+          role="alert"
+          className="mb-4 flex justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800"
+        >
+          <span>{error}</span>
           <button
             type="button"
-            onClick={openCreate}
-            className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700"
+            onClick={() => setError(null)}
+            className="font-medium"
           >
-            {t("newCategory")}
+            ×
           </button>
-        </header>
+        </div>
+      )}
 
-        {error && (
-          <div
-            role="alert"
-            className="mb-4 flex justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800"
-          >
-            <span>{error}</span>
-            <button
-              type="button"
-              onClick={() => setError(null)}
-              className="font-medium"
-            >
-              ×
-            </button>
-          </div>
-        )}
+      {formTarget && (
+        <FeeFormDialog
+          key={formTarget.categoryId ?? "new"}
+          target={formTarget}
+          onClose={() => setFormTarget(null)}
+          onSave={handleSave}
+          onError={(message) => setError(message)}
+        />
+      )}
 
-        {formTarget && (
-          <FeeFormDialog
-            key={formTarget.categoryId ?? "new"}
-            target={formTarget}
-            onClose={() => setFormTarget(null)}
-            onSave={handleSave}
-            onError={(message) => setError(message)}
-          />
-        )}
-
-        {active.length === 0 && inactive.length === 0 ? (
-          <div className="rounded-xl bg-white p-8 text-center text-gray-500 shadow-sm">
-            {t("noCategories")}
-          </div>
-        ) : (
-          <section className="mb-4 rounded-xl bg-white p-4 shadow-sm">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-gray-500">
-                  <th className="py-2">{t("name")}</th>
-                  <th className="py-2">{t("amount")}</th>
-                  <th className="py-2">{t("applicability")}</th>
-                  <th className="py-2">{t("availability")}</th>
-                  <th className="py-2"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {active.map(renderRow)}
-                {inactive.map(renderRow)}
-              </tbody>
-            </table>
-          </section>
-        )}
-      </div>
-    </main>
+      {active.length === 0 && inactive.length === 0 ? (
+        <div className="rounded-xl bg-white p-8 text-center text-gray-500 shadow-sm">
+          {t("noCategories")}
+        </div>
+      ) : (
+        <section className="mb-4 rounded-xl bg-white p-4 shadow-sm">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-gray-500">
+                <th className="py-2">{t("name")}</th>
+                <th className="py-2">{t("amount")}</th>
+                <th className="py-2">{t("applicability")}</th>
+                <th className="py-2">{t("availability")}</th>
+                <th className="py-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {active.map(renderRow)}
+              {inactive.map(renderRow)}
+            </tbody>
+          </table>
+        </section>
+      )}
+    </PageShell>
   );
 }

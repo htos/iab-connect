@@ -29,6 +29,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth";
+import { PageShell } from "@/components/layout";
 import { useCheckInRoster } from "../../hooks/use-check-in-roster";
 import { useQrCheckIn } from "../../hooks/use-qr-check-in";
 import { useManualCheckIn } from "../../hooks/use-manual-check-in";
@@ -196,12 +197,10 @@ export function CheckInPageContent({ id: eventId }: CheckInPageContentProps) {
 
   if (authLoading) {
     return (
-      <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-        <div className="mx-auto max-w-5xl">
-          <div className="mb-6 h-8 w-48 animate-pulse rounded bg-gray-200" />
-          <div className="h-96 animate-pulse rounded-xl bg-gray-200" />
-        </div>
-      </main>
+      <PageShell maxWidth="5xl">
+        <div className="mb-6 h-8 w-48 animate-pulse rounded bg-gray-200" />
+        <div className="h-96 animate-pulse rounded-xl bg-gray-200" />
+      </PageShell>
     );
   }
 
@@ -209,233 +208,227 @@ export function CheckInPageContent({ id: eventId }: CheckInPageContentProps) {
 
   if (!canAccess) {
     return (
-      <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-        <div className="mx-auto max-w-5xl">
-          <div
-            role="alert"
-            className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-yellow-800"
-          >
-            {t("forbidden")}
-          </div>
+      <PageShell maxWidth="5xl">
+        <div
+          role="alert"
+          className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-yellow-800"
+        >
+          {t("forbidden")}
         </div>
-      </main>
+      </PageShell>
     );
   }
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-5xl">
-        <Link
-          href={`/events/${eventId}`}
-          className="mb-6 inline-flex items-center gap-2 text-gray-600 transition-colors hover:text-orange-600"
+    <PageShell maxWidth="5xl">
+      <Link
+        href={`/events/${eventId}`}
+        className="mb-6 inline-flex items-center gap-2 text-gray-600 transition-colors hover:text-orange-600"
+      >
+        ← {t("title")}
+      </Link>
+
+      <header className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">{t("title")}</h1>
+        <p className="mt-1 text-gray-500">{t("subtitle")}</p>
+      </header>
+
+      {/* Tabs */}
+      <div className="mb-4 flex gap-2 border-b border-gray-200">
+        <button
+          type="button"
+          onClick={() => setActiveTab("scanner")}
+          disabled={cameraState === "unavailable"}
+          aria-pressed={activeTab === "scanner"}
+          className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 ${
+            activeTab === "scanner"
+              ? "border-orange-600 text-orange-700"
+              : "border-transparent text-gray-600 hover:text-orange-600"
+          }`}
         >
-          ← {t("title")}
-        </Link>
+          {t("tabs.scanner")}
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("manual")}
+          aria-pressed={activeTab === "manual"}
+          className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === "manual"
+              ? "border-orange-600 text-orange-700"
+              : "border-transparent text-gray-600 hover:text-orange-600"
+          }`}
+        >
+          {t("tabs.manual")}
+        </button>
+      </div>
 
-        <header className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">{t("title")}</h1>
-          <p className="mt-1 text-gray-500">{t("subtitle")}</p>
-        </header>
+      {/* Result card */}
+      {result?.registration && (
+        <div
+          role="status"
+          className={`mb-4 rounded-lg border px-4 py-3 ${
+            result.outcome === "CheckedIn"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+              : result.outcome === "AlreadyCheckedIn"
+                ? "border-orange-200 bg-orange-50 text-orange-800"
+                : "border-red-200 bg-red-50 text-red-800"
+          }`}
+        >
+          {result.outcome === "CheckedIn" &&
+            t("result.checkedIn", {
+              name: result.registration.participantName,
+            })}
+          {result.outcome === "AlreadyCheckedIn" &&
+            t("result.alreadyCheckedIn", {
+              name: result.registration.participantName,
+              time: result.registration.checkedInAt
+                ? new Date(result.registration.checkedInAt).toLocaleTimeString(
+                    "de-CH"
+                  )
+                : "?",
+            })}
+          {result.outcome === "Conflict" &&
+            result.conflict === "Cancelled" &&
+            t("result.cancelledConflict")}
+          {result.outcome === "Conflict" &&
+            result.conflict === "Waitlisted" &&
+            t("result.waitlistedConflict")}
+        </div>
+      )}
 
-        {/* Tabs */}
-        <div className="mb-4 flex gap-2 border-b border-gray-200">
+      {/* Post-review M-S2-4 / M-S2-5: transient network or scanner error banner */}
+      {networkError && (
+        <div
+          role="alert"
+          className="mb-4 flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900"
+        >
+          <span>{networkError}</span>
           <button
             type="button"
-            onClick={() => setActiveTab("scanner")}
-            disabled={cameraState === "unavailable"}
-            aria-pressed={activeTab === "scanner"}
-            className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 ${
-              activeTab === "scanner"
-                ? "border-orange-600 text-orange-700"
-                : "border-transparent text-gray-600 hover:text-orange-600"
-            }`}
+            onClick={() => {
+              setNetworkError(null);
+              setLastScannedToken(null);
+            }}
+            className="text-sm font-medium text-orange-700 hover:text-orange-800"
           >
-            {t("tabs.scanner")}
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("manual")}
-            aria-pressed={activeTab === "manual"}
-            className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
-              activeTab === "manual"
-                ? "border-orange-600 text-orange-700"
-                : "border-transparent text-gray-600 hover:text-orange-600"
-            }`}
-          >
-            {t("tabs.manual")}
+            {t("scanner.scanAgain")}
           </button>
         </div>
+      )}
 
-        {/* Result card */}
-        {result?.registration && (
-          <div
-            role="status"
-            className={`mb-4 rounded-lg border px-4 py-3 ${
-              result.outcome === "CheckedIn"
-                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                : result.outcome === "AlreadyCheckedIn"
-                  ? "border-orange-200 bg-orange-50 text-orange-800"
-                  : "border-red-200 bg-red-50 text-red-800"
-            }`}
+      {/* Invalid QR banner */}
+      {invalidQrToken && (
+        <div
+          role="alert"
+          className="mb-4 flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800"
+        >
+          <span>{t("scanner.invalidQr", { token: invalidQrToken })}</span>
+          <button
+            type="button"
+            onClick={() => {
+              setInvalidQrToken(null);
+              setLastScannedToken(null);
+            }}
+            className="text-sm font-medium text-orange-700 hover:text-orange-800"
           >
-            {result.outcome === "CheckedIn" &&
-              t("result.checkedIn", {
-                name: result.registration.participantName,
-              })}
-            {result.outcome === "AlreadyCheckedIn" &&
-              t("result.alreadyCheckedIn", {
-                name: result.registration.participantName,
-                time: result.registration.checkedInAt
-                  ? new Date(
-                      result.registration.checkedInAt
-                    ).toLocaleTimeString("de-CH")
-                  : "?",
-              })}
-            {result.outcome === "Conflict" &&
-              result.conflict === "Cancelled" &&
-              t("result.cancelledConflict")}
-            {result.outcome === "Conflict" &&
-              result.conflict === "Waitlisted" &&
-              t("result.waitlistedConflict")}
-          </div>
-        )}
+            {t("scanner.scanAgain")}
+          </button>
+        </div>
+      )}
 
-        {/* Post-review M-S2-4 / M-S2-5: transient network or scanner error banner */}
-        {networkError && (
-          <div
-            role="alert"
-            className="mb-4 flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900"
-          >
-            <span>{networkError}</span>
-            <button
-              type="button"
-              onClick={() => {
-                setNetworkError(null);
-                setLastScannedToken(null);
-              }}
-              className="text-sm font-medium text-orange-700 hover:text-orange-800"
-            >
-              {t("scanner.scanAgain")}
-            </button>
-          </div>
-        )}
-
-        {/* Invalid QR banner */}
-        {invalidQrToken && (
-          <div
-            role="alert"
-            className="mb-4 flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800"
-          >
-            <span>{t("scanner.invalidQr", { token: invalidQrToken })}</span>
-            <button
-              type="button"
-              onClick={() => {
-                setInvalidQrToken(null);
-                setLastScannedToken(null);
-              }}
-              className="text-sm font-medium text-orange-700 hover:text-orange-800"
-            >
-              {t("scanner.scanAgain")}
-            </button>
-          </div>
-        )}
-
-        {/* Scanner state */}
-        {activeTab === "scanner" && (
-          <section
-            aria-label={t("tabs.scanner")}
-            className="rounded-xl bg-white p-4 shadow-sm"
-          >
-            {cameraState === "available" && (
-              <>
-                <p className="mb-3 text-sm text-gray-600">
-                  {t("scanner.ready")}
-                </p>
-                <div className="mx-auto max-w-md">
-                  <CheckInScanner
-                    onScan={handleQrDecode}
-                    onError={handleScannerError}
-                  />
-                </div>
-              </>
-            )}
-            {cameraState === "unavailable" && (
-              <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-yellow-800">
-                {t("scanner.cameraUnavailable")}
+      {/* Scanner state */}
+      {activeTab === "scanner" && (
+        <section
+          aria-label={t("tabs.scanner")}
+          className="rounded-xl bg-white p-4 shadow-sm"
+        >
+          {cameraState === "available" && (
+            <>
+              <p className="mb-3 text-sm text-gray-600">{t("scanner.ready")}</p>
+              <div className="mx-auto max-w-md">
+                <CheckInScanner
+                  onScan={handleQrDecode}
+                  onError={handleScannerError}
+                />
               </div>
-            )}
-            {cameraState === "probing" && (
-              <div className="h-48 animate-pulse rounded-lg bg-gray-100" />
-            )}
-          </section>
-        )}
+            </>
+          )}
+          {cameraState === "unavailable" && (
+            <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-yellow-800">
+              {t("scanner.cameraUnavailable")}
+            </div>
+          )}
+          {cameraState === "probing" && (
+            <div className="h-48 animate-pulse rounded-lg bg-gray-100" />
+          )}
+        </section>
+      )}
 
-        {/* Manual state */}
-        {activeTab === "manual" && (
-          <section
-            aria-label={t("tabs.manual")}
-            className="rounded-xl bg-white p-4 shadow-sm"
-          >
-            <label className="block">
-              <span className="sr-only">{t("manual.searchPlaceholder")}</span>
-              <input
-                type="search"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder={t("manual.searchPlaceholder")}
-                className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:ring-2 focus:ring-orange-500 focus:outline-none"
-              />
-            </label>
+      {/* Manual state */}
+      {activeTab === "manual" && (
+        <section
+          aria-label={t("tabs.manual")}
+          className="rounded-xl bg-white p-4 shadow-sm"
+        >
+          <label className="block">
+            <span className="sr-only">{t("manual.searchPlaceholder")}</span>
+            <input
+              type="search"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder={t("manual.searchPlaceholder")}
+              className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:ring-2 focus:ring-orange-500 focus:outline-none"
+            />
+          </label>
 
-            {rosterError && (
-              <div
-                role="alert"
-                className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-red-800"
+          {rosterError && (
+            <div
+              role="alert"
+              className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-red-800"
+            >
+              {rosterError}
+            </div>
+          )}
+
+          <ul className="mt-3 divide-y divide-gray-200">
+            {filteredRoster.length === 0 && !rosterError && (
+              <li className="py-6 text-center text-sm text-gray-500">
+                {t("manual.noResults")}
+              </li>
+            )}
+            {filteredRoster.map((row) => (
+              <li
+                key={row.registrationId}
+                className="flex items-center justify-between py-3"
               >
-                {rosterError}
-              </div>
-            )}
-
-            <ul className="mt-3 divide-y divide-gray-200">
-              {filteredRoster.length === 0 && !rosterError && (
-                <li className="py-6 text-center text-sm text-gray-500">
-                  {t("manual.noResults")}
-                </li>
-              )}
-              {filteredRoster.map((row) => (
-                <li
-                  key={row.registrationId}
-                  className="flex items-center justify-between py-3"
-                >
-                  <div>
-                    <div className="font-medium text-gray-900">
-                      {row.participantName}
-                    </div>
-                    {row.isCheckedIn && row.checkedInAt && (
-                      <div className="text-xs text-gray-500">
-                        {t("result.alreadyCheckedIn", {
-                          name: row.participantName,
-                          time: new Date(row.checkedInAt).toLocaleTimeString(
-                            "de-CH"
-                          ),
-                        })}
-                      </div>
-                    )}
+                <div>
+                  <div className="font-medium text-gray-900">
+                    {row.participantName}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleManualCheckIn(row.registrationId)}
-                    disabled={actionInFlight === row.registrationId}
-                    className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:opacity-50"
-                  >
-                    {t("manual.checkInButton")}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-      </div>
-    </main>
+                  {row.isCheckedIn && row.checkedInAt && (
+                    <div className="text-xs text-gray-500">
+                      {t("result.alreadyCheckedIn", {
+                        name: row.participantName,
+                        time: new Date(row.checkedInAt).toLocaleTimeString(
+                          "de-CH"
+                        ),
+                      })}
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleManualCheckIn(row.registrationId)}
+                  disabled={actionInFlight === row.registrationId}
+                  className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:opacity-50"
+                >
+                  {t("manual.checkInButton")}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </PageShell>
   );
 }

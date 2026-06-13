@@ -22,6 +22,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { PageShell } from "@/components/layout";
 import { useAuth } from "@/lib/auth";
 import {
   useDeleteInvoiceTemplate,
@@ -537,11 +538,9 @@ function InvoiceTemplatesBody() {
 
   if (loading) {
     return (
-      <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-        <div className="mx-auto max-w-5xl">
-          <p className="text-gray-500">{tc("loading")}</p>
-        </div>
-      </main>
+      <PageShell maxWidth="5xl">
+        <p className="text-gray-500">{tc("loading")}</p>
+      </PageShell>
     );
   }
 
@@ -549,188 +548,186 @@ function InvoiceTemplatesBody() {
   const deleting = deleteTemplate.isPending;
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-5xl">
-        {/* Back to Settings */}
-        <Link
-          href="/finance/settings"
-          className="mb-4 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+    <PageShell maxWidth="5xl">
+      {/* Back to Settings */}
+      <Link
+        href="/finance/settings"
+        className="mb-4 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+      >
+        <svg
+          className="h-4 w-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
         >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M15 19l-7-7 7-7"
+          />
+        </svg>
+        {t("backToSettings")}
+      </Link>
+
+      {/* Header */}
+      <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
+            {tit("title")}
+          </h1>
+          <p className="mt-1 text-gray-600">{tit("subtitle")}</p>
+        </div>
+        {canWriteFinance && (
+          <button
+            onClick={openCreate}
+            className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-700"
+          >
+            <PlusIcon className="h-5 w-5" />
+            {tit("create")}
+          </button>
+        )}
+      </div>
+
+      {/* Search */}
+      <div className="mb-6 rounded-xl bg-white p-4 shadow-sm">
+        <div className="relative">
           <svg
-            className="h-4 w-4"
+            className="absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400"
             fill="none"
-            stroke="currentColor"
             viewBox="0 0 24 24"
+            stroke="currentColor"
           >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={2}
-              d="M15 19l-7-7 7-7"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
             />
           </svg>
-          {t("backToSettings")}
-        </Link>
+          <input
+            type="text"
+            placeholder={tit("searchInvoiceTemplates")}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-10 transition-colors outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
+          />
+        </div>
+      </div>
 
-        {/* Header */}
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-              {tit("title")}
-            </h1>
-            <p className="mt-1 text-gray-600">{tit("subtitle")}</p>
+      {/* Alerts */}
+      {banner && (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4">
+          <p className="text-sm text-red-700">{banner}</p>
+        </div>
+      )}
+      {success && (
+        <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4">
+          <p className="text-sm text-green-700">{success}</p>
+        </div>
+      )}
+
+      {/* Templates Table */}
+      {filteredTemplates.length === 0 ? (
+        <div className="rounded-xl bg-white p-12 text-center shadow-sm">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-orange-100">
+            <TemplateIcon className="h-6 w-6 text-orange-600" />
           </div>
+          <h3 className="text-lg font-medium text-gray-900">
+            {tit("noTemplatesTitle")}
+          </h3>
+          <p className="mt-1 text-sm text-gray-500">
+            {tit("noTemplatesMessage")}
+          </p>
           {canWriteFinance && (
             <button
               onClick={openCreate}
-              className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-700"
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-700"
             >
               <PlusIcon className="h-5 w-5" />
               {tit("create")}
             </button>
           )}
         </div>
-
-        {/* Search */}
-        <div className="mb-6 rounded-xl bg-white p-4 shadow-sm">
-          <div className="relative">
-            <svg
-              className="absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-            <input
-              type="text"
-              placeholder={tit("searchInvoiceTemplates")}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-10 transition-colors outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
-            />
-          </div>
-        </div>
-
-        {/* Alerts */}
-        {banner && (
-          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4">
-            <p className="text-sm text-red-700">{banner}</p>
-          </div>
-        )}
-        {success && (
-          <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4">
-            <p className="text-sm text-green-700">{success}</p>
-          </div>
-        )}
-
-        {/* Templates Table */}
-        {filteredTemplates.length === 0 ? (
-          <div className="rounded-xl bg-white p-12 text-center shadow-sm">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-orange-100">
-              <TemplateIcon className="h-6 w-6 text-orange-600" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900">
-              {tit("noTemplatesTitle")}
-            </h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {tit("noTemplatesMessage")}
-            </p>
-            {canWriteFinance && (
-              <button
-                onClick={openCreate}
-                className="mt-4 inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-700"
-              >
-                <PlusIcon className="h-5 w-5" />
-                {tit("create")}
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="overflow-hidden rounded-xl bg-white shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                      {tit("name")}
+      ) : (
+        <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                    {tit("name")}
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                    {tit("jurisdiction")}
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium tracking-wider text-gray-500 uppercase">
+                    {tit("isDefault")}
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                    {tit("language")}
+                  </th>
+                  {canWriteFinance && (
+                    <th className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
+                      {tit("actions")}
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                      {tit("jurisdiction")}
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium tracking-wider text-gray-500 uppercase">
-                      {tit("isDefault")}
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                      {tit("language")}
-                    </th>
+                  )}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 bg-white">
+                {filteredTemplates.map((tmpl) => (
+                  <tr
+                    key={tmpl.id}
+                    className="transition-colors hover:bg-gray-50"
+                  >
+                    <td className="px-6 py-4 text-sm font-medium whitespace-nowrap text-gray-900">
+                      {tmpl.name}
+                    </td>
+                    <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-700">
+                      {tmpl.jurisdiction}
+                      {tmpl.countryCode && (
+                        <span className="ml-1 text-gray-400">
+                          ({tmpl.countryCode})
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-center whitespace-nowrap">
+                      {tmpl.isDefault && (
+                        <span className="inline-flex items-center rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-medium text-orange-800">
+                          {tit("isDefault")}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-700">
+                      {tmpl.language.toUpperCase()}
+                    </td>
                     {canWriteFinance && (
-                      <th className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
-                        {tit("actions")}
-                      </th>
+                      <td className="px-6 py-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => openEdit(tmpl)}
+                            className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                            title={tit("edit")}
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => setConfirmDeleteId(tmpl.id)}
+                            className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600"
+                            title={tit("delete")}
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
                     )}
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 bg-white">
-                  {filteredTemplates.map((tmpl) => (
-                    <tr
-                      key={tmpl.id}
-                      className="transition-colors hover:bg-gray-50"
-                    >
-                      <td className="px-6 py-4 text-sm font-medium whitespace-nowrap text-gray-900">
-                        {tmpl.name}
-                      </td>
-                      <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-700">
-                        {tmpl.jurisdiction}
-                        {tmpl.countryCode && (
-                          <span className="ml-1 text-gray-400">
-                            ({tmpl.countryCode})
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-center whitespace-nowrap">
-                        {tmpl.isDefault && (
-                          <span className="inline-flex items-center rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-medium text-orange-800">
-                            {tit("isDefault")}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-700">
-                        {tmpl.language.toUpperCase()}
-                      </td>
-                      {canWriteFinance && (
-                        <td className="px-6 py-4 text-right whitespace-nowrap">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={() => openEdit(tmpl)}
-                              className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
-                              title={tit("edit")}
-                            >
-                              <PencilIcon className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => setConfirmDeleteId(tmpl.id)}
-                              className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600"
-                              title={tit("delete")}
-                            >
-                              <TrashIcon className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Create/Edit Dialog */}
       {dialogOpen && (
@@ -772,7 +769,7 @@ function InvoiceTemplatesBody() {
           </div>
         </div>
       )}
-    </main>
+    </PageShell>
   );
 }
 

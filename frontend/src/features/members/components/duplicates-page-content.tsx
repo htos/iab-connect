@@ -20,6 +20,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { CheckCircle2, AlertOctagon, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { PageShell } from "@/components/layout";
 import type { DuplicateGroupDto, MatchTier } from "@/lib/api/members";
 import { useDuplicateGroups } from "../hooks/use-duplicate-groups";
 import { useMergeMembers } from "../hooks/use-merge-members";
@@ -133,137 +134,135 @@ export function DuplicatesPageContent() {
     : null;
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-7xl">
-        <header className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-            {t("members.duplicates.title")}
-          </h1>
-          <p className="mt-1 text-sm text-gray-600">
-            {t("members.duplicates.subtitle")}
-          </p>
-        </header>
+    <PageShell>
+      <header className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
+          {t("members.duplicates.title")}
+        </h1>
+        <p className="mt-1 text-sm text-gray-600">
+          {t("members.duplicates.subtitle")}
+        </p>
+      </header>
 
-        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            <span>{t("members.duplicates.filter.tierLabel")}</span>
-            <select
-              value={minTier}
-              onChange={(e) => {
-                setMinTier(e.target.value as MatchTier | "");
-                setPage(1);
-              }}
-              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none"
-              data-testid="duplicates-tier-filter"
-            >
-              <option value="">{t("members.duplicates.filter.all")}</option>
-              <option value="Exact">
-                {t("members.duplicates.filter.exact")}
-              </option>
-              <option value="Likely">
-                {t("members.duplicates.filter.likely")}
-              </option>
-            </select>
-          </label>
-
-          <span className="text-sm text-gray-500">
-            {t("members.duplicates.totalCount", { count: totalCount })}
-          </span>
-        </div>
-
-        {loading && (
-          <div
-            className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white p-6 text-gray-600"
-            data-testid="duplicates-loading"
+      <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <span>{t("members.duplicates.filter.tierLabel")}</span>
+          <select
+            value={minTier}
+            onChange={(e) => {
+              setMinTier(e.target.value as MatchTier | "");
+              setPage(1);
+            }}
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none"
+            data-testid="duplicates-tier-filter"
           >
-            <Loader2 className="h-4 w-4 animate-spin" />
-            {t("members.duplicates.loading")}
-          </div>
-        )}
+            <option value="">{t("members.duplicates.filter.all")}</option>
+            <option value="Exact">
+              {t("members.duplicates.filter.exact")}
+            </option>
+            <option value="Likely">
+              {t("members.duplicates.filter.likely")}
+            </option>
+          </select>
+        </label>
 
-        {!loading && errorMessage && (
-          <div
-            role="alert"
-            className="flex items-start gap-2 rounded-xl border border-orange-200 bg-orange-50 p-4"
-            data-testid="duplicates-error"
-          >
-            <AlertOctagon className="mt-0.5 h-5 w-5 flex-shrink-0 text-orange-600" />
-            <div className="flex-1">
-              <p className="font-semibold text-orange-800">
-                {t("members.duplicates.error.title")}
-              </p>
-              <p className="mt-1 text-sm text-orange-700">{errorMessage}</p>
-              <button
-                type="button"
-                onClick={() => refetch()}
-                className="mt-2 inline-flex items-center rounded-lg border border-orange-300 bg-white px-3 py-1.5 text-sm font-medium text-orange-700 hover:bg-orange-100"
-              >
-                {t("members.duplicates.error.retry")}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {!loading && !errorMessage && groups.length === 0 && (
-          <div
-            className="flex flex-col items-center gap-2 rounded-xl border border-gray-200 bg-white p-10 text-center"
-            data-testid="duplicates-empty"
-          >
-            <CheckCircle2 className="h-10 w-10 text-green-600" />
-            <p className="text-lg font-semibold text-gray-800">
-              {t("members.duplicates.empty.title")}
-            </p>
-            <p className="text-sm text-gray-600">
-              {t("members.duplicates.empty.message")}
-            </p>
-          </div>
-        )}
-
-        {!loading && !errorMessage && groups.length > 0 && (
-          <ul className="space-y-3" data-testid="duplicates-list">
-            {groups.map((group) => (
-              <li key={group.groupKey}>
-                <DuplicateGroupRow
-                  group={group}
-                  isAdmin={isAdmin}
-                  onMerge={handleMerge}
-                  onDismiss={handleDismiss}
-                />
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {!loading && !errorMessage && totalPages > 1 && (
-          <nav
-            className="mt-6 flex items-center justify-between"
-            aria-label="pagination"
-          >
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-              className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-            >
-              {t("members.duplicates.pagination.prev")}
-            </button>
-            <span className="text-sm text-gray-600">
-              {t("members.duplicates.pagination.pageOf", {
-                page,
-                totalPages,
-              })}
-            </span>
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-              className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-            >
-              {t("members.duplicates.pagination.next")}
-            </button>
-          </nav>
-        )}
+        <span className="text-sm text-gray-500">
+          {t("members.duplicates.totalCount", { count: totalCount })}
+        </span>
       </div>
+
+      {loading && (
+        <div
+          className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white p-6 text-gray-600"
+          data-testid="duplicates-loading"
+        >
+          <Loader2 className="h-4 w-4 animate-spin" />
+          {t("members.duplicates.loading")}
+        </div>
+      )}
+
+      {!loading && errorMessage && (
+        <div
+          role="alert"
+          className="flex items-start gap-2 rounded-xl border border-orange-200 bg-orange-50 p-4"
+          data-testid="duplicates-error"
+        >
+          <AlertOctagon className="mt-0.5 h-5 w-5 flex-shrink-0 text-orange-600" />
+          <div className="flex-1">
+            <p className="font-semibold text-orange-800">
+              {t("members.duplicates.error.title")}
+            </p>
+            <p className="mt-1 text-sm text-orange-700">{errorMessage}</p>
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="mt-2 inline-flex items-center rounded-lg border border-orange-300 bg-white px-3 py-1.5 text-sm font-medium text-orange-700 hover:bg-orange-100"
+            >
+              {t("members.duplicates.error.retry")}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!loading && !errorMessage && groups.length === 0 && (
+        <div
+          className="flex flex-col items-center gap-2 rounded-xl border border-gray-200 bg-white p-10 text-center"
+          data-testid="duplicates-empty"
+        >
+          <CheckCircle2 className="h-10 w-10 text-green-600" />
+          <p className="text-lg font-semibold text-gray-800">
+            {t("members.duplicates.empty.title")}
+          </p>
+          <p className="text-sm text-gray-600">
+            {t("members.duplicates.empty.message")}
+          </p>
+        </div>
+      )}
+
+      {!loading && !errorMessage && groups.length > 0 && (
+        <ul className="space-y-3" data-testid="duplicates-list">
+          {groups.map((group) => (
+            <li key={group.groupKey}>
+              <DuplicateGroupRow
+                group={group}
+                isAdmin={isAdmin}
+                onMerge={handleMerge}
+                onDismiss={handleDismiss}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {!loading && !errorMessage && totalPages > 1 && (
+        <nav
+          className="mt-6 flex items-center justify-between"
+          aria-label="pagination"
+        >
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1}
+            className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            {t("members.duplicates.pagination.prev")}
+          </button>
+          <span className="text-sm text-gray-600">
+            {t("members.duplicates.pagination.pageOf", {
+              page,
+              totalPages,
+            })}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+            className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            {t("members.duplicates.pagination.next")}
+          </button>
+        </nav>
+      )}
 
       <MergeConfirmationModal
         open={mergeOpen}
@@ -277,6 +276,6 @@ export function DuplicatesPageContent() {
         group={activeGroup}
         onConfirm={handleDismissConfirm}
       />
-    </main>
+    </PageShell>
   );
 }

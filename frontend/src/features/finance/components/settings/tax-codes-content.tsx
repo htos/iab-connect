@@ -20,6 +20,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { PageShell } from "@/components/layout";
 import { useAuth } from "@/lib/auth";
 import {
   useDeleteTaxCode,
@@ -354,11 +355,9 @@ function TaxCodesBody() {
 
   if (loading) {
     return (
-      <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-        <div className="mx-auto max-w-4xl">
-          <p className="text-gray-500">{tc("loading")}</p>
-        </div>
-      </main>
+      <PageShell maxWidth="4xl">
+        <p className="text-gray-500">{tc("loading")}</p>
+      </PageShell>
     );
   }
 
@@ -366,197 +365,195 @@ function TaxCodesBody() {
   const deleting = deleteTaxCode.isPending;
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-4xl">
-        {/* Back to Settings */}
-        <Link
-          href="/finance/settings"
-          className="mb-4 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+    <PageShell maxWidth="4xl">
+      {/* Back to Settings */}
+      <Link
+        href="/finance/settings"
+        className="mb-4 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+      >
+        <svg
+          className="h-4 w-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
         >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M15 19l-7-7 7-7"
+          />
+        </svg>
+        {t("backToSettings")}
+      </Link>
+
+      {/* Header */}
+      <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
+            {ttc("title")}
+          </h1>
+          <p className="mt-1 text-gray-600">{ttc("subtitle")}</p>
+        </div>
+        {canWriteFinance && (
+          <button
+            onClick={openCreate}
+            className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-700"
+          >
+            <PlusIcon className="h-5 w-5" />
+            {ttc("addTaxCode")}
+          </button>
+        )}
+      </div>
+
+      {/* Search */}
+      <div className="mb-6 rounded-xl bg-white p-4 shadow-sm">
+        <div className="relative">
           <svg
-            className="h-4 w-4"
+            className="absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400"
             fill="none"
-            stroke="currentColor"
             viewBox="0 0 24 24"
+            stroke="currentColor"
           >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={2}
-              d="M15 19l-7-7 7-7"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
             />
           </svg>
-          {t("backToSettings")}
-        </Link>
+          <input
+            type="text"
+            placeholder={ttc("searchTaxCodes")}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-10 transition-colors outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
+          />
+        </div>
+      </div>
 
-        {/* Header */}
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-              {ttc("title")}
-            </h1>
-            <p className="mt-1 text-gray-600">{ttc("subtitle")}</p>
+      {/* Alerts */}
+      {banner && (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4">
+          <p className="text-sm text-red-700">{banner}</p>
+        </div>
+      )}
+      {success && (
+        <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4">
+          <p className="text-sm text-green-700">{success}</p>
+        </div>
+      )}
+
+      {/* Tax Codes Table */}
+      {filteredTaxCodes.length === 0 ? (
+        <div className="rounded-xl bg-white p-12 text-center shadow-sm">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-orange-100">
+            <TaxIcon className="h-6 w-6 text-orange-600" />
           </div>
+          <h3 className="text-lg font-medium text-gray-900">
+            {ttc("noTaxCodes")}
+          </h3>
+          <p className="mt-1 text-sm text-gray-500">
+            {ttc("noTaxCodesDescription")}
+          </p>
           {canWriteFinance && (
             <button
               onClick={openCreate}
-              className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-700"
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-700"
             >
               <PlusIcon className="h-5 w-5" />
               {ttc("addTaxCode")}
             </button>
           )}
         </div>
-
-        {/* Search */}
-        <div className="mb-6 rounded-xl bg-white p-4 shadow-sm">
-          <div className="relative">
-            <svg
-              className="absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-            <input
-              type="text"
-              placeholder={ttc("searchTaxCodes")}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-10 transition-colors outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
-            />
-          </div>
-        </div>
-
-        {/* Alerts */}
-        {banner && (
-          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4">
-            <p className="text-sm text-red-700">{banner}</p>
-          </div>
-        )}
-        {success && (
-          <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4">
-            <p className="text-sm text-green-700">{success}</p>
-          </div>
-        )}
-
-        {/* Tax Codes Table */}
-        {filteredTaxCodes.length === 0 ? (
-          <div className="rounded-xl bg-white p-12 text-center shadow-sm">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-orange-100">
-              <TaxIcon className="h-6 w-6 text-orange-600" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900">
-              {ttc("noTaxCodes")}
-            </h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {ttc("noTaxCodesDescription")}
-            </p>
-            {canWriteFinance && (
-              <button
-                onClick={openCreate}
-                className="mt-4 inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-700"
-              >
-                <PlusIcon className="h-5 w-5" />
-                {ttc("addTaxCode")}
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="overflow-hidden rounded-xl bg-white shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                      {ttc("code")}
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                      {ttc("label")}
-                    </th>
+      ) : (
+        <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                    {ttc("code")}
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                    {ttc("label")}
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
+                    {ttc("rate")}
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium tracking-wider text-gray-500 uppercase">
+                    {ttc("isDefault")}
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium tracking-wider text-gray-500 uppercase">
+                    {t("status")}
+                  </th>
+                  {canWriteFinance && (
                     <th className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
-                      {ttc("rate")}
+                      {t("actions")}
                     </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium tracking-wider text-gray-500 uppercase">
-                      {ttc("isDefault")}
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium tracking-wider text-gray-500 uppercase">
-                      {t("status")}
-                    </th>
+                  )}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 bg-white">
+                {filteredTaxCodes.map((code) => (
+                  <tr
+                    key={code.id}
+                    className="transition-colors hover:bg-gray-50"
+                  >
+                    <td className="px-6 py-4 text-sm font-medium whitespace-nowrap text-gray-900">
+                      {code.code}
+                    </td>
+                    <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-700">
+                      {code.label}
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm whitespace-nowrap text-gray-700">
+                      {(code.rate * 100).toFixed(2)}%
+                    </td>
+                    <td className="px-6 py-4 text-center whitespace-nowrap">
+                      {code.isDefault && (
+                        <span className="inline-flex items-center rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-medium text-orange-800">
+                          {ttc("isDefault")}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-center whitespace-nowrap">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                          code.isActive
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        {code.isActive ? t("active") : t("inactive")}
+                      </span>
+                    </td>
                     {canWriteFinance && (
-                      <th className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
-                        {t("actions")}
-                      </th>
+                      <td className="px-6 py-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => openEdit(code)}
+                            className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                            title={ttc("editTaxCode")}
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => setConfirmDeleteId(code.id)}
+                            className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600"
+                            title={t("delete")}
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
                     )}
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 bg-white">
-                  {filteredTaxCodes.map((code) => (
-                    <tr
-                      key={code.id}
-                      className="transition-colors hover:bg-gray-50"
-                    >
-                      <td className="px-6 py-4 text-sm font-medium whitespace-nowrap text-gray-900">
-                        {code.code}
-                      </td>
-                      <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-700">
-                        {code.label}
-                      </td>
-                      <td className="px-6 py-4 text-right text-sm whitespace-nowrap text-gray-700">
-                        {(code.rate * 100).toFixed(2)}%
-                      </td>
-                      <td className="px-6 py-4 text-center whitespace-nowrap">
-                        {code.isDefault && (
-                          <span className="inline-flex items-center rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-medium text-orange-800">
-                            {ttc("isDefault")}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-center whitespace-nowrap">
-                        <span
-                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                            code.isActive
-                              ? "bg-green-100 text-green-800"
-                              : "bg-gray-100 text-gray-600"
-                          }`}
-                        >
-                          {code.isActive ? t("active") : t("inactive")}
-                        </span>
-                      </td>
-                      {canWriteFinance && (
-                        <td className="px-6 py-4 text-right whitespace-nowrap">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={() => openEdit(code)}
-                              className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
-                              title={ttc("editTaxCode")}
-                            >
-                              <PencilIcon className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => setConfirmDeleteId(code.id)}
-                              className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600"
-                              title={t("delete")}
-                            >
-                              <TrashIcon className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Create/Edit Dialog */}
       {dialogOpen && (
@@ -598,7 +595,7 @@ function TaxCodesBody() {
           </div>
         </div>
       )}
-    </main>
+    </PageShell>
   );
 }
 

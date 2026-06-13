@@ -21,6 +21,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { PageShell } from "@/components/layout";
 import { useAuth } from "@/lib/auth";
 import { useAvailableRoles } from "../hooks/use-available-roles";
 import { useCreateUser } from "../hooks/use-create-user";
@@ -108,59 +109,57 @@ export function AdminUserNewContent() {
   }
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-3xl">
-        <Link
-          href="/admin/users"
-          className="mb-6 flex items-center gap-1 text-orange-600 hover:underline"
+    <PageShell maxWidth="3xl">
+      <Link
+        href="/admin/users"
+        className="mb-6 flex items-center gap-1 text-orange-600 hover:underline"
+      >
+        <svg
+          className="h-4 w-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
         >
-          <svg
-            className="h-4 w-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
-          {t("backToUsers")}
-        </Link>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M15 19l-7-7 7-7"
+          />
+        </svg>
+        {t("backToUsers")}
+      </Link>
 
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-              {t("createUser")}
-            </h1>
-            <p className="mt-1 text-gray-600">{t("createUserDescription")}</p>
-          </div>
+      <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
+            {t("createUser")}
+          </h1>
+          <p className="mt-1 text-gray-600">{t("createUserDescription")}</p>
         </div>
-
-        {errorMessage && (
-          <div className="mb-6 flex items-center justify-between rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
-            <span>{errorMessage}</span>
-            <button
-              onClick={() => setError(null)}
-              className="ml-4 font-bold text-red-500 hover:text-red-700"
-            >
-              ×
-            </button>
-          </div>
-        )}
-
-        <AdminUserForm
-          mode="create"
-          defaultValues={EMPTY_VALUES}
-          availableRoles={availableRoles ?? []}
-          onSubmit={handleSubmit}
-          onCancel={() => router.push("/admin/users")}
-          submitLabel={t("createUser")}
-          pending={createMutation.isPending}
-        />
       </div>
-    </main>
+
+      {errorMessage && (
+        <div className="mb-6 flex items-center justify-between rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+          <span>{errorMessage}</span>
+          <button
+            onClick={() => setError(null)}
+            className="ml-4 font-bold text-red-500 hover:text-red-700"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      <AdminUserForm
+        mode="create"
+        defaultValues={EMPTY_VALUES}
+        availableRoles={availableRoles ?? []}
+        onSubmit={handleSubmit}
+        onCancel={() => router.push("/admin/users")}
+        submitLabel={t("createUser")}
+        pending={createMutation.isPending}
+      />
+    </PageShell>
   );
 }

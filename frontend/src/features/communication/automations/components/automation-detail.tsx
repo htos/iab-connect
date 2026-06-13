@@ -17,6 +17,7 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth";
+import { PageShell } from "@/components/layout";
 import { getTriggerLabel } from "@/lib/api/automations";
 import { AutomationStatusBadge } from "./automation-status-badge";
 import { useAutomation } from "../hooks/use-automation";
@@ -62,152 +63,148 @@ export function AutomationDetail({ id }: { id: string }) {
   const lifecycleError = lifecycle.error?.message ?? null;
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-3xl">
-        <div className="mb-4">
-          <Link
-            href="/communication/automations"
-            className="text-sm text-orange-600 hover:underline"
-          >
-            ← {t("backToList")}
-          </Link>
+    <PageShell maxWidth="3xl">
+      <div className="mb-4">
+        <Link
+          href="/communication/automations"
+          className="text-sm text-orange-600 hover:underline"
+        >
+          ← {t("backToList")}
+        </Link>
+      </div>
+
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
+            {automation.name}
+          </h1>
+          {automation.description && (
+            <p className="mt-1 text-gray-600">{automation.description}</p>
+          )}
         </div>
+        <AutomationStatusBadge status={status} />
+      </div>
 
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-              {automation.name}
-            </h1>
-            {automation.description && (
-              <p className="mt-1 text-gray-600">{automation.description}</p>
-            )}
-          </div>
-          <AutomationStatusBadge status={status} />
+      {lifecycleError && (
+        <div
+          className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700"
+          role="alert"
+        >
+          {lifecycleError}
         </div>
+      )}
 
-        {lifecycleError && (
-          <div
-            className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700"
-            role="alert"
-          >
-            {lifecycleError}
-          </div>
-        )}
-
-        <div className="mb-6 space-y-2 rounded-xl bg-white p-6 text-sm shadow-sm">
-          <div>
-            <span className="font-medium text-gray-700">
-              {t("table.trigger")}:{" "}
-            </span>
-            {getTriggerLabel(automation.trigger, t)}
-          </div>
-          <div>
-            <span className="font-medium text-gray-700">
-              {t("table.template")}:{" "}
-            </span>
-            {automation.templateName ?? `#${automation.templateId}`}
-          </div>
-          <div>
-            <span className="font-medium text-gray-700">
-              {t("form.recipients")}:{" "}
-            </span>
-            {t(`segment.${automation.segmentType}`)}
-            {automation.consentFilter
-              ? ` · ${t(`consent.${automation.consentFilter}`)}`
-              : ""}
-          </div>
+      <div className="mb-6 space-y-2 rounded-xl bg-white p-6 text-sm shadow-sm">
+        <div>
+          <span className="font-medium text-gray-700">
+            {t("table.trigger")}:{" "}
+          </span>
+          {getTriggerLabel(automation.trigger, t)}
         </div>
-
-        {/* Lifecycle actions */}
-        <div className="mb-6 rounded-xl bg-white p-6 shadow-sm">
-          <h2 className="mb-3 text-lg font-semibold text-gray-900">
-            {t("actions")}
-          </h2>
-          <div className="flex flex-wrap gap-3">
-            {(status === "Draft" || status === "Disabled") && (
-              <button
-                onClick={() => lifecycle.mutate("activate")}
-                disabled={busy}
-                className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-700 disabled:opacity-50"
-              >
-                {t("activate")}
-              </button>
-            )}
-            {status === "Active" && (
-              <button
-                onClick={() => lifecycle.mutate("pause")}
-                disabled={busy}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
-              >
-                {t("pause")}
-              </button>
-            )}
-            {status === "Paused" && (
-              <button
-                onClick={() => lifecycle.mutate("resume")}
-                disabled={busy}
-                className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-700 disabled:opacity-50"
-              >
-                {t("resume")}
-              </button>
-            )}
-            {status !== "Disabled" && (
-              <button
-                onClick={() => lifecycle.mutate("disable")}
-                disabled={busy}
-                className="rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50 disabled:opacity-50"
-              >
-                {t("disable")}
-              </button>
-            )}
-            {canEdit && (
-              <Link
-                href={`/communication/automations/${automation.id}/edit`}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
-              >
-                {t("edit")}
-              </Link>
-            )}
-          </div>
+        <div>
+          <span className="font-medium text-gray-700">
+            {t("table.template")}:{" "}
+          </span>
+          {automation.templateName ?? `#${automation.templateId}`}
         </div>
+        <div>
+          <span className="font-medium text-gray-700">
+            {t("form.recipients")}:{" "}
+          </span>
+          {t(`segment.${automation.segmentType}`)}
+          {automation.consentFilter
+            ? ` · ${t(`consent.${automation.consentFilter}`)}`
+            : ""}
+        </div>
+      </div>
 
-        {/* Recent executions */}
-        <div className="rounded-xl bg-white p-6 shadow-sm">
-          <h2 className="mb-3 text-lg font-semibold text-gray-900">
-            {t("recentRuns")}
-          </h2>
-          {executions.length === 0 ? (
-            <p className="text-sm text-gray-500">{t("noRunsYet")}</p>
-          ) : (
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead>
-                <tr className="text-left text-xs font-medium text-gray-500 uppercase">
-                  <th className="py-2 pr-4">{t("run.startedAt")}</th>
-                  <th className="py-2 pr-4">{t("status")}</th>
-                  <th className="py-2 pr-4">{t("run.sent")}</th>
-                  <th className="py-2 pr-4">{t("run.failed")}</th>
-                  <th className="py-2 pr-4">{t("run.skipped")}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {executions.map((e) => (
-                  <tr key={e.id}>
-                    <td className="py-2 pr-4">
-                      {new Date(e.startedAt).toLocaleString("de-CH")}
-                    </td>
-                    <td className="py-2 pr-4">{e.status}</td>
-                    <td className="py-2 pr-4 text-green-700">{e.sentCount}</td>
-                    <td className="py-2 pr-4 text-red-700">{e.failedCount}</td>
-                    <td className="py-2 pr-4 text-gray-500">
-                      {e.skippedCount}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* Lifecycle actions */}
+      <div className="mb-6 rounded-xl bg-white p-6 shadow-sm">
+        <h2 className="mb-3 text-lg font-semibold text-gray-900">
+          {t("actions")}
+        </h2>
+        <div className="flex flex-wrap gap-3">
+          {(status === "Draft" || status === "Disabled") && (
+            <button
+              onClick={() => lifecycle.mutate("activate")}
+              disabled={busy}
+              className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-700 disabled:opacity-50"
+            >
+              {t("activate")}
+            </button>
+          )}
+          {status === "Active" && (
+            <button
+              onClick={() => lifecycle.mutate("pause")}
+              disabled={busy}
+              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+            >
+              {t("pause")}
+            </button>
+          )}
+          {status === "Paused" && (
+            <button
+              onClick={() => lifecycle.mutate("resume")}
+              disabled={busy}
+              className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-700 disabled:opacity-50"
+            >
+              {t("resume")}
+            </button>
+          )}
+          {status !== "Disabled" && (
+            <button
+              onClick={() => lifecycle.mutate("disable")}
+              disabled={busy}
+              className="rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50 disabled:opacity-50"
+            >
+              {t("disable")}
+            </button>
+          )}
+          {canEdit && (
+            <Link
+              href={`/communication/automations/${automation.id}/edit`}
+              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+            >
+              {t("edit")}
+            </Link>
           )}
         </div>
       </div>
-    </main>
+
+      {/* Recent executions */}
+      <div className="rounded-xl bg-white p-6 shadow-sm">
+        <h2 className="mb-3 text-lg font-semibold text-gray-900">
+          {t("recentRuns")}
+        </h2>
+        {executions.length === 0 ? (
+          <p className="text-sm text-gray-500">{t("noRunsYet")}</p>
+        ) : (
+          <table className="min-w-full divide-y divide-gray-200 text-sm">
+            <thead>
+              <tr className="text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="py-2 pr-4">{t("run.startedAt")}</th>
+                <th className="py-2 pr-4">{t("status")}</th>
+                <th className="py-2 pr-4">{t("run.sent")}</th>
+                <th className="py-2 pr-4">{t("run.failed")}</th>
+                <th className="py-2 pr-4">{t("run.skipped")}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {executions.map((e) => (
+                <tr key={e.id}>
+                  <td className="py-2 pr-4">
+                    {new Date(e.startedAt).toLocaleString("de-CH")}
+                  </td>
+                  <td className="py-2 pr-4">{e.status}</td>
+                  <td className="py-2 pr-4 text-green-700">{e.sentCount}</td>
+                  <td className="py-2 pr-4 text-red-700">{e.failedCount}</td>
+                  <td className="py-2 pr-4 text-gray-500">{e.skippedCount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </PageShell>
   );
 }

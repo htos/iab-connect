@@ -23,6 +23,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { PageShell } from "@/components/layout";
 import { useAuth } from "@/lib/auth";
 import { useFinanceProfile } from "../../hooks/use-finance-profile";
 import {
@@ -413,13 +414,11 @@ function SettingsHubBody() {
 
   if (authLoading || !profileLoaded) {
     return (
-      <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-        <div className="mx-auto max-w-6xl">
-          <div className="flex min-h-100 items-center justify-center">
-            <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-orange-600"></div>
-          </div>
+      <PageShell maxWidth="6xl">
+        <div className="flex min-h-100 items-center justify-center">
+          <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-orange-600"></div>
         </div>
-      </main>
+      </PageShell>
     );
   }
 
@@ -482,275 +481,273 @@ function SettingsHubBody() {
   const resetting = resetFinance.isPending;
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-6xl">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-            {ts("title")}
-          </h1>
-          <p className="mt-1 text-gray-600">{t("settingsHub.subtitle")}</p>
-        </div>
+    <PageShell maxWidth="6xl">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
+          {ts("title")}
+        </h1>
+        <p className="mt-1 text-gray-600">{t("settingsHub.subtitle")}</p>
+      </div>
 
-        {/* Section: Finanzprofil */}
-        <div className="mb-8">
-          <h2 className="mb-1 text-lg font-semibold text-gray-900">
-            {t("settingsHub.profileSectionTitle")}
+      {/* Section: Finanzprofil */}
+      <div className="mb-8">
+        <h2 className="mb-1 text-lg font-semibold text-gray-900">
+          {t("settingsHub.profileSectionTitle")}
+        </h2>
+        <p className="mb-4 text-sm text-gray-500">
+          {t("settingsHub.profileSectionDesc")}
+        </p>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {profileCards.map(renderCard)}
+        </div>
+      </div>
+
+      {/* Section: Allgemein */}
+      <div className="mb-8">
+        <h2 className="mb-1 text-lg font-semibold text-gray-900">
+          {t("settingsHub.generalSectionTitle")}
+        </h2>
+        <p className="mb-4 text-sm text-gray-500">
+          {t("settingsHub.generalSectionDesc")}
+        </p>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {generalCards.map(renderCard)}
+        </div>
+      </div>
+
+      {/* Section: Einfache Buchhaltung */}
+      <div className="mb-8">
+        <h2 className="mb-1 text-lg font-semibold text-gray-900">
+          {t("settingsHub.simpleCashSectionTitle")}
+        </h2>
+        <p className="mb-4 text-sm text-gray-500">
+          {t("settingsHub.simpleCashSectionDesc")}
+        </p>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {simpleCashCards.map(renderCard)}
+        </div>
+      </div>
+
+      {/* Section: Doppelte Buchhaltung */}
+      <div className="mb-8">
+        <h2 className="mb-1 text-lg font-semibold text-gray-900">
+          {t("settingsHub.doubleEntrySection")}
+        </h2>
+        <p className="mb-4 text-sm text-gray-500">
+          {isDoubleEntry
+            ? t("settingsHub.doubleEntryActive")
+            : t("settingsHub.doubleEntryInactive")}
+        </p>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {accountingSetupCards.map((card) =>
+            isDoubleEntry ? renderCard(card) : renderDisabledCard(card)
+          )}
+          {isDoubleEntry && accountingOperationalCards.map(renderCard)}
+        </div>
+      </div>
+
+      {/* Backfill Double-Entry — only when active + write permission */}
+      {isDoubleEntry && canWriteFinance && (
+        <div className="mb-8 rounded-xl border-2 border-orange-200 bg-orange-50 p-6">
+          <h2 className="mb-1 text-lg font-semibold text-orange-800">
+            {t("settingsHub.backfillTitle")}
           </h2>
-          <p className="mb-4 text-sm text-gray-500">
-            {t("settingsHub.profileSectionDesc")}
+          <p className="mb-4 text-sm text-orange-700">
+            {t("settingsHub.backfillDesc")}
           </p>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {profileCards.map(renderCard)}
-          </div>
-        </div>
 
-        {/* Section: Allgemein */}
-        <div className="mb-8">
-          <h2 className="mb-1 text-lg font-semibold text-gray-900">
-            {t("settingsHub.generalSectionTitle")}
-          </h2>
-          <p className="mb-4 text-sm text-gray-500">
-            {t("settingsHub.generalSectionDesc")}
-          </p>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {generalCards.map(renderCard)}
-          </div>
-        </div>
-
-        {/* Section: Einfache Buchhaltung */}
-        <div className="mb-8">
-          <h2 className="mb-1 text-lg font-semibold text-gray-900">
-            {t("settingsHub.simpleCashSectionTitle")}
-          </h2>
-          <p className="mb-4 text-sm text-gray-500">
-            {t("settingsHub.simpleCashSectionDesc")}
-          </p>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {simpleCashCards.map(renderCard)}
-          </div>
-        </div>
-
-        {/* Section: Doppelte Buchhaltung */}
-        <div className="mb-8">
-          <h2 className="mb-1 text-lg font-semibold text-gray-900">
-            {t("settingsHub.doubleEntrySection")}
-          </h2>
-          <p className="mb-4 text-sm text-gray-500">
-            {isDoubleEntry
-              ? t("settingsHub.doubleEntryActive")
-              : t("settingsHub.doubleEntryInactive")}
-          </p>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {accountingSetupCards.map((card) =>
-              isDoubleEntry ? renderCard(card) : renderDisabledCard(card)
-            )}
-            {isDoubleEntry && accountingOperationalCards.map(renderCard)}
-          </div>
-        </div>
-
-        {/* Backfill Double-Entry — only when active + write permission */}
-        {isDoubleEntry && canWriteFinance && (
-          <div className="mb-8 rounded-xl border-2 border-orange-200 bg-orange-50 p-6">
-            <h2 className="mb-1 text-lg font-semibold text-orange-800">
-              {t("settingsHub.backfillTitle")}
-            </h2>
-            <p className="mb-4 text-sm text-orange-700">
-              {t("settingsHub.backfillDesc")}
-            </p>
-
-            <div className="rounded-lg border border-orange-200 bg-white p-4">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700">
-                    {t("settingsHub.backfillCutOffDate")}
-                  </label>
-                  <input
-                    type="date"
-                    value={backfillDate}
-                    onChange={(e) => setBackfillDate(e.target.value)}
-                    className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">
-                    {t("settingsHub.backfillCutOffHint")}
-                  </p>
-                </div>
-                <button
-                  onClick={handleBackfill}
-                  disabled={backfillRunning}
-                  className="rounded-lg bg-orange-600 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {backfillRunning ? (
-                    <span className="flex items-center gap-2">
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
-                      {t("settingsHub.backfillRunning")}
-                    </span>
-                  ) : (
-                    t("settingsHub.backfillButton")
-                  )}
-                </button>
+          <div className="rounded-lg border border-orange-200 bg-white p-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700">
+                  {t("settingsHub.backfillCutOffDate")}
+                </label>
+                <input
+                  type="date"
+                  value={backfillDate}
+                  onChange={(e) => setBackfillDate(e.target.value)}
+                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  {t("settingsHub.backfillCutOffHint")}
+                </p>
               </div>
+              <button
+                onClick={handleBackfill}
+                disabled={backfillRunning}
+                className="rounded-lg bg-orange-600 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {backfillRunning ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                    {t("settingsHub.backfillRunning")}
+                  </span>
+                ) : (
+                  t("settingsHub.backfillButton")
+                )}
+              </button>
+            </div>
 
-              {backfillError && (
-                <div className="mt-4 rounded-lg bg-red-100 p-3 text-sm text-red-700">
-                  {backfillError}
-                </div>
-              )}
+            {backfillError && (
+              <div className="mt-4 rounded-lg bg-red-100 p-3 text-sm text-red-700">
+                {backfillError}
+              </div>
+            )}
 
-              {backfillResult && (
-                <div className="mt-4 space-y-3">
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    <div className="rounded-lg bg-green-50 p-3 text-center">
-                      <div className="text-2xl font-bold text-green-700">
-                        {backfillResult.journalEntriesCreated}
-                      </div>
-                      <div className="text-xs text-green-600">
-                        {t("settingsHub.backfillCreated")}
-                      </div>
+            {backfillResult && (
+              <div className="mt-4 space-y-3">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="rounded-lg bg-green-50 p-3 text-center">
+                    <div className="text-2xl font-bold text-green-700">
+                      {backfillResult.journalEntriesCreated}
                     </div>
-                    <div className="rounded-lg bg-blue-50 p-3 text-center">
-                      <div className="text-2xl font-bold text-blue-700">
-                        {backfillResult.transactionsProcessed}
-                      </div>
-                      <div className="text-xs text-blue-600">
-                        {t("settingsHub.backfillTransactions")}
-                      </div>
-                    </div>
-                    <div className="rounded-lg bg-indigo-50 p-3 text-center">
-                      <div className="text-2xl font-bold text-indigo-700">
-                        {backfillResult.paymentsProcessed}
-                      </div>
-                      <div className="text-xs text-indigo-600">
-                        {t("settingsHub.backfillPayments")}
-                      </div>
-                    </div>
-                    <div className="rounded-lg bg-gray-50 p-3 text-center">
-                      <div className="text-2xl font-bold text-gray-700">
-                        {backfillResult.skippedAlreadyPosted}
-                      </div>
-                      <div className="text-xs text-gray-600">
-                        {t("settingsHub.backfillSkipped")}
-                      </div>
+                    <div className="text-xs text-green-600">
+                      {t("settingsHub.backfillCreated")}
                     </div>
                   </div>
-
-                  {backfillResult.errorCount > 0 && (
-                    <div className="rounded-lg border border-red-200 bg-red-50 p-3">
-                      <h4 className="mb-2 text-sm font-semibold text-red-800">
-                        {t("settingsHub.backfillErrors", {
-                          count: backfillResult.errorCount,
-                        })}
-                      </h4>
-                      <div className="max-h-48 overflow-y-auto">
-                        <table className="w-full text-xs">
-                          <thead>
-                            <tr className="border-b border-red-200 text-left text-red-700">
-                              <th className="pr-2 pb-1">
-                                {t("settingsHub.backfillErrorType")}
-                              </th>
-                              <th className="pr-2 pb-1">ID</th>
-                              <th className="pr-2 pb-1">
-                                {t("settingsHub.backfillErrorDesc")}
-                              </th>
-                              <th className="pb-1">
-                                {t("settingsHub.backfillErrorMessage")}
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {backfillResult.errors.map((err, i) => (
-                              <tr key={i} className="border-b border-red-100">
-                                <td className="py-1 pr-2 text-red-700">
-                                  {err.sourceType}
-                                </td>
-                                <td className="py-1 pr-2 font-mono text-red-600">
-                                  {err.sourceId}
-                                </td>
-                                <td className="py-1 pr-2 text-red-600">
-                                  {err.description}
-                                </td>
-                                <td className="py-1 text-red-600">
-                                  {err.errorMessage}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                  <div className="rounded-lg bg-blue-50 p-3 text-center">
+                    <div className="text-2xl font-bold text-blue-700">
+                      {backfillResult.transactionsProcessed}
                     </div>
-                  )}
-
-                  {backfillResult.errorCount === 0 && (
-                    <div className="rounded-lg bg-green-100 p-3 text-sm text-green-700">
-                      {t("settingsHub.backfillSuccess")}
+                    <div className="text-xs text-blue-600">
+                      {t("settingsHub.backfillTransactions")}
                     </div>
-                  )}
+                  </div>
+                  <div className="rounded-lg bg-indigo-50 p-3 text-center">
+                    <div className="text-2xl font-bold text-indigo-700">
+                      {backfillResult.paymentsProcessed}
+                    </div>
+                    <div className="text-xs text-indigo-600">
+                      {t("settingsHub.backfillPayments")}
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-gray-50 p-3 text-center">
+                    <div className="text-2xl font-bold text-gray-700">
+                      {backfillResult.skippedAlreadyPosted}
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      {t("settingsHub.backfillSkipped")}
+                    </div>
+                  </div>
                 </div>
-              )}
-            </div>
-          </div>
-        )}
 
-        {/* Danger Zone — Finance Reset */}
-        {canWriteFinance && (
-          <div className="mb-8 rounded-xl border-2 border-red-200 bg-red-50 p-6">
-            <h2 className="mb-1 text-lg font-semibold text-red-800">
-              {t("settingsHub.dangerZoneTitle")}
-            </h2>
-            <p className="mb-4 text-sm text-red-600">
-              {t("settingsHub.dangerZoneDesc")}
-            </p>
+                {backfillResult.errorCount > 0 && (
+                  <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+                    <h4 className="mb-2 text-sm font-semibold text-red-800">
+                      {t("settingsHub.backfillErrors", {
+                        count: backfillResult.errorCount,
+                      })}
+                    </h4>
+                    <div className="max-h-48 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="border-b border-red-200 text-left text-red-700">
+                            <th className="pr-2 pb-1">
+                              {t("settingsHub.backfillErrorType")}
+                            </th>
+                            <th className="pr-2 pb-1">ID</th>
+                            <th className="pr-2 pb-1">
+                              {t("settingsHub.backfillErrorDesc")}
+                            </th>
+                            <th className="pb-1">
+                              {t("settingsHub.backfillErrorMessage")}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {backfillResult.errors.map((err, i) => (
+                            <tr key={i} className="border-b border-red-100">
+                              <td className="py-1 pr-2 text-red-700">
+                                {err.sourceType}
+                              </td>
+                              <td className="py-1 pr-2 font-mono text-red-600">
+                                {err.sourceId}
+                              </td>
+                              <td className="py-1 pr-2 text-red-600">
+                                {err.description}
+                              </td>
+                              <td className="py-1 text-red-600">
+                                {err.errorMessage}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
 
-            {resetSuccess && (
-              <div className="mb-4 rounded-lg bg-green-100 p-3 text-sm text-green-700">
-                {resetSuccess}
+                {backfillResult.errorCount === 0 && (
+                  <div className="rounded-lg bg-green-100 p-3 text-sm text-green-700">
+                    {t("settingsHub.backfillSuccess")}
+                  </div>
+                )}
               </div>
             )}
-            {resetError && (
-              <div className="mb-4 rounded-lg bg-red-100 p-3 text-sm text-red-700">
-                {resetError}
-              </div>
-            )}
+          </div>
+        </div>
+      )}
 
-            <div className="flex items-start gap-4 rounded-lg border border-red-200 bg-white p-4">
-              <div className="rounded-xl bg-red-100 p-3">
-                <svg
-                  className="h-6 w-6 text-red-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                  />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-base font-semibold text-red-800">
-                  {t("settingsHub.resetFinanceTitle")}
-                </h3>
-                <p className="mt-1 text-sm text-red-600">
-                  {t("settingsHub.resetFinanceDesc")}
-                </p>
-                <button
-                  onClick={() => {
-                    setShowResetModal(true);
-                    setResetConfirmText("");
-                    setResetError(null);
-                    setResetSuccess(null);
-                  }}
-                  className="mt-3 rounded-lg border border-red-300 bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
-                >
-                  {t("settingsHub.resetFinanceButton")}
-                </button>
-              </div>
+      {/* Danger Zone — Finance Reset */}
+      {canWriteFinance && (
+        <div className="mb-8 rounded-xl border-2 border-red-200 bg-red-50 p-6">
+          <h2 className="mb-1 text-lg font-semibold text-red-800">
+            {t("settingsHub.dangerZoneTitle")}
+          </h2>
+          <p className="mb-4 text-sm text-red-600">
+            {t("settingsHub.dangerZoneDesc")}
+          </p>
+
+          {resetSuccess && (
+            <div className="mb-4 rounded-lg bg-green-100 p-3 text-sm text-green-700">
+              {resetSuccess}
+            </div>
+          )}
+          {resetError && (
+            <div className="mb-4 rounded-lg bg-red-100 p-3 text-sm text-red-700">
+              {resetError}
+            </div>
+          )}
+
+          <div className="flex items-start gap-4 rounded-lg border border-red-200 bg-white p-4">
+            <div className="rounded-xl bg-red-100 p-3">
+              <svg
+                className="h-6 w-6 text-red-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-base font-semibold text-red-800">
+                {t("settingsHub.resetFinanceTitle")}
+              </h3>
+              <p className="mt-1 text-sm text-red-600">
+                {t("settingsHub.resetFinanceDesc")}
+              </p>
+              <button
+                onClick={() => {
+                  setShowResetModal(true);
+                  setResetConfirmText("");
+                  setResetError(null);
+                  setResetSuccess(null);
+                }}
+                className="mt-3 rounded-lg border border-red-300 bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
+              >
+                {t("settingsHub.resetFinanceButton")}
+              </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Confirmation Modal */}
       {showResetModal && (
@@ -796,7 +793,7 @@ function SettingsHubBody() {
           </div>
         </div>
       )}
-    </main>
+    </PageShell>
   );
 }
 

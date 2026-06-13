@@ -26,6 +26,7 @@ import { useRouter, useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
+import { PageShell } from "@/components/layout";
 import { EmailTemplateForm } from "./email-template-form";
 import {
   EmailTemplateNotFoundError,
@@ -99,45 +100,7 @@ export function EmailTemplateEditContent() {
     (!template && !loadError);
   if (isNotFound) {
     return (
-      <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-        <div className="mx-auto max-w-4xl">
-          <Link
-            href="/communication/email-templates"
-            className="mb-6 inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"
-          >
-            <svg
-              className="h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-            {t("backToTemplates")}
-          </Link>
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-            <p className="text-red-700">{t("templateNotFound")}</p>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  // A generic load failure (not a 404 sentinel) surfaces the loadError banner. The
-  // god-page + the list page surface the actual server/ApiError message
-  // (`err.message`), only falling back to the generic key for a non-Error throw.
-  const bannerError =
-    error ?? (loadError instanceof Error ? loadError.message : null);
-
-  return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-4xl">
-        {/* Back link */}
+      <PageShell maxWidth="4xl">
         <Link
           href="/communication/email-templates"
           className="mb-6 inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"
@@ -157,40 +120,74 @@ export function EmailTemplateEditContent() {
           </svg>
           {t("backToTemplates")}
         </Link>
-
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-            {t("editTitle")}
-          </h1>
-          <p className="mt-1 text-gray-600">{t("editSubtitle")}</p>
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+          <p className="text-red-700">{t("templateNotFound")}</p>
         </div>
+      </PageShell>
+    );
+  }
 
-        {/* Error Alert */}
-        {bannerError && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
-            <p className="text-red-700">{bannerError}</p>
-          </div>
-        )}
+  // A generic load failure (not a 404 sentinel) surfaces the loadError banner. The
+  // god-page + the list page surface the actual server/ApiError message
+  // (`err.message`), only falling back to the generic key for a non-Error throw.
+  const bannerError =
+    error ?? (loadError instanceof Error ? loadError.message : null);
 
-        {/* Success Alert */}
-        {success && (
-          <div className="mb-6 rounded-xl border border-green-200 bg-green-50 p-4">
-            <p className="text-green-700">{success}</p>
-          </div>
-        )}
+  return (
+    <PageShell maxWidth="4xl">
+      {/* Back link */}
+      <Link
+        href="/communication/email-templates"
+        className="mb-6 inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"
+      >
+        <svg
+          className="h-4 w-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M15 19l-7-7 7-7"
+          />
+        </svg>
+        {t("backToTemplates")}
+      </Link>
 
-        {/* Form content wrapped in card */}
-        {template && (
-          <div className="rounded-xl bg-white p-6 shadow-sm">
-            <EmailTemplateForm
-              template={template}
-              onSave={handleSave}
-              isSaving={updateMutation.isPending}
-            />
-          </div>
-        )}
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
+          {t("editTitle")}
+        </h1>
+        <p className="mt-1 text-gray-600">{t("editSubtitle")}</p>
       </div>
-    </main>
+
+      {/* Error Alert */}
+      {bannerError && (
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
+          <p className="text-red-700">{bannerError}</p>
+        </div>
+      )}
+
+      {/* Success Alert */}
+      {success && (
+        <div className="mb-6 rounded-xl border border-green-200 bg-green-50 p-4">
+          <p className="text-green-700">{success}</p>
+        </div>
+      )}
+
+      {/* Form content wrapped in card */}
+      {template && (
+        <div className="rounded-xl bg-white p-6 shadow-sm">
+          <EmailTemplateForm
+            template={template}
+            onSave={handleSave}
+            isSaving={updateMutation.isPending}
+          />
+        </div>
+      )}
+    </PageShell>
   );
 }

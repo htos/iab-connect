@@ -24,6 +24,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useApiClient, useAuth } from "@/lib/auth";
+import { PageShell, PageHeader } from "@/components/layout";
 import { MembershipStatus, MembershipType } from "../types/member.types";
 import { exportMembersCsv } from "../api/members-api";
 import { useMembers } from "../hooks/use-members";
@@ -144,203 +145,198 @@ export function MembersPageContent() {
   }
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-7xl">
-        {/* Header */}
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-              {t("members.title")}
-            </h1>
-            <p className="mt-1 text-gray-600">
-              {t("members.totalMembers", { count: totalCount })}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {isAdmin && (
-              <button
-                onClick={handleExportCsv}
-                disabled={exportLoading}
-                className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+    <PageShell
+      header={
+        <PageHeader
+          title={t("members.title")}
+          description={t("members.totalMembers", { count: totalCount })}
+          actions={
+            <div className="flex items-center gap-2">
+              {isAdmin && (
+                <button
+                  onClick={handleExportCsv}
+                  disabled={exportLoading}
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+                >
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  {exportLoading ? t("common.loading") : t("members.exportCsv")}
+                </button>
+              )}
+              <Link
+                href="/members/new"
+                className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-700"
               >
                 <svg
-                  className="h-4 w-4"
+                  className="h-5 w-5"
                   fill="none"
-                  viewBox="0 0 24 24"
                   stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    d="M12 4v16m8-8H4"
                   />
                 </svg>
-                {exportLoading ? t("common.loading") : t("members.exportCsv")}
-              </button>
-            )}
-            <Link
-              href="/members/new"
-              className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-orange-700"
-            >
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              {t("members.addMember")}
-            </Link>
+                {t("members.addMember")}
+              </Link>
+            </div>
+          }
+        />
+      }
+    >
+      {/* Statistics Cards */}
+      {statistics && (
+        <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+          <div className="rounded-xl bg-white p-4 shadow-sm">
+            <div className="text-2xl font-bold text-green-600">
+              {statistics.activeMembers}
+            </div>
+            <div className="text-sm text-gray-500">
+              {t("members.statistics.active")}
+            </div>
+          </div>
+          <div className="rounded-xl bg-white p-4 shadow-sm">
+            <div className="text-2xl font-bold text-yellow-600">
+              {statistics.pendingMembers}
+            </div>
+            <div className="text-sm text-gray-500">
+              {t("members.statistics.pending")}
+            </div>
+          </div>
+          <div className="rounded-xl bg-white p-4 shadow-sm">
+            <div className="text-2xl font-bold text-gray-600">
+              {statistics.inactiveMembers}
+            </div>
+            <div className="text-sm text-gray-500">
+              {t("members.statistics.inactive")}
+            </div>
+          </div>
+          <div className="rounded-xl bg-white p-4 shadow-sm">
+            <div className="text-2xl font-bold text-red-600">
+              {statistics.suspendedMembers}
+            </div>
+            <div className="text-sm text-gray-500">
+              {t("members.statistics.suspended")}
+            </div>
           </div>
         </div>
+      )}
 
-        {/* Statistics Cards */}
-        {statistics && (
-          <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-            <div className="rounded-xl bg-white p-4 shadow-sm">
-              <div className="text-2xl font-bold text-green-600">
-                {statistics.activeMembers}
-              </div>
-              <div className="text-sm text-gray-500">
-                {t("members.statistics.active")}
-              </div>
-            </div>
-            <div className="rounded-xl bg-white p-4 shadow-sm">
-              <div className="text-2xl font-bold text-yellow-600">
-                {statistics.pendingMembers}
-              </div>
-              <div className="text-sm text-gray-500">
-                {t("members.statistics.pending")}
-              </div>
-            </div>
-            <div className="rounded-xl bg-white p-4 shadow-sm">
-              <div className="text-2xl font-bold text-gray-600">
-                {statistics.inactiveMembers}
-              </div>
-              <div className="text-sm text-gray-500">
-                {t("members.statistics.inactive")}
-              </div>
-            </div>
-            <div className="rounded-xl bg-white p-4 shadow-sm">
-              <div className="text-2xl font-bold text-red-600">
-                {statistics.suspendedMembers}
-              </div>
-              <div className="text-sm text-gray-500">
-                {t("members.statistics.suspended")}
-              </div>
-            </div>
-          </div>
-        )}
+      <MembersFilterBar
+        searchTerm={searchTerm}
+        onSearchChange={(value) => {
+          clearTransientErrors();
+          setSearchTerm(value);
+        }}
+        onSearchSubmit={() => {
+          clearTransientErrors();
+          setPage(1);
+        }}
+        statusFilter={statusFilter}
+        onStatusChange={(value) => {
+          clearTransientErrors();
+          setStatusFilter(value);
+          setPage(1);
+        }}
+        typeFilter={typeFilter}
+        onTypeChange={(value) => {
+          clearTransientErrors();
+          setTypeFilter(value);
+          setPage(1);
+        }}
+      />
 
-        <MembersFilterBar
-          searchTerm={searchTerm}
-          onSearchChange={(value) => {
-            clearTransientErrors();
-            setSearchTerm(value);
-          }}
-          onSearchSubmit={() => {
-            clearTransientErrors();
-            setPage(1);
-          }}
-          statusFilter={statusFilter}
-          onStatusChange={(value) => {
-            clearTransientErrors();
-            setStatusFilter(value);
-            setPage(1);
-          }}
-          typeFilter={typeFilter}
-          onTypeChange={(value) => {
-            clearTransientErrors();
-            setTypeFilter(value);
-            setPage(1);
-          }}
-        />
+      {/* Error State */}
+      {errorMessage && (
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
+          <p className="text-red-700">{errorMessage}</p>
+          <button
+            onClick={() => refetch()}
+            className="mt-2 text-red-600 underline hover:text-red-800"
+          >
+            {t("common.tryAgain")}
+          </button>
+        </div>
+      )}
 
-        {/* Error State */}
-        {errorMessage && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
-            <p className="text-red-700">{errorMessage}</p>
-            <button
-              onClick={() => refetch()}
-              className="mt-2 text-red-600 underline hover:text-red-800"
-            >
-              {t("common.tryAgain")}
-            </button>
-          </div>
-        )}
-
-        {/* Loading State */}
-        {loading ? (
-          <div className="rounded-xl bg-white p-8 text-center shadow-sm">
-            <div className="mx-auto h-10 w-10 animate-spin rounded-full border-b-2 border-orange-600"></div>
-            <p className="mt-4 text-gray-600">{t("common.loadingMembers")}</p>
-          </div>
-        ) : members.length === 0 ? (
-          <div className="rounded-xl bg-white p-8 text-center shadow-sm">
-            <svg
-              className="mx-auto mb-4 h-16 w-16 text-gray-300"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-              />
-            </svg>
-            <h3 className="mb-2 text-lg font-medium text-gray-900">
-              {t("common.noMembersFound")}
-            </h3>
-            <p className="text-gray-500">
-              {searchTerm || statusFilter || typeFilter
-                ? t("common.tryDifferentFilter")
-                : t("common.addFirstMember")}
-            </p>
-          </div>
-        ) : (
-          <>
-            <MembersTable
-              members={members}
-              onDelete={isAdmin ? setDeleteTarget : undefined}
+      {/* Loading State */}
+      {loading ? (
+        <div className="rounded-xl bg-white p-8 text-center shadow-sm">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-b-2 border-orange-600"></div>
+          <p className="mt-4 text-gray-600">{t("common.loadingMembers")}</p>
+        </div>
+      ) : members.length === 0 ? (
+        <div className="rounded-xl bg-white p-8 text-center shadow-sm">
+          <svg
+            className="mx-auto mb-4 h-16 w-16 text-gray-300"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
             />
+          </svg>
+          <h3 className="mb-2 text-lg font-medium text-gray-900">
+            {t("common.noMembersFound")}
+          </h3>
+          <p className="text-gray-500">
+            {searchTerm || statusFilter || typeFilter
+              ? t("common.tryDifferentFilter")
+              : t("common.addFirstMember")}
+          </p>
+        </div>
+      ) : (
+        <>
+          <MembersTable
+            members={members}
+            onDelete={isAdmin ? setDeleteTarget : undefined}
+          />
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="mt-6 flex items-center justify-between">
-                <p className="text-sm text-gray-700">
-                  {t("common.page")} {page} {t("common.of")} {totalPages} (
-                  {totalCount} {t("common.entries")})
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                    className="rounded-lg border border-gray-300 px-4 py-2 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {t("common.previous")}
-                  </button>
-                  <button
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={page === totalPages}
-                    className="rounded-lg border border-gray-300 px-4 py-2 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {t("common.next")}
-                  </button>
-                </div>
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="mt-6 flex items-center justify-between">
+              <p className="text-sm text-gray-700">
+                {t("common.page")} {page} {t("common.of")} {totalPages} (
+                {totalCount} {t("common.entries")})
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="rounded-lg border border-gray-300 px-4 py-2 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {t("common.previous")}
+                </button>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="rounded-lg border border-gray-300 px-4 py-2 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {t("common.next")}
+                </button>
               </div>
-            )}
-          </>
-        )}
-      </div>
+            </div>
+          )}
+        </>
+      )}
 
       <DeleteMemberDialog
         target={deleteTarget}
@@ -350,6 +346,6 @@ export function MembersPageContent() {
           if (!open) setDeleteTarget(null);
         }}
       />
-    </main>
+    </PageShell>
   );
 }

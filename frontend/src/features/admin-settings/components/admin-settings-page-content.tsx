@@ -22,6 +22,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { PageShell } from "@/components/layout";
 import { useAuth } from "@/lib/auth";
 import { useSettings } from "../hooks/use-settings";
 import {
@@ -243,13 +244,11 @@ function AdminSettingsBody() {
   // --- Loading / auth guard ---
   if (authLoading) {
     return (
-      <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-        <div className="mx-auto max-w-5xl">
-          <div className="flex min-h-100 items-center justify-center">
-            <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-orange-600"></div>
-          </div>
+      <PageShell maxWidth="5xl">
+        <div className="flex min-h-100 items-center justify-center">
+          <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-orange-600"></div>
         </div>
-      </main>
+      </PageShell>
     );
   }
 
@@ -262,168 +261,166 @@ function AdminSettingsBody() {
     : null;
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-5xl">
-        {/* Back link */}
-        <Link
-          href="/admin"
-          className="mb-6 inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"
+    <PageShell maxWidth="5xl">
+      {/* Back link */}
+      <Link
+        href="/admin"
+        className="mb-6 inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"
+      >
+        <svg
+          className="h-5 w-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
         >
-          <svg
-            className="h-5 w-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
-          {t("backToAdmin")}
-        </Link>
-
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-            {t("title")}
-          </h1>
-          <p className="mt-1 text-gray-600">{t("subtitle")}</p>
-        </div>
-
-        {/* Tabs */}
-        <div className="mb-6 flex border-b border-gray-200">
-          <button
-            onClick={() => setActiveTab("branding")}
-            className={`border-b-2 px-6 py-3 text-sm font-medium transition-colors ${
-              activeTab === "branding"
-                ? "border-orange-600 text-orange-600"
-                : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-            }`}
-          >
-            {t("tabBranding")}
-          </button>
-          <button
-            onClick={() => setActiveTab("customRoles")}
-            className={`border-b-2 px-6 py-3 text-sm font-medium transition-colors ${
-              activeTab === "customRoles"
-                ? "border-orange-600 text-orange-600"
-                : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-            }`}
-          >
-            {t("tabCustomRoles")}
-          </button>
-          <button
-            onClick={() => setActiveTab("modules")}
-            className={`border-b-2 px-6 py-3 text-sm font-medium transition-colors ${
-              activeTab === "modules"
-                ? "border-orange-600 text-orange-600"
-                : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-            }`}
-          >
-            {t("tabModules")}
-          </button>
-        </div>
-
-        {/* ===================== Branding Tab ===================== */}
-        {activeTab === "branding" &&
-          (settingsQuery.isLoading || !brandingDefaults ? (
-            <div className="rounded-xl bg-white p-6 shadow-sm">
-              {settingsMessage && (
-                <div
-                  className={`mb-6 rounded-lg p-4 text-sm ${
-                    settingsMessage.type === "success"
-                      ? "border border-green-200 bg-green-50 text-green-800"
-                      : "border border-red-200 bg-red-50 text-red-800"
-                  }`}
-                >
-                  {settingsMessage.text}
-                </div>
-              )}
-              <div className="flex items-center justify-center py-12">
-                <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-orange-600"></div>
-              </div>
-            </div>
-          ) : (
-            <BrandingSettingsForm
-              key={settingsQuery.dataUpdatedAt}
-              defaultValues={brandingDefaults}
-              currentLogoUrl={settingsQuery.data?.logoUrl ?? null}
-              onSubmit={handleSaveSettings}
-              pending={updateSettings.isPending}
-              message={settingsMessage}
-              logoFailed={logoFailed}
-            />
-          ))}
-
-        {/* ===================== Custom Roles Tab ===================== */}
-        {activeTab === "customRoles" && (
-          <CustomRolesTab
-            roles={rolesQuery.data ?? []}
-            loading={rolesQuery.isLoading}
-            message={rolesMessage}
-            deleteConfirmId={deleteConfirmId}
-            onNewRole={openNewRoleModal}
-            onEditRole={openEditRoleModal}
-            onArmDelete={setDeleteConfirmId}
-            onCancelDelete={() => setDeleteConfirmId(null)}
-            onConfirmDelete={handleDeleteRole}
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M15 19l-7-7 7-7"
           />
-        )}
+        </svg>
+        {t("backToAdmin")}
+      </Link>
 
-        {/* ===================== Modules Tab ===================== */}
-        {activeTab === "modules" && (
-          <ModulesTab
-            modules={modulesQuery.data ?? []}
-            loading={modulesQuery.isLoading}
-            message={modulesMessage}
-            savingKey={moduleSavingKey}
-            confirmKey={moduleConfirmKey}
-            onToggle={handleModuleToggle}
-            onConfirmDisable={(key) => applyModuleChange(key, false)}
-            onCancelConfirm={() => setModuleConfirmKey(null)}
-          />
-        )}
-
-        {/* ===================== Role Modal ===================== */}
-        {showRoleModal && (
-          <CustomRoleForm
-            mode={editingRole ? "edit" : "create"}
-            defaultValues={
-              editingRole
-                ? {
-                    name: editingRole.name,
-                    description: editingRole.description,
-                    linkedRole: editingRole.linkedRole,
-                    color: editingRole.color,
-                    sortOrder: editingRole.sortOrder,
-                    isActive: editingRole.isActive,
-                  }
-                : {
-                    name: "",
-                    description: "",
-                    linkedRole: "Member",
-                    color: "#ea580c",
-                    sortOrder: rolesQuery.data?.length ?? 0,
-                    isActive: true,
-                  }
-            }
-            onSubmit={handleSaveRole}
-            onCancel={() => setShowRoleModal(false)}
-            pending={createRole.isPending || updateRole.isPending}
-          />
-        )}
-
-        {/* Delete confirmation a11y live region (god-page parity) */}
-        {deleteConfirmId && (
-          <div className="sr-only" aria-live="assertive">
-            {t("deleteRoleConfirm")}
-          </div>
-        )}
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
+          {t("title")}
+        </h1>
+        <p className="mt-1 text-gray-600">{t("subtitle")}</p>
       </div>
-    </main>
+
+      {/* Tabs */}
+      <div className="mb-6 flex border-b border-gray-200">
+        <button
+          onClick={() => setActiveTab("branding")}
+          className={`border-b-2 px-6 py-3 text-sm font-medium transition-colors ${
+            activeTab === "branding"
+              ? "border-orange-600 text-orange-600"
+              : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+          }`}
+        >
+          {t("tabBranding")}
+        </button>
+        <button
+          onClick={() => setActiveTab("customRoles")}
+          className={`border-b-2 px-6 py-3 text-sm font-medium transition-colors ${
+            activeTab === "customRoles"
+              ? "border-orange-600 text-orange-600"
+              : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+          }`}
+        >
+          {t("tabCustomRoles")}
+        </button>
+        <button
+          onClick={() => setActiveTab("modules")}
+          className={`border-b-2 px-6 py-3 text-sm font-medium transition-colors ${
+            activeTab === "modules"
+              ? "border-orange-600 text-orange-600"
+              : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+          }`}
+        >
+          {t("tabModules")}
+        </button>
+      </div>
+
+      {/* ===================== Branding Tab ===================== */}
+      {activeTab === "branding" &&
+        (settingsQuery.isLoading || !brandingDefaults ? (
+          <div className="rounded-xl bg-white p-6 shadow-sm">
+            {settingsMessage && (
+              <div
+                className={`mb-6 rounded-lg p-4 text-sm ${
+                  settingsMessage.type === "success"
+                    ? "border border-green-200 bg-green-50 text-green-800"
+                    : "border border-red-200 bg-red-50 text-red-800"
+                }`}
+              >
+                {settingsMessage.text}
+              </div>
+            )}
+            <div className="flex items-center justify-center py-12">
+              <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-orange-600"></div>
+            </div>
+          </div>
+        ) : (
+          <BrandingSettingsForm
+            key={settingsQuery.dataUpdatedAt}
+            defaultValues={brandingDefaults}
+            currentLogoUrl={settingsQuery.data?.logoUrl ?? null}
+            onSubmit={handleSaveSettings}
+            pending={updateSettings.isPending}
+            message={settingsMessage}
+            logoFailed={logoFailed}
+          />
+        ))}
+
+      {/* ===================== Custom Roles Tab ===================== */}
+      {activeTab === "customRoles" && (
+        <CustomRolesTab
+          roles={rolesQuery.data ?? []}
+          loading={rolesQuery.isLoading}
+          message={rolesMessage}
+          deleteConfirmId={deleteConfirmId}
+          onNewRole={openNewRoleModal}
+          onEditRole={openEditRoleModal}
+          onArmDelete={setDeleteConfirmId}
+          onCancelDelete={() => setDeleteConfirmId(null)}
+          onConfirmDelete={handleDeleteRole}
+        />
+      )}
+
+      {/* ===================== Modules Tab ===================== */}
+      {activeTab === "modules" && (
+        <ModulesTab
+          modules={modulesQuery.data ?? []}
+          loading={modulesQuery.isLoading}
+          message={modulesMessage}
+          savingKey={moduleSavingKey}
+          confirmKey={moduleConfirmKey}
+          onToggle={handleModuleToggle}
+          onConfirmDisable={(key) => applyModuleChange(key, false)}
+          onCancelConfirm={() => setModuleConfirmKey(null)}
+        />
+      )}
+
+      {/* ===================== Role Modal ===================== */}
+      {showRoleModal && (
+        <CustomRoleForm
+          mode={editingRole ? "edit" : "create"}
+          defaultValues={
+            editingRole
+              ? {
+                  name: editingRole.name,
+                  description: editingRole.description,
+                  linkedRole: editingRole.linkedRole,
+                  color: editingRole.color,
+                  sortOrder: editingRole.sortOrder,
+                  isActive: editingRole.isActive,
+                }
+              : {
+                  name: "",
+                  description: "",
+                  linkedRole: "Member",
+                  color: "#ea580c",
+                  sortOrder: rolesQuery.data?.length ?? 0,
+                  isActive: true,
+                }
+          }
+          onSubmit={handleSaveRole}
+          onCancel={() => setShowRoleModal(false)}
+          pending={createRole.isPending || updateRole.isPending}
+        />
+      )}
+
+      {/* Delete confirmation a11y live region (god-page parity) */}
+      {deleteConfirmId && (
+        <div className="sr-only" aria-live="assertive">
+          {t("deleteRoleConfirm")}
+        </div>
+      )}
+    </PageShell>
   );
 }
 
