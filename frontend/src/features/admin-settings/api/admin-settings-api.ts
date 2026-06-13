@@ -1,7 +1,7 @@
 // Admin-settings feature API (E27-S3). DEC-1 = A BUILD: the settings god-page was
 // ALREADY on the E21-S1 DEC-1 client contract — it issued every request via
 // `useApiClient()` ({ data, error, status }, never throws). There is NO token-param
-// `@/lib/api/settings.ts` to wrap (A94 N/A). So this layer simply ENCAPSULATES the
+// `settings.ts` to wrap (A94 N/A). So this layer simply ENCAPSULATES the
 // five endpoint families behind named functions on that same client; URLs / bodies
 // are BYTE-IDENTICAL to the god-page (verified line-by-line). No raw `/api/v1/...`
 // string lives in any component (E21-S1 rule 5).

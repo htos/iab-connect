@@ -65,7 +65,7 @@ const deleteTemplate = vi.fn();
 const getTemplateById = vi.fn();
 const createTemplate = vi.fn();
 const updateTemplate = vi.fn();
-vi.mock("@/lib/email-templates", () => ({
+vi.mock("@/features/communication/email-templates/api/email-templates", () => ({
   emailTemplatesApi: {
     getAllTemplates: (...a: unknown[]) => getAllTemplates(...a),
     deleteTemplate: (...a: unknown[]) => deleteTemplate(...a),

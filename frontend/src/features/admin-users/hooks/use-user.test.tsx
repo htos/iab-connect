@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 
 /**
  * E27-S2: behaviour invariants of the admin-users slice hooks against a mocked
- * `@/lib/api/users` transport (the WRAP target, A94) + a mocked `useAuth`.
+ * `@/features/admin-users/api/users-admin` transport (the WRAP target, A94) + a mocked `useAuth`.
  * Covers the load-bearing branches: the detail hook does NOT retry (A99/DEC-3 —
  * the wrapped lib fn throws a generic Error with no status, so a retry would
  * just hammer a permanent 404); a successful create/delete invalidates the
@@ -19,7 +19,7 @@ const lib = vi.hoisted(() => ({
   createUser: vi.fn(),
   deleteUser: vi.fn(),
 }));
-vi.mock("@/lib/api/users", () => lib);
+vi.mock("@/features/admin-users/api/users-admin", () => lib);
 
 vi.mock("@/lib/auth", () => ({
   useAuth: () => ({ accessToken: "test-token" }),

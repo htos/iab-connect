@@ -15,8 +15,8 @@ import "@testing-library/jest-dom/vitest";
 //
 // E29-S4 relocation: moved with the component into the profile slice. The card is
 // behaviour-identical; it now reaches the channel fns via the slice `api/profile-api`
-// wrappers (which forward to `@/lib/api/privacy` byte-identically), so this mock of
-// `@/lib/api/privacy` STILL intercepts. Only the import (named export from the new
+// wrappers (which forward to `@/features/profile/api/privacy-consent` byte-identically), so this mock of
+// `@/features/profile/api/privacy-consent` STILL intercepts. Only the import (named export from the new
 // path) changed; all three assertions are unchanged.
 
 vi.mock("next-intl", () => {
@@ -32,7 +32,7 @@ vi.mock("@/lib/auth", () => ({
 const getChannelPreference = vi.fn();
 const updateChannelPreference = vi.fn().mockResolvedValue(undefined);
 
-vi.mock("@/lib/api/privacy", () => ({
+vi.mock("@/features/profile/api/privacy-consent", () => ({
   getChannelPreference: (...a: unknown[]) => getChannelPreference(...a),
   updateChannelPreference: (...a: unknown[]) => updateChannelPreference(...a),
 }));

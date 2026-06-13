@@ -12,7 +12,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // E27-S1 characterization tests (regression net) for the System Health admin page.
 // Pins CURRENT observable behaviour at HEAD. No production code changed.
-// The page consumes the @/lib/api/health transport directly with the access token
+// The page consumes the health transport directly with the access token
 // (NOT useApiClient). We mock getHealthDetail at the boundary and keep the real
 // getStatusColor so badge className assertions pin the real colour logic.
 //
@@ -55,10 +55,10 @@ vi.mock("@/lib/auth", () => ({
 }));
 
 const getHealthDetail = vi.fn();
-vi.mock("@/lib/api/health", async () => {
+vi.mock("@/features/admin-system/api/health", async () => {
   const actual =
-    await vi.importActual<typeof import("@/lib/api/health")>(
-      "@/lib/api/health"
+    await vi.importActual<typeof import("@/features/admin-system/api/health")>(
+      "@/features/admin-system/api/health"
     );
   return {
     ...actual,

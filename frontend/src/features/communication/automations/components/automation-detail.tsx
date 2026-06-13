@@ -18,7 +18,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth";
 import { PageShell } from "@/components/layout";
-import { getTriggerLabel } from "@/lib/api/automations";
+import { getTriggerLabel } from "../api/automations";
 import { AutomationStatusBadge } from "./automation-status-badge";
 import { useAutomation } from "../hooks/use-automation";
 import { useAutomationExecutions } from "../hooks/use-automation-executions";

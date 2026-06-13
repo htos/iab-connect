@@ -111,7 +111,7 @@ describe("BudgetVsActualPage", () => {
 
 // ============================================================================
 // E26-S1 (REQ-044 E6-S3) S4 char-net EXTENSION — pin AS-IS at HEAD (DEC-1=A).
-// A79 deltas: useApiClient-direct (BUILD); lib/api/budgets.ts is types+consts only.
+// A79 deltas: useApiClient-direct (BUILD); budgets is types+consts only.
 // Server-computed rows: the page renders report.rows budget/actual/variance/variancePercent
 // verbatim — it does NOT compute them; it only picks the variance<0 → text-red-600 colour.
 // CSV export = raw api.get<Blob>(/exports/budget-vs-actual?...) → object-URL → anchor.download

@@ -20,7 +20,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 // delete-document, NO status badges. It manages document FOLDERS (hierarchical
 // drill-down + per-role permission entries). All tests below pin THAT surface.
 //
-// The page consumes the @/lib/services/documents transport functions directly
+// The page consumes the documents transport functions directly
 // (getFolders/createFolder/updateFolder/deleteFolder/setFolderPermissions), each
 // returning an ApiResult<T> = { success, data, error? }. We mock that module at
 // the boundary. The page does NOT use useApiClient.
@@ -70,7 +70,7 @@ const createFolder = vi.fn();
 const updateFolder = vi.fn();
 const deleteFolder = vi.fn();
 const setFolderPermissions = vi.fn();
-vi.mock("@/lib/services/documents", () => ({
+vi.mock("@/features/documents/api/documents-transport", () => ({
   getFolders: (...args: unknown[]) => getFolders(...args),
   createFolder: (...args: unknown[]) => createFolder(...args),
   updateFolder: (...args: unknown[]) => updateFolder(...args),

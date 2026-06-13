@@ -16,7 +16,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Users, AlertOctagon, X as XIcon, ArrowRight } from "lucide-react";
-import { parseMatchReason, type DuplicateGroupDto } from "@/lib/api/members";
+import { parseMatchReason, type DuplicateGroupDto } from "../api/member-duplicates";
 
 interface DuplicateGroupRowProps {
   group: DuplicateGroupDto;

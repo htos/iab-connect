@@ -28,7 +28,7 @@ import {
   getMembershipTypeColor,
   getStatusTranslationKey,
   getTypeTranslationKey,
-} from "@/lib/api/members";
+} from "@/types/members";
 import { useProfile, NoMemberRecordError } from "../hooks/use-profile";
 import { useUpdateProfile } from "../hooks/use-update-profile";
 import { ProfileDetail } from "./profile-detail";

@@ -31,13 +31,13 @@ vi.mock("@/components/providers/AppSettingsProvider", () => ({
   useAppSettings: () => ({ settings: { applicationName: "Test Org Name" } }),
 }));
 
-vi.mock("@/lib/api/privacy", () => ({
+vi.mock("@/features/public/api/public-forms-api", () => ({
   subscribeNewsletter: vi.fn(),
   unsubscribeByEmail: vi.fn(),
 }));
 
 import PublicNewsletterPage from "./page";
-import { subscribeNewsletter, unsubscribeByEmail } from "@/lib/api/privacy";
+import { subscribeNewsletter, unsubscribeByEmail } from "@/features/public/api/public-forms-api";
 
 const mockSubscribe = vi.mocked(subscribeNewsletter);
 const mockUnsub = vi.mocked(unsubscribeByEmail);

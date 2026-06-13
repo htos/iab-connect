@@ -1,4 +1,4 @@
-import { getRoleDisplayName } from "@/lib/api/users";
+import { getRoleDisplayName } from "../api/users-admin";
 
 /**
  * Admin-users role badge (E27-S2, A77 literal-class exception).

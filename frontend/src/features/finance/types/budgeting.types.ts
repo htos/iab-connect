@@ -1,10 +1,10 @@
-// Budgeting/reporting sub-slice types (E26-S4). Re-exports the `lib/api/budgets.ts`
+// Budgeting/reporting sub-slice types (E26-S4). Re-exports the `budgets`
 // transport types (A83 — one import place for the slice) + the shared `ActivityArea`
 // type (foundation-owned, S2) + the `ActivityAreaReport` row (canonical `@/types/finance`).
 // Adds the per-page FORM value shapes (driven by the RHF+Zod schemas). `features → lib`
 // and `features → @/types` are legal import directions (E21 boundary).
 
-// --- Re-exported budget transport types from lib/api/budgets.ts (A83) ---
+// --- Re-exported budget transport types from budgets (A83) ---
 export type {
   BudgetDto,
   BudgetVsActualReport,
@@ -12,7 +12,7 @@ export type {
   FinanceCurrency,
   CreateBudgetRequest,
   UpdateBudgetRequest,
-} from "@/lib/api/budgets";
+} from "../api/budgets";
 
 // --- Shared read-lookup types (foundation-owned ActivityArea; canonical report row) ---
 // DEC-2 = A: the ActivityArea FULL shape lives in the S2 foundation; S4 + S6 REUSE it.
@@ -23,7 +23,7 @@ export type { ActivityAreaReport } from "@/types/finance";
 // `amount` is a STRING in the form (the <input type=number> value), parsed on submit; the
 // god-page enable-gate requires both selects + amount≥0. `currency` is the closed CHF/EUR
 // set; area/period <select>s are disabled-on-edit (A95 — raw stored value retained).
-import type { FinanceCurrency } from "@/lib/api/budgets";
+import type { FinanceCurrency } from "../api/budgets";
 
 export interface BudgetFormValues {
   activityAreaId: string;

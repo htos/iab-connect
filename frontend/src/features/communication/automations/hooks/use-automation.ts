@@ -7,7 +7,7 @@ import { automationsKeys, fetchAutomation } from "../api/automations-api";
 /**
  * Sentinel error kept for parity with the detail-slice recipe (A79;
  * `SponsorNotFoundError` / `BoardDocumentNotFoundError`). NOTE: the wrapped
- * `@/lib/api/automations.getAutomation` throws a GENERIC `Error` with NO status
+ * `automations.getAutomation` throws a GENERIC `Error` with NO status
  * (it is a transport WRAP, and modifying the lib fn is out of scope), so this
  * hook cannot actually distinguish a 404 from any other failure. It exists for
  * future divergence only; the component treats `isError` uniformly.

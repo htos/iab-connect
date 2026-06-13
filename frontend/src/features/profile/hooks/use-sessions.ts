@@ -7,7 +7,7 @@ import type { UserSession } from "../types/profile.types";
 
 /**
  * Active Keycloak sessions for the caller (E29-S4, REQ-010). Wraps
- * `@/lib/api/users.getMySessions` (token-based). `enabled` mirrors the security
+ * `users.getMySessions` (token-based). `enabled` mirrors the security
  * page's `isAuthenticated` guard (no member check). Selects the `sessions` array
  * so consumers get `UserSession[]` directly.
  *

@@ -1,6 +1,6 @@
 // Admin-users slice type surface (E27-S2, DEC-2 = A).
 //
-// The canonical user DTOs/interfaces live in `lib/api/users.ts` (a token-param
+// The canonical user DTOs/interfaces live in `users` (a token-param
 // raw-fetch module). That module is ALSO consumed by the self-service profile
 // security page (`getMySessions`/`revokeMySession`) and the wrapped transport
 // here, so the definitions STAY in `lib` and this module RE-EXPORTS them as the
@@ -16,4 +16,4 @@ export type {
   Role,
   UserSession,
   SessionListResponse,
-} from "@/lib/api/users";
+} from "../api/users-admin";

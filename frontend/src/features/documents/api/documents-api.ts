@@ -1,5 +1,5 @@
 // Documents feature API (E29-S2). DEC-1 = A: this layer WRAPS the existing
-// `@/lib/services/documents` transport (which itself wraps `lib/services/api.ts`
+// `documents` transport (which itself wraps `the legacy HTTP base`
 // `apiGet` with a dynamic `getSession()` token) rather than re-implementing the
 // URLs against `useApiClient`. The board sibling (E29-S3) shares that service
 // module, so we must NOT rewrite or divert the member-browse transport (A62).
@@ -10,15 +10,15 @@ import {
   getDocuments as serviceGetDocuments,
   getFolders as serviceGetFolders,
   getAllTags as serviceGetAllTags,
-  getDownloadUrl as serviceGetDownloadUrl,
-} from "@/lib/services/documents";
+} from "./documents-transport";
+import { getDownloadUrl as serviceGetDownloadUrl } from "@/types/documents";
 import type {
   DocumentFolderDto,
   PagedDocumentsResult,
 } from "../types/document.types";
 
 // Endpoint bases (E21-S1 rule 5: no raw `/api/v1/...` strings in components).
-// The actual fetch is delegated to `@/lib/services/documents`, whose functions
+// The actual fetch is delegated to `documents`, whose functions
 // build these same paths; these consts document the slice's surface + back the
 // `getDownloadUrl` re-export.
 export const DOCUMENTS_BASE = "/api/v1/documents";
@@ -56,7 +56,7 @@ export const documentsKeys = {
 };
 
 /**
- * List documents. Delegates to `@/lib/services/documents.getDocuments`,
+ * List documents. Delegates to `documents.getDocuments`,
  * forwarding the params byte-identically — `page`/`pageSize` always, and
  * `search`/`folderId`/`tags` only when truthy (the service omits empty params),
  * with `tags` kept as a single string.

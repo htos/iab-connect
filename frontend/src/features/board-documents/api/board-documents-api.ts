@@ -1,5 +1,5 @@
 // Board-documents feature API (E29-S3). DEC-1 = A: this layer WRAPS the existing
-// `@/lib/services/documents` transport (which itself wraps `lib/services/api.ts`
+// `documents` transport (which itself wraps `the legacy HTTP base`
 // `apiGet`/`apiPost`/`apiPut`/`apiDelete` with a dynamic `getSession()` token)
 // rather than re-implementing the URLs against `useApiClient`. The member-browse
 // sibling (E29-S2) shares that service module, so we must NOT rewrite or divert
@@ -14,6 +14,7 @@
 // FormData field set / URL / token are byte-identical. The blob-download URL
 // is delegated to the service builder; the token-at-click fetch lives in the
 // `use-board-document-download` hook.
+// eslint-disable-next-line no-restricted-imports -- E31-S1 DEC-3: shared document transport owned by features/documents (single owner)
 import {
   getDocuments as serviceGetDocuments,
   getFolders as serviceGetFolders,
@@ -25,15 +26,15 @@ import {
   deleteDocument as serviceDeleteDocument,
   updateDocumentTags as serviceUpdateDocumentTags,
   restoreVersion as serviceRestoreVersion,
-  getDownloadUrl as serviceGetDownloadUrl,
-} from "@/lib/services/documents";
+} from "@/features/documents/api/documents-transport";
+import { getDownloadUrl as serviceGetDownloadUrl } from "@/types/documents";
 import type {
   DocumentFolderDto,
   PagedDocumentsResult,
 } from "../types/board-document.types";
 
 // Endpoint bases (E21-S1 rule 5: no raw `/api/v1/...` strings in components).
-// The actual fetch is delegated to `@/lib/services/documents` (whose functions
+// The actual fetch is delegated to `documents` (whose functions
 // build these same paths) for the JSON endpoints; these consts document the
 // slice's surface and back the raw-fetch upload/version-upload paths below.
 export const DOCUMENTS_BASE = "/api/v1/documents";

@@ -10,7 +10,7 @@ import type { useApiClient } from "@/lib/auth";
 /**
  * E24-S3: the fee-category sub-domain api owns the four fee-category URLs (no raw
  * `/api/v1/...` in components). These assert each function hits the right verb +
- * the byte-identical URL/body the `@/lib/services/events` fns used today —
+ * the byte-identical URL/body the `events` fns used today —
  * including the preserved trailing slash on the collection routes and the
  * POST-with-`{}` soft-retire (deactivate) endpoint.
  */

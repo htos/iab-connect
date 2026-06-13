@@ -1,12 +1,12 @@
-// Retention feature API (E27-S4). DEC-1 = A: WRAPS the existing `@/lib/api/retention`
+// Retention feature API (E27-S4). DEC-1 = A: WRAPS the existing `retention`
 // transport (token-param fns owning their `/api/v1/admin/retention*` URLs).
 // Byte-identical delegation keeps the E27-S1 retention spec's
-// `vi.mock("@/lib/api/retention")` intercepting with ZERO transport-mock edits (A94).
+// `vi.mock("retention")` intercepting with ZERO transport-mock edits (A94).
 import {
   getRetentionPolicies,
   updateRetentionPolicy,
   enforceRetention,
-} from "@/lib/api/retention";
+} from "./retention";
 import type {
   RetentionPolicyDto,
   UpdateRetentionPolicyRequest,

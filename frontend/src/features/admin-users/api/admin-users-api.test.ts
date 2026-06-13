@@ -30,7 +30,7 @@ const lib = vi.hoisted(() => ({
   getUserSessions: vi.fn(),
   revokeUserSession: vi.fn(),
 }));
-vi.mock("@/lib/api/users", () => lib);
+vi.mock("@/features/admin-users/api/users-admin", () => lib);
 
 import {
   ADMIN_USERS_PAGE_SIZE,

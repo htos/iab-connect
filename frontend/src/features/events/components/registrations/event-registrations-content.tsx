@@ -11,7 +11,7 @@
  *
  * Transport adaptation (the ONLY change): every registration call now goes
  * through the events slice api (`event-registrations-api`, built on the same
- * `useApiClient` the exports already used) instead of `@/lib/services/events`.
+ * `useApiClient` the exports already used) instead of `events`.
  * URLs/params/bodies are byte-identical (the service prefixed `/api/v1`; the
  * slice's `EVENTS_BASE` is `/api/v1/events`). The god-page's imperative
  * `loadData` (event + registrations + stats in one Promise.all, `loadFailed` if

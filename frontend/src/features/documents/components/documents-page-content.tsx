@@ -8,7 +8,7 @@
  * this is the single `"use client"` boundary. Data lives in TanStack query
  * hooks (`use-documents`, `use-document-folders`, `use-document-tags`); the
  * authenticated download is a side-effect hook behind `document-download-button`
- * (DEC-2); URLs are wrapped over `@/lib/services/documents` in
+ * (DEC-2); URLs are wrapped over `documents` in
  * `api/documents-api` (DEC-1).
  *
  * Behaviour preserved verbatim (pinned by the E29-S1 characterization suite):

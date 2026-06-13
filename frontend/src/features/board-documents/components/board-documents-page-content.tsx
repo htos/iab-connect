@@ -8,7 +8,7 @@
  * this is the single `"use client"` boundary. List/folders/tags live in TanStack
  * query hooks (`use-board-documents`); status/delete/upload are mutations
  * (`use-board-document-mutations`) invalidating `boardDocumentsKeys`; URLs wrap
- * `@/lib/services/documents` in `api/board-documents-api` (DEC-1 = A).
+ * `documents` in `api/board-documents-api` (DEC-1 = A).
  *
  * CRITICAL — AC-3: the Vorstand-OR-Admin access gate
  * (`!isAuthenticated || (!isVorstand && !isAdmin)` → `router.push("/")`) is

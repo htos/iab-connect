@@ -20,8 +20,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth";
 import { PageShell } from "@/components/layout";
-import { emailTemplatesApi } from "@/lib/email-templates";
-import { isTimeRelative } from "@/lib/api/automations";
+// eslint-disable-next-line no-restricted-imports -- E31-S1 DEC-3: emailTemplatesApi is owned by the sibling email-templates sub-slice (one owner, justified cross-import).
+import { emailTemplatesApi } from "@/features/communication/email-templates/api/email-templates";
+import { isTimeRelative } from "../api/automations";
 import { fetchMemberSegments } from "../api/automations-api";
 import { useRecipientPreview } from "../hooks/use-recipient-preview";
 import {

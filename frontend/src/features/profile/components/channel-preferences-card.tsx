@@ -9,7 +9,7 @@
  *
  * E29-S4 relocation: moved from `app/profile/ChannelPreferencesCard.tsx` into the
  * profile slice WITHOUT behaviour change (AC-3). The channel fns are now reached
- * via the slice `api/profile-api` wrappers (which forward to `@/lib/api/privacy`
+ * via the slice `api/profile-api` wrappers (which forward to `privacy`
  * byte-identically) so the route file carries no raw URL and the slice owns its
  * transport surface; the internal load/save state machine is unchanged.
  */

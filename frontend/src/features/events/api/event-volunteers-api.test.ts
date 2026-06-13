@@ -17,7 +17,7 @@ import type { useApiClient } from "@/lib/auth";
 /**
  * E24-S3: the events VOLUNTEER sub-domain api owns every volunteer endpoint URL
  * (no raw `/api/v1/...` in components). These assert each function hits the right
- * verb + the byte-identical URL/body the legacy `@/lib/services/events`
+ * verb + the byte-identical URL/body the legacy `events`
  * functions used — most importantly the trailing slashes on the collection
  * endpoints, POST `/cancel` for shift cancellation (NOT DELETE), POST
  * `/self-signup`, and the assignment-scoped `/cancel` for withdraw.

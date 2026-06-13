@@ -9,7 +9,7 @@ import { PageShell } from "@/components/layout";
 import {
   findMemberDuplicates,
   type DuplicateCandidateDto,
-} from "@/lib/api/members";
+} from "../api/member-duplicates";
 import { DuplicateWarning } from "./duplicate-warning";
 import { MemberNotFoundError, useMember } from "../hooks/use-member";
 import { useUpdateMember } from "../hooks/use-update-member";

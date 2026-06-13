@@ -1,5 +1,5 @@
 // Admin folders feature API (E27-S6). DEC-1 = A: this layer WRAPS the existing
-// `@/lib/services/documents` folder transport (each fn returns an
+// `documents` folder transport (each fn returns an
 // `ApiResult<T> = { success, data, error? }` and resolves its own token via the
 // service's `getSession()`) rather than re-implementing the URLs against
 // `useApiClient`. The member `features/documents` slice (A62) SHARES that
@@ -7,13 +7,14 @@
 // import is forbidden by E21-S5; moving it would break the member slice). The
 // slice owns the query-key factory; request URLs/params stay byte-identical to
 // the god-page.
+// eslint-disable-next-line no-restricted-imports -- E31-S1 DEC-3: shared document transport owned by features/documents (single owner)
 import {
   getFolders as serviceGetFolders,
   createFolder as serviceCreateFolder,
   updateFolder as serviceUpdateFolder,
   deleteFolder as serviceDeleteFolder,
   setFolderPermissions as serviceSetFolderPermissions,
-} from "@/lib/services/documents";
+} from "@/features/documents/api/documents-transport";
 import type {
   CreateFolderRequest,
   UpdateFolderRequest,
@@ -21,7 +22,7 @@ import type {
 } from "../types/admin-documents.types";
 
 // Endpoint base (E21-S1 rule 5: no raw `/api/v1/...` strings in components). The
-// actual fetch is delegated to `@/lib/services/documents`, whose functions build
+// actual fetch is delegated to `documents`, whose functions build
 // this same path; this const documents the slice's surface.
 export const DOCUMENT_FOLDERS_BASE = "/api/v1/document-folders";
 

@@ -1,11 +1,11 @@
-// Audit resource types (E27-S4). The DTO shapes live in `@/lib/api/audit` (the
+// Audit resource types (E27-S4). The DTO shapes live in `audit` (the
 // transport we WRAP per DEC-1=A); re-exporting them here keeps the slice's
 // hooks/components decoupled from the raw lib path — no component imports
-// `@/lib/api/*` directly.
+// `*` directly.
 export type {
   AuditEvent,
   AuditEventListResponse,
   AuditCategory,
   AuditEventType,
   AuditFilterOptions,
-} from "@/lib/api/audit";
+} from "../api/audit";

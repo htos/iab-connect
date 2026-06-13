@@ -1,8 +1,8 @@
 // Automations feature API (E25-S2). DEC-1 = A: this layer WRAPS the existing
-// `@/lib/api/automations` transport (token-param fns that own their own `/api/v1`
+// `automations` transport (token-param fns that own their own `/api/v1`
 // URLs) rather than re-implementing the URLs against `useApiClient`. The slice
 // owns the query-key factory; each wrapper delegates to the lib fn
-// byte-identically, so the S1 specs that `vi.mock("@/lib/api/automations")` keep
+// byte-identically, so the S1 specs that `vi.mock("automations")` keep
 // intercepting with ZERO transport-mock edits (A94). No raw `/api/v1` string
 // lives in any component — the one inline god-page fetch (the member-segment
 // dropdown load) is folded into `fetchMemberSegments` here.
@@ -14,7 +14,7 @@ import {
   updateAutomation,
   changeAutomationStatus,
   previewRecipients,
-} from "@/lib/api/automations";
+} from "./automations";
 import type {
   AutomationDetailDto,
   AutomationExecutionDto,
@@ -59,7 +59,7 @@ export const automationsKeys = {
 };
 
 /**
- * List automations. Delegates to `@/lib/api/automations.listAutomations`,
+ * List automations. Delegates to `automations.listAutomations`,
  * forwarding `page`/`pageSize` always and `status` only when set (the god-page
  * passed `status: status || undefined`).
  */

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { getTriggerLabel } from "@/lib/api/automations";
+import { getTriggerLabel } from "../api/automations";
 import { AutomationStatusBadge } from "./automation-status-badge";
 import type { AutomationListItemDto } from "../types/automation.types";
 

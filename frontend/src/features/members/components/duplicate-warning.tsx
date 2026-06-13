@@ -16,7 +16,7 @@ import { useTranslations } from "next-intl";
 import {
   parseMatchReason,
   type DuplicateCandidateDto,
-} from "@/lib/api/members";
+} from "../api/member-duplicates";
 
 interface DuplicateWarningProps {
   candidates: DuplicateCandidateDto[];

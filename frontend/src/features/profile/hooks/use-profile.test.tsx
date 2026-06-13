@@ -39,13 +39,13 @@ const privacySpy = vi.hoisted(() => ({
   getChannelPreference: vi.fn(() => Promise.resolve({})),
   updateChannelPreference: vi.fn(() => Promise.resolve()),
 }));
-vi.mock("@/lib/api/privacy", () => privacySpy);
+vi.mock("@/features/profile/api/privacy-consent", () => privacySpy);
 
 const usersSpy = vi.hoisted(() => ({
   getMySessions: vi.fn(() => Promise.resolve({ sessions: [] })),
   revokeMySession: vi.fn(() => Promise.resolve()),
 }));
-vi.mock("@/lib/api/users", () => usersSpy);
+vi.mock("@/features/profile/api/identity-sessions", () => usersSpy);
 
 import { useProfile, NoMemberRecordError } from "./use-profile";
 import { useToggleConsent } from "./use-toggle-consent";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { formatFileSize } from "@/lib/services/documents";
+import { formatFileSize } from "@/types/documents";
 import type { DocumentVersionDto } from "../types/board-document.types";
 
 interface BoardDocumentVersionHistoryProps {

@@ -48,7 +48,7 @@ function syncThenable<T>(value: T): Promise<T> {
  * Pins CURRENT observable behaviour BEFORE refactor. Legacy transport:
  * `getUserSessions` (initial load, guarded by an `initialFetchDone` ref so it
  * fires once) + `revokeUserSession`, token-param functions from
- * `@/lib/api/users` over useState/useEffect. The page receives `params` as a
+ * `@/features/admin-users/api/users-admin` over useState/useEffect. The page receives `params` as a
  * Promise unwrapped with React `use()` — we pass a resolved Promise prop.
  * QueryClientProvider wrapper is inert.
  *
@@ -103,9 +103,9 @@ vi.mock("@/lib/auth", () => ({
 
 const getUserSessions = vi.fn();
 const revokeUserSession = vi.fn();
-vi.mock("@/lib/api/users", async () => {
+vi.mock("@/features/admin-users/api/users-admin", async () => {
   const actual =
-    await vi.importActual<typeof import("@/lib/api/users")>("@/lib/api/users");
+    await vi.importActual<typeof import("@/features/admin-users/api/users-admin")>("@/features/admin-users/api/users-admin");
   return {
     ...actual,
     getUserSessions: (...args: unknown[]) => getUserSessions(...args),
@@ -114,7 +114,7 @@ vi.mock("@/lib/api/users", async () => {
 });
 
 import AdminUserSessionsPage from "./page";
-import type { UserSession } from "@/lib/api/users";
+import type { UserSession } from "@/features/admin-users/api/users-admin";
 
 function makeSession(over: Partial<UserSession> = {}): UserSession {
   return {

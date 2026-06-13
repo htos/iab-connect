@@ -9,7 +9,7 @@ import React from "react";
 // derived from the linked-invoice payment status. Preserved through the E24-S3 slice extraction.
 //
 // TRANSPORT ADAPTATION (E24-S3): the page now reads through the events slice api
-// (`useApiClient`) instead of `@/lib/services/events`, so the mock is a stable `useApiClient`
+// (`useApiClient`) instead of `events`, so the mock is a stable `useApiClient`
 // spy routed by endpoint. The behavioural assertions (payment badges + payment stat cards) are
 // preserved verbatim.
 

@@ -15,7 +15,7 @@ import type {
   DismissDuplicateCandidateResult,
   DuplicateGroupDto,
   MergeMembersResult,
-} from "@/lib/api/members";
+} from "./member-duplicates";
 import { MembershipStatus, MembershipType } from "../types/member.types";
 import type {
   CreateMemberRequest,

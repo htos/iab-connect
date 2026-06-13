@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 /**
  * E27-S4: the retention slice api owns the query-key factory and WRAPS the
- * `@/lib/api/retention` transport (DEC-1 = A). Asserts the key shapes + byte-
+ * `retention` transport (DEC-1 = A). Asserts the key shapes + byte-
  * identical delegation (A94).
  */
 
@@ -12,7 +12,7 @@ const libSpy = vi.hoisted(() => ({
   updateRetentionPolicy: vi.fn(),
   enforceRetention: vi.fn(),
 }));
-vi.mock("@/lib/api/retention", () => ({
+vi.mock("@/features/admin-system/api/retention", () => ({
   getRetentionPolicies: (...a: unknown[]) => libSpy.getRetentionPolicies(...a),
   updateRetentionPolicy: (...a: unknown[]) =>
     libSpy.updateRetentionPolicy(...a),

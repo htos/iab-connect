@@ -15,13 +15,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
  *
  * Pins the CURRENT observable behaviour of
  * `frontend/src/app/board/documents/page.tsx` BEFORE the E29-S3 feature-slice
- * refactor. The god-page uses `@/lib/services/documents` (ApiResult
+ * refactor. The god-page uses `documents` (ApiResult
  * {success,data,error}) for the data + status/delete actions, raw `fetch` +
  * dynamic `next-auth/react getSession()` for the upload FormData, and a
  * `window.confirm`-free in-component modal for delete confirmation.
  *
  * DEC-1 layer-matched hybrid mocks (the surface S3 will re-point):
- *   - vi.mock("@/lib/services/documents") for getDocuments/getFolders/getAllTags
+ *   - vi.mock("@/features/documents/api/documents-transport") for getDocuments/getFolders/getAllTags
  *     + review/publish/archive/deleteDocument (mutated per-test).
  *   - vi.mock("@/lib/auth") for a STABLE useAuth (A64/A78 — define once, mutate
  *     isAuthenticated/isVorstand/isAdmin/isLoading per test).
@@ -54,9 +54,10 @@ vi.mock("next-auth/react", () => ({
   getSession: () => getSession(),
 }));
 
-// @/lib/services/documents: mock the data + action fns; keep the pure helpers
-// + enums real (importActual) so DocumentStatus/DocumentCategory/formatFileSize/
-// getStatusColor behave as at HEAD.
+// @/features/documents/api/documents-transport: mock the data + action fns. The
+// pure helpers + enums (DocumentStatus/DocumentCategory/formatFileSize/
+// getStatusColor) live in `@/types/documents` (E31-S1) and stay real (unmocked),
+// so they behave as at HEAD.
 const getDocuments = vi.fn();
 const getFolders = vi.fn();
 const getAllTags = vi.fn();
@@ -64,10 +65,10 @@ const deleteDocument = vi.fn();
 const reviewDocument = vi.fn();
 const publishDocument = vi.fn();
 const archiveDocument = vi.fn();
-vi.mock("@/lib/services/documents", async () => {
+vi.mock("@/features/documents/api/documents-transport", async () => {
   const actual = await vi.importActual<
-    typeof import("@/lib/services/documents")
-  >("@/lib/services/documents");
+    typeof import("@/features/documents/api/documents-transport")
+  >("@/features/documents/api/documents-transport");
   return {
     ...actual,
     getDocuments: (...args: unknown[]) => getDocuments(...args),

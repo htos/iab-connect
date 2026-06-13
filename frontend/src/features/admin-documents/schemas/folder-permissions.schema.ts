@@ -21,7 +21,7 @@ export type FolderPermissionsFormValues = z.infer<
 >;
 
 // NOTE: the rendered option sets are plain string LITERALS (not
-// `DocumentPermissionType` enum member references). The `@/lib/services/documents`
+// `DocumentPermissionType` enum member references). The `documents`
 // module is mocked at the boundary by the E27-S1 net WITHOUT its enum exports, so
 // referencing the enum as a runtime VALUE here would throw under the net. The
 // values are byte-identical to `DocumentPermissionType.Read/Write/Manage`.

@@ -9,7 +9,7 @@ import type { useApiClient } from "@/lib/auth";
 /**
  * E24-S3: the check-in sub-domain api owns the three check-in URLs (no raw
  * `/api/v1/...` in components). These assert each fn hits the right verb + the
- * byte-identical URL/body the `@/lib/services/events` fns used — most critically
+ * byte-identical URL/body the `events` fns used — most critically
  * the QR-token `encodeURIComponent` and the manual `searchQuery ?? null` body.
  */
 

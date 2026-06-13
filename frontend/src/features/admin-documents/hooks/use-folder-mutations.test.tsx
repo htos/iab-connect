@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 
 /**
  * E27-S6: the folder CRUD + permission mutation hooks wrap the shared
- * `@/lib/services/documents` service (DEC-1=A), throw on `!result.success`, and
+ * `documents` service (DEC-1=A), throw on `!result.success`, and
  * invalidate `adminFoldersKeys.all` on success. Pins the throw branch + the
  * invalidation (the god-page re-loaded the list after every mutation).
  */
@@ -23,7 +23,7 @@ const serviceSpy = vi.hoisted(() => ({
   deleteFolder: vi.fn(),
   setFolderPermissions: vi.fn(),
 }));
-vi.mock("@/lib/services/documents", () => ({
+vi.mock("@/features/documents/api/documents-transport", () => ({
   getFolders: serviceSpy.getFolders,
   createFolder: serviceSpy.createFolder,
   updateFolder: serviceSpy.updateFolder,

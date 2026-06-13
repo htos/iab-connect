@@ -8,7 +8,7 @@ import type { ReactNode } from "react";
  * E27-S4: behaviour invariants of the backup CRUD mutation hooks (A79). Each
  * list-changing mutation must invalidate `backupsKeys.list()` on success
  * (replacing the god-page's manual `fetchBackups()` re-run). DEC-1 = A wraps the
- * `@/lib/api/backup` transport.
+ * `backup` transport.
  */
 
 const libSpy = vi.hoisted(() => ({
@@ -18,7 +18,7 @@ const libSpy = vi.hoisted(() => ({
   uploadBackup: vi.fn(),
   downloadBackup: vi.fn(),
 }));
-vi.mock("@/lib/api/backup", () => ({
+vi.mock("@/features/admin-system/api/backup", () => ({
   restoreBackup: (...a: unknown[]) => libSpy.restoreBackup(...a),
   deleteBackup: (...a: unknown[]) => libSpy.deleteBackup(...a),
   createBackup: (...a: unknown[]) => libSpy.createBackup(...a),

@@ -1,5 +1,5 @@
 // Admin-users feature API — the slice's single transport surface (E27-S2,
-// DEC-1 = A). It WRAPS the token-param raw-fetch functions in `@/lib/api/users`
+// DEC-1 = A). It WRAPS the token-param raw-fetch functions in `./users-admin`
 // (A94) rather than re-implementing the `/api/v1/users` URLs via `useApiClient`.
 //
 // Why WRAP and not rewrite:
@@ -11,7 +11,7 @@
 //   - The lib module is also consumed by the self-service profile security page
 //     (`getMySessions`/`revokeMySession`), so it must stay; orphaning it via a
 //     rewrite is not an option.
-//   - Wrapping keeps the E27-S1 transport mocks (`vi.mock("@/lib/api/users")`)
+//   - Wrapping keeps the E27-S1 transport mocks (`vi.mock("./users-admin")`)
 //     intercepting unchanged, so the regression net survives by construction.
 //
 // No raw `/api/v1/...` string appears in this slice's components — every URL is
@@ -29,7 +29,7 @@ import {
   getAvailableRoles,
   getUserSessions,
   revokeUserSession,
-} from "@/lib/api/users";
+} from "./users-admin";
 import type {
   User,
   UserListResponse,

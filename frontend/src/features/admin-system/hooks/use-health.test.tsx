@@ -12,7 +12,7 @@ import type { ReactNode } from "react";
  */
 
 const libSpy = vi.hoisted(() => ({ getHealthDetail: vi.fn() }));
-vi.mock("@/lib/api/health", () => ({
+vi.mock("@/features/admin-system/api/health", () => ({
   getHealthDetail: (...a: unknown[]) => libSpy.getHealthDetail(...a),
 }));
 vi.mock("@/lib/auth", () => ({

@@ -18,7 +18,7 @@ import React from "react";
 // promoteFromWaitlist, and the loadFailed surface.
 //
 // TRANSPORT ADAPTATION (E24-S3): the page now calls the events slice api
-// (`event-registrations-api`, built on `useApiClient`) instead of `@/lib/services/events`.
+// (`event-registrations-api`, built on `useApiClient`) instead of `events`.
 // So the mock changed from spying on service functions to a stable `useApiClient` spy
 // ({ get, post, put, delete, upload }), and the assertions changed from
 // `service.fn(eventId, regId)` to `apiClient.get/post(byte-identical-endpoint)`. Every

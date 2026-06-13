@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 /**
  * E29-S4: the profile slice api owns the `profileKeys` factory + thin wrappers.
  * DEC-1=A: `/members/me` GET/PUT go through `useApiClient`; consent/channel/
- * session wrap `@/lib/api/privacy` + `@/lib/api/users` byte-identically. These
+ * session wrap `@/features/profile/api/privacy-consent` + `@/features/profile/api/identity-sessions` byte-identically. These
  * assert the key shapes, the `/members/me` URL + method, and that each wrapper
  * delegates with the exact args/URLs the god-page used.
  */
@@ -20,8 +20,8 @@ const usersSpy = vi.hoisted(() => ({
   getMySessions: vi.fn(() => Promise.resolve({ sessions: [] })),
   revokeMySession: vi.fn(() => Promise.resolve()),
 }));
-vi.mock("@/lib/api/privacy", () => privacySpy);
-vi.mock("@/lib/api/users", () => usersSpy);
+vi.mock("@/features/profile/api/privacy-consent", () => privacySpy);
+vi.mock("@/features/profile/api/identity-sessions", () => usersSpy);
 
 import {
   profileKeys,
@@ -88,7 +88,7 @@ describe("members/me wrappers (DEC-1=A → useApiClient)", () => {
   });
 });
 
-describe("consent wrappers (delegate to @/lib/api/privacy)", () => {
+describe("consent wrappers (delegate to @/features/profile/api/privacy-consent)", () => {
   it("fetchConsents delegates with the token", () => {
     fetchConsents("tok");
     expect(privacySpy.getConsents).toHaveBeenCalledWith("tok");
@@ -107,7 +107,7 @@ describe("consent wrappers (delegate to @/lib/api/privacy)", () => {
   });
 });
 
-describe("channel-preference wrappers (delegate to @/lib/api/privacy)", () => {
+describe("channel-preference wrappers (delegate to @/features/profile/api/privacy-consent)", () => {
   it("fetchChannelPreference delegates with the token", () => {
     fetchChannelPreference("tok");
     expect(privacySpy.getChannelPreference).toHaveBeenCalledWith("tok");
@@ -122,7 +122,7 @@ describe("channel-preference wrappers (delegate to @/lib/api/privacy)", () => {
   });
 });
 
-describe("session wrappers (delegate to @/lib/api/users)", () => {
+describe("session wrappers (delegate to @/features/profile/api/identity-sessions)", () => {
   it("fetchMySessions delegates with the token", () => {
     fetchMySessions("tok");
     expect(usersSpy.getMySessions).toHaveBeenCalledWith("tok");

@@ -73,7 +73,8 @@ export async function getAuditEvents(
   if (options?.userId) params.append("userId", options.userId);
   if (options?.entityType) params.append("entityType", options.entityType);
   if (options?.entityId) params.append("entityId", options.entityId);
-  if (options?.success !== undefined) params.append("success", String(options.success));
+  if (options?.success !== undefined)
+    params.append("success", String(options.success));
   if (options?.search) params.append("search", options.search);
   if (options?.page) params.append("page", String(options.page));
   if (options?.pageSize) params.append("pageSize", String(options.pageSize));
@@ -108,7 +109,8 @@ export async function exportAuditEvents(
   if (options?.severity) params.append("severity", options.severity);
   if (options?.userId) params.append("userId", options.userId);
   if (options?.entityType) params.append("entityType", options.entityType);
-  if (options?.success !== undefined) params.append("success", String(options.success));
+  if (options?.success !== undefined)
+    params.append("success", String(options.success));
 
   const response = await fetch(`${API_BASE}/api/v1/audit/export?${params}`, {
     headers: {

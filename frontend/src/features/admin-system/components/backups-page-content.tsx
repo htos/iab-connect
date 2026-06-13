@@ -23,7 +23,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { PageShell } from "@/components/layout";
 import { useAuth } from "@/lib/auth";
-import { formatFileSize } from "@/lib/api/backup";
+import { formatFileSize } from "../api/backup";
 import { useBackups } from "../hooks/use-backups";
 import {
   useCreateBackup,

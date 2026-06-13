@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 /**
  * E25-S4: the email-templates slice api owns the query-key factory and WRAPS the
- * `@/lib/email-templates` transport (DEC-1 = A — no URL re-impl). These assert the
+ * `@/features/communication/email-templates/api/email-templates` transport (DEC-1 = A — no URL re-impl). These assert the
  * key shapes (numeric detail id) and that each wrapper delegates to the lib fn
  * with byte-identical args (token forwarded in the lib fn's argument order:
  * `getAllTemplates(token)`, `getTemplateById(id, token)`,
@@ -18,7 +18,7 @@ const libSpy = vi.hoisted(() => ({
   updateTemplate: vi.fn(() => Promise.resolve({ id: 1 })),
   deleteTemplate: vi.fn(() => Promise.resolve(undefined)),
 }));
-vi.mock("@/lib/email-templates", () => ({
+vi.mock("@/features/communication/email-templates/api/email-templates", () => ({
   emailTemplatesApi: {
     getAllTemplates: libSpy.getAllTemplates,
     getTemplateById: libSpy.getTemplateById,
@@ -51,7 +51,7 @@ describe("emailTemplatesKeys", () => {
   });
 });
 
-describe("wrappers delegate to @/lib/email-templates byte-identically", () => {
+describe("wrappers delegate to @/features/communication/email-templates/api/email-templates byte-identically", () => {
   it("fetchEmailTemplates forwards the token", () => {
     fetchEmailTemplates("tok");
     expect(libSpy.getAllTemplates).toHaveBeenCalledWith("tok");

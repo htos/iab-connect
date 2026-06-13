@@ -16,7 +16,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
  * (REQ-002, src/app/admin/users/page.tsx).
  *
  * Pins CURRENT observable behaviour BEFORE the feature-slice refactor. The page
- * uses the legacy transport: token-param functions from `@/lib/api/users`
+ * uses the legacy transport: token-param functions from `@/features/admin-users/api/users-admin`
  * (getUsers, setUserEnabled, sendPasswordReset, resetUserMfa, deleteUser) over
  * raw useState/useEffect — NOT useApiClient / TanStack. So we mock that module
  * at the boundary. The QueryClientProvider wrapper is kept for harness
@@ -77,9 +77,9 @@ const setUserEnabled = vi.fn();
 const sendPasswordReset = vi.fn();
 const resetUserMfa = vi.fn();
 const deleteUser = vi.fn();
-vi.mock("@/lib/api/users", async () => {
+vi.mock("@/features/admin-users/api/users-admin", async () => {
   const actual =
-    await vi.importActual<typeof import("@/lib/api/users")>("@/lib/api/users");
+    await vi.importActual<typeof import("@/features/admin-users/api/users-admin")>("@/features/admin-users/api/users-admin");
   return {
     ...actual,
     getUsers: (...args: unknown[]) => getUsers(...args),
@@ -91,7 +91,7 @@ vi.mock("@/lib/api/users", async () => {
 });
 
 import UsersPage from "./page";
-import type { User } from "@/lib/api/users";
+import type { User } from "@/features/admin-users/api/users-admin";
 
 function makeUser(over: Partial<User> = {}): User {
   return {

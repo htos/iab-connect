@@ -6,7 +6,7 @@ import { adminFoldersKeys, fetchFolders } from "../api/admin-folders-api";
 /**
  * Server state for the admin folder list (E27-S6), keyed by `parentId` (the
  * folder navigated into; undefined = root) so drilling in/out refetches the
- * children. DEC-1=A wraps the shared `@/lib/services/documents` service; we
+ * children. DEC-1=A wraps the shared `documents` service; we
  * throw on `!result.success` to drive TanStack rejection. `enabled` mirrors the
  * page's `isAuthenticated && isAdmin` gate.
  *

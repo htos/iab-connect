@@ -1,16 +1,9 @@
-// Members slice type surface (E23-S2).
-//
-// AC-8 asks for the Member DTOs/enums to live in the slice. The E21-S5 ESLint
-// boundary forbids `lib` importing from `features`, yet the canonical
-// definitions in `lib/api/members.ts` are still consumed there (the retained
-// duplicate fns — S3), by `lib/api/member-segments.ts` (S4), and by the
-// out-of-scope `app/profile` page. So the canonical definitions STAY in
-// `lib/api/members.ts` and this module RE-EXPORTS them as the slice's single
-// import surface (`features -> lib` is legal). Slice components import member
-// types from here, never reaching into `lib` directly — satisfying AC-6 rule 5
-// and AC-8's no-breakage intent while respecting the boundary. This is the
-// documented S2-DEC-5 inversion of AC-8's literal "move into features".
-export { MembershipType, MembershipStatus } from "@/lib/api/members";
+// Members slice type surface. The shared member DTOs/enums + presentation helpers
+// were relocated to `@/types/members` in E31-S1 (DEC-2; a lib-leaf shared with the
+// `profile` slice). This module re-exports them as the slice's single import
+// surface. The members-only duplicate/merge transport lives in
+// `api/member-duplicates.ts`.
+export { MembershipType, MembershipStatus } from "@/types/members";
 export type {
   MemberDto,
   MemberStatisticsDto,
@@ -18,4 +11,4 @@ export type {
   UpdateMemberRequest,
   GetMembersParams,
   PagedResponse,
-} from "@/lib/api/members";
+} from "@/types/members";

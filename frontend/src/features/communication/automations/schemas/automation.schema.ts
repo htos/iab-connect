@@ -35,7 +35,7 @@ export const CONSENT_TYPES = [
 
 /**
  * Full transport unions (byte-match `RecipientSegmentType` / `ConsentType` in
- * `@/lib/api/automations`). The form `<select>`s only OFFER the 3-option subsets
+ * `automations`). The form `<select>`s only OFFER the 3-option subsets
  * above, but an existing automation's stored value can be any transport value;
  * the schema must ACCEPT the full set so a no-touch edit-save round-trips the
  * original value unchanged (god-page parity — it held the raw value in state).

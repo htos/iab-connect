@@ -13,7 +13,7 @@ import {
  * Board documents list server state (E29-S3, DEC-1 = A). The god-page does
  * SERVER-side search/status/category/folder filtering + pagination, so all
  * filters are part of the query key and TanStack refetches as any change.
- * The transport stays on `@/lib/services/documents` (which returns
+ * The transport stays on `documents` (which returns
  * `ApiResult<T>`), so we throw on `!result.success` to drive TanStack rejection
  * (the suppliers/events/E29-S2 pattern → the `documents.loadError` banner).
  * `enabled` mirrors the page's `isAuthenticated && (isVorstand || isAdmin)`

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 /**
  * E29-S2: the documents slice api owns the query-key factory and wraps the
- * shared `@/lib/services/documents` transport (DEC-1 = A — no URL re-impl). These
+ * shared `documents` transport (DEC-1 = A — no URL re-impl). These
  * assert the key shapes and that each wrapper delegates to the service with the
  * byte-identical params the god-page used: `page`/`pageSize` always; empty
  * `search`/`folderId`/`tags` omitted (sent as `undefined`); `tags` kept a single
@@ -10,7 +10,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
  * forwarded verbatim.
  */
 
-// Mock the shared service transport — the api layer must delegate to it (DEC-1=A).
+// Mock the shared transport — the api layer must delegate to it (DEC-1=A). The
+// data fns live in the relocated transport; `getDownloadUrl` is a pure helper
+// that now lives in `@/types/documents` (E31-S1), so it is mocked separately.
 const serviceSpy = vi.hoisted(() => ({
   getDocuments: vi.fn(() =>
     Promise.resolve({ success: true, data: { items: [] } })
@@ -21,10 +23,13 @@ const serviceSpy = vi.hoisted(() => ({
     (id: string) => `http://localhost:5000/api/v1/documents/${id}/download`
   ),
 }));
-vi.mock("@/lib/services/documents", () => ({
+vi.mock("@/features/documents/api/documents-transport", () => ({
   getDocuments: serviceSpy.getDocuments,
   getFolders: serviceSpy.getFolders,
   getAllTags: serviceSpy.getAllTags,
+}));
+vi.mock("@/types/documents", async (importActual) => ({
+  ...(await importActual<typeof import("@/types/documents")>()),
   getDownloadUrl: serviceSpy.getDownloadUrl,
 }));
 

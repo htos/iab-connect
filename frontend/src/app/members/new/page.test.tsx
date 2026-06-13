@@ -9,7 +9,7 @@ import {
 } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { DuplicateCandidateDto } from "@/lib/api/members";
+import type { DuplicateCandidateDto } from "@/features/members/api/member-duplicates";
 
 /**
  * E23-S1: Characterization tests for the NEW Member page (REQ-013 / REQ-018).
@@ -28,7 +28,7 @@ import type { DuplicateCandidateDto } from "@/lib/api/members";
  *   - success → `router.push("/members")`.
  *
  * Harness (A35/A46/A64/A78): identity translator; stable router/auth; partial
- * mock of `@/lib/api/members` so the enums/DTO types/parseMatchReason stay REAL
+ * mock of `@/features/members/api/member-duplicates` so the enums/DTO types/parseMatchReason stay REAL
  * and only `findMemberDuplicates` is controlled; raw `fetch` stubbed for the
  * POST submit; render wrapped in a fresh QueryClientProvider (retry:false).
  */
@@ -76,8 +76,8 @@ vi.mock("@/lib/auth", () => ({
 const { findMemberDuplicates } = vi.hoisted(() => ({
   findMemberDuplicates: vi.fn(),
 }));
-vi.mock("@/lib/api/members", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/api/members")>()),
+vi.mock("@/features/members/api/member-duplicates", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/members/api/member-duplicates")>()),
   findMemberDuplicates,
 }));
 

@@ -16,7 +16,7 @@
  */
 
 import { useTranslations } from "next-intl";
-import { formatFileSize } from "@/lib/api/backup";
+import { formatFileSize } from "../api/backup";
 import { BackupStatusBadge, BackupTypeBadge } from "./backup-badges";
 import type { BackupDto } from "../types/backups.types";
 

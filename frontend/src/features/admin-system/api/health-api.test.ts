@@ -3,14 +3,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 /**
  * E27-S4: the health slice api owns the query-key factory and WRAPS the existing
- * `@/lib/api/health` transport (DEC-1 = A — note it hits SERVER-ROOT `/health*`,
+ * `health` transport (DEC-1 = A — note it hits SERVER-ROOT `/health*`,
  * NOT `/api/v1`). Asserts the key shapes + byte-identical delegation to the lib fn
  * (so the S1 net's call-count + arg assertions hold). The AC-8 `res.ok` fix lives
  * inside the lib fn (verified separately by the lib).
  */
 
 const libSpy = vi.hoisted(() => ({ getHealthDetail: vi.fn() }));
-vi.mock("@/lib/api/health", () => ({
+vi.mock("@/features/admin-system/api/health", () => ({
   getHealthDetail: (...a: unknown[]) => libSpy.getHealthDetail(...a),
 }));
 

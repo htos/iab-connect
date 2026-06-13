@@ -1,4 +1,4 @@
-// Webhooks feature API (E27-S5). DEC-1 = A BUILD: `@/lib/api/webhooks` exports
+// Webhooks feature API (E27-S5). DEC-1 = A BUILD: `webhooks` exports
 // ONLY types + the URL base (`WEBHOOKS_BASE`); the god-page issued its requests via
 // INLINE `useApiClient` calls. This layer BUILDS the transport on the E21-S1 DEC-1
 // client contract ({ data, error, status }, never throws). URLs / bodies are
@@ -12,8 +12,8 @@
 //   - delete:      DELETE `${BASE}/{id}`        (NO trailing slash)
 // The create response is the ONLY shape carrying the one-time cleartext signing
 // secret; PUT/edit never returns a secret. The URL base moves into the slice here
-// (E21-S1 rule 5). The DTOs stay in `@/lib/api/webhooks`.
-import { WEBHOOKS_BASE } from "@/lib/api/webhooks";
+// (E21-S1 rule 5). The DTOs stay in `webhooks`.
+import { WEBHOOKS_BASE } from "./webhooks";
 import type { useApiClient } from "@/lib/auth";
 import type {
   WebhookSubscriptionDto,

@@ -1,5 +1,5 @@
 // Api-clients feature API (E27-S5). DEC-1 = A BUILD: there is NO `@/lib` client
-// module to wrap — `@/lib/api/apiClients` exports ONLY types + the URL base
+// module to wrap — `apiClients` exports ONLY types + the URL base
 // (`API_CLIENTS_BASE`); the god-page issued its requests via INLINE `useApiClient`
 // calls. So this layer BUILDS the transport on the E21-S1 DEC-1 client contract:
 // the `useApiClient()` instance ({ data, error, status }, never throws). URLs /
@@ -9,9 +9,9 @@
 //   - create: POST `${BASE}/`     (trailing slash) { name, scopes }
 //   - revoke: POST `${BASE}/{id}/revoke` {}  (NO trailing slash)
 // The URL base moves into the slice here (E21-S1 rule 5 — no raw `/api/v1` string
-// in any component). The DTOs stay in `@/lib/api/apiClients` (re-exported via
+// in any component). The DTOs stay in `apiClients` (re-exported via
 // `types/admin-integrations.types`).
-import { API_CLIENTS_BASE } from "@/lib/api/apiClients";
+import { API_CLIENTS_BASE } from "./apiClients";
 import type { useApiClient } from "@/lib/auth";
 import type {
   ApiClientDto,

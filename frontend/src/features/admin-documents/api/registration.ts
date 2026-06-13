@@ -1,9 +1,10 @@
 /**
  * Registration API client
  * For public user registration (no auth required)
+ * (E31-S1: relocated verbatim off the retired `registration`.)
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export interface RegisterRequest {
   email: string;
@@ -27,18 +28,20 @@ export interface ApiError {
  * Register a new user account
  * User will be created but disabled until admin approval
  */
-export async function registerUser(data: RegisterRequest): Promise<RegisterResponse> {
+export async function registerUser(
+  data: RegisterRequest
+): Promise<RegisterResponse> {
   const response = await fetch(`${API_BASE_URL}/api/v1/registration`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify(data),
   });
 
   if (!response.ok) {
     const error: ApiError = await response.json();
-    throw new Error(error.detail || error.title || 'Registration failed');
+    throw new Error(error.detail || error.title || "Registration failed");
   }
 
   return response.json();

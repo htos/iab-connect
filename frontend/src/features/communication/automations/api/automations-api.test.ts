@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * E25-S2: the automations slice api owns the query-key factory and WRAPS the
- * `@/lib/api/automations` transport (DEC-1 = A — no URL re-impl). These assert the
+ * `@/features/communication/automations/api/automations` transport (DEC-1 = A — no URL re-impl). These assert the
  * key shapes and that each wrapper delegates to the lib fn with byte-identical
  * args (token forwarded, `status: status || undefined`), plus the folded
  * `fetchMemberSegments` raw fetch (`/api/v1/member-segments?pageSize=100` with a
@@ -23,7 +23,7 @@ const libSpy = vi.hoisted(() => ({
     Promise.resolve({ totalCount: 0, preview: [] })
   ),
 }));
-vi.mock("@/lib/api/automations", () => ({
+vi.mock("@/features/communication/automations/api/automations", () => ({
   listAutomations: libSpy.listAutomations,
   getAutomation: libSpy.getAutomation,
   getExecutions: libSpy.getExecutions,

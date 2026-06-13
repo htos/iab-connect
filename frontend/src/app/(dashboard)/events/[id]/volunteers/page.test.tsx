@@ -16,7 +16,7 @@ import React from "react";
 //
 // The page now renders `@/features/events` `EventVolunteersContent`, which uses
 // `useApiClient()` ({data,error,status}) + TanStack Query instead of the legacy
-// `@/lib/services/events` functions + manual `refreshKey` reload. Every
+// `events` functions + manual `refreshKey` reload. Every
 // behavioural assertion from the E24-S1 characterization suite is preserved
 // verbatim — ONLY the transport MECHANISM changes:
 //   - `getEventVolunteerRoles(id)` / `getEventVolunteerShifts(id)` →

@@ -61,9 +61,9 @@ const getAutomation = vi.fn();
 const getExecutions = vi.fn().mockResolvedValue([]);
 const changeAutomationStatus = vi.fn();
 
-vi.mock("@/lib/api/automations", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/api/automations")>(
-    "@/lib/api/automations"
+vi.mock("@/features/communication/automations/api/automations", async () => {
+  const actual = await vi.importActual<typeof import("@/features/communication/automations/api/automations")>(
+    "@/features/communication/automations/api/automations"
   );
   return {
     ...actual,

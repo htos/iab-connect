@@ -48,7 +48,7 @@ function syncThenable<T>(value: T): Promise<T> {
  * Pins CURRENT observable behaviour BEFORE refactor. Legacy transport: on mount
  * `Promise.all([getUser, getAvailableRoles])`; on submit the TWO-STEP flow
  * `updateUser` → (conditional, Set-diff) `updateUserRoles` → `getUser` refresh →
- * success banner (NO redirect). All token-param functions from `@/lib/api/users`
+ * success banner (NO redirect). All token-param functions from `@/features/admin-users/api/users-admin`
  * over useState/useEffect. The page receives `params` as a Promise and unwraps
  * it with React `use()` — so we pass a resolved Promise prop directly (no
  * useParams). QueryClientProvider wrapper is inert.
@@ -97,9 +97,9 @@ const getUser = vi.fn();
 const updateUser = vi.fn();
 const updateUserRoles = vi.fn();
 const getAvailableRoles = vi.fn();
-vi.mock("@/lib/api/users", async () => {
+vi.mock("@/features/admin-users/api/users-admin", async () => {
   const actual =
-    await vi.importActual<typeof import("@/lib/api/users")>("@/lib/api/users");
+    await vi.importActual<typeof import("@/features/admin-users/api/users-admin")>("@/features/admin-users/api/users-admin");
   return {
     ...actual,
     getUser: (...args: unknown[]) => getUser(...args),
@@ -110,7 +110,7 @@ vi.mock("@/lib/api/users", async () => {
 });
 
 import UserEditPage from "./page";
-import type { User } from "@/lib/api/users";
+import type { User } from "@/features/admin-users/api/users-admin";
 
 const ROLES = [
   { name: "member", description: "Mitglied" },

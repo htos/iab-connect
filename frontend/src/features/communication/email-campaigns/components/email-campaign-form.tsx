@@ -31,8 +31,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { useApiClient, useAuth } from "@/lib/auth";
-import { emailTemplatesApi } from "@/lib/email-templates";
-import { getSegmentTypeLabel } from "@/lib/api/email-campaigns";
+// eslint-disable-next-line no-restricted-imports -- E31-S1 DEC-3: emailTemplatesApi is owned by the sibling email-templates sub-slice (one owner, justified cross-import).
+import { emailTemplatesApi } from "@/features/communication/email-templates/api/email-templates";
+import { getSegmentTypeLabel } from "../api/email-campaign-helpers";
 import {
   RichTextEditor,
   HtmlSourceEditor,

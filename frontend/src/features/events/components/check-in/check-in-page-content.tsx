@@ -11,7 +11,7 @@
  *   - Result: shared banner distinguishing a real check-in from an idempotent
  *     already-checked-in return per CheckInResultDto.
  *
- * DEC-2 (the ONLY thing that moved): TRANSPORT. The three `@/lib/services/events`
+ * DEC-2 (the ONLY thing that moved): TRANSPORT. The three `events`
  * calls (`getEventCheckInRoster` / `checkInByQrCode` / `manualCheckIn`) are now
  * the slice hooks `useCheckInRoster` / `useQrCheckIn` / `useManualCheckIn` over
  * `useApiClient`. Every behaviour — camera probe, tabs, debounce + client filter,

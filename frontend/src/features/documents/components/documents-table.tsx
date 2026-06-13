@@ -1,5 +1,5 @@
 import { useTranslations } from "next-intl";
-import { formatFileSize } from "@/lib/services/documents";
+import { formatFileSize } from "@/types/documents";
 import { DocumentDownloadButton } from "./document-download-button";
 import type { DocumentDto } from "../types/document.types";
 

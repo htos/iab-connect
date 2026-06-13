@@ -54,7 +54,7 @@ vi.mock("@/lib/auth", () => ({
   }),
 }));
 
-vi.mock("@/lib/email-templates", () => ({
+vi.mock("@/features/communication/email-templates/api/email-templates", () => ({
   emailTemplatesApi: {
     getAllTemplates: vi
       .fn()
@@ -65,9 +65,9 @@ vi.mock("@/lib/email-templates", () => ({
 const createAutomation = vi.fn();
 const updateAutomation = vi.fn();
 const previewRecipients = vi.fn();
-vi.mock("@/lib/api/automations", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/api/automations")>(
-    "@/lib/api/automations"
+vi.mock("@/features/communication/automations/api/automations", async () => {
+  const actual = await vi.importActual<typeof import("@/features/communication/automations/api/automations")>(
+    "@/features/communication/automations/api/automations"
   );
   return {
     ...actual,

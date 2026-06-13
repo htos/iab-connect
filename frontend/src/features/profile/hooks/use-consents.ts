@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { fetchConsents, profileKeys } from "../api/profile-api";
 
 /**
- * Consent preferences (E29-S4, DEC-4=A). Wraps `@/lib/api/privacy.getConsents`
+ * Consent preferences (E29-S4, DEC-4=A). Wraps `privacy.getConsents`
  * (token-based). `enabled` mirrors the page gate.
  *
  * A76 BRANCH 1 (silent load failure): the god-page swallowed a `getConsents`

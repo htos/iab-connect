@@ -1,11 +1,11 @@
 import { useTranslations } from "next-intl";
-import { getTypeTranslationKey } from "@/lib/api/members";
+import { getTypeTranslationKey } from "@/types/members";
 import type { MembershipType } from "../types/member.types";
 
 /**
  * S2-DEC-2 (Option A): feature-local membership-type badge — the sibling of
  * `MemberStatusBadge`. The four type colours are copied VERBATIM from the
- * god-page `getMembershipTypeColor` (lib/api/members.ts): Regular=blue,
+ * god-page `getMembershipTypeColor` (members): Regular=blue,
  * Student=purple, Family=orange, Honorary=amber. Same rationale as the status
  * badge (colour as meaning, not a generic variant, not on the shared primitive),
  * same numeric | string | lowercase handling + gray fallback, same `size`

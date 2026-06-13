@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 /**
- * E27-S6: the registration slice api WRAPS the public `@/lib/api/registration`
+ * E27-S6: the registration slice api WRAPS the public `@/features/admin-documents/api/registration`
  * raw-fetch fn (DEC-2=A). These assert the base + that the wrapper delegates the
  * body verbatim and PROPAGATES the thrown Error (A89 — the service throws on a
  * non-OK response; the wrapper does not swallow it).
@@ -10,7 +10,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const serviceSpy = vi.hoisted(() => ({
   registerUser: vi.fn(),
 }));
-vi.mock("@/lib/api/registration", () => ({
+vi.mock("@/features/admin-documents/api/registration", () => ({
   registerUser: serviceSpy.registerUser,
 }));
 

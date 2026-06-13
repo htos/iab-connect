@@ -1,9 +1,9 @@
 // Budgeting/reporting sub-slice API (E26-S4). OWNS the budgeting URL builders + keys
 // and the activity-areas `/report` + categories WRITE builders. Imports the S2
-// foundation root (`FINANCE_BASE`/`financeKeys`/`financeUrls`) + the `lib/api/budgets.ts`
+// foundation root (`FINANCE_BASE`/`financeKeys`/`financeUrls`) + the `budgets`
 // URL CONSTANTS — it NEVER edits the foundation (parallel-safe, A91/A101).
 //
-// DEC-1 = A: `lib/api/budgets.ts` is types+constants ONLY (no functions). This layer is
+// DEC-1 = A: `budgets` is types+constants ONLY (no functions). This layer is
 // URL builders + query keys ONLY; the hooks own the `useApiClient` calls, so the E26-S1
 // `useApiClient` transport mock keeps intercepting and the characterization net survives
 // the migration with ZERO transport edits (A94 BUILD case). All `/api/v1/finance/*`
@@ -19,7 +19,7 @@ import {
   BUDGETS_ENDPOINT,
   BUDGET_VS_ACTUAL_ENDPOINT,
   BUDGET_VS_ACTUAL_EXPORT_ENDPOINT,
-} from "@/lib/api/budgets";
+} from "./budgets";
 
 /**
  * Budgeting query keys (extend the shared `financeKeys` namespace so keys never collide

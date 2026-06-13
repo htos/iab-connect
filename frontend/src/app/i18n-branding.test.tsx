@@ -35,7 +35,7 @@ vi.mock("@/components/navigation/LanguageSwitcher", () => ({
   LanguageSwitcher: () => <div data-testid="lang-switcher" />,
 }));
 
-vi.mock("@/lib/api/privacy", () => ({
+vi.mock("@/features/public/api/public-forms-api", () => ({
   subscribeNewsletter: vi.fn(),
   unsubscribeByEmail: vi.fn(),
 }));

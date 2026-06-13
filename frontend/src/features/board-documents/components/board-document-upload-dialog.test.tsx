@@ -25,10 +25,10 @@ vi.mock("next-intl", () => {
 
 // Keep the real DocumentCategory enum (re-exported via the types module) +
 // formatFileSize; only the surface needs the module present.
-vi.mock("@/lib/services/documents", async () => {
-  const actual = await vi.importActual<
-    typeof import("@/lib/services/documents")
-  >("@/lib/services/documents");
+vi.mock("@/types/documents", async () => {
+  const actual = await vi.importActual<typeof import("@/types/documents")>(
+    "@/types/documents"
+  );
   return { ...actual, formatFileSize: (n: number) => `${n} B` };
 });
 

@@ -16,7 +16,7 @@ import type {
 
 /**
  * Folder CRUD + permission mutations (E27-S6). Each wraps the shared
- * `@/lib/services/documents` service (DEC-1=A) and throws on `!result.success`
+ * `documents` service (DEC-1=A) and throws on `!result.success`
  * so the `admin-folders-page-content` catch surfaces the service `error` into
  * the page error banner (preserving the god-page's `setError(result.error)`).
  * On success they invalidate `adminFoldersKeys.all` (the god-page re-loaded the

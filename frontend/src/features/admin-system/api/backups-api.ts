@@ -1,7 +1,7 @@
-// Backups feature API (E27-S4). DEC-1 = A: WRAPS the existing `@/lib/api/backup`
+// Backups feature API (E27-S4). DEC-1 = A: WRAPS the existing `backup`
 // transport (token-param fns owning their `/api/v1/admin/backups*` URLs + the
 // token-bearing blob download). Byte-identical delegation keeps the E27-S1 backups
-// spec's `vi.mock("@/lib/api/backup")` intercepting with ZERO transport-mock edits
+// spec's `vi.mock("backup")` intercepting with ZERO transport-mock edits
 // (A94). The slice owns the query-key factory + invalidation convention.
 import {
   getBackups,
@@ -13,7 +13,7 @@ import {
   getBackupSchedule,
   setBackupSchedule,
   disableBackupSchedule,
-} from "@/lib/api/backup";
+} from "./backup";
 import type { BackupDto, BackupScheduleDto } from "../types/backups.types";
 
 /**

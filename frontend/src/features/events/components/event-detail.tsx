@@ -20,7 +20,7 @@
  * preserved verbatim, so the slice HOOKS (which throw + invalidate) don't fit;
  * the api functions are called directly with the threaded `api` client. ONLY the
  * always-rendered `<VolunteerSelfSignupSection />` stays on
- * `@/lib/services/events` (it relies on `ApiResult.errorBody.errorCode`, which
+ * `events` (it relies on `ApiResult.errorBody.errorCode`, which
  * `useApiClient` cannot express). The hand-rolled fixed-overlay confirm dialogs
  * are preserved.
  */

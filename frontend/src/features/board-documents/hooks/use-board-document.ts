@@ -23,7 +23,7 @@ export class BoardDocumentNotFoundError extends Error {
 
 /**
  * Board document detail server state (E29-S3, DEC-1 = A). The transport stays on
- * `@/lib/services/documents.getDocumentById` (an `ApiResult<T>`); a 404 throws
+ * `documents.getDocumentById` (an `ApiResult<T>`); a 404 throws
  * `BoardDocumentNotFoundError`, any other failure throws a generic Error. The
  * component renders `documents.notFound` whenever the query is in error and has
  * no data — the god-page's "document is null → not-found view" behaviour (the

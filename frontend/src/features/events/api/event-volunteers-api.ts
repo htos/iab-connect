@@ -1,7 +1,7 @@
 // Events feature — VOLUNTEER sub-domain API (E24-S3). Encapsulates every
 // volunteer endpoint URL so components/hooks never hold a raw `/api/v1/...`
 // string (E21-S1 rule 5). Folds the volunteer functions previously in
-// `@/lib/services/events` (`getEventVolunteerRoles`, `createVolunteerRole`,
+// `events` (`getEventVolunteerRoles`, `createVolunteerRole`,
 // `updateVolunteerRole`, `getEventVolunteerShifts`, `createVolunteerShift`,
 // `updateVolunteerShift`, `cancelVolunteerShift`, `getVolunteerShiftAssignments`)
 // PLUS the member-facing self-signup set (`signUpForVolunteerShift`,

@@ -6,14 +6,16 @@ import type { ReactNode } from "react";
 
 /**
  * E29-S2: behaviour invariants of the documents query + download hooks. DEC-1=A
- * keeps the transport on `@/lib/services/documents` (an `ApiResult<T>` shape), so
+ * keeps the transport on `documents` (an `ApiResult<T>` shape), so
  * the query hooks throw on `!result.success` to drive TanStack rejection; this
  * pins that branch plus the success path, the `enabled` gate, and the
  * `use-document-download` side-effect (success creates+revokes an object URL +
  * clicks the anchor; failure is surfaced to the caller — A76).
  */
 
-// A single mutable spy object so each test drives the shared service result.
+// A single mutable spy object so each test drives the shared service result. The
+// data fns live in the relocated transport; `getDownloadUrl` is a pure helper
+// that now lives in `@/types/documents` (E31-S1), so it is mocked separately.
 const serviceSpy = vi.hoisted(() => ({
   getDocuments: vi.fn(),
   getFolders: vi.fn(),
@@ -22,10 +24,13 @@ const serviceSpy = vi.hoisted(() => ({
     (id: string) => `http://localhost:5000/api/v1/documents/${id}/download`
   ),
 }));
-vi.mock("@/lib/services/documents", () => ({
+vi.mock("@/features/documents/api/documents-transport", () => ({
   getDocuments: serviceSpy.getDocuments,
   getFolders: serviceSpy.getFolders,
   getAllTags: serviceSpy.getAllTags,
+}));
+vi.mock("@/types/documents", async (importActual) => ({
+  ...(await importActual<typeof import("@/types/documents")>()),
   getDownloadUrl: serviceSpy.getDownloadUrl,
 }));
 

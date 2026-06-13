@@ -4,7 +4,7 @@
 // `EVENTS_BASE` + `eventsKeys` as the events slice (relative import), using the
 // E21-S1 DEC-1 client contract: a `useApiClient()` instance whose verb methods
 // resolve to `{ data, error, status }` and never throw. URLs/params/bodies are
-// BYTE-IDENTICAL to `@/lib/services/events` (which prefixes `/api/v1`): e.g.
+// BYTE-IDENTICAL to `events` (which prefixes `/api/v1`): e.g.
 // `getEventRegistrations` -> GET `/api/v1/events/{id}/registrations?...`, the
 // status actions POST an empty body to `.../{regId}/{action}`, etc.
 import type { useApiClient } from "@/lib/auth";

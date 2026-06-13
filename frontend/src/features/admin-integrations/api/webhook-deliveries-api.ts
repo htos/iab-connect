@@ -1,11 +1,11 @@
 // Webhook-deliveries feature API (E27-S5). DEC-1 = A BUILD on `useApiClient`.
-// `@/lib/api/webhooks` exports the SEPARATE delivery URL base
+// `webhooks` exports the SEPARATE delivery URL base
 // (`WEBHOOK_DELIVERIES_BASE`, distinct from `WEBHOOKS_BASE`) + the metadata-only
 // row DTO. URL is BYTE-IDENTICAL to the god-page:
 //   - list: GET `${BASE}/?page=<page>&pageSize=<pageSize>` (trailing slash before `?`)
 // Metadata-only / read-only surface: NO filters, NO retry action, the payload body
 // is never fetched or rendered (AC-2). The URL base moves into the slice here.
-import { WEBHOOK_DELIVERIES_BASE } from "@/lib/api/webhooks";
+import { WEBHOOK_DELIVERIES_BASE } from "./webhooks";
 import type { useApiClient } from "@/lib/auth";
 import type {
   WebhookDeliveryDto,

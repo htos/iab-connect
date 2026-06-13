@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 
 /**
  * E29-S3: behaviour invariants of the board-documents query + mutation hooks.
- * DEC-1 = A keeps the transport on `@/lib/services/documents` (an `ApiResult<T>`
+ * DEC-1 = A keeps the transport on `documents` (an `ApiResult<T>`
  * shape), so the detail query throws on `!success` — a 404 throws
  * `BoardDocumentNotFoundError`, any other failure a generic Error. The mutations
  * invalidate `boardDocumentsKeys.all` (+ `detail(id)` for the detail-scoped ones)
@@ -22,7 +22,7 @@ const serviceSpy = vi.hoisted(() => ({
   updateDocumentTags: vi.fn(),
   restoreVersion: vi.fn(),
 }));
-vi.mock("@/lib/services/documents", () => ({
+vi.mock("@/features/documents/api/documents-transport", () => ({
   getDocumentById: serviceSpy.getDocumentById,
   reviewDocument: serviceSpy.reviewDocument,
   publishDocument: serviceSpy.publishDocument,

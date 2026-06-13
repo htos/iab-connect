@@ -17,7 +17,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 //
 // E24-S3 transport adaptation: the page now renders the `@/features/events`
 // `EventFeesContent`, which uses `useApiClient()` ({data,error,status}) +
-// TanStack Query instead of the `@/lib/services/events` service fns. The
+// TanStack Query instead of the `events` service fns. The
 // BEHAVIOURAL assertions from the S1 characterization suite are preserved
 // verbatim; only the transport MECHANISM changes:
 //   - `getEventFeeCategories(eventId)` → `apiClient.get(endpoint)`.

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * E29-S3: the board-documents slice api owns the `boardDocumentsKeys` factory and
- * wraps the shared `@/lib/services/documents` transport (DEC-1 = A — no URL
+ * wraps the shared `documents` transport (DEC-1 = A — no URL
  * re-impl for the JSON endpoints). These assert the key shapes and that each
  * wrapper delegates to the service with the byte-identical params the god-page
  * used: `page`/`pageSize` always; empty `search`/`status`/`category`/`folderId`
@@ -33,7 +33,7 @@ const serviceSpy = vi.hoisted(() => ({
       : `http://localhost:5000/api/v1/documents/${id}/download`
   ),
 }));
-vi.mock("@/lib/services/documents", () => ({
+vi.mock("@/features/documents/api/documents-transport", () => ({
   getDocuments: serviceSpy.getDocuments,
   getFolders: serviceSpy.getFolders,
   getAllTags: serviceSpy.getAllTags,
@@ -44,6 +44,10 @@ vi.mock("@/lib/services/documents", () => ({
   deleteDocument: serviceSpy.deleteDocument,
   updateDocumentTags: serviceSpy.updateDocumentTags,
   restoreVersion: serviceSpy.restoreVersion,
+}));
+// `getDownloadUrl` is a pure helper that now lives in `@/types/documents` (E31-S1).
+vi.mock("@/types/documents", async (importActual) => ({
+  ...(await importActual<typeof import("@/types/documents")>()),
   getDownloadUrl: serviceSpy.getDownloadUrl,
 }));
 

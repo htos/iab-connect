@@ -22,11 +22,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 // (`apiGet`/`apiPost`/`apiDelete`) instead of a `fetch` stub, asserting `apiClient.get/post/delete`
 // were called with the byte-identical endpoint (no `${BASE_URL}` prefix — the client owns that).
 //
-// SEAM-CLOSE (E24-S3): the registration / waitlist surface ALSO moved off `@/lib/services/events`
+// SEAM-CLOSE (E24-S3): the registration / waitlist surface ALSO moved off `@/features/events/api/events-transport`
 // onto the slice `event-registrations-api` (still via the SAME `useApiClient` spy, byte-identical
 // endpoints: GET `/api/v1/my-registrations`, POST `/api/v1/events/{id}/registrations`, the stats /
 // waitlist GETs, `.../promote-from-waitlist`, `.../{regId}/cancel`). So those assertions now match
-// on the `apiGet`/`apiPost` spy by URL instead of on service spies. The `@/lib/services/events`
+// on the `apiGet`/`apiPost` spy by URL instead of on service spies. The `@/features/events/api/events-transport`
 // mock is RETAINED only for `getEventVolunteerShifts`, which the always-rendered
 // `VolunteerSelfSignupSection` still calls (it needs `ApiResult.errorBody.errorCode`).
 
@@ -60,7 +60,7 @@ function syncThenable<T>(value: T): Promise<T> {
 }
 
 import EventDetailPage from "./page";
-import * as eventsService from "@/lib/services/events";
+import * as eventsService from "@/features/events/api/events-transport";
 
 // next-intl: identity translator (echo key, append vars JSON when present). Must be a STABLE
 // reference — a fresh function per render would re-fire load effects.
@@ -138,13 +138,13 @@ vi.mock("@/components/ui/dialog", () => ({
 }));
 
 // E24-S3 seam-close: the registration / waitlist surface moved onto the slice `useApiClient`
-// transport (asserted via the apiGet/apiPost spy below). The `@/lib/services/events` mock is now
+// transport (asserted via the apiGet/apiPost spy below). The `@/features/events/api/events-transport` mock is now
 // RETAINED ONLY for `getEventVolunteerShifts`, which the always-rendered VolunteerSelfSignupSection
 // still calls on mount (it relies on `ApiResult.errorBody.errorCode`, which `useApiClient` can't
 // express). Keep it inert so that section doesn't interfere with the detail-page assertions.
-vi.mock("@/lib/services/events", async () => {
+vi.mock("@/features/events/api/events-transport", async () => {
   const actual = await vi.importActual<typeof eventsService>(
-    "@/lib/services/events"
+    "@/features/events/api/events-transport"
   );
   return {
     ...actual,
@@ -291,7 +291,7 @@ beforeEach(() => {
   auth.isVorstand = false;
 
   // Seam-close (E24-S3): the registration / waitlist surface is stubbed via the apiGet/apiPost spy
-  // in `defaultApi`. Only the volunteer-shift service (still on `@/lib/services/events`) needs a
+  // in `defaultApi`. Only the volunteer-shift service (still on `@/features/events/api/events-transport`) needs a
   // standalone stub so the always-rendered VolunteerSelfSignupSection stays inert.
   vi.mocked(eventsService.getEventVolunteerShifts).mockResolvedValue({
     data: [],

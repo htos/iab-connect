@@ -16,7 +16,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
  *
  * Pins CURRENT observable behaviour BEFORE refactor. Legacy transport:
  * `getAvailableRoles` (loaded into a checkbox list on mount) + `createUser`,
- * both token-param functions from `@/lib/api/users` over useState/useEffect.
+ * both token-param functions from `@/features/admin-users/api/users-admin` over useState/useEffect.
  * No useApiClient / TanStack — the QueryClientProvider wrapper is inert here.
  *
  * i18n: `useTranslations("users")` + `useTranslations("common")`, identity
@@ -59,9 +59,9 @@ vi.mock("@/lib/auth", () => ({
 
 const createUser = vi.fn();
 const getAvailableRoles = vi.fn();
-vi.mock("@/lib/api/users", async () => {
+vi.mock("@/features/admin-users/api/users-admin", async () => {
   const actual =
-    await vi.importActual<typeof import("@/lib/api/users")>("@/lib/api/users");
+    await vi.importActual<typeof import("@/features/admin-users/api/users-admin")>("@/features/admin-users/api/users-admin");
   return {
     ...actual,
     createUser: (...args: unknown[]) => createUser(...args),

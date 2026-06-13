@@ -1,5 +1,5 @@
 // Public registration feature API (E27-S6). DEC-2 = A: the public self-signup
-// form joins this slice. `@/lib/api/registration.registerUser` is a public,
+// form joins this slice. `registration.registerUser` is a public,
 // UNAUTHENTICATED raw-`fetch` function that THROWS an `Error` on a non-OK
 // response (reading `error.detail` then `error.title` — A89). We WRAP it here
 // (A62 wrap-don't-relocate); the page stays unguarded (public exception).
@@ -7,7 +7,7 @@ import {
   registerUser as serviceRegisterUser,
   type RegisterRequest,
   type RegisterResponse,
-} from "@/lib/api/registration";
+} from "./registration";
 
 // Endpoint base (E21-S1 rule 5). The real fetch lives in the wrapped service;
 // this const documents the slice's surface.

@@ -44,7 +44,7 @@ vi.mock("next/link", () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-vi.mock("@/lib/api/registration", () => ({
+vi.mock("@/features/admin-documents/api/registration", () => ({
   registerUser: vi.fn(),
 }));
 
@@ -63,7 +63,7 @@ vi.mock("@/components/providers/AppSettingsProvider", () => ({
 }));
 
 import RegisterPage from "./page";
-import { registerUser } from "@/lib/api/registration";
+import { registerUser } from "@/features/admin-documents/api/registration";
 
 const mockRegisterUser = vi.mocked(registerUser);
 

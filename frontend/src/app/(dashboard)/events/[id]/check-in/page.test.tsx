@@ -15,7 +15,7 @@ import React from "react";
  * E24-S3: the E24-S1 check-in characterization suite, repointed to the
  * feature-slice transport. The page now renders the slice
  * `CheckInPageContent`, which calls `useApiClient()` ({data,error,status})
- * instead of the three `@/lib/services/events` fns. EVERY behavioural assertion
+ * instead of the three `events` fns. EVERY behavioural assertion
  * (the outcome-banner matrix, role gating, camera auto-flip, 250ms debounce +
  * client filter, lastScannedToken dedupe, refreshKey reload-after-success /
  * no-reload-on-failure, scanAgain, actionInFlight, loadRosterFailed) is
@@ -160,7 +160,7 @@ vi.mock("@/lib/auth", () => ({
   useApiClient: () => apiClient,
 }));
 
-// Byte-identical endpoints reproduced from `@/lib/services/events` (the slice
+// Byte-identical endpoints reproduced from `events` (the slice
 // `useApiClient` prepends nothing; the service `apiGet/apiPost` prepended /api/v1).
 const ROSTER_ENDPOINT = "/api/v1/events/evt-1/registrations/check-in-roster";
 const manualEndpoint = (regId: string) =>

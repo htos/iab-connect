@@ -69,11 +69,14 @@ export async function getBackupById(
   accessToken: string,
   id: string
 ): Promise<BackupDto> {
-  const response = await fetch(`${API_BASE}/api/v1/admin/backups/${encodeURIComponent(id)}`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
+  const response = await fetch(
+    `${API_BASE}/api/v1/admin/backups/${encodeURIComponent(id)}`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
 
   if (!response.ok) {
     const error = await response.text();
@@ -123,12 +126,15 @@ export async function deleteBackup(
   accessToken: string,
   id: string
 ): Promise<void> {
-  const response = await fetch(`${API_BASE}/api/v1/admin/backups/${encodeURIComponent(id)}`, {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
+  const response = await fetch(
+    `${API_BASE}/api/v1/admin/backups/${encodeURIComponent(id)}`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
 
   if (!response.ok) {
     const error = await response.text();

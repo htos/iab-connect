@@ -1,5 +1,8 @@
 /**
- * REQ-029: Privacy & Consent API client
+ * Self-service consent + channel-preference transport (E31-S1; relocated verbatim
+ * off the retired `privacy`). Authenticated, profile-owned surface —
+ * the PUBLIC anonymous newsletter/unsubscribe fns moved to
+ * `features/public/api/public-forms-api.ts`. REQ-029 / REQ-030 (E5-S5).
  */
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
@@ -94,82 +97,4 @@ export async function updateChannelPreference(
     }
   );
   if (!response.ok) throw new Error("Failed to update channel preference");
-}
-
-// Public API (no auth required)
-export interface UnsubscribeVerifyResult {
-  alreadyUnsubscribed: boolean;
-  email: string;
-  unsubscribedAt?: string;
-}
-
-export interface UnsubscribeConfirmResult {
-  success: boolean;
-  email: string;
-  message: string;
-}
-
-export async function verifyUnsubscribe(
-  token: string
-): Promise<UnsubscribeVerifyResult> {
-  const response = await fetch(
-    `${baseUrl}/api/v1/public/newsletter/unsubscribe/${encodeURIComponent(token)}`
-  );
-  if (!response.ok) {
-    const data = await response.json().catch(() => null);
-    throw new Error(data?.error ?? "Invalid token");
-  }
-  return response.json();
-}
-
-export async function confirmUnsubscribe(
-  token: string
-): Promise<UnsubscribeConfirmResult> {
-  const response = await fetch(
-    `${baseUrl}/api/v1/public/newsletter/unsubscribe/${encodeURIComponent(token)}`,
-    { method: "POST" }
-  );
-  if (!response.ok) {
-    const data = await response.json().catch(() => null);
-    throw new Error(data?.error ?? "Unsubscribe failed");
-  }
-  return response.json();
-}
-
-export async function subscribeNewsletter(
-  email: string,
-  firstName?: string,
-  lastName?: string
-): Promise<{ success: boolean; message: string }> {
-  const response = await fetch(
-    `${baseUrl}/api/v1/public/newsletter/subscribe`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, firstName, lastName }),
-    }
-  );
-  if (!response.ok) {
-    const data = await response.json().catch(() => null);
-    throw new Error(data?.error ?? "Subscribe failed");
-  }
-  return response.json();
-}
-
-export async function unsubscribeByEmail(
-  email: string
-): Promise<{ success: boolean; email: string; message: string }> {
-  const response = await fetch(
-    `${baseUrl}/api/v1/public/newsletter/unsubscribe`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
-    }
-  );
-  if (!response.ok) {
-    const data = await response.json().catch(() => null);
-    throw new Error(data?.error ?? "Unsubscribe failed");
-  }
-  return response.json();
 }

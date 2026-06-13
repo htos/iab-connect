@@ -2,10 +2,14 @@
  * REQ-028 (E5-S3): Communication automation (journey) API types + client helpers.
  * Mirrors the email-campaigns helper shape. Enum string values byte-match the backend
  * (PascalCase) per project-context "frontend enum values must exactly match backend".
+ *
+ * E31-S1: relocated verbatim off `automations`; the only change is the
+ * shared `RecipientSegmentType` now imports from its `@/types/email-campaigns`
+ * home (DEC-2) instead of the retired `email-campaigns`.
  */
 
 import type { PagedResult as PagedResponse } from "@/types/common";
-import type { RecipientSegmentType } from "@/lib/api/email-campaigns";
+import type { RecipientSegmentType } from "@/types/email-campaigns";
 
 export type { PagedResponse };
 export type { RecipientSegmentType };

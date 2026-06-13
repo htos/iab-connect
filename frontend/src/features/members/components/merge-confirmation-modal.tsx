@@ -19,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { DuplicateGroupDto } from "@/lib/api/members";
+import type { DuplicateGroupDto } from "../api/member-duplicates";
 
 interface MergeConfirmationModalProps {
   open: boolean;

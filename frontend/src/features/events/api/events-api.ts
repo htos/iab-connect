@@ -1,7 +1,7 @@
 // Events feature API — encapsulates all endpoint URLs (E21-S1 rule 5: no raw
 // `/api/v1/...` strings in components). Covers ONLY event CRUD + statistics
 // (DEC-1); registration/waitlist/roster/fee/volunteer functions stay in
-// `@/lib/services/events` (S3 owns them, DEC-2). Uses the E21-S1 DEC-1 client
+// `events` (S3 owns them, DEC-2). Uses the E21-S1 DEC-1 client
 // contract: the `useApiClient()` hook instance ({ data, error, status }, never
 // throws). URLs are byte-identical to the god-pages they replace.
 import type { useApiClient } from "@/lib/auth";

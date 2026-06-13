@@ -32,9 +32,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
  * target `apiClient.get/put("/api/v1/members/me")` instead of `fetch`. EVERY
  * behavioural assertion (guard matrix, 404 no-member view + links, view↔edit,
  * PUT success/error, Cancel, the consent THREE branches) is otherwise unchanged
- * — only the member-record TRANSPORT moved. The `vi.mock("@/lib/api/privacy")`
+ * — only the member-record TRANSPORT moved. The `vi.mock("@/features/profile/api/privacy-consent")`
  * consent + channel mocks STILL intercept (DEC-1=A keeps that module), the real
- * `@/lib/api/members` helpers (colour + translation-key) run unmocked, and the
+ * `members` helpers (colour + translation-key) run unmocked, and the
  * page renders inside a fresh `QueryClientProvider` (retry:false).
  */
 
@@ -95,14 +95,14 @@ vi.mock("@/lib/auth", () => ({
   useApiClient: () => apiClient,
 }));
 
-// @/lib/api/privacy: consent + channel-preference fns (the card consumes the
+// @/features/profile/api/privacy-consent: consent + channel-preference fns (the card consumes the
 // channel fns; let it render with these mocked).
 const getConsents = vi.fn();
 const grantConsent = vi.fn();
 const revokeConsent = vi.fn();
 const getChannelPreference = vi.fn();
 const updateChannelPreference = vi.fn();
-vi.mock("@/lib/api/privacy", () => ({
+vi.mock("@/features/profile/api/privacy-consent", () => ({
   getConsents: (...a: unknown[]) => getConsents(...a),
   grantConsent: (...a: unknown[]) => grantConsent(...a),
   revokeConsent: (...a: unknown[]) => revokeConsent(...a),

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 /**
  * E27-S6: the admin-folders slice api owns the `adminFoldersKeys` factory and
- * WRAPS the shared `@/lib/services/documents` folder transport (DEC-1=A — no URL
+ * WRAPS the shared `documents` folder transport (DEC-1=A — no URL
  * re-impl, A62 do-not-relocate). These assert the key shapes + that each wrapper
  * delegates to the service with byte-identical args (the god-page's call shape:
  * `getFolders(parentId)` with undefined = root; create/update/delete/permissions
@@ -18,7 +18,7 @@ const serviceSpy = vi.hoisted(() => ({
     Promise.resolve({ success: true, data: {} })
   ),
 }));
-vi.mock("@/lib/services/documents", () => ({
+vi.mock("@/features/documents/api/documents-transport", () => ({
   getFolders: serviceSpy.getFolders,
   createFolder: serviceSpy.createFolder,
   updateFolder: serviceSpy.updateFolder,

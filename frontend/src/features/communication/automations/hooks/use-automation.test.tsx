@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 
 /**
  * E25-S2: behaviour invariants of the automations detail query + lifecycle
- * mutation hooks. DEC-1 = A wraps `@/lib/api/automations` (token-param fns that
+ * mutation hooks. DEC-1 = A wraps `@/features/communication/automations/api/automations` (token-param fns that
  * THROW on non-ok). The detail query uses `retry: false` (DEC-A93 — the god-page
  * rendered its error panel on the first failed fetch, and the wrapped lib fn
  * carries no status to distinguish a 404). The lifecycle mutation writes the
@@ -17,7 +17,7 @@ const libSpy = vi.hoisted(() => ({
   getAutomation: vi.fn(),
   changeAutomationStatus: vi.fn(),
 }));
-vi.mock("@/lib/api/automations", () => ({
+vi.mock("@/features/communication/automations/api/automations", () => ({
   getAutomation: (...a: unknown[]) => libSpy.getAutomation(...a),
   changeAutomationStatus: (...a: unknown[]) =>
     libSpy.changeAutomationStatus(...a),

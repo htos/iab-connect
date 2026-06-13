@@ -3,7 +3,7 @@
 // components). All fns use the E21-S1 DEC-1 client contract (`useApiClient()`,
 // `{ data, error, status }`, never throws). REQ-017: Segmentierung & Verteiler.
 //
-// The `lib/api/member-segments.ts` module was types-and-helpers only, so these
+// The `member-segments` module was types-and-helpers only, so these
 // fns are net-new extractions of the pages' inline URLs (S4 Dev Notes). The
 // detail typeahead reuses the members `searchMembers` fn (cross-feature, A62) —
 // no `/api/v1/members` URL is duplicated here.

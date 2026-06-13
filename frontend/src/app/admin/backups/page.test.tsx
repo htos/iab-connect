@@ -12,7 +12,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // E27-S1 characterization tests (regression net) for the Backup Management admin page.
 // Pins CURRENT observable behaviour at HEAD. No production code changed.
-// The page consumes the @/lib/api/backup transport functions directly with the
+// The page consumes the backup transport functions directly with the
 // access token (NOT useApiClient), so we mock that module at the boundary while
 // keeping the real colour/format helpers (getStatusColor/getTypeColor/formatFileSize).
 //
@@ -60,10 +60,10 @@ const uploadBackup = vi.fn();
 const getBackupSchedule = vi.fn();
 const setBackupSchedule = vi.fn();
 const disableBackupSchedule = vi.fn();
-vi.mock("@/lib/api/backup", async () => {
+vi.mock("@/features/admin-system/api/backup", async () => {
   const actual =
-    await vi.importActual<typeof import("@/lib/api/backup")>(
-      "@/lib/api/backup"
+    await vi.importActual<typeof import("@/features/admin-system/api/backup")>(
+      "@/features/admin-system/api/backup"
     );
   return {
     ...actual,

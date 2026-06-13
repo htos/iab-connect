@@ -135,7 +135,7 @@ describe("BudgetsPage", () => {
 
 // ============================================================================
 // E26-S1 (REQ-044) S4 char-net EXTENSION — pin AS-IS at HEAD (DEC-1=A: extend, don't rewrite).
-// A79 deltas: pages call useApiClient direct (BUILD-on-useApiClient); lib/api/budgets.ts is
+// A79 deltas: pages call useApiClient direct (BUILD-on-useApiClient); budgets is
 // types+consts ONLY. A95: area/period <select>s are disabled-on-edit (raw stored value retained);
 // currency is a closed CHF/EUR set. A96: NO submitted field is trimmed. AC-5: delete is an inline
 // two-step confirm (NOT a modal); destructive confirm is bg-red-600.

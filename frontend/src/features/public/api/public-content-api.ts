@@ -10,7 +10,7 @@
  * **`useApiClient` is the WRONG tool here (A56, load-bearing):** it 401-gates on
  * no-auth (`auth.ts:178`) and the public endpoints are anonymous. These reads use
  * plain SERVER `fetch` (RSC, request-time) — NOT TanStack/`useApiClient`. DEC-1=B
- * (build byte-identical fns; the reserved `lib/services/events.ts` helpers are left
+ * (build byte-identical fns; the reserved `events` helpers are left
  * for a later consolidation, to avoid the `EventDto` superset/`requireAuth`
  * widening risk), DEC-2=A (build blog/sponsors/registration — no module owns them).
  *

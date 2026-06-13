@@ -1,28 +1,18 @@
 /**
- * Generic API client for the application backend.
- * Note: API_BASE_URL should NOT include /api/v1 - we add it here for consistency
- * with other API clients in the codebase (lib/api/*.ts)
+ * Documents slice HTTP base (E31-S1, DEC-4). Relocated verbatim off the retired
+ * `the legacy HTTP base`: the generic `ApiResult` fetch helper (next-auth token,
+ * `/api/v1` base, 204 + `errorBody` handling) the document transport builds on.
+ * Owned by `features/documents`; the `events` slice keeps its own copy (DEC-4 =
+ * each-owner-its-own-copy, to avoid coupling events to documents for a generic
+ * transport util).
+ *
+ * Note: API_BASE_URL should NOT include /api/v1 in the env var — we add it here.
  */
+
+import type { ApiResult } from "@/types/api-result";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 const API_BASE_URL = `${API_BASE}/api/v1`;
-
-export interface ApiResult<T> {
-  success: boolean;
-  data: T;
-  error?: string;
-  /**
-   * REQ-024 (E3.S4): Parsed JSON body for non-OK responses. Lets endpoint consumers
-   * read typed error codes (e.g. `{ message, errorCode: "ShiftFull" }`) without
-   * re-parsing `error` string fragments. Undefined on success or when the body
-   * was not JSON.
-   */
-  errorBody?: Record<string, unknown>;
-  /** HTTP status code on non-OK responses; undefined on success or transport error. */
-  status?: number;
-}
-
-export type { PagedResult } from "@/types/common";
 
 async function getAuthToken(): Promise<string | null> {
   // Import dynamically to avoid issues with SSR

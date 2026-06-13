@@ -9,7 +9,7 @@ import {
   type DuplicateGroupDto,
   type DismissDuplicateCandidateResult,
   type MergeMembersResult,
-} from "./members";
+} from "./member-duplicates";
 import type { PagedResult } from "@/types/common";
 
 const API_BASE = "http://localhost:5000";
@@ -20,14 +20,12 @@ describe("findMemberDuplicates", () => {
   });
 
   it("composes the URL with every provided query parameter", async () => {
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue(
-        new Response(JSON.stringify([]), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        })
-      );
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
 
     await findMemberDuplicates("access-token", {
       email: "max@example.com",
@@ -51,14 +49,12 @@ describe("findMemberDuplicates", () => {
   });
 
   it("omits query parameters that are empty or undefined", async () => {
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue(
-        new Response(JSON.stringify([]), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        })
-      );
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
 
     await findMemberDuplicates("access-token", {
       email: "max@example.com",
@@ -120,22 +116,20 @@ describe("getDuplicateGroups", () => {
   });
 
   it("composes the URL with page, pageSize and minTier when provided", async () => {
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            items: [],
-            totalCount: 0,
-            page: 2,
-            pageSize: 10,
-            totalPages: 0,
-            hasNextPage: false,
-            hasPreviousPage: true,
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } }
-        )
-      );
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          items: [],
+          totalCount: 0,
+          page: 2,
+          pageSize: 10,
+          totalPages: 0,
+          hasNextPage: false,
+          hasPreviousPage: true,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
 
     await getDuplicateGroups("access-token", {
       page: 2,
@@ -153,22 +147,20 @@ describe("getDuplicateGroups", () => {
   });
 
   it("omits all query parameters when none are provided", async () => {
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            items: [],
-            totalCount: 0,
-            page: 1,
-            pageSize: 20,
-            totalPages: 0,
-            hasNextPage: false,
-            hasPreviousPage: false,
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } }
-        )
-      );
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          items: [],
+          totalCount: 0,
+          page: 1,
+          pageSize: 20,
+          totalPages: 0,
+          hasNextPage: false,
+          hasPreviousPage: false,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
 
     await getDuplicateGroups("access-token");
 
@@ -244,14 +236,12 @@ describe("dismissDuplicateCandidate", () => {
       created: true,
     };
 
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue(
-        new Response(JSON.stringify(payload), {
-          status: 201,
-          headers: { "Content-Type": "application/json" },
-        })
-      );
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify(payload), {
+        status: 201,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
 
     const result = await dismissDuplicateCandidate("access-token", {
       memberA: "11111111-1111-1111-1111-111111111111",
@@ -301,7 +291,9 @@ describe("dismissDuplicateCandidate", () => {
   });
 
   it("throws on non-2xx", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("", { status: 404 }));
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("", { status: 404 })
+    );
     await expect(
       dismissDuplicateCandidate("access-token", {
         memberA: "11111111-1111-1111-1111-111111111111",
@@ -333,14 +325,12 @@ describe("mergeMembers", () => {
       auditEventId: "44444444-4444-4444-4444-444444444444",
     };
 
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue(
-        new Response(JSON.stringify(payload), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        })
-      );
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
 
     const result = await mergeMembers("access-token", {
       sourceId: "11111111-1111-1111-1111-111111111111",
@@ -366,9 +356,12 @@ describe("mergeMembers", () => {
 
   it("throws with status code on 409 Conflict (unsafe merge blockers)", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ reasons: ["Source has 1 sent invoice."] }), {
-        status: 409,
-      })
+      new Response(
+        JSON.stringify({ reasons: ["Source has 1 sent invoice."] }),
+        {
+          status: 409,
+        }
+      )
     );
 
     await expect(

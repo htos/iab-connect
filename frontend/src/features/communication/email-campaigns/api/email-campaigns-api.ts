@@ -6,7 +6,7 @@
 // params / bodies are BYTE-IDENTICAL to the god-page inline fetches (verified
 // against each page). The DTOs/enums + the `getStatusColor`/
 // `getRecipientStatusColor`/`getSegmentTypeLabel` helpers stay in
-// `@/lib/api/email-campaigns` (reused, not duplicated; surfaced via
+// `email-campaigns` (reused, not duplicated; surfaced via
 // `types/email-campaign.types.ts`).
 //
 // No raw `/api/v1/...` string lives in any component — they all route through

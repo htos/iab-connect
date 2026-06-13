@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { formatFileSize, getStatusColor } from "@/lib/services/documents";
+import { formatFileSize, getStatusColor } from "@/types/documents";
 import { DocumentStatus } from "../types/board-document.types";
 import type { DocumentDto } from "../types/board-document.types";
 import type { StatusAction } from "../hooks/use-board-document-mutations";

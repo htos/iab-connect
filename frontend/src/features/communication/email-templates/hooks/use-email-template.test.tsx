@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 
 /**
  * E25-S4: behaviour invariants of the email-templates detail query + the
- * create/update/delete mutations. DEC-1 = A WRAPs `@/lib/email-templates` (token-
+ * create/update/delete mutations. DEC-1 = A WRAPs `@/features/communication/email-templates/api/email-templates` (token-
  * param fns that THROW an `ApiError { statusCode }` on non-ok). Because the wrapped
  * lib fn carries a status (A93), the detail query CAN distinguish a 404: it throws
  * `EmailTemplateNotFoundError` on `statusCode === 404` (excluded from retry so the
@@ -22,7 +22,7 @@ const libSpy = vi.hoisted(() => ({
   updateTemplate: vi.fn(),
   deleteTemplate: vi.fn(),
 }));
-vi.mock("@/lib/email-templates", () => ({
+vi.mock("@/features/communication/email-templates/api/email-templates", () => ({
   emailTemplatesApi: {
     getAllTemplates: (...a: unknown[]) => libSpy.getAllTemplates(...a),
     getTemplateById: (...a: unknown[]) => libSpy.getTemplateById(...a),

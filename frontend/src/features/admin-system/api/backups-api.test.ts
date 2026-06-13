@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 /**
  * E27-S4: the backups slice api owns the query-key factory and WRAPS the
- * `@/lib/api/backup` transport (DEC-1 = A). Asserts the key shapes + byte-identical
+ * `backup` transport (DEC-1 = A). Asserts the key shapes + byte-identical
  * delegation (A94), including the token-bearing blob download mechanism kept inside
  * the lib fn (the wrapper just forwards id + fileName).
  */
@@ -19,7 +19,7 @@ const libSpy = vi.hoisted(() => ({
   setBackupSchedule: vi.fn(),
   disableBackupSchedule: vi.fn(),
 }));
-vi.mock("@/lib/api/backup", () => ({
+vi.mock("@/features/admin-system/api/backup", () => ({
   getBackups: (...a: unknown[]) => libSpy.getBackups(...a),
   createBackup: (...a: unknown[]) => libSpy.createBackup(...a),
   deleteBackup: (...a: unknown[]) => libSpy.deleteBackup(...a),

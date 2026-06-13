@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 /**
  * E27-S5: the admin-integrations slice api owns the per-resource query-key factories
  * and BUILDS the transport on the `useApiClient` contract (DEC-1 = A — there is no
- * `@/lib` client to wrap; `@/lib/api/apiClients`+`webhooks` export ONLY types + URL
+ * `@/lib` client to wrap; `apiClients`+`webhooks` export ONLY types + URL
  * bases). These assert the key shapes and that each function calls the right
  * api-client method with a BYTE-IDENTICAL endpoint / body, with the EXACT trailing
  * slashes the god-pages used (list/create `/`; PUT/DELETE/enable/disable no slash;

@@ -1,10 +1,10 @@
 // Events check-in sub-domain API (E24-S3). Encapsulates the three check-in
 // endpoint URLs the check-in god-page called inline through
-// `@/lib/services/events` (E21-S1 rule 5: no raw `/api/v1/...` in components).
+// `events` (E21-S1 rule 5: no raw `/api/v1/...` in components).
 // All fns use the E21-S1 DEC-1 client contract (`useApiClient()`,
 // `{ data, error, status }`, never throws). URLs are BYTE-IDENTICAL to the
 // service fns they fold (`getEventCheckInRoster`, `checkInByQrCode`,
-// `manualCheckIn`) — confirmed against `@/lib/services/events`:
+// `manualCheckIn`) — confirmed against `events`:
 //   - service `apiGet/apiPost` prepend `/api/v1`; the slice client prepends
 //     nothing, so `EVENTS_BASE` already carries `/api/v1/events` and the QR
 //     route is the absolute `/api/v1/registrations/...` (NOT under /events).

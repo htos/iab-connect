@@ -1,7 +1,7 @@
 // Event fee-category sub-domain API (E24-S3). Encapsulates the four fee-category
 // endpoint URLs (E21-S1 rule 5: no raw `/api/v1/...` strings in components),
 // building them off the shared `EVENTS_BASE` so they stay byte-identical to the
-// `@/lib/services/events` functions they replace. Uses the E21-S1 DEC-1 client
+// `events` functions they replace. Uses the E21-S1 DEC-1 client
 // contract: the `useApiClient()` hook instance ({ data, error, status }, never
 // throws).
 //

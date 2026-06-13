@@ -127,7 +127,7 @@ vi.mock("@/components/ui/rich-text-editor", () => ({
 
 const getAllTemplates = vi.fn();
 const getTemplateById = vi.fn();
-vi.mock("@/lib/email-templates", () => ({
+vi.mock("@/features/communication/email-templates/api/email-templates", () => ({
   emailTemplatesApi: {
     getAllTemplates: (...args: unknown[]) => getAllTemplates(...args),
     getTemplateById: (...args: unknown[]) => getTemplateById(...args),

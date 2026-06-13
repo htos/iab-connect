@@ -47,6 +47,7 @@ export interface WebhookDeliveryDto {
   nextRetryAt: string | null;
 }
 
+// TODO(E31): PagedResult duplicates @/types/common
 export interface PagedResult<T> {
   items: T[];
   totalCount: number;

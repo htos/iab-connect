@@ -21,7 +21,7 @@ import { useTranslations } from "next-intl";
 import { CheckCircle2, AlertOctagon, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { PageShell } from "@/components/layout";
-import type { DuplicateGroupDto, MatchTier } from "@/lib/api/members";
+import type { DuplicateGroupDto, MatchTier } from "../api/member-duplicates";
 import { useDuplicateGroups } from "../hooks/use-duplicate-groups";
 import { useMergeMembers } from "../hooks/use-merge-members";
 import { useDismissDuplicates } from "../hooks/use-dismiss-duplicates";

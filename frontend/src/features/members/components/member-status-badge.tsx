@@ -1,5 +1,5 @@
 import { useTranslations } from "next-intl";
-import { getStatusTranslationKey } from "@/lib/api/members";
+import { getStatusTranslationKey } from "@/types/members";
 import type { MembershipStatus } from "../types/member.types";
 
 /**
@@ -11,7 +11,7 @@ import type { MembershipStatus } from "../types/member.types";
  * generic `ui/badge` variants (that would mislabel, the A76 class) nor baked
  * into the shared `ui/badge.tsx` primitive (no domain coupling on the shared
  * leaf — the E21 rule). The colour classes are copied VERBATIM from the
- * god-page `getMembershipStatusColor` (lib/api/members.ts) so visuals do not
+ * god-page `getMembershipStatusColor` (members) so visuals do not
  * regress; this only de-scatters them. Handles numeric | string-enum |
  * lowercase input with a gray fallback, exactly like the helper it replaces.
  * A77: literal Tailwind utility classes (a documented semantic-colour

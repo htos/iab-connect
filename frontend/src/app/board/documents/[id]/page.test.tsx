@@ -50,14 +50,14 @@ function syncThenable<T>(value: T): Promise<T> {
  * `frontend/src/app/board/documents/[id]/page.tsx` BEFORE the E29-S3
  * feature-slice refactor.
  *
- * The god-page uses `@/lib/services/documents` (ApiResult {success,data,error})
+ * The god-page uses `documents` (ApiResult {success,data,error})
  * for getDocumentById + review/publish/archive/restoreVersion/updateDocumentTags,
  * raw `fetch` + dynamic `next-auth/react getSession()` for the version-upload
  * FormData and the blob download, and an in-component restore-confirm modal
  * (no window.confirm). Success/error toasts auto-dismiss after 3000 ms.
  *
  * DEC-1 layer-matched hybrid mocks (the surface S3 will re-point):
- *   - vi.mock("@/lib/services/documents") for the data + action fns.
+ *   - vi.mock("@/features/documents/api/documents-transport") for the data + action fns.
  *   - vi.mock("@/lib/auth") for a STABLE useAuth (A64/A78).
  *   - vi.mock("next-auth/react") for getSession (token for fetch).
  *   - vi.stubGlobal("fetch", …) for the version-upload FormData + the blob
@@ -110,10 +110,10 @@ const publishDocument = vi.fn();
 const archiveDocument = vi.fn();
 const restoreVersion = vi.fn();
 const updateDocumentTags = vi.fn();
-vi.mock("@/lib/services/documents", async () => {
+vi.mock("@/features/documents/api/documents-transport", async () => {
   const actual = await vi.importActual<
-    typeof import("@/lib/services/documents")
-  >("@/lib/services/documents");
+    typeof import("@/features/documents/api/documents-transport")
+  >("@/features/documents/api/documents-transport");
   return {
     ...actual,
     getDocumentById: (...args: unknown[]) => getDocumentById(...args),

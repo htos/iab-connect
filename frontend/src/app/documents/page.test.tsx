@@ -16,13 +16,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
  *
  * Pins the CURRENT observable behaviour at HEAD BEFORE the E29-S2 feature-slice
  * extraction. The page is a manual-`useState` god-page that calls
- * `@/lib/services/documents` (getDocuments/getFolders/getAllTags) for data, a
+ * `documents` (getDocuments/getFolders/getAllTags) for data, a
  * raw `fetch` for the authenticated blob download (dynamic `getSession()` token),
  * and `@/lib/auth` `useAuth` for the (role-less) auth guard.
  *
  * DEC-1 layer-matched hybrid mocks:
- *   - `vi.mock("@/lib/services/documents", importActual)` — the 4 data fns are
- *     vi.fn (the surface S2 will re-point); helpers (formatFileSize) stay real.
+ *   - `vi.mock("@/features/documents/api/documents-transport")` — the 3 data fns
+ *     are vi.fn; `getDownloadUrl` is spied via `vi.mock("@/types/documents",
+ *     importActual)` (the other helpers, e.g. formatFileSize, stay real).
  *   - `vi.mock("@/lib/auth")` — stable `useAuth` (mutate isAuthenticated/
  *     isLoading per test; the page reads NO role flags — no role gate).
  *   - `vi.stubGlobal("fetch")` — ONLY the blob download; `URL.createObjectURL`/
@@ -57,9 +58,11 @@ vi.mock("@/lib/auth", () => ({
   useAuth: () => authState,
 }));
 
-// @/lib/services/documents: data fns are vi.fn (S2 re-points these); keep the
-// real helpers (formatFileSize) via importActual. `vi.hoisted` makes the fns
-// available to the hoisted `vi.mock` factory below (A64/A78 — stable refs).
+// Transport data fns are vi.fn (the surface S2 re-points); the `getDownloadUrl`
+// helper is also spied here and now lives in `@/types/documents` (E31-S1), where
+// the remaining helpers (formatFileSize) stay real via importActual. `vi.hoisted`
+// makes the fns available to the hoisted `vi.mock` factories below (A64/A78 —
+// stable refs).
 const { getDocuments, getFolders, getAllTags, getDownloadUrl } = vi.hoisted(
   () => ({
     getDocuments: vi.fn(),
@@ -68,14 +71,15 @@ const { getDocuments, getFolders, getAllTags, getDownloadUrl } = vi.hoisted(
     getDownloadUrl: vi.fn(),
   })
 );
-vi.mock("@/lib/services/documents", async (importActual) => {
-  const actual =
-    await importActual<typeof import("@/lib/services/documents")>();
+vi.mock("@/features/documents/api/documents-transport", () => ({
+  getDocuments,
+  getFolders,
+  getAllTags,
+}));
+vi.mock("@/types/documents", async (importActual) => {
+  const actual = await importActual<typeof import("@/types/documents")>();
   return {
     ...actual,
-    getDocuments,
-    getFolders,
-    getAllTags,
     getDownloadUrl,
   };
 });

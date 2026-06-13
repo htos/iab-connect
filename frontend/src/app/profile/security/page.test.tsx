@@ -17,7 +17,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
  * Pins the CURRENT observable behaviour of
  * `frontend/src/app/profile/security/page.tsx` at HEAD BEFORE the E29-S4
  * feature-slice refactor. The page is a manual-`useState` god-page that loads
- * the authenticated user's Keycloak sessions via `@/lib/api/users`
+ * the authenticated user's Keycloak sessions via `@/features/profile/api/identity-sessions`
  * (`getMySessions`) and revokes them via `revokeMySession`, guarding `confirm()`
  * and a `setTimeout` toast auto-dismiss.
  *
@@ -26,7 +26,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
  * E29-S4 slice extraction keeps this net green under a changed mechanism.
  *
  * Mock fidelity (A64/A78): stable router/auth/translator references (define
- * once, mutate per test). DEC-1: `vi.mock("@/lib/api/users")` for the two
+ * once, mutate per test). DEC-1: `vi.mock("@/features/profile/api/identity-sessions")` for the two
  * service fns; `vi.mock("@/lib/auth")` for a stable `useAuth`; `confirm` stubbed
  * for the revoke guard; fake timers for the 4000 ms toast auto-dismiss;
  * `vi.unstubAllGlobals()` in afterEach (A35/A46 jsdom + cleanup).
@@ -55,13 +55,13 @@ vi.mock("@/lib/auth", () => ({
   useAuth: () => authState,
 }));
 
-// @/lib/api/users: mock the two service fns the page consumes.
-vi.mock("@/lib/api/users", () => ({
+// @/features/profile/api/identity-sessions: mock the two service fns the page consumes.
+vi.mock("@/features/profile/api/identity-sessions", () => ({
   getMySessions: vi.fn(),
   revokeMySession: vi.fn(),
 }));
 
-import { getMySessions, revokeMySession } from "@/lib/api/users";
+import { getMySessions, revokeMySession } from "@/features/profile/api/identity-sessions";
 import ProfileSecurityPage from "./page";
 
 const getMySessionsMock = vi.mocked(getMySessions);

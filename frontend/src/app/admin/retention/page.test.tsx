@@ -13,7 +13,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // E27-S1 characterization tests (regression net) for the Retention Policies admin page.
 // Pins CURRENT observable behaviour at HEAD. No production code changed.
-// The page consumes the @/lib/api/retention transport directly with the access token
+// The page consumes the retention transport directly with the access token
 // (NOT useApiClient). We mock the transport functions at the boundary and keep the
 // real getActionColor so badge className assertions pin the real colour logic.
 //
@@ -56,10 +56,10 @@ vi.mock("@/lib/auth", () => ({
 const getRetentionPolicies = vi.fn();
 const updateRetentionPolicy = vi.fn();
 const enforceRetention = vi.fn();
-vi.mock("@/lib/api/retention", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/api/retention")>(
-    "@/lib/api/retention"
-  );
+vi.mock("@/features/admin-system/api/retention", async () => {
+  const actual = await vi.importActual<
+    typeof import("@/features/admin-system/api/retention")
+  >("@/features/admin-system/api/retention");
   return {
     ...actual,
     getRetentionPolicies: (...a: unknown[]) => getRetentionPolicies(...a),

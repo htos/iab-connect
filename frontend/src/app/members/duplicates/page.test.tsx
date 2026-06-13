@@ -18,11 +18,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
  *
  * The page now flows through the slice's TanStack hooks
  * (useDuplicateGroups / useMergeMembers / useDismissDuplicates), which call the
- * duplicate endpoints via `useApiClient()` — NOT the `@/lib/api/members`
+ * duplicate endpoints via `useApiClient()` — NOT the `@/features/members/api/member-duplicates`
  * standalone fns. So we mock `@/lib/auth` (stable `useAuth` + an `useApiClient`
  * whose `{get,post,...}` are vi.fn()s) and assert on those transport spies. The
  * relocated REAL Radix modals + DuplicateGroupRow (which still import the REAL
- * `parseMatchReason`/types from `@/lib/api/members`) are rendered.
+ * `parseMatchReason`/types from `@/features/members/api/member-duplicates`) are rendered.
  *
  * The observable surface — DOM (data-testids) + which endpoints fire (and with
  * what args) — is preserved verbatim from S1.
@@ -89,7 +89,7 @@ vi.mock("@/lib/auth", () => ({
 import {
   type DuplicateGroupDto,
   type DuplicateCandidateDto,
-} from "@/lib/api/members";
+} from "@/features/members/api/member-duplicates";
 import DuplicatesPage from "./page";
 
 function makeCandidate(

@@ -9,7 +9,7 @@ import {
 } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { DuplicateCandidateDto } from "@/lib/api/members";
+import type { DuplicateCandidateDto } from "@/features/members/api/member-duplicates";
 
 /**
  * E23-S2: behaviour-preserving regression spec for the EDIT Member page
@@ -79,8 +79,8 @@ vi.mock("@/lib/auth", () => ({
 const { findMemberDuplicates } = vi.hoisted(() => ({
   findMemberDuplicates: vi.fn(),
 }));
-vi.mock("@/lib/api/members", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/api/members")>()),
+vi.mock("@/features/members/api/member-duplicates", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/members/api/member-duplicates")>()),
   findMemberDuplicates,
 }));
 

@@ -12,7 +12,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // E27-S1 characterization tests (regression net) for the Audit Log admin page.
 // Pins CURRENT observable behaviour at HEAD. No production code changed.
-// The page consumes the @/lib/api/audit transport functions directly with the
+// The page consumes the audit transport functions directly with the
 // access token (NOT useApiClient), so we mock that module at the boundary.
 // The page colour helpers (getSeverityColor/getCategoryColor) are intentionally
 // NOT mocked — we keep the real implementations so badge className assertions pin
@@ -57,9 +57,11 @@ const getAuditEvents = vi.fn();
 const exportAuditEvents = vi.fn();
 const getAuditCategories = vi.fn();
 const getAuditEventTypes = vi.fn();
-vi.mock("@/lib/api/audit", async () => {
+vi.mock("@/features/admin-system/api/audit", async () => {
   const actual =
-    await vi.importActual<typeof import("@/lib/api/audit")>("@/lib/api/audit");
+    await vi.importActual<typeof import("@/features/admin-system/api/audit")>(
+      "@/features/admin-system/api/audit"
+    );
   return {
     ...actual,
     getAuditEvents: (...args: unknown[]) => getAuditEvents(...args),

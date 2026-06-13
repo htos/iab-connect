@@ -10,7 +10,7 @@
  * status/tag/restore/version-upload are mutations
  * (`use-board-document-mutations`) invalidating `boardDocumentsKeys.detail(id)`
  * + `all`; the authenticated blob download is the `use-board-document-download`
- * side-effect hook (DEC-2). URLs wrap `@/lib/services/documents` (DEC-1 = A).
+ * side-effect hook (DEC-2). URLs wrap `documents` (DEC-1 = A).
  *
  * CRITICAL — AC-3: the Vorstand-OR-Admin gate
  * (`!isAuthenticated || (!isVorstand && !isAdmin)` → `router.push("/")`) is
@@ -30,7 +30,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
-import { formatFileSize, getStatusColor } from "@/lib/services/documents";
+import { formatFileSize, getStatusColor } from "@/types/documents";
 import { DocumentStatus } from "../types/board-document.types";
 import { useBoardDocument } from "../hooks/use-board-document";
 import { useBoardDocumentMutations } from "../hooks/use-board-document-mutations";

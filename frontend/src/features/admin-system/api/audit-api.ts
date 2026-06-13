@@ -1,16 +1,16 @@
 // Audit feature API (E27-S4). DEC-1 = A: this layer WRAPS the existing
-// `@/lib/api/audit` transport (token-param fns that own their own `/api/v1/audit`
+// `audit` transport (token-param fns that own their own `/api/v1/audit`
 // URLs + throw on non-ok) rather than re-implementing the URLs against
 // `useApiClient`. The slice owns the query-key factory; each wrapper delegates to
 // the lib fn byte-identically, so the E27-S1 audit characterization spec that
-// `vi.mock("@/lib/api/audit")` keeps intercepting with ZERO transport-mock edits
+// `vi.mock("audit")` keeps intercepting with ZERO transport-mock edits
 // (A94). No raw `/api/v1` string lives in any component.
 import {
   getAuditEvents,
   exportAuditEvents,
   getAuditCategories,
   getAuditEventTypes,
-} from "@/lib/api/audit";
+} from "./audit";
 import type {
   AuditCategory,
   AuditEventListResponse,

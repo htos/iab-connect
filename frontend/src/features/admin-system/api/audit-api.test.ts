@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 /**
  * E27-S4: the audit slice api owns the query-key factory and WRAPS the
- * `@/lib/api/audit` transport (DEC-1 = A). These assert the key shapes (the FULL
+ * `audit` transport (DEC-1 = A). These assert the key shapes (the FULL
  * filters object is in the list key → server-side refetch-on-filter) and that each
  * wrapper delegates to the lib fn with the token + filters byte-identically (A94).
  */
@@ -14,7 +14,7 @@ const libSpy = vi.hoisted(() => ({
   getAuditCategories: vi.fn(),
   getAuditEventTypes: vi.fn(),
 }));
-vi.mock("@/lib/api/audit", () => ({
+vi.mock("@/features/admin-system/api/audit", () => ({
   getAuditEvents: (...a: unknown[]) => libSpy.getAuditEvents(...a),
   exportAuditEvents: (...a: unknown[]) => libSpy.exportAuditEvents(...a),
   getAuditCategories: (...a: unknown[]) => libSpy.getAuditCategories(...a),

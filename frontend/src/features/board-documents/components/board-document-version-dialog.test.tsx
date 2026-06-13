@@ -23,7 +23,8 @@ vi.mock("next-intl", () => {
   return { useTranslations: () => translate };
 });
 
-vi.mock("@/lib/services/documents", () => ({
+vi.mock("@/types/documents", async (importActual) => ({
+  ...(await importActual<typeof import("@/types/documents")>()),
   formatFileSize: (n: number) => `${n} B`,
 }));
 

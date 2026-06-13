@@ -1,6 +1,6 @@
 // Member Segments slice type surface (E23-S4).
 //
-// Relocated from `lib/api/member-segments.ts` (types-and-helpers only — no fetch
+// Relocated from `member-segments` (types-and-helpers only — no fetch
 // fns). The cross-feature member-enums coupling is preserved (A62): the
 // `MembershipStatus`/`MembershipType` referenced by `SegmentMemberDto` are now
 // sourced from S2's `./member.types` re-export instead of `lib/api/members`.

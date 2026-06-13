@@ -2,7 +2,7 @@
  * REQ-024 (E3.S4): Volunteer-management sub-page, extracted into the events
  * feature slice (E24-S3). Behaviour-preserving (A79): byte-identical transport
  * via the slice volunteer api/hooks (`useApiClient` + TanStack) replacing the
- * legacy `@/lib/services/events` calls + manual `refreshKey` reload. The visible
+ * legacy `events` calls + manual `refreshKey` reload. The visible
  * behaviour is unchanged: parallel roles+shifts load, manual role-create form,
  * the RHF+zod shift dialog (with the Zurich-localtime→UTC-ISO conversion), the
  * assignment-aware cancel `confirm()`, and the loadFailed/saveFailed surfaces.

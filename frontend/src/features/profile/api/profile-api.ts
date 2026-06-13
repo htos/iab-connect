@@ -4,8 +4,8 @@
 //
 // DEC-1 = A (transport): the self-service `/api/v1/members/me` GET/PUT migrates
 // to the E21-S1 `useApiClient()` contract ({ data, error, status }, never
-// throws). The consent / channel-preference (`@/lib/api/privacy`) and session
-// (`@/lib/api/users`) helpers stay on their existing modules — those modules
+// throws). The consent / channel-preference (`privacy`) and session
+// (`users`) helpers stay on their existing modules — those modules
 // already centralize their URLs and are shared elsewhere, so we WRAP them here
 // (bodies/URLs byte-identical) rather than re-implement them against
 // `useApiClient` (the documents-slice E29-S2 precedent).
@@ -16,11 +16,11 @@ import {
   revokeConsent as serviceRevokeConsent,
   getChannelPreference as serviceGetChannelPreference,
   updateChannelPreference as serviceUpdateChannelPreference,
-} from "@/lib/api/privacy";
+} from "./privacy-consent";
 import {
   getMySessions as serviceGetMySessions,
   revokeMySession as serviceRevokeMySession,
-} from "@/lib/api/users";
+} from "./identity-sessions";
 import type {
   MemberDto,
   UpdateOwnProfileRequest,
@@ -62,7 +62,7 @@ export function updateMyProfile(
   return api.put<MemberDto>(MEMBERS_ME, body);
 }
 
-// --- Consent (wrap @/lib/api/privacy; URLs/bodies byte-identical) ---
+// --- Consent (wrap privacy; URLs/bodies byte-identical) ---
 
 export function fetchConsents(accessToken: string): Promise<ConsentDto[]> {
   return serviceGetConsents(accessToken);
@@ -79,7 +79,7 @@ export function toggleConsent(
     : serviceGrantConsent(accessToken, consentType);
 }
 
-// --- Channel preference (wrap @/lib/api/privacy) ---
+// --- Channel preference (wrap privacy) ---
 
 export function fetchChannelPreference(
   accessToken: string
@@ -94,7 +94,7 @@ export function updateChannelPreference(
   return serviceUpdateChannelPreference(accessToken, preferredChannel);
 }
 
-// --- Sessions (wrap @/lib/api/users) ---
+// --- Sessions (wrap users) ---
 
 export function fetchMySessions(
   accessToken: string

@@ -9,7 +9,7 @@
  */
 
 import { useTranslations } from "next-intl";
-import { formatAuditDate } from "@/lib/api/audit";
+import { formatAuditDate } from "../api/audit";
 import {
   AuditCategoryBadge,
   AuditSeverityBadge,

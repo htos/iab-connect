@@ -6,7 +6,8 @@
 // A62: after the dead-export cleanup only GET/POST helpers remain in use here (apiPut/apiDelete
 // were dropped with the removed manager fns). PagedResult is re-exported below straight from
 // `@/types/common`, so no value import is needed.
-import { apiGet, apiPost, type ApiResult } from './api';
+import { apiGet, apiPost } from "./events-http";
+import type { ApiResult } from "@/types/api-result";
 
 // Types matching backend DTOs
 export interface EventDto {
@@ -52,39 +53,39 @@ export interface EventDto {
 }
 
 export enum EventVisibility {
-  MembersOnly = 'MembersOnly',
-  Public = 'Public',
-  InviteOnly = 'InviteOnly',
-  Hidden = 'Hidden',
+  MembersOnly = "MembersOnly",
+  Public = "Public",
+  InviteOnly = "InviteOnly",
+  Hidden = "Hidden",
 }
 
 export enum EventStatus {
-  Draft = 'Draft',
-  Published = 'Published',
-  Cancelled = 'Cancelled',
-  Completed = 'Completed',
+  Draft = "Draft",
+  Published = "Published",
+  Cancelled = "Cancelled",
+  Completed = "Completed",
 }
 
 export enum EventCategory {
-  General = 'General',
-  Cultural = 'Cultural',
-  Social = 'Social',
-  Educational = 'Educational',
-  Sports = 'Sports',
-  Religious = 'Religious',
-  Charity = 'Charity',
-  Meeting = 'Meeting',
-  Workshop = 'Workshop',
-  Festival = 'Festival',
-  Other = 'Other',
+  General = "General",
+  Cultural = "Cultural",
+  Social = "Social",
+  Educational = "Educational",
+  Sports = "Sports",
+  Religious = "Religious",
+  Charity = "Charity",
+  Meeting = "Meeting",
+  Workshop = "Workshop",
+  Festival = "Festival",
+  Other = "Other",
 }
 
 export enum RecurrencePattern {
-  Daily = 'Daily',
-  Weekly = 'Weekly',
-  BiWeekly = 'BiWeekly',
-  Monthly = 'Monthly',
-  Yearly = 'Yearly',
+  Daily = "Daily",
+  Weekly = "Weekly",
+  BiWeekly = "BiWeekly",
+  Monthly = "Monthly",
+  Yearly = "Yearly",
 }
 
 export interface CreateEventRequest {
@@ -128,7 +129,7 @@ export interface EventFilterOptions {
   pageSize?: number;
 }
 
-export type { PagedResult } from '@/types/common';
+export type { PagedResult } from "@/types/common";
 
 export interface EventStatistics {
   total: number;
@@ -144,8 +145,10 @@ export interface EventStatistics {
 
 // === Public API (no auth required) ===
 
-export async function getPublicEvents(from?: Date): Promise<ApiResult<EventDto[]>> {
-  const params = from ? `?from=${from.toISOString()}` : '';
+export async function getPublicEvents(
+  from?: Date
+): Promise<ApiResult<EventDto[]>> {
+  const params = from ? `?from=${from.toISOString()}` : "";
   return apiGet<EventDto[]>(`/events/public${params}`);
 }
 
@@ -156,7 +159,9 @@ export async function getPublicEvent(id: string): Promise<ApiResult<EventDto>> {
 // === Protected API (auth required) ===
 
 // A62 retained: reserved for E28 Public pages (Server Components), no in-app caller yet.
-export async function getUpcomingEvents(count: number = 10): Promise<ApiResult<EventDto[]>> {
+export async function getUpcomingEvents(
+  count: number = 10
+): Promise<ApiResult<EventDto[]>> {
   return apiGet<EventDto[]>(`/events/upcoming?count=${count}`);
 }
 
@@ -206,15 +211,15 @@ export interface EventRegistrationDto {
 }
 
 /** REQ-022 (E4-S3): payment state for a registration; byte-matches the backend-derived value. */
-export type PaymentStatus = 'Paid' | 'Pending' | 'None';
+export type PaymentStatus = "Paid" | "Pending" | "None";
 
 export type RegistrationStatus =
-  | 'Pending'
-  | 'Confirmed'
-  | 'Cancelled'
-  | 'Waitlisted'
-  | 'CheckedIn'
-  | 'NoShow';
+  | "Pending"
+  | "Confirmed"
+  | "Cancelled"
+  | "Waitlisted"
+  | "CheckedIn"
+  | "NoShow";
 
 export interface EventRegistrationStatistics {
   totalRegistrations: number;
@@ -273,7 +278,10 @@ export async function registerForEventPublic(
   eventId: string,
   request: RegisterPublicRequest
 ): Promise<ApiResult<EventRegistrationDto>> {
-  return apiPost<EventRegistrationDto>(`/events/${eventId}/registrations/public`, request);
+  return apiPost<EventRegistrationDto>(
+    `/events/${eventId}/registrations/public`,
+    request
+  );
 }
 
 // A62 cleanup: the member/manager registration data fns (registerForEvent, getEventRegistrations,
@@ -286,8 +294,12 @@ export async function registerForEventPublic(
 
 // REQ-023 (E3.S2): typed check-in result that includes the WasAlreadyCheckedIn flag and
 // typed conflict reasons so the UI doesn't string-match on error messages.
-export type CheckInOutcome = 'CheckedIn' | 'AlreadyCheckedIn' | 'NotFound' | 'Conflict';
-export type CheckInConflictReason = 'Cancelled' | 'Waitlisted';
+export type CheckInOutcome =
+  | "CheckedIn"
+  | "AlreadyCheckedIn"
+  | "NotFound"
+  | "Conflict";
+export type CheckInConflictReason = "Cancelled" | "Waitlisted";
 export interface CheckInResultDto {
   outcome: CheckInOutcome;
   registration?: EventRegistrationDto | null;
@@ -329,8 +341,15 @@ export interface EventCheckInRosterDto {
 // REQ-024 (E3.S3 + E3.S4): Volunteer planning
 // ============================================
 
-export type VolunteerAssignmentStatus = 'Confirmed' | 'Waitlisted' | 'Cancelled';
-export type VolunteerErrorCode = 'ShiftFull' | 'SignupNotAllowed' | 'AlreadyAssigned' | 'NoMemberLink';
+export type VolunteerAssignmentStatus =
+  | "Confirmed"
+  | "Waitlisted"
+  | "Cancelled";
+export type VolunteerErrorCode =
+  | "ShiftFull"
+  | "SignupNotAllowed"
+  | "AlreadyAssigned"
+  | "NoMemberLink";
 
 export interface EventVolunteerRoleDto {
   id: string;
@@ -390,8 +409,12 @@ export interface CreateVolunteerShiftRequest {
   notes?: string | null;
 }
 
-export async function getEventVolunteerShifts(eventId: string): Promise<ApiResult<EventVolunteerShiftDto[]>> {
-  return apiGet<EventVolunteerShiftDto[]>(`/events/${eventId}/volunteer-shifts/`);
+export async function getEventVolunteerShifts(
+  eventId: string
+): Promise<ApiResult<EventVolunteerShiftDto[]>> {
+  return apiGet<EventVolunteerShiftDto[]>(
+    `/events/${eventId}/volunteer-shifts/`
+  );
 }
 
 export async function signUpForVolunteerShift(
@@ -440,14 +463,14 @@ export interface WaitlistPositionDto {
  * Who a fee category applies to. String values byte-match the backend `FeeApplicability` enum
  * (PascalCase) so the value round-trips without mapping.
  */
-export type FeeApplicability = 'Everyone' | 'MembersOnly' | 'PublicOnly';
+export type FeeApplicability = "Everyone" | "MembersOnly" | "PublicOnly";
 
 /**
  * Currencies a fee may be priced in. Mirrors the backend `FeeCurrencies.Supported` set
  * (CHF / EUR) — kept as ISO-4217 codes so `formatCurrency(amount, currency)` renders the
  * correct symbol per white-label deployment.
  */
-export const FEE_CURRENCIES = ['CHF', 'EUR'] as const;
+export const FEE_CURRENCIES = ["CHF", "EUR"] as const;
 export type FeeCurrency = (typeof FEE_CURRENCIES)[number];
 
 export interface EventFeeCategoryDto {
@@ -493,7 +516,9 @@ export interface PublicFeeCategoryDto {
 export async function getPublicEventFeeCategories(
   eventId: string
 ): Promise<ApiResult<PublicFeeCategoryDto[]>> {
-  return apiGet<PublicFeeCategoryDto[]>(`/events/public/${eventId}/fee-categories`);
+  return apiGet<PublicFeeCategoryDto[]>(
+    `/events/public/${eventId}/fee-categories`
+  );
 }
 
 // A62 cleanup: the manager fee-category fns (getEventFeeCategories, createEventFeeCategory,

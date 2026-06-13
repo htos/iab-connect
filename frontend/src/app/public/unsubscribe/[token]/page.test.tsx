@@ -34,13 +34,13 @@ vi.mock("next-intl", () => {
   return { useTranslations: () => translate };
 });
 
-vi.mock("@/lib/api/privacy", () => ({
+vi.mock("@/features/public/api/public-forms-api", () => ({
   verifyUnsubscribe: vi.fn(),
   confirmUnsubscribe: vi.fn(),
 }));
 
 import UnsubscribePage from "./page";
-import { verifyUnsubscribe, confirmUnsubscribe } from "@/lib/api/privacy";
+import { verifyUnsubscribe, confirmUnsubscribe } from "@/features/public/api/public-forms-api";
 
 const mockVerify = vi.mocked(verifyUnsubscribe);
 const mockConfirm = vi.mocked(confirmUnsubscribe);

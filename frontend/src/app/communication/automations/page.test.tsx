@@ -61,13 +61,13 @@ vi.mock("@/lib/auth", () => ({
   useAuth: () => authState,
 }));
 
-// @/lib/api/automations: override only the fetch fn; keep the real helpers
+// @/features/communication/automations/api/automations: override only the fetch fn; keep the real helpers
 // (getStatusColor/getTriggerLabel) so badge colour + trigger label behave as
 // at HEAD.
 const listAutomations = vi.fn();
-vi.mock("@/lib/api/automations", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/api/automations")>(
-    "@/lib/api/automations"
+vi.mock("@/features/communication/automations/api/automations", async () => {
+  const actual = await vi.importActual<typeof import("@/features/communication/automations/api/automations")>(
+    "@/features/communication/automations/api/automations"
   );
   return {
     ...actual,
