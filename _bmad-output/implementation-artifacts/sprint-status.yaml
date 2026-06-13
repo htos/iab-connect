@@ -1686,16 +1686,16 @@ development_status:
   e29-s4-profile-feature-slice: done
   epic-29-retrospective: done
 
-  epic-30: in-progress
-  e30-s1-introduce-pageshell-pageheader-layout-primitives: ready-for-dev
-  e30-s2-auth-login-and-system-pages-slice: ready-for-dev
-  e30-s3-app-shell-layout-providers-and-api-routes: ready-for-dev
+  epic-30: done  # 2026-06-13: implemented (S1-S5) + epic-boundary review APPROVED (0 HIGH/MED, net-integrity ORACLE-INTACT, 2 patches) + retro; Vitest 1944→2013, tsc/eslint/prettier/next-build clean. A108-A112 promoted. FINAL domain epic of the program.
+  e30-s1-introduce-pageshell-pageheader-layout-primitives: done
+  e30-s2-auth-login-and-system-pages-slice: done
+  e30-s3-app-shell-layout-providers-and-api-routes: done
   # E30-S4/S5 added 2026-06-12 per user "Add both" — expand E30 to fully complete the layout
   # consolidation (S4 = root dashboard page.tsx → features/dashboard slice; S5 = PageShell retrofit
   # across the ~73 migrated authenticated pages). Both depend on S1.
-  e30-s4-dashboard-root-page-feature-slice: ready-for-dev
-  e30-s5-pageshell-retrofit-migrated-pages: ready-for-dev
-  epic-30-retrospective: optional
+  e30-s4-dashboard-root-page-feature-slice: done
+  e30-s5-pageshell-retrofit-migrated-pages: done
+  epic-30-retrospective: done  # 2026-06-13: epic-30-retro-2026-06-13.md; A108-A112 promoted to project-context.md
 
   epic-31: backlog
   e31-s1-migrate-residual-consumers-to-standard-http-contract: backlog
