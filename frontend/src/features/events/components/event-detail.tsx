@@ -126,7 +126,9 @@ export function EventDetail({ id }: EventDetailProps) {
     useState<EventRegistrationDto | null>(null);
   const [myRegLoading, setMyRegLoading] = useState(false);
   const [showRegForm, setShowRegForm] = useState(false);
-  const [regNumberOfGuests, setRegNumberOfGuests] = useState(0);
+  // NumberOfGuests is the TOTAL head count for this registration (incl. the
+  // member), min 1 — matching the domain entity and the public form. Default 1.
+  const [regNumberOfGuests, setRegNumberOfGuests] = useState(1);
   const [regSpecialRequirements, setRegSpecialRequirements] = useState("");
   const [regSubmitting, setRegSubmitting] = useState(false);
   const [regSuccess, setRegSuccess] = useState<{
@@ -851,6 +853,12 @@ export function EventDetail({ id }: EventDetailProps) {
                   <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800">
                     {t("registration.open")}
                   </span>
+                ) : event.status === "Draft" ? (
+                  // A draft is not "closed" — registration simply isn't open until it
+                  // is published, regardless of a (future) deadline. Show a neutral hint.
+                  <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700">
+                    {t("registration.notPublishedYet")}
+                  </span>
                 ) : (
                   <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-800">
                     {t("registration.closed")}
@@ -913,12 +921,12 @@ export function EventDetail({ id }: EventDetailProps) {
                         </label>
                         <input
                           type="number"
-                          min={0}
+                          min={1}
                           max={10}
                           value={regNumberOfGuests}
                           onChange={(e) =>
                             setRegNumberOfGuests(
-                              Math.max(0, parseInt(e.target.value) || 0)
+                              Math.max(1, parseInt(e.target.value) || 1)
                             )
                           }
                           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"

@@ -1043,6 +1043,7 @@
       "waitlistEnabled": "Warteliste aktiviert",
       "open": "Anmeldung offen",
       "closed": "Anmeldung geschlossen",
+      "notPublishedYet": "Noch nicht veröffentlicht",
       "deadline": "Anmeldeschluss",
       "registerForEvent": "Anmeldung für {eventTitle}",
       "fillFormToRegister": "Füllen Sie das Formular aus, um sich anzumelden.",

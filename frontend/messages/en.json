@@ -1043,6 +1043,7 @@
       "waitlistEnabled": "Waitlist enabled",
       "open": "Registration Open",
       "closed": "Registration Closed",
+      "notPublishedYet": "Not yet published",
       "deadline": "Deadline",
       "registerForEvent": "Registration for {eventTitle}",
       "fillFormToRegister": "Fill out the form to register.",
