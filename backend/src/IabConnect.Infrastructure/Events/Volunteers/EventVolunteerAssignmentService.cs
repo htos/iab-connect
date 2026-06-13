@@ -46,95 +46,93 @@ public sealed class EventVolunteerAssignmentService : IEventVolunteerAssignmentS
         bool isSelfSignup,
         CancellationToken cancellationToken = default)
     {
-        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
-
-        // FOR UPDATE row lock on the shift — serialises capacity decisions across concurrent calls.
-        // H-S3-3 note: the count / idempotency queries below run on the SAME DbContext / Npgsql
-        // connection that holds this transaction; Npgsql's connection-affinity inside an
-        // ApplicationDbContext guarantees they participate in the FOR UPDATE scope. The
-        // EventVolunteerAssignmentConcurrencyTests two-task race tests prove the property
-        // (one Confirmed + one Waitlisted/ShiftFull on every run). DO NOT switch to a query
-        // executed on a separate context — it would bypass the lock.
-        var shifts = await _context.EventVolunteerShifts
-            .FromSqlInterpolated($"SELECT * FROM event_volunteer_shifts WHERE id = {shiftId} FOR UPDATE")
-            .AsTracking()
-            .ToListAsync(cancellationToken);
-        if (shifts.Count == 0)
-            return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.ShiftNotFound, null);
-
-        var shift = shifts[0];
-        if (shift.EventId != eventId)
-            return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.ShiftNotFound, null);
-
-        // H-S3-6: reject assignments on a cancelled shift.
-        if (shift.Status == VolunteerShiftStatus.Cancelled)
-            return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.ShiftCancelled, null);
-
-        if (isSelfSignup && !shift.AllowSelfSignup)
-            return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.SignupNotAllowed, null);
-
-        // Idempotent: if the member already has an active assignment on this shift, return it.
-        var existing = await _assignmentRepository.GetActiveForMemberAsync(shiftId, memberId, cancellationToken);
-        if (existing is not null)
+        return await _context.ExecuteTransactionalAsync(async () =>
         {
-            return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.AlreadyAssigned, existing);
-        }
+            // FOR UPDATE row lock on the shift — serialises capacity decisions across concurrent calls.
+            // H-S3-3 note: the count / idempotency queries below run on the SAME DbContext / Npgsql
+            // connection that holds this transaction; Npgsql's connection-affinity inside an
+            // ApplicationDbContext guarantees they participate in the FOR UPDATE scope. The
+            // EventVolunteerAssignmentConcurrencyTests two-task race tests prove the property
+            // (one Confirmed + one Waitlisted/ShiftFull on every run). DO NOT switch to a query
+            // executed on a separate context — it would bypass the lock.
+            var shifts = await _context.EventVolunteerShifts
+                .FromSqlInterpolated($"SELECT * FROM event_volunteer_shifts WHERE id = {shiftId} FOR UPDATE")
+                .AsTracking()
+                .ToListAsync(cancellationToken);
+            if (shifts.Count == 0)
+                return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.ShiftNotFound, null);
 
-        var confirmedCount = await _assignmentRepository.CountConfirmedAsync(shiftId, cancellationToken);
-        var slotAvailable = confirmedCount < shift.Capacity;
+            var shift = shifts[0];
+            if (shift.EventId != eventId)
+                return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.ShiftNotFound, null);
 
-        EventVolunteerAssignment assignment;
-        VolunteerAssignmentOutcome outcome;
+            // H-S3-6: reject assignments on a cancelled shift.
+            if (shift.Status == VolunteerShiftStatus.Cancelled)
+                return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.ShiftCancelled, null);
 
-        if (slotAvailable)
-        {
-            assignment = EventVolunteerAssignment.CreateConfirmed(shift.Id, shift.RoleId, memberId, assignedBy);
-            outcome = VolunteerAssignmentOutcome.Confirmed;
-        }
-        else if (shift.AllowWaitlist && allowWaitlistFallback)
-        {
-            var waitlistCount = await _assignmentRepository.CountWaitlistedAsync(shiftId, cancellationToken);
-            assignment = EventVolunteerAssignment.CreateWaitlisted(
-                shift.Id, shift.RoleId, memberId, assignedBy, position: waitlistCount + 1);
-            outcome = VolunteerAssignmentOutcome.Waitlisted;
-        }
-        else
-        {
-            return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.ShiftFull, null);
-        }
+            if (isSelfSignup && !shift.AllowSelfSignup)
+                return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.SignupNotAllowed, null);
 
-        try
-        {
-            var (persisted, created) = await _assignmentRepository.AddAtomicAsync(assignment, cancellationToken);
-
-            if (!created)
+            // Idempotent: if the member already has an active assignment on this shift, return it.
+            var existing = await _assignmentRepository.GetActiveForMemberAsync(shiftId, memberId, cancellationToken);
+            if (existing is not null)
             {
-                // R3-H-S3-3: the repository returns `(null, false)` when the unique-violation
-                // fired AND the re-fetch of the existing active row also returned null (a
-                // concurrent caller cancelled the racing row in the same millisecond). Map
-                // this to a typed Transient outcome so the endpoint can surface a clean 409
-                // retry-style response rather than a 500.
-                if (persisted is null)
-                {
-                    await transaction.CommitAsync(cancellationToken);
-                    return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.Transient, null);
-                }
-
-                // Honest race-loser: the partial unique index fired between our pre-check and insert.
-                // Return the winning row as AlreadyAssigned.
-                await transaction.CommitAsync(cancellationToken);
-                return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.AlreadyAssigned, persisted);
+                return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.AlreadyAssigned, existing);
             }
 
-            await transaction.CommitAsync(cancellationToken);
-            return new VolunteerAssignmentResult(outcome, persisted);
-        }
-        catch (DbUpdateException ex) when (ex.InnerException is PostgresException pgEx && pgEx.SqlState == ForeignKeyViolationSqlState)
-        {
-            // M-S3-2: a non-existent member id surfaces as a foreign-key violation on insert.
-            // Translate to a domain-meaningful outcome the endpoint maps to 404.
-            return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.MemberNotFound, null);
-        }
+            var confirmedCount = await _assignmentRepository.CountConfirmedAsync(shiftId, cancellationToken);
+            var slotAvailable = confirmedCount < shift.Capacity;
+
+            EventVolunteerAssignment assignment;
+            VolunteerAssignmentOutcome outcome;
+
+            if (slotAvailable)
+            {
+                assignment = EventVolunteerAssignment.CreateConfirmed(shift.Id, shift.RoleId, memberId, assignedBy);
+                outcome = VolunteerAssignmentOutcome.Confirmed;
+            }
+            else if (shift.AllowWaitlist && allowWaitlistFallback)
+            {
+                var waitlistCount = await _assignmentRepository.CountWaitlistedAsync(shiftId, cancellationToken);
+                assignment = EventVolunteerAssignment.CreateWaitlisted(
+                    shift.Id, shift.RoleId, memberId, assignedBy, position: waitlistCount + 1);
+                outcome = VolunteerAssignmentOutcome.Waitlisted;
+            }
+            else
+            {
+                return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.ShiftFull, null);
+            }
+
+            try
+            {
+                var (persisted, created) = await _assignmentRepository.AddAtomicAsync(assignment, cancellationToken);
+
+                if (!created)
+                {
+                    // R3-H-S3-3: the repository returns `(null, false)` when the unique-violation
+                    // fired AND the re-fetch of the existing active row also returned null (a
+                    // concurrent caller cancelled the racing row in the same millisecond). Map
+                    // this to a typed Transient outcome so the endpoint can surface a clean 409
+                    // retry-style response rather than a 500.
+                    if (persisted is null)
+                    {
+                        return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.Transient, null);
+                    }
+
+                    // Honest race-loser: the partial unique index fired between our pre-check and insert.
+                    // Return the winning row as AlreadyAssigned.
+                    return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.AlreadyAssigned, persisted);
+                }
+
+                return new VolunteerAssignmentResult(outcome, persisted);
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException pgEx && pgEx.SqlState == ForeignKeyViolationSqlState)
+            {
+                // M-S3-2: a non-existent member id surfaces as a foreign-key violation on insert.
+                // Translate to a domain-meaningful outcome the endpoint maps to 404.
+                return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.MemberNotFound, null);
+            }
+        }, cancellationToken);
     }
 
     public async Task<VolunteerAssignmentResult> CancelAssignmentAsync(
@@ -171,90 +169,87 @@ public sealed class EventVolunteerAssignmentService : IEventVolunteerAssignmentS
                 return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.AssignmentNotFound, null);
         }
 
-        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
-
-        // Lock the shift to serialise position-shift logic against concurrent assigns.
-        var shifts = await _context.EventVolunteerShifts
-            .FromSqlInterpolated($"SELECT * FROM event_volunteer_shifts WHERE id = {assignment.ShiftId} FOR UPDATE")
-            .AsTracking()
-            .ToListAsync(cancellationToken);
-        if (shifts.Count == 0)
-            return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.ShiftNotFound, null);
-
-        // R4-P-S3-6: re-assert the H-S3-2 cross-event check against the LOCKED shift row, not
-        // only the pre-transaction snapshot. shifts[0] is the assignment's parent shift, so its
-        // EventId is authoritative here.
-        if (eventId != Guid.Empty && shifts[0].EventId != eventId)
-            return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.AssignmentNotFound, null);
-
-        // M-S3-4: a concurrent caller may have deleted the row between the AsNoTracking read and
-        // the lock. FirstOrDefaultAsync handles the race-disappeared case cleanly.
-        var tracked = await _context.EventVolunteerAssignments
-            .FirstOrDefaultAsync(a => a.Id == assignmentId, cancellationToken);
-        if (tracked is null)
+        return await _context.ExecuteTransactionalAsync(async () =>
         {
-            await transaction.CommitAsync(cancellationToken);
-            return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.AssignmentNotFound, null);
-        }
-
-        // R4-P-S3-6: re-assert the C1 ownership check against the locked entity. MemberId is
-        // immutable today, so this is defense-in-depth — but it closes the TOCTOU window so a
-        // future mutable-MemberId change cannot silently reopen the authorization gap.
-        if (!callerIsStaff && (callerMemberId is null || callerMemberId.Value != tracked.MemberId))
-        {
-            await transaction.CommitAsync(cancellationToken);
-            return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.NotAuthorized, null);
-        }
-        if (tracked.Status == VolunteerAssignmentStatus.Cancelled)
-        {
-            // Idempotent: already cancelled.
-            await transaction.CommitAsync(cancellationToken);
-            return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.Cancelled, tracked);
-        }
-
-        var wasConfirmed = tracked.Status == VolunteerAssignmentStatus.Confirmed;
-        var cancelledPosition = tracked.Position;
-
-        tracked.Cancel(reason);
-        await _context.SaveChangesAsync(cancellationToken);
-
-        if (wasConfirmed)
-        {
-            // Promote the head of the waitlist (if any) and shift remaining positions up by one.
-            var waitlist = await _context.EventVolunteerAssignments
-                .Where(a => a.ShiftId == tracked.ShiftId && a.Status == VolunteerAssignmentStatus.Waitlisted)
-                .OrderBy(a => a.Position)
+            // Lock the shift to serialise position-shift logic against concurrent assigns.
+            var shifts = await _context.EventVolunteerShifts
+                .FromSqlInterpolated($"SELECT * FROM event_volunteer_shifts WHERE id = {assignment.ShiftId} FOR UPDATE")
+                .AsTracking()
                 .ToListAsync(cancellationToken);
+            if (shifts.Count == 0)
+                return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.ShiftNotFound, null);
 
-            if (waitlist.Count > 0)
+            // R4-P-S3-6: re-assert the H-S3-2 cross-event check against the LOCKED shift row, not
+            // only the pre-transaction snapshot. shifts[0] is the assignment's parent shift, so its
+            // EventId is authoritative here.
+            if (eventId != Guid.Empty && shifts[0].EventId != eventId)
+                return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.AssignmentNotFound, null);
+
+            // M-S3-4: a concurrent caller may have deleted the row between the AsNoTracking read and
+            // the lock. FirstOrDefaultAsync handles the race-disappeared case cleanly.
+            var tracked = await _context.EventVolunteerAssignments
+                .FirstOrDefaultAsync(a => a.Id == assignmentId, cancellationToken);
+            if (tracked is null)
             {
-                waitlist[0].PromoteFromWaitlist();
-                for (int i = 1; i < waitlist.Count; i++)
+                return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.AssignmentNotFound, null);
+            }
+
+            // R4-P-S3-6: re-assert the C1 ownership check against the locked entity. MemberId is
+            // immutable today, so this is defense-in-depth — but it closes the TOCTOU window so a
+            // future mutable-MemberId change cannot silently reopen the authorization gap.
+            if (!callerIsStaff && (callerMemberId is null || callerMemberId.Value != tracked.MemberId))
+            {
+                return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.NotAuthorized, null);
+            }
+            if (tracked.Status == VolunteerAssignmentStatus.Cancelled)
+            {
+                // Idempotent: already cancelled.
+                return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.Cancelled, tracked);
+            }
+
+            var wasConfirmed = tracked.Status == VolunteerAssignmentStatus.Confirmed;
+            var cancelledPosition = tracked.Position;
+
+            tracked.Cancel(reason);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            if (wasConfirmed)
+            {
+                // Promote the head of the waitlist (if any) and shift remaining positions up by one.
+                var waitlist = await _context.EventVolunteerAssignments
+                    .Where(a => a.ShiftId == tracked.ShiftId && a.Status == VolunteerAssignmentStatus.Waitlisted)
+                    .OrderBy(a => a.Position)
+                    .ToListAsync(cancellationToken);
+
+                if (waitlist.Count > 0)
                 {
-                    waitlist[i].UpdateWaitlistPosition(i);
+                    waitlist[0].PromoteFromWaitlist();
+                    for (int i = 1; i < waitlist.Count; i++)
+                    {
+                        waitlist[i].UpdateWaitlistPosition(i);
+                    }
+                    await _context.SaveChangesAsync(cancellationToken);
                 }
-                await _context.SaveChangesAsync(cancellationToken);
             }
-        }
-        else if (cancelledPosition is not null)
-        {
-            // Waitlisted assignment was cancelled — shift positions > cancelled.Position down by one.
-            var below = await _context.EventVolunteerAssignments
-                .Where(a => a.ShiftId == tracked.ShiftId
-                            && a.Status == VolunteerAssignmentStatus.Waitlisted
-                            && a.Position > cancelledPosition)
-                .OrderBy(a => a.Position)
-                .ToListAsync(cancellationToken);
-            foreach (var item in below)
+            else if (cancelledPosition is not null)
             {
-                item.UpdateWaitlistPosition(item.Position!.Value - 1);
+                // Waitlisted assignment was cancelled — shift positions > cancelled.Position down by one.
+                var below = await _context.EventVolunteerAssignments
+                    .Where(a => a.ShiftId == tracked.ShiftId
+                                && a.Status == VolunteerAssignmentStatus.Waitlisted
+                                && a.Position > cancelledPosition)
+                    .OrderBy(a => a.Position)
+                    .ToListAsync(cancellationToken);
+                foreach (var item in below)
+                {
+                    item.UpdateWaitlistPosition(item.Position!.Value - 1);
+                }
+                if (below.Count > 0)
+                    await _context.SaveChangesAsync(cancellationToken);
             }
-            if (below.Count > 0)
-                await _context.SaveChangesAsync(cancellationToken);
-        }
 
-        await transaction.CommitAsync(cancellationToken);
-        return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.Cancelled, tracked);
+            return new VolunteerAssignmentResult(VolunteerAssignmentOutcome.Cancelled, tracked);
+        }, cancellationToken);
     }
 
     public async Task<CancelShiftServiceResult> CancelAllAssignmentsForShiftAsync(
@@ -263,59 +258,57 @@ public sealed class EventVolunteerAssignmentService : IEventVolunteerAssignmentS
         string? reason,
         CancellationToken cancellationToken = default)
     {
-        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
-
-        var shifts = await _context.EventVolunteerShifts
-            .FromSqlInterpolated($"SELECT * FROM event_volunteer_shifts WHERE id = {shiftId} FOR UPDATE")
-            .AsTracking()
-            .ToListAsync(cancellationToken);
-        if (shifts.Count == 0)
+        return await _context.ExecuteTransactionalAsync(async () =>
         {
-            await transaction.CommitAsync(cancellationToken);
-            return new CancelShiftServiceResult(ShiftFound: false, CancelledAssignmentCount: 0);
-        }
+            var shifts = await _context.EventVolunteerShifts
+                .FromSqlInterpolated($"SELECT * FROM event_volunteer_shifts WHERE id = {shiftId} FOR UPDATE")
+                .AsTracking()
+                .ToListAsync(cancellationToken);
+            if (shifts.Count == 0)
+            {
+                return new CancelShiftServiceResult(ShiftFound: false, CancelledAssignmentCount: 0);
+            }
 
-        var shift = shifts[0];
-        // H-S3-2 + R3-H-S3-1: reject when the shift belongs to a different event. The
-        // WrongEvent flag lets the endpoint distinguish probing (audit-log + 404) from genuine
-        // not-found (404 only). The client-visible body is identical to keep the response
-        // opaque.
-        if (eventId != Guid.Empty && shift.EventId != eventId)
-        {
-            await transaction.CommitAsync(cancellationToken);
-            return new CancelShiftServiceResult(
-                ShiftFound: false,
-                CancelledAssignmentCount: 0,
-                WrongEvent: true);
-        }
+            var shift = shifts[0];
+            // H-S3-2 + R3-H-S3-1: reject when the shift belongs to a different event. The
+            // WrongEvent flag lets the endpoint distinguish probing (audit-log + 404) from genuine
+            // not-found (404 only). The client-visible body is identical to keep the response
+            // opaque.
+            if (eventId != Guid.Empty && shift.EventId != eventId)
+            {
+                return new CancelShiftServiceResult(
+                    ShiftFound: false,
+                    CancelledAssignmentCount: 0,
+                    WrongEvent: true);
+            }
 
-        // REQ-024 (E3.S3 Round-3 R3-M-S3-2): use ExecuteUpdate so concurrent CancelAssignment
-        // calls cannot lose-update us. ExecuteUpdate runs a single SQL UPDATE … WHERE status
-        // <> 'Cancelled', which is atomic at the row level; rows that another writer already
-        // cancelled in parallel keep their specific reason / timestamp. The previous load-
-        // then-foreach pattern would silently overwrite a more specific cancellation reason
-        // recorded by a concurrent caller.
-        // We capture nowUtc once at the start so the audit timestamp is stable across the batch.
-        var nowUtc = DateTime.UtcNow;
-        var cancelledCount = await _context.EventVolunteerAssignments
-            .Where(a => a.ShiftId == shiftId && a.Status != VolunteerAssignmentStatus.Cancelled)
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(a => a.Status, VolunteerAssignmentStatus.Cancelled)
-                .SetProperty(a => a.CancelledAt, nowUtc)
-                .SetProperty(a => a.CancellationReason, reason)
-                // R4-P-S3-7: the per-row domain EventVolunteerAssignment.Cancel() clears Position;
-                // this bulk path bypasses the change tracker, so clear it explicitly to keep the
-                // "Cancelled rows never carry a Position" invariant the single-row path guarantees.
-                .SetProperty(a => a.Position, (int?)null),
-                cancellationToken);
+            // REQ-024 (E3.S3 Round-3 R3-M-S3-2): use ExecuteUpdate so concurrent CancelAssignment
+            // calls cannot lose-update us. ExecuteUpdate runs a single SQL UPDATE … WHERE status
+            // <> 'Cancelled', which is atomic at the row level; rows that another writer already
+            // cancelled in parallel keep their specific reason / timestamp. The previous load-
+            // then-foreach pattern would silently overwrite a more specific cancellation reason
+            // recorded by a concurrent caller.
+            // We capture nowUtc once at the start so the audit timestamp is stable across the batch.
+            var nowUtc = DateTime.UtcNow;
+            var cancelledCount = await _context.EventVolunteerAssignments
+                .Where(a => a.ShiftId == shiftId && a.Status != VolunteerAssignmentStatus.Cancelled)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(a => a.Status, VolunteerAssignmentStatus.Cancelled)
+                    .SetProperty(a => a.CancelledAt, nowUtc)
+                    .SetProperty(a => a.CancellationReason, reason)
+                    // R4-P-S3-7: the per-row domain EventVolunteerAssignment.Cancel() clears Position;
+                    // this bulk path bypasses the change tracker, so clear it explicitly to keep the
+                    // "Cancelled rows never carry a Position" invariant the single-row path guarantees.
+                    .SetProperty(a => a.Position, (int?)null),
+                    cancellationToken);
 
-        // H-S3-6: flip the parent shift's status so subsequent self-signups are rejected.
-        // The shift entity itself is tracked, so its mutation needs SaveChangesAsync.
-        shift.Cancel(reason);
-        await _context.SaveChangesAsync(cancellationToken);
+            // H-S3-6: flip the parent shift's status so subsequent self-signups are rejected.
+            // The shift entity itself is tracked, so its mutation needs SaveChangesAsync.
+            shift.Cancel(reason);
+            await _context.SaveChangesAsync(cancellationToken);
 
-        await transaction.CommitAsync(cancellationToken);
-        return new CancelShiftServiceResult(ShiftFound: true, CancelledAssignmentCount: cancelledCount);
+            return new CancelShiftServiceResult(ShiftFound: true, CancelledAssignmentCount: cancelledCount);
+        }, cancellationToken);
     }
 
     public async Task<UpdateShiftCapacityResult> UpdateShiftCapacityAsync(
@@ -327,41 +320,38 @@ public sealed class EventVolunteerAssignmentService : IEventVolunteerAssignmentS
         if (newCapacity < 1)
             return new UpdateShiftCapacityResult(UpdateShiftCapacityOutcome.InvalidCapacity, null, null);
 
-        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
-
-        // FOR UPDATE — serialise capacity reads with concurrent self-signup/manager-assign callers.
-        var shifts = await _context.EventVolunteerShifts
-            .FromSqlInterpolated($"SELECT * FROM event_volunteer_shifts WHERE id = {shiftId} FOR UPDATE")
-            .AsTracking()
-            .ToListAsync(cancellationToken);
-        if (shifts.Count == 0)
+        return await _context.ExecuteTransactionalAsync(async () =>
         {
-            await transaction.CommitAsync(cancellationToken);
-            return new UpdateShiftCapacityResult(UpdateShiftCapacityOutcome.ShiftNotFound, null, null);
-        }
+            // FOR UPDATE — serialise capacity reads with concurrent self-signup/manager-assign callers.
+            var shifts = await _context.EventVolunteerShifts
+                .FromSqlInterpolated($"SELECT * FROM event_volunteer_shifts WHERE id = {shiftId} FOR UPDATE")
+                .AsTracking()
+                .ToListAsync(cancellationToken);
+            if (shifts.Count == 0)
+            {
+                return new UpdateShiftCapacityResult(UpdateShiftCapacityOutcome.ShiftNotFound, null, null);
+            }
 
-        var shift = shifts[0];
-        if (eventId != Guid.Empty && shift.EventId != eventId)
-        {
-            await transaction.CommitAsync(cancellationToken);
-            return new UpdateShiftCapacityResult(UpdateShiftCapacityOutcome.ShiftNotFound, null, null);
-        }
+            var shift = shifts[0];
+            if (eventId != Guid.Empty && shift.EventId != eventId)
+            {
+                return new UpdateShiftCapacityResult(UpdateShiftCapacityOutcome.ShiftNotFound, null, null);
+            }
 
-        // Re-read confirmed count UNDER the lock — this is the H-S3-5 fix.
-        var confirmed = await _assignmentRepository.CountConfirmedAsync(shiftId, cancellationToken);
-        if (newCapacity < confirmed)
-        {
-            await transaction.CommitAsync(cancellationToken);
-            return new UpdateShiftCapacityResult(
-                UpdateShiftCapacityOutcome.BelowCurrentConfirmed,
-                newCapacity,
-                confirmed);
-        }
+            // Re-read confirmed count UNDER the lock — this is the H-S3-5 fix.
+            var confirmed = await _assignmentRepository.CountConfirmedAsync(shiftId, cancellationToken);
+            if (newCapacity < confirmed)
+            {
+                return new UpdateShiftCapacityResult(
+                    UpdateShiftCapacityOutcome.BelowCurrentConfirmed,
+                    newCapacity,
+                    confirmed);
+            }
 
-        shift.UpdateCapacity(newCapacity, confirmed);
-        await _context.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-        return new UpdateShiftCapacityResult(UpdateShiftCapacityOutcome.Updated, newCapacity, confirmed);
+            shift.UpdateCapacity(newCapacity, confirmed);
+            await _context.SaveChangesAsync(cancellationToken);
+            return new UpdateShiftCapacityResult(UpdateShiftCapacityOutcome.Updated, newCapacity, confirmed);
+        }, cancellationToken);
     }
 
     public async Task<UpdateShiftCapacityResult> UpdateShiftAsync(
@@ -382,42 +372,39 @@ public sealed class EventVolunteerAssignmentService : IEventVolunteerAssignmentS
 
         // REQ-024 (E3.S3 Round-3 R3-M-S3-1): single FOR UPDATE transaction over capacity AND
         // field updates so a concurrent writer cannot mutate the row between the two phases.
-        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
-
-        var shifts = await _context.EventVolunteerShifts
-            .FromSqlInterpolated($"SELECT * FROM event_volunteer_shifts WHERE id = {shiftId} FOR UPDATE")
-            .AsTracking()
-            .ToListAsync(cancellationToken);
-        if (shifts.Count == 0)
+        return await _context.ExecuteTransactionalAsync(async () =>
         {
-            await transaction.CommitAsync(cancellationToken);
-            return new UpdateShiftCapacityResult(UpdateShiftCapacityOutcome.ShiftNotFound, null, null);
-        }
-
-        var shift = shifts[0];
-        if (eventId != Guid.Empty && shift.EventId != eventId)
-        {
-            await transaction.CommitAsync(cancellationToken);
-            return new UpdateShiftCapacityResult(UpdateShiftCapacityOutcome.ShiftNotFound, null, null);
-        }
-
-        if (capacity != shift.Capacity)
-        {
-            var confirmed = await _assignmentRepository.CountConfirmedAsync(shiftId, cancellationToken);
-            if (capacity < confirmed)
+            var shifts = await _context.EventVolunteerShifts
+                .FromSqlInterpolated($"SELECT * FROM event_volunteer_shifts WHERE id = {shiftId} FOR UPDATE")
+                .AsTracking()
+                .ToListAsync(cancellationToken);
+            if (shifts.Count == 0)
             {
-                await transaction.CommitAsync(cancellationToken);
-                return new UpdateShiftCapacityResult(
-                    UpdateShiftCapacityOutcome.BelowCurrentConfirmed,
-                    capacity,
-                    confirmed);
+                return new UpdateShiftCapacityResult(UpdateShiftCapacityOutcome.ShiftNotFound, null, null);
             }
-            shift.UpdateCapacity(capacity, confirmed);
-        }
 
-        shift.UpdateDetails(title, description, startsAt, endsAt, allowWaitlist, allowSelfSignup, notes);
-        await _context.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-        return new UpdateShiftCapacityResult(UpdateShiftCapacityOutcome.Updated, capacity, null);
+            var shift = shifts[0];
+            if (eventId != Guid.Empty && shift.EventId != eventId)
+            {
+                return new UpdateShiftCapacityResult(UpdateShiftCapacityOutcome.ShiftNotFound, null, null);
+            }
+
+            if (capacity != shift.Capacity)
+            {
+                var confirmed = await _assignmentRepository.CountConfirmedAsync(shiftId, cancellationToken);
+                if (capacity < confirmed)
+                {
+                    return new UpdateShiftCapacityResult(
+                        UpdateShiftCapacityOutcome.BelowCurrentConfirmed,
+                        capacity,
+                        confirmed);
+                }
+                shift.UpdateCapacity(capacity, confirmed);
+            }
+
+            shift.UpdateDetails(title, description, startsAt, endsAt, allowWaitlist, allowSelfSignup, notes);
+            await _context.SaveChangesAsync(cancellationToken);
+            return new UpdateShiftCapacityResult(UpdateShiftCapacityOutcome.Updated, capacity, null);
+        }, cancellationToken);
     }
 }
