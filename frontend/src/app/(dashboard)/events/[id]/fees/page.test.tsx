@@ -9,12 +9,27 @@ import {
 } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import React from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-// REQ-022 (E4-S1) AC-9: cover the fee-category management surface — list rendering, empty
-// state, the create dialog + zod validation, a successful create, and deactivate.
+// REQ-022 (E4-S1) AC-9 + E24-S3: cover the fee-category management surface —
+// list rendering, empty state, the create dialog + zod validation, a successful
+// create, and deactivate.
+//
+// E24-S3 transport adaptation: the page now renders the `@/features/events`
+// `EventFeesContent`, which uses `useApiClient()` ({data,error,status}) +
+// TanStack Query instead of the `events` service fns. The
+// BEHAVIOURAL assertions from the S1 characterization suite are preserved
+// verbatim; only the transport MECHANISM changes:
+//   - `getEventFeeCategories(eventId)` → `apiClient.get(endpoint)`.
+//   - `createEventFeeCategory(eventId, body)` → `apiClient.post(endpoint, body)`.
+//   - `deactivateEventFeeCategory(eventId, catId)` → `apiClient.post(endpoint, {})`
+//     (the soft-retire endpoint is POST, not DELETE).
+// Mocked hooks/clients return STABLE references so query keys / effect deps do
+// not churn (A64/A78); the translator stays a stable identity for the same
+// reason the S1 suite noted.
 
-// React 19's `use(promise)` Suspends on first render; drive it synchronously like the check-in
-// page test does.
+// React 19's `use(promise)` Suspends on first render; drive it synchronously
+// like the check-in page test does.
 vi.mock("react", async () => {
   const actual = await vi.importActual<typeof React>("react");
   return {
@@ -43,11 +58,11 @@ function syncThenable<T>(value: T): Promise<T> {
 }
 
 import EventFeesPage from "./page";
-import * as eventsService from "@/lib/services/events";
+import type { EventFeeCategoryDto } from "@/features/events/types/events.types";
 
-// next-intl: identity translations (echo key, append vars JSON when present). The translator
-// must be a STABLE reference — the page keeps `t` in its data-load useEffect deps, so a fresh
-// function per render would re-fire the effect forever and the dialog would never settle.
+// next-intl: identity translations (echo key, append vars JSON when present).
+// The translator must be a STABLE reference — the slice keeps `t` in query/effect
+// deps, so a fresh function per render would re-fire effects forever.
 vi.mock("next-intl", () => {
   const translate = (key: string, vars?: Record<string, unknown>) =>
     vars ? `${key} ${JSON.stringify(vars)}` : key;
@@ -58,11 +73,25 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
 }));
 
+// @/lib/auth: STABLE auth state (vorstand can-manage) + a STABLE, spyable api
+// client whose return shape {data,error,status} matches lib/auth.ts.
+const apiGet = vi.fn();
+const apiPost = vi.fn();
+const apiPut = vi.fn();
+const apiDelete = vi.fn();
+const apiClient = {
+  get: apiGet,
+  post: apiPost,
+  put: apiPut,
+  delete: apiDelete,
+  upload: vi.fn(),
+};
 vi.mock("@/lib/auth", () => ({
   useAuth: () => ({
     isAuthenticated: true,
     isLoading: false,
     user: null,
+    accessToken: "test-token",
     roles: ["vorstand"],
     isAdmin: false,
     isVorstand: true,
@@ -75,10 +104,11 @@ vi.mock("@/lib/auth", () => ({
     canReadFinance: false,
     canWriteFinance: false,
   }),
+  useApiClient: () => apiClient,
 }));
 
-// Render the Radix dialog as a plain passthrough so the form is in the DOM without portal /
-// focus-trap complexity.
+// Render the Radix dialog as a plain passthrough so the form is in the DOM
+// without portal / focus-trap complexity.
 vi.mock("@/components/ui/dialog", () => ({
   Dialog: ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
@@ -100,20 +130,7 @@ vi.mock("@/components/ui/dialog", () => ({
   ),
 }));
 
-vi.mock("@/lib/services/events", async () => {
-  const actual = await vi.importActual<typeof eventsService>(
-    "@/lib/services/events"
-  );
-  return {
-    ...actual,
-    getEventFeeCategories: vi.fn(),
-    createEventFeeCategory: vi.fn(),
-    updateEventFeeCategory: vi.fn(),
-    deactivateEventFeeCategory: vi.fn(),
-  };
-});
-
-const adultCategory: eventsService.EventFeeCategoryDto = {
+const adultCategory: EventFeeCategoryDto = {
   id: "cat-adult",
   eventId: "evt-1",
   name: "Adult",
@@ -128,7 +145,7 @@ const adultCategory: eventsService.EventFeeCategoryDto = {
   createdAt: "2026-06-06T10:00:00Z",
 };
 
-const retiredCategory: eventsService.EventFeeCategoryDto = {
+const retiredCategory: EventFeeCategoryDto = {
   ...adultCategory,
   id: "cat-old",
   name: "Early-bird",
@@ -136,24 +153,39 @@ const retiredCategory: eventsService.EventFeeCategoryDto = {
   isActive: false,
 };
 
-async function renderPage() {
+function renderPage() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
   const params = syncThenable({ id: "evt-1" });
-  return render(<EventFeesPage params={params} />);
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <EventFeesPage params={params} />
+    </QueryClientProvider>
+  );
 }
 
 beforeEach(() => {
-  vi.mocked(eventsService.getEventFeeCategories).mockResolvedValue({
+  // List GET — the slice drives the table off this.
+  apiGet.mockResolvedValue({
     data: [adultCategory, retiredCategory],
     error: undefined,
-  } as never);
-  vi.mocked(eventsService.createEventFeeCategory).mockResolvedValue({
+    status: 200,
+  });
+  // Create POST returns the new DTO.
+  apiPost.mockResolvedValue({
     data: { ...adultCategory, id: "cat-new", name: "Child" },
     error: undefined,
-  } as never);
-  vi.mocked(eventsService.deactivateEventFeeCategory).mockResolvedValue({
-    data: { ...adultCategory, isActive: false },
+    status: 200,
+  });
+  apiPut.mockResolvedValue({
+    data: adultCategory,
     error: undefined,
-  } as never);
+    status: 200,
+  });
 });
 
 afterEach(() => {
@@ -163,7 +195,7 @@ afterEach(() => {
 
 describe("EventFeesPage", () => {
   it("renders active and retired fee categories", async () => {
-    await renderPage();
+    renderPage();
     await waitFor(() => {
       expect(screen.getByText("Adult")).toBeInTheDocument();
     });
@@ -173,18 +205,15 @@ describe("EventFeesPage", () => {
   });
 
   it("shows the empty state when there are no categories", async () => {
-    vi.mocked(eventsService.getEventFeeCategories).mockResolvedValue({
-      data: [],
-      error: undefined,
-    } as never);
-    await renderPage();
+    apiGet.mockResolvedValue({ data: [], error: undefined, status: 200 });
+    renderPage();
     await waitFor(() => {
       expect(screen.getByText("noCategories")).toBeInTheDocument();
     });
   });
 
   it("opens the create dialog and validates a missing name", async () => {
-    await renderPage();
+    renderPage();
     await waitFor(() => expect(screen.getByText("Adult")).toBeInTheDocument());
 
     // Header create button.
@@ -200,11 +229,12 @@ describe("EventFeesPage", () => {
     await waitFor(() => {
       expect(screen.getByText("validation.nameRequired")).toBeInTheDocument();
     });
-    expect(eventsService.createEventFeeCategory).not.toHaveBeenCalled();
+    // The create POST must not have fired (validation blocked it).
+    expect(apiPost).not.toHaveBeenCalled();
   });
 
   it("creates a fee category when the form is valid", async () => {
-    await renderPage();
+    renderPage();
     await waitFor(() => expect(screen.getByText("Adult")).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole("button", { name: "newCategory" }));
@@ -218,9 +248,10 @@ describe("EventFeesPage", () => {
     fireEvent.change(amountInput, { target: { value: "10" } });
 
     fireEvent.click(screen.getByRole("button", { name: "save" }));
+    // Transport: create now POSTs the byte-identical endpoint + body.
     await waitFor(() => {
-      expect(eventsService.createEventFeeCategory).toHaveBeenCalledWith(
-        "evt-1",
+      expect(apiPost).toHaveBeenCalledWith(
+        "/api/v1/events/evt-1/fee-categories/",
         expect.objectContaining({ name: "Child", amount: 10, currency: "CHF" })
       );
     });
@@ -228,15 +259,16 @@ describe("EventFeesPage", () => {
 
   it("deactivates a category after confirmation", async () => {
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
-    await renderPage();
+    renderPage();
     await waitFor(() => expect(screen.getByText("Adult")).toBeInTheDocument());
 
     // The active row exposes a deactivate action.
     fireEvent.click(screen.getByRole("button", { name: "deactivate" }));
+    // Transport: deactivate is a POST to the soft-retire endpoint with `{}`.
     await waitFor(() => {
-      expect(eventsService.deactivateEventFeeCategory).toHaveBeenCalledWith(
-        "evt-1",
-        "cat-adult"
+      expect(apiPost).toHaveBeenCalledWith(
+        "/api/v1/events/evt-1/fee-categories/cat-adult/deactivate",
+        {}
       );
     });
     confirmSpy.mockRestore();

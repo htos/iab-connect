@@ -1,9 +1,6 @@
-"use client";
-
-/** REQ-028 (E5-S3): create an automation definition. */
-
-import AutomationForm from "../AutomationForm";
+// Thin route entry (E25-S2). Create-automation logic lives in the feature slice.
+import { AutomationNewContent } from "@/features/communication/automations/components/automation-new-content";
 
 export default function NewAutomationPage() {
-  return <AutomationForm mode="create" />;
+  return <AutomationNewContent />;
 }

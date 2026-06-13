@@ -63,52 +63,57 @@ public sealed class PaidRegistrationService : IPaidRegistrationService
         var now = DateTime.UtcNow;
         var due = DateTime.SpecifyKind(dueDate ?? now.AddDays(30), DateTimeKind.Utc);
 
-        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        // Drive the whole unit through the retrying execution strategy — a raw BeginTransactionAsync
+        // is rejected under EnableRetryOnFailure. The fiscal-period check, the atomic invoice numbering
+        // (which enlists in this transaction), and the single SaveChanges that persists BOTH the
+        // registration and the invoice commit together (AC-3).
+        var invoice = await _context.ExecuteTransactionalAsync(async () =>
+        {
+            // AC-5: honour the fiscal-period lock through the existing service (rare here — the date
+            // is "now"). A locked period fails the whole paid registration gracefully.
+            await _fiscalPeriodService.EnsurePeriodNotLockedAsync(now, cancellationToken);
 
-        // AC-5: honour the fiscal-period lock through the existing service (rare here — the date
-        // is "now"). A locked period fails the whole paid registration gracefully.
-        await _fiscalPeriodService.EnsurePeriodNotLockedAsync(now, cancellationToken);
+            // Reuse the atomic, concurrency-safe numbering (enlists in this transaction).
+            var invoiceNumber = await _invoiceRepository.GetNextInvoiceNumberAsync(cancellationToken);
 
-        // Reuse the atomic, concurrency-safe numbering (enlists in this transaction).
-        var invoiceNumber = await _invoiceRepository.GetNextInvoiceNumberAsync(cancellationToken);
+            // AC-1: member → RecipientType.Member (+ member id); guest → RecipientType.Other (no id).
+            // The registration link is carried by EventRegistrationId, NOT by a new RecipientType.
+            var isMember = registration.MemberId.HasValue;
+            var recipientType = isMember ? RecipientType.Member : RecipientType.Other;
+            var recipientId = isMember ? registration.MemberId : null;
 
-        // AC-1: member → RecipientType.Member (+ member id); guest → RecipientType.Other (no id).
-        // The registration link is carried by EventRegistrationId, NOT by a new RecipientType.
-        var isMember = registration.MemberId.HasValue;
-        var recipientType = isMember ? RecipientType.Member : RecipientType.Other;
-        var recipientId = isMember ? registration.MemberId : null;
+            var created = Invoice.Create(
+                invoiceNumber,
+                now,
+                due,
+                recipientType,
+                recipientId,
+                registration.ParticipantName,
+                recipientAddress: null,
+                // AC-1: default tax-free — most Vereine are VAT-exempt and the fee amount is the gross.
+                // No non-zero rate is hardcoded; if VAT handling is later needed it flows via tax codes.
+                taxRate: 0m,
+                notes: $"Event registration: {eventTitle}",
+                createdBy: "System (event registration)",
+                paymentTerms: null,
+                templateId: null,
+                eventRegistrationId: registration.Id);
 
-        var invoice = Invoice.Create(
-            invoiceNumber,
-            now,
-            due,
-            recipientType,
-            recipientId,
-            registration.ParticipantName,
-            recipientAddress: null,
-            // AC-1: default tax-free — most Vereine are VAT-exempt and the fee amount is the gross.
-            // No non-zero rate is hardcoded; if VAT handling is later needed it flows via tax codes.
-            taxRate: 0m,
-            notes: $"Event registration: {eventTitle}",
-            createdBy: "System (event registration)",
-            paymentTerms: null,
-            templateId: null,
-            eventRegistrationId: registration.Id);
+            created.AddItemWithTax(
+                description: $"{eventTitle} – {feeCategory.Name}",
+                quantity: registration.NumberOfGuests,
+                unitPrice: feeCategory.Amount,
+                taxCodeId: null,
+                taxRate: null,
+                isGrossEntry: false,
+                activityAreaId: null);
 
-        invoice.AddItemWithTax(
-            description: $"{eventTitle} – {feeCategory.Name}",
-            quantity: registration.NumberOfGuests,
-            unitPrice: feeCategory.Amount,
-            taxCodeId: null,
-            taxRate: null,
-            isGrossEntry: false,
-            activityAreaId: null);
-
-        // AC-3: both tracked by the same context, committed in ONE SaveChangesAsync.
-        await _context.EventRegistrations.AddAsync(registration, cancellationToken);
-        await _context.Invoices.AddAsync(invoice, cancellationToken);
-        await _context.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+            // AC-3: both tracked by the same context, committed in ONE SaveChangesAsync.
+            await _context.EventRegistrations.AddAsync(registration, cancellationToken);
+            await _context.Invoices.AddAsync(created, cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken);
+            return created;
+        }, cancellationToken);
 
         // AC-9: audit the finance creation AND its registration origin (reconstructable end-to-end).
         // Best-effort: the registration + invoice are already durably committed, so a failure in the

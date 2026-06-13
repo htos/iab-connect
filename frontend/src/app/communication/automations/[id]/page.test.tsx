@@ -9,9 +9,16 @@ import {
 } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import React from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // REQ-028 (E5-S3) AC-4/AC-7: detail page renders status-conditional lifecycle buttons and calls
 // the right lifecycle helper; recent-execution panel degrades to "no runs yet".
+//
+// E25-S2 (A79 mechanism change): the detail page now reads its server state via
+// the feature-slice TanStack hooks (use-automation [retry:false], -executions,
+// -lifecycle), so the render is wrapped in a fresh QueryClientProvider. Every
+// behavioural assertion below — the lifecycle action matrix, the lifecycle helper
+// call with the same args, and the "no runs yet" degrade — is preserved verbatim.
 
 // React 19 `use(promise)` — resolve synchronously (mirrors the fees-page test).
 vi.mock("react", async () => {
@@ -54,9 +61,9 @@ const getAutomation = vi.fn();
 const getExecutions = vi.fn().mockResolvedValue([]);
 const changeAutomationStatus = vi.fn();
 
-vi.mock("@/lib/api/automations", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/api/automations")>(
-    "@/lib/api/automations"
+vi.mock("@/features/communication/automations/api/automations", async () => {
+  const actual = await vi.importActual<typeof import("@/features/communication/automations/api/automations")>(
+    "@/features/communication/automations/api/automations"
   );
   return {
     ...actual,
@@ -67,6 +74,20 @@ vi.mock("@/lib/api/automations", async () => {
 });
 
 import AutomationDetailPage from "./page";
+
+function renderPage() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, retryDelay: 0 },
+      mutations: { retry: false },
+    },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <AutomationDetailPage params={syncThenable({ id: "abc" })} />
+    </QueryClientProvider>
+  );
+}
 
 function detail(status: string) {
   return {
@@ -95,7 +116,7 @@ afterEach(() => {
 describe("AutomationDetailPage", () => {
   it("shows Pause + Disable for an Active automation (not Activate/Resume)", async () => {
     getAutomation.mockResolvedValue(detail("Active"));
-    render(<AutomationDetailPage params={syncThenable({ id: "abc" })} />);
+    renderPage();
 
     await waitFor(() =>
       expect(screen.getByText("Welcome journey")).toBeInTheDocument()
@@ -109,7 +130,7 @@ describe("AutomationDetailPage", () => {
   it("shows Activate for a Draft automation and calls the lifecycle helper", async () => {
     getAutomation.mockResolvedValue(detail("Draft"));
     changeAutomationStatus.mockResolvedValue(detail("Active"));
-    render(<AutomationDetailPage params={syncThenable({ id: "abc" })} />);
+    renderPage();
 
     await waitFor(() =>
       expect(screen.getByText("activate")).toBeInTheDocument()
@@ -127,7 +148,7 @@ describe("AutomationDetailPage", () => {
 
   it("shows Resume for a Paused automation", async () => {
     getAutomation.mockResolvedValue(detail("Paused"));
-    render(<AutomationDetailPage params={syncThenable({ id: "abc" })} />);
+    renderPage();
 
     await waitFor(() => expect(screen.getByText("resume")).toBeInTheDocument());
     expect(screen.queryByText("pause")).not.toBeInTheDocument();
@@ -136,7 +157,7 @@ describe("AutomationDetailPage", () => {
   it("degrades to 'no runs yet' when there are no executions", async () => {
     getAutomation.mockResolvedValue(detail("Active"));
     getExecutions.mockResolvedValue([]);
-    render(<AutomationDetailPage params={syncThenable({ id: "abc" })} />);
+    renderPage();
 
     await waitFor(() =>
       expect(screen.getByText("noRunsYet")).toBeInTheDocument()

@@ -78,6 +78,8 @@ public sealed class EventCheckInEndpointTests
         builder.Services.AddSingleton(Moq.Mock.Of<IPaidRegistrationService>());
         builder.Services.AddSingleton(Moq.Mock.Of<IabConnect.Application.Finance.IInvoiceRepository>());
         builder.Services.AddSingleton(Moq.Mock.Of<IabConnect.Application.Finance.IFinanceProfileRepository>());
+        // Member self-registration derives the member id from the authenticated user.
+        builder.Services.AddSingleton(Moq.Mock.Of<IabConnect.Domain.Members.IMemberRepository>());
         builder.Services.AddDbContext<ApplicationDbContext>(options =>
             options.UseInMemoryDatabase($"checkin-{routePattern}"));
 

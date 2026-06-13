@@ -39,73 +39,75 @@ public sealed class EventRegistrationCancellationService : IEventRegistrationCan
         bool cancelledByParticipant,
         CancellationToken cancellationToken = default)
     {
-        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
-
-        // Lock the event row first — the serialisation point for every cancel/promote on this
-        // event. Two concurrent cancellations now queue here instead of both reading the same
-        // "next on waitlist" row.
-        var evt = await LockEventAsync(eventId, cancellationToken);
-        if (evt is null)
+        // Driven through the retrying execution strategy — a raw BeginTransactionAsync is rejected
+        // under EnableRetryOnFailure. Returning from the delegate commits (releasing the FOR UPDATE
+        // locks even on the not-found paths). The best-effort invoice-disposition audit is folded
+        // into the unit; it already persists on its own scope, so it is unaffected by the commit.
+        return await _context.ExecuteTransactionalAsync(async () =>
         {
-            await transaction.CommitAsync(cancellationToken);
-            return CancelRegistrationResult.NotFound();
-        }
-
-        // Lock the registration row — serialises against a concurrent check-in on the same row.
-        var registration = await LockRegistrationAsync(registrationId, cancellationToken);
-        if (registration is null || registration.EventId != eventId)
-        {
-            await transaction.CommitAsync(cancellationToken);
-            return CancelRegistrationResult.NotFound();
-        }
-
-        registration.Cancel(reason, cancelledByParticipant);
-
-        // REQ-022 (E4-S2 / AC-4): dispose the linked finance invoice per finance-compliance rules
-        // — never a hard delete. Draft → soft-delete; Sent/Overdue → Cancel(reason); Paid → leave
-        // intact and flag for a manual Kassier refund (no auto-refund — no PSP). Done inside the
-        // same transaction as the registration cancel so the two never diverge.
-        var (invoiceForAudit, invoiceDisposition) =
-            await DisposeLinkedInvoiceAsync(registrationId, reason, cancellationToken);
-
-        EventRegistration? promoted = null;
-        if (evt.WaitlistEnabled)
-        {
-            // Read the next waitlisted registration under the event lock — no other cancel for
-            // this event can be reading it concurrently.
-            promoted = await _context.EventRegistrations
-                .Where(r => r.EventId == eventId
-                            && r.IsWaitlisted
-                            && r.Status == RegistrationStatus.Waitlisted)
-                .OrderBy(r => r.WaitlistPosition)
-                .FirstOrDefaultAsync(cancellationToken);
-            promoted?.PromoteFromWaitlist();
-        }
-
-        await _context.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-
-        // AC-9: audit the invoice disposition after the cancellation commits (best-effort — the
-        // cancellation is already committed, so an audit-sink failure must not fail the request).
-        if (invoiceForAudit is not null && invoiceDisposition is not null)
-        {
-            try
+            // Lock the event row first — the serialisation point for every cancel/promote on this
+            // event. Two concurrent cancellations now queue here instead of both reading the same
+            // "next on waitlist" row.
+            var evt = await LockEventAsync(eventId, cancellationToken);
+            if (evt is null)
             {
-                await _auditService.LogActionAsync(
-                    AuditEventType.FinanceStatusChanged,
-                    $"Event-registration cancellation: {invoiceDisposition}",
-                    entityType: "Invoice",
-                    entityId: invoiceForAudit.Id.ToString(),
-                    details: $"registrationId={registrationId}; eventId={eventId}",
-                    ct: cancellationToken);
+                return CancelRegistrationResult.NotFound();
             }
-            catch
-            {
-                /* committed already — audit failure must not fail the cancellation */
-            }
-        }
 
-        return CancelRegistrationResult.Cancelled(registration, promoted, evt);
+            // Lock the registration row — serialises against a concurrent check-in on the same row.
+            var registration = await LockRegistrationAsync(registrationId, cancellationToken);
+            if (registration is null || registration.EventId != eventId)
+            {
+                return CancelRegistrationResult.NotFound();
+            }
+
+            registration.Cancel(reason, cancelledByParticipant);
+
+            // REQ-022 (E4-S2 / AC-4): dispose the linked finance invoice per finance-compliance rules
+            // — never a hard delete. Draft → soft-delete; Sent/Overdue → Cancel(reason); Paid → leave
+            // intact and flag for a manual Kassier refund (no auto-refund — no PSP). Done inside the
+            // same transaction as the registration cancel so the two never diverge.
+            var (invoiceForAudit, invoiceDisposition) =
+                await DisposeLinkedInvoiceAsync(registrationId, reason, cancellationToken);
+
+            EventRegistration? promoted = null;
+            if (evt.WaitlistEnabled)
+            {
+                // Read the next waitlisted registration under the event lock — no other cancel for
+                // this event can be reading it concurrently.
+                promoted = await _context.EventRegistrations
+                    .Where(r => r.EventId == eventId
+                                && r.IsWaitlisted
+                                && r.Status == RegistrationStatus.Waitlisted)
+                    .OrderBy(r => r.WaitlistPosition)
+                    .FirstOrDefaultAsync(cancellationToken);
+                promoted?.PromoteFromWaitlist();
+            }
+
+            await _context.SaveChangesAsync(cancellationToken);
+
+            // AC-9: audit the invoice disposition (best-effort — it persists on its own scope, so an
+            // audit-sink failure must not fail the cancellation).
+            if (invoiceForAudit is not null && invoiceDisposition is not null)
+            {
+                try
+                {
+                    await _auditService.LogActionAsync(
+                        AuditEventType.FinanceStatusChanged,
+                        $"Event-registration cancellation: {invoiceDisposition}",
+                        entityType: "Invoice",
+                        entityId: invoiceForAudit.Id.ToString(),
+                        details: $"registrationId={registrationId}; eventId={eventId}",
+                        ct: cancellationToken);
+                }
+                catch
+                {
+                    /* committed already — audit failure must not fail the cancellation */
+                }
+            }
+
+            return CancelRegistrationResult.Cancelled(registration, promoted, evt);
+        }, cancellationToken);
     }
 
     /// <summary>

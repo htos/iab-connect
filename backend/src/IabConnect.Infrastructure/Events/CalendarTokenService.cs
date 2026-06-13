@@ -34,40 +34,40 @@ public sealed class CalendarTokenService : ICalendarTokenService
         Guid keycloakUserId,
         CancellationToken cancellationToken = default)
     {
-        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
-
-        var member = await LockAndLoadByKeycloakIdAsync(keycloakUserId, cancellationToken);
-        if (member is null)
+        // Retrying-strategy compatible: the FOR UPDATE row lock, the mutation, and the SaveChanges
+        // run as one retriable transactional unit (a raw BeginTransactionAsync is rejected under
+        // EnableRetryOnFailure). Returning from the delegate commits — releasing the lock on the
+        // not-found path too.
+        return await _context.ExecuteTransactionalAsync(async () =>
         {
-            await transaction.CommitAsync(cancellationToken);
-            return CalendarTokenRotationResult.NotFound();
-        }
+            var member = await LockAndLoadByKeycloakIdAsync(keycloakUserId, cancellationToken);
+            if (member is null)
+                return CalendarTokenRotationResult.NotFound();
 
-        // Epic-3-retro §9 (R3-H-S5-3): HMAC-key the stored hash with the configured pepper when
-        // one is set; null pepper keeps the backwards-compatible plain SHA-256.
-        var token = member.RegenerateCalendarToken(_pepper);
-        await _context.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-        return CalendarTokenRotationResult.Rotated(member.Id, token);
+            // Epic-3-retro §9 (R3-H-S5-3): HMAC-key the stored hash with the configured pepper when
+            // one is set; null pepper keeps the backwards-compatible plain SHA-256.
+            var token = member.RegenerateCalendarToken(_pepper);
+            await _context.SaveChangesAsync(cancellationToken);
+            return CalendarTokenRotationResult.Rotated(member.Id, token);
+        }, cancellationToken);
     }
 
     public async Task<bool> RevokeAsync(
         Guid keycloakUserId,
         CancellationToken cancellationToken = default)
     {
-        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
-
-        var member = await LockAndLoadByKeycloakIdAsync(keycloakUserId, cancellationToken);
-        if (member is null)
+        // Retrying-strategy compatible (see RotateAsync): lock + mutate + SaveChanges as one
+        // retriable unit; the delegate's return commits and releases the FOR UPDATE lock.
+        return await _context.ExecuteTransactionalAsync(async () =>
         {
-            await transaction.CommitAsync(cancellationToken);
-            return false;
-        }
+            var member = await LockAndLoadByKeycloakIdAsync(keycloakUserId, cancellationToken);
+            if (member is null)
+                return false;
 
-        member.RevokeCalendarToken();
-        await _context.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-        return true;
+            member.RevokeCalendarToken();
+            await _context.SaveChangesAsync(cancellationToken);
+            return true;
+        }, cancellationToken);
     }
 
     /// <summary>

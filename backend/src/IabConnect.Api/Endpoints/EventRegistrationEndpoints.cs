@@ -7,6 +7,7 @@ using IabConnect.Application.Finance;
 using IabConnect.Domain.Common;
 using IabConnect.Domain.Events;
 using IabConnect.Domain.Finance;
+using IabConnect.Domain.Members;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -313,6 +314,7 @@ public static class EventRegistrationEndpoints
         IEventFeeCategoryRepository feeCategoryRepository,
         IModuleSettingsService moduleSettings,
         IPaidRegistrationService paidRegistrationService,
+        IMemberRepository memberRepository,
         ClaimsPrincipal user)
     {
         var evt = await eventRepository.GetByIdAsync(eventId);
@@ -332,6 +334,12 @@ public static class EventRegistrationEndpoints
                        ?? user.FindFirst("sub")?.Value;
         if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
             return Results.BadRequest(new { message = "User ID not found" });
+
+        // Self-registration: the member IS the authenticated user, so derive the member id
+        // from the Keycloak subject — the UI does not (and should not) send it. An explicit
+        // request.MemberId still wins (e.g. staff registering on behalf of a member).
+        var member = await memberRepository.GetByKeycloakUserIdAsync(userId);
+        var effectiveMemberId = request.MemberId ?? member?.Id;
 
         // Check for existing registration
         var exists = await registrationRepository.ExistsAsync(eventId, userId);
@@ -360,7 +368,7 @@ public static class EventRegistrationEndpoints
             registration = EventRegistration.CreateWaitlisted(
                 eventId,
                 userId,
-                request.MemberId,
+                effectiveMemberId,
                 userName,
                 userEmail,
                 waitlistPosition,
@@ -374,18 +382,17 @@ public static class EventRegistrationEndpoints
         }
         else
         {
-            // REQ-023 (E3.S2 Round-3 R3-H-S2-4): MemberId is mandatory for member-bound
-            // registrations. Previous code defaulted to Guid.Empty, which the entity factory
-            // now rejects — return a clean 400 instead of letting the ArgumentException bubble
-            // up as a 500. (The waitlisted branch above accepts a nullable MemberId because
-            // `CreateWaitlisted` legitimately supports both member and guest waitlist rows.)
-            if (request.MemberId is null || request.MemberId.Value == Guid.Empty)
-                return Results.BadRequest(new { message = "MemberId is required for member registration" });
+            // REQ-023 (E3.S2 Round-3 R3-H-S2-4): a member-bound registration needs a member id.
+            // It is normally derived from the authenticated user above; only if the caller has
+            // no linked member record (and supplied none explicitly) do we reject — with a clean
+            // 400 instead of letting the entity factory's ArgumentException bubble up as a 500.
+            if (effectiveMemberId is null || effectiveMemberId.Value == Guid.Empty)
+                return Results.BadRequest(new { message = "No member record is linked to your account" });
 
             registration = EventRegistration.CreateForMember(
                 eventId,
                 userId,
-                request.MemberId.Value,
+                effectiveMemberId.Value,
                 userName,
                 userEmail,
                 request.NumberOfGuests,
