@@ -49,4 +49,8 @@ ENV KC_DB=${KC_DB}
 # `/health/ready` for the Railway healthcheck (setup guide §9 / RUNBOOK §6.1).
 RUN /opt/keycloak/bin/kc.sh build --health-enabled=true --metrics-enabled=false
 
-CMD ["start", "--optimized"]
+# --import-realm imports realms from /opt/keycloak/data/import on startup
+# (the realm copied at line 30). `start --optimized` alone does NOT import —
+# the local compose added --import-realm in its command, but Railway runs this
+# CMD verbatim. Idempotent: Keycloak skips realms that already exist on restart.
+CMD ["start", "--optimized", "--import-realm"]
