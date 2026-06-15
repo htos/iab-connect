@@ -47,7 +47,12 @@ ENV KC_DB=${KC_DB}
 # refuse the mismatched build-time values and crash-loop. Baking them here (to
 # the exact values E13-S2 sets at runtime) clears the mismatch AND exposes
 # `/health/ready` for the Railway healthcheck (setup guide §9 / RUNBOOK §6.1).
-RUN /opt/keycloak/bin/kc.sh build --health-enabled=true --metrics-enabled=false
+# --cache=local disables Infinispan/JGroups clustering. Beta runs a single
+# replica; with the default clustered cache, each redeploy's new node finds the
+# previous (now-dead) node's JDBC_PING discovery row in the DB and blocks
+# startup retrying to reach it (SocketTimeoutException flood). local cache =
+# no JGroups = clean single-node startup. (build-time option, must be baked.)
+RUN /opt/keycloak/bin/kc.sh build --health-enabled=true --metrics-enabled=false --cache=local
 
 # --import-realm imports realms from /opt/keycloak/data/import on startup
 # (the realm copied at line 30). `start --optimized` alone does NOT import —
