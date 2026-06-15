@@ -41,6 +41,12 @@ ENV KC_DB=${KC_DB}
 # /opt/keycloak/providers/ are auto-discovered at build time. See story
 # Question #4 — first build attempt failed with "'disable-new-users' is an
 # unrecognized feature" exactly per the documented workaround branch.
-RUN /opt/keycloak/bin/kc.sh build
+# Bake health + metrics as BUILD-TIME options. In `--optimized` mode these
+# cannot be changed at runtime; setting KC_HEALTH_ENABLED/KC_METRICS_ENABLED as
+# Railway env vars on an image that did NOT bake them makes `start --optimized`
+# refuse the mismatched build-time values and crash-loop. Baking them here (to
+# the exact values E13-S2 sets at runtime) clears the mismatch AND exposes
+# `/health/ready` for the Railway healthcheck (setup guide §9 / RUNBOOK §6.1).
+RUN /opt/keycloak/bin/kc.sh build --health-enabled=true --metrics-enabled=false
 
 CMD ["start", "--optimized"]
