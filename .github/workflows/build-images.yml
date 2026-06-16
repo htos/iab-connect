@@ -132,6 +132,11 @@ jobs:
             context: ./infra/keycloak
             dockerfile: Dockerfile
             description: "IAB Connect Keycloak — AGPL-3.0-or-later open-source membership platform (E12-S3 custom image with disable-new-users SPI + sanitized realm)."
+          - name: rustfs
+            image: iabc-rustfs
+            context: ./infra/rustfs
+            dockerfile: Dockerfile
+            description: "IAB Connect RustFS — upstream rustfs repackaged to run as root so it can write the root-owned Railway /data volume (E13 Beta bring-up)."
 
     steps:
       - name: Checkout repository
