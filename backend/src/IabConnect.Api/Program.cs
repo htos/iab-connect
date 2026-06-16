@@ -134,6 +134,40 @@ try
             {
                 Log.Warning(rpEx, "Retention policy seeding failed (non-fatal, continuing startup)");
             }
+
+            // Ensure the S3 buckets the app writes to exist. RustFS (like MinIO) does NOT
+            // auto-create buckets on first PutObject, and S3DocumentStorage assumes the
+            // bucket is present — so on a fresh object-store volume the first document
+            // upload would fail with NoSuchBucket. Idempotent + non-fatal (a transient
+            // storage outage must never block api startup). Dev uses the compose rustfs-init
+            // one-shot; Testing manages its own buckets — so this runs only on Beta/Prod.
+            if (!env.IsDevelopment() && env.EnvironmentName != "Testing")
+            {
+                try
+                {
+                    var s3 = scope.ServiceProvider.GetRequiredService<Amazon.S3.IAmazonS3>();
+                    var candidateBuckets = new[]
+                    {
+                        configuration["DocumentStorage:BucketName"] ?? "iabconnect-documents",
+                        configuration["Backup:BucketName"] ?? "backups",
+                    };
+
+                    foreach (var bucket in candidateBuckets)
+                    {
+                        if (string.IsNullOrWhiteSpace(bucket))
+                            continue;
+                        if (!await Amazon.S3.Util.AmazonS3Util.DoesS3BucketExistV2Async(s3, bucket))
+                        {
+                            await s3.PutBucketAsync(new Amazon.S3.Model.PutBucketRequest { BucketName = bucket });
+                            Log.Information("Created storage bucket {Bucket}", bucket);
+                        }
+                    }
+                }
+                catch (Exception bucketEx)
+                {
+                    Log.Warning(bucketEx, "Storage bucket-ensure failed (non-fatal, continuing startup)");
+                }
+            }
         }
     }
     catch (Exception ex)
