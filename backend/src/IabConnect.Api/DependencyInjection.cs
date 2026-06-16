@@ -4,12 +4,17 @@ using System.Text.Json.Serialization;
 using Hangfire;
 using IabConnect.Api.Authorization;
 using IabConnect.Api.Middleware;
+using IabConnect.Api.RateLimiting;
+using IabConnect.Infrastructure.Backup;
 using IabConnect.Infrastructure.Common;
+using IabConnect.Infrastructure.Communication.Jobs;
 using IabConnect.Infrastructure.Finance.Jobs;
 using IabConnect.Infrastructure.Events.Jobs;
 using IabConnect.Infrastructure.Retention;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
@@ -42,6 +47,43 @@ public static class DependencyInjection
     /// tester data while retention defaults are still being validated.
     /// </summary>
     internal const string RetentionJobId = "enforce-retention-policies";
+
+    /// <summary>
+    /// REQ-088 AC-6 (E15-S3 / ADR-019): recurring-job id for the daily encrypted
+    /// PostgreSQL backup. Extracted so <c>RegisterDailyBackupJobTests</c> can assert
+    /// presence/absence by id without standing up Hangfire storage. The job
+    /// registration is gated on <c>!IsDevelopment()</c> per ADR-020 inverse — Dev
+    /// does not run nightly backups locally.
+    /// </summary>
+    internal const string DailyBackupJobId = "daily-pg-backup";
+
+    /// <summary>Cron expression for the daily backup — 03:00 UTC.</summary>
+    internal const string DailyBackupCron = "0 3 * * *";
+
+    /// <summary>
+    /// REQ-088 AC-6 (E15-S3 / ADR-019): recurring-job id for the daily prune pass
+    /// that deletes RustFS + local-cache backups older than 30 days. Same gating as
+    /// <see cref="DailyBackupJobId"/>; runs one hour after the backup job at 04:00
+    /// UTC so a same-day backup is never deleted by the same day's prune.
+    /// </summary>
+    internal const string PruneOldBackupsJobId = "prune-old-backups";
+
+    /// <summary>Cron expression for the prune pass — 04:00 UTC.</summary>
+    internal const string PruneOldBackupsCron = "0 4 * * *";
+
+    /// <summary>
+    /// REQ-028 (E5-S2 / ADR-005): recurring-job id for the communication automation dispatch pass.
+    /// The 7th recurring job (see <c>RegisterDailyBackupJobTests.RecurringJobIds_AreGloballyUnique</c>).
+    /// Extracted as a constant so the registration is assertable without standing up Hangfire storage.
+    /// </summary>
+    internal const string AutomationDispatchJobId = "dispatch-automations";
+
+    /// <summary>
+    /// Cron expression for the automation dispatch pass — hourly (DEC-3). A modest fixed cadence so
+    /// time-relative triggers ("N days before") fire within an acceptable window; the per-recipient
+    /// idempotency (E5-S2 AC-3) makes "evaluate every run" safe.
+    /// </summary>
+    internal const string AutomationDispatchCron = "0 * * * *";
 
     public static IServiceCollection AddApiServices(
         this IServiceCollection services,
@@ -162,7 +204,14 @@ public static class DependencyInjection
                         return Task.CompletedTask;
                     }
                 };
-            });
+            })
+            // REQ-058 (E8-S1, DEC-1=A): a SECOND named authentication scheme for the external API.
+            // Applied per-route-group via AuthenticationSchemes="ApiKey" (E8-S2/S3); the default
+            // scheme stays JWT bearer, so every existing first-party endpoint is unaffected. The
+            // handler returns NoResult when the X-Api-Key header is absent (no JWT regression).
+            .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions,
+                Authentication.ApiKeyAuthenticationHandler>(
+                Authentication.ApiKeyDefaults.SchemeName, _ => { });
 
         // Authorization policies based on roles. Role-name strings come from the Roles
         // single-source-of-truth (Epic-3-retro §9 / R3-Defer-5).
@@ -186,6 +235,10 @@ public static class DependencyInjection
             // codebase.
             .AddPolicy("RequireEventStaffOrMember", policy =>
                 policy.RequireRole(Roles.Admin, Roles.Vorstand, Roles.Member, Roles.EventManager))
+            // REQ-022 (E4-S1): fee configuration is gated to "Event Manager or Kassier" per the
+            // AC, i.e. event-staff (admin/vorstand/event-manager) PLUS the treasurer (kassier).
+            .AddPolicy("RequireEventFeeManager", policy =>
+                policy.RequireRole(Roles.Admin, Roles.Vorstand, Roles.EventManager, Roles.Kassier))
             .AddPolicy("RequireFinanceRead", policy =>
                 policy.RequireRole(Roles.Admin, Roles.Kassier, Roles.Auditor))
             .AddPolicy("RequireFinanceWrite", policy =>
@@ -197,6 +250,11 @@ public static class DependencyInjection
         services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
         services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 
+        // REQ-058 (E8-S1): scope-based authorization handler for the external API. Stateless
+        // (depends only on ILogger), so Singleton like the permission handler. PermissionPolicyProvider
+        // above also serves the "Scope:" prefix.
+        services.AddSingleton<IAuthorizationHandler, ScopeAuthorizationHandler>();
+
         // REQ-087 (E10-S3): module-enforcement handler. Registered Scoped — unlike the
         // Singleton permission handler — because it resolves the scoped IModuleSettingsService
         // and IAuditService. PermissionPolicyProvider above also serves the "Module:" prefix.
@@ -206,6 +264,14 @@ public static class DependencyInjection
         services.AddHealthChecks()
             .AddCheck<HealthChecks.DatabaseHealthCheck>("database", tags: ["db", "ready"])
             .AddCheck<HealthChecks.KeycloakHealthCheck>("keycloak", tags: ["auth", "ready"]);
+
+        // REQ-088 AC-4 (E14-S4): rate-limiting baseline. 100/min/IP anonymous,
+        // 600/min/user authenticated, 10/min on the strict-identity named policy
+        // (DEC-1=A: applied to session-revocation + admin MFA reset). Healthcheck
+        // endpoints are chained with .DisableRateLimiting() in UseApiPipeline so
+        // Railway's probe never trips the limiter. See RateLimiterRegistration.cs
+        // and docs/14_beta_railway_setup.md Section 23.
+        services.AddIabConnectRateLimiter(configuration);
 
         return services;
     }
@@ -242,6 +308,11 @@ public static class DependencyInjection
 
     public static WebApplication UseApiPipeline(this WebApplication app)
     {
+        // REQ-088 AC-4 (E14-S4): Forwarded headers must run first so the rate-limiter's
+        // partition function sees the real client IP (X-Forwarded-For from Railway's edge),
+        // not the proxy IP. Without this every anonymous request would share one bucket.
+        app.UseForwardedHeaders();
+
         // Security headers
         app.Use(async (context, next) =>
         {
@@ -289,6 +360,12 @@ public static class DependencyInjection
         app.UseAuthentication();
         app.UseAuthorization();
 
+        // REQ-088 AC-4 (E14-S4): rate-limiter middleware. AFTER UseAuthentication +
+        // UseAuthorization so the global partition function inspects httpContext.User;
+        // AFTER UseCors so CORS preflights are not counted; AFTER UseForwardedHeaders
+        // so RemoteIpAddress reflects the real client IP.
+        app.UseRateLimiter();
+
         // Hangfire Dashboard (dev only) + recurring jobs
         if (app.Environment.IsDevelopment())
         {
@@ -318,6 +395,14 @@ public static class DependencyInjection
             // registration is unit-testable without standing up Hangfire storage.
             RegisterRetentionEnforcementJob(app.Configuration, jobManager);
 
+            // REQ-088 AC-6 (E15-S3 / ADR-019): daily encrypted PostgreSQL backup at
+            // 03:00 UTC + matching prune pass at 04:00 UTC. Gated on !IsDevelopment()
+            // per ADR-020 inverse — Dev does not exercise pg_dump every morning and
+            // also lacks the RustFS Sealed env. The helper extracts the gating so
+            // RegisterDailyBackupJobTests can verify both env paths without standing
+            // up Hangfire storage.
+            RegisterDailyBackupJob(jobManager, app.Environment);
+
             // REQ-024 (E3.S4): Daily 09:00 Europe/Zurich (first non-UTC schedule in the project).
             // Local timezone matches the operations expectation that recipients see the reminder
             // on the morning of the day BEFORE their shift in their own time.
@@ -331,15 +416,28 @@ public static class DependencyInjection
                 job => job.ExecuteAsync(CancellationToken.None),
                 VolunteerReminderCron,
                 new RecurringJobOptions { TimeZone = reminderJobTimeZone });
+
+            // REQ-028 (E5-S2 / ADR-005): hourly communication-automation dispatch pass (DEC-3).
+            // The 7th recurring job; gated only by the Testing-env skip above (the job itself
+            // no-ops when Module:communication is disabled). Per-recipient idempotency (AC-3)
+            // makes the fixed cadence safe.
+            jobManager.AddOrUpdate<AutomationDispatchJob>(
+                AutomationDispatchJobId,
+                job => job.ExecuteAsync(CancellationToken.None),
+                AutomationDispatchCron,
+                new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
         }
 
-        // REQ-054: Health check endpoints (basic + detailed)
-        app.MapHealthChecks("/health");
+        // REQ-054: Health check endpoints (basic + detailed). REQ-088 AC-4 (E14-S4):
+        // healthcheck endpoints chain .DisableRateLimiting() so Railway's probe (every
+        // ~10s) never trips the limiter when a noisy neighbour on the same egress IP
+        // is rate-limited.
+        app.MapHealthChecks("/health").DisableRateLimiting();
         app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
         {
             Predicate = check => check.Tags.Contains("ready"),
             ResponseWriter = WriteHealthCheckResponse
-        });
+        }).DisableRateLimiting();
         app.MapGet("/health/detail", async (
             Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckService healthCheckService) =>
         {
@@ -360,7 +458,7 @@ public static class DependencyInjection
             return report.Status == Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy
                 ? Results.Ok(response)
                 : Results.Json(response, statusCode: 503);
-        }).RequireAuthorization("RequireAdmin");
+        }).RequireAuthorization("RequireAdmin").DisableRateLimiting();
 
         // API Endpoints
         app.MapApiEndpoints();
@@ -397,6 +495,42 @@ public static class DependencyInjection
             // retention job weekly, silently deleting tester data — defeating ADR-020.
             jobManager.RemoveIfExists(RetentionJobId);
         }
+    }
+
+    /// <summary>
+    /// REQ-088 AC-6 (E15-S3 / ADR-019 / ADR-020): registers the daily encrypted
+    /// PostgreSQL backup + 30-day prune Hangfire recurring jobs IFF the host is
+    /// non-Development. Dev calls <see cref="IRecurringJobManager.RemoveIfExists"/>
+    /// for both job IDs so a deployment that previously ran in Beta + later moves to
+    /// Dev locally (rare but possible during fork bootstrap) cleans up the orphaned
+    /// schedule instead of running pg_dump every morning against the dev database.
+    /// Extracted as <c>internal static</c> so <c>RegisterDailyBackupJobTests</c> can
+    /// verify both env paths with a stubbed <see cref="IRecurringJobManager"/>.
+    /// </summary>
+    internal static void RegisterDailyBackupJob(IRecurringJobManager jobManager, IWebHostEnvironment env)
+    {
+        if (env.IsDevelopment())
+        {
+            // ADR-020 inverse + E11-S2 review D4 RemoveIfExists pattern: an orphaned
+            // schedule must be removed when the gate flips OFF, otherwise an old
+            // Beta-side recurring job persists in the Hangfire table and continues
+            // to fire after the env switch.
+            jobManager.RemoveIfExists(DailyBackupJobId);
+            jobManager.RemoveIfExists(PruneOldBackupsJobId);
+            return;
+        }
+
+        jobManager.AddOrUpdate<ScheduledBackupJob>(
+            DailyBackupJobId,
+            job => job.ExecuteAsync(CancellationToken.None),
+            DailyBackupCron,
+            new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+        jobManager.AddOrUpdate<PruneOldBackupsJob>(
+            PruneOldBackupsJobId,
+            job => job.ExecuteAsync(CancellationToken.None),
+            PruneOldBackupsCron,
+            new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
     }
 
     /// <summary>

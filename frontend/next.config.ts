@@ -4,6 +4,7 @@ import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 
 import { getRemotePatternFromEnv } from "./src/lib/config/document-host";
+import { buildContentSecurityPolicy } from "./src/lib/config/security-headers";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
@@ -45,7 +46,11 @@ const nextConfig: NextConfig = {
     ],
   },
 
-  // Headers for security
+  // Headers for security. The 3 mirror-able headers match backend
+  // DependencyInjection.cs:269-277 byte-for-byte (E14-S2 A31 invariant). The CSP
+  // (E14-S2 AC-4 / DEC-1=A Practical-enforcing) locks connect-src + frame-src to the
+  // api + Keycloak public origins while permitting the inline-script + inline-style
+  // patterns Next.js 16 + React 19 require. See docs/14_beta_railway_setup.md §21.
   async headers() {
     return [
       {
@@ -62,6 +67,10 @@ const nextConfig: NextConfig = {
           {
             key: "Referrer-Policy",
             value: "strict-origin-when-cross-origin",
+          },
+          {
+            key: "Content-Security-Policy",
+            value: buildContentSecurityPolicy(process.env),
           },
         ],
       },

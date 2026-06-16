@@ -35,6 +35,11 @@ public class Invoice : Entity, ISoftDeletable, IArchivable
     public string? PaymentTerms { get; private set; }
     public Guid? TemplateId { get; private set; }
 
+    // REQ-022 (E4-S2): optional link back to the EventRegistration this invoice was raised for
+    // (paid event registration). Null for ordinary invoices. The link lives here (not as a new
+    // RecipientType) so RecipientType/RecipientId keep carrying the payer identity.
+    public Guid? EventRegistrationId { get; private set; }
+
     private readonly List<InvoiceItem> _items = [];
     public IReadOnlyList<InvoiceItem> Items => _items.AsReadOnly();
 
@@ -67,7 +72,8 @@ public class Invoice : Entity, ISoftDeletable, IArchivable
         string? notes,
         string createdBy,
         string? paymentTerms = null,
-        Guid? templateId = null)
+        Guid? templateId = null,
+        Guid? eventRegistrationId = null)
     {
         if (string.IsNullOrWhiteSpace(invoiceNumber))
             throw new ArgumentException("Invoice number is required.", nameof(invoiceNumber));
@@ -87,6 +93,7 @@ public class Invoice : Entity, ISoftDeletable, IArchivable
             Notes = notes?.Trim(),
             PaymentTerms = paymentTerms?.Trim(),
             TemplateId = templateId,
+            EventRegistrationId = eventRegistrationId,
             CreatedAt = DateTime.UtcNow,
             CreatedBy = createdBy
         };

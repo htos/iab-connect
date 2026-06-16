@@ -1,8 +1,10 @@
-using IabConnect.Domain.Members;
+using IabConnect.Api.RateLimiting;
 using IabConnect.Application.Authorization;
+using IabConnect.Domain.Members;
 using IabConnect.Infrastructure.Identity;
 using IabConnect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace IabConnect.Api.Endpoints;
 
@@ -50,7 +52,10 @@ public static class UserEndpoints
             .WithName("SendPasswordReset")
             .WithSummary("Send password reset email");
 
+        // REQ-088 AC-4 (E14-S4 DEC-1=A): admin MFA reset is identity-mutating + brute-
+        // forceable; falls under the strict-identity rate-limit policy.
         group.MapPost("/{userId}/reset-mfa", ResetUserMfa)
+            .RequireRateLimiting(RateLimitingOptions.StrictPolicyName)
             .WithName("ResetUserMfa")
             .WithSummary("Reset MFA credentials and send reconfiguration email")
             .Produces(StatusCodes.Status500InternalServerError);
@@ -64,7 +69,10 @@ public static class UserEndpoints
             .WithSummary("Get active Keycloak sessions for a user (Admin)")
             .Produces(StatusCodes.Status500InternalServerError);
 
+        // REQ-088 AC-4 (E14-S4 DEC-1=A): admin session revocation is rate-limited via the
+        // strict-identity policy (10 req/min/identity).
         group.MapDelete("/{userId}/sessions/{sessionId}", RevokeUserSession)
+            .RequireRateLimiting(RateLimitingOptions.StrictPolicyName)
             .WithName("RevokeUserSession")
             .WithSummary("Revoke a specific Keycloak session for a user (Admin)")
             .Produces(StatusCodes.Status500InternalServerError);

@@ -1,9 +1,11 @@
 using FluentAssertions;
+using IabConnect.Application.Audit;
 using IabConnect.Application.Events;
 using IabConnect.Domain.Events;
 using IabConnect.Infrastructure.Events;
 using IabConnect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Moq;
 using Testcontainers.PostgreSql;
 using Xunit;
 
@@ -47,9 +49,9 @@ public sealed class EventRegistrationCancellationConcurrencyTests : IAsyncLifeti
         await using var ctxA = new ApplicationDbContext(_options);
         await using var ctxB = new ApplicationDbContext(_options);
 
-        var taskA = new EventRegistrationCancellationService(ctxA)
+        var taskA = new EventRegistrationCancellationService(ctxA, Mock.Of<IAuditService>())
             .CancelAsync(seeded.EventId, seeded.ConfirmedAId, "test", true, TestContext.Current.CancellationToken);
-        var taskB = new EventRegistrationCancellationService(ctxB)
+        var taskB = new EventRegistrationCancellationService(ctxB, Mock.Of<IAuditService>())
             .CancelAsync(seeded.EventId, seeded.ConfirmedBId, "test", true, TestContext.Current.CancellationToken);
 
         var results = await Task.WhenAll(taskA, taskB);
@@ -82,7 +84,7 @@ public sealed class EventRegistrationCancellationConcurrencyTests : IAsyncLifeti
         var seeded = await SeedWaitlistEnabledEventAsync();
 
         await using var ctx = new ApplicationDbContext(_options);
-        var result = await new EventRegistrationCancellationService(ctx)
+        var result = await new EventRegistrationCancellationService(ctx, Mock.Of<IAuditService>())
             .CancelAsync(seeded.EventId, Guid.NewGuid(), null, true, TestContext.Current.CancellationToken);
 
         result.Outcome.Should().Be(CancelRegistrationOutcome.NotFound);
@@ -95,7 +97,7 @@ public sealed class EventRegistrationCancellationConcurrencyTests : IAsyncLifeti
 
         await using var ctx = new ApplicationDbContext(_options);
         // A real registration id, but a different (non-existent) event id.
-        var result = await new EventRegistrationCancellationService(ctx)
+        var result = await new EventRegistrationCancellationService(ctx, Mock.Of<IAuditService>())
             .CancelAsync(Guid.NewGuid(), seeded.ConfirmedAId, null, true, TestContext.Current.CancellationToken);
 
         result.Outcome.Should().Be(CancelRegistrationOutcome.NotFound);

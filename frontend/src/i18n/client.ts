@@ -4,7 +4,7 @@ import { useTransition } from "react";
 import { useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 
-export type Locale = "en" | "de";
+export type Locale = "en" | "de" | "hi";
 
 export function useChangeLocale() {
   const [isPending, startTransition] = useTransition();

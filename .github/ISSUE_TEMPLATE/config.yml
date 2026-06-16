@@ -1,0 +1,4 @@
+# GitHub issue-template chooser config (E18-S4).
+# Keep blank issues enabled so testers are never blocked if the Beta-Feedback
+# template does not fit their report.
+blank_issues_enabled: true

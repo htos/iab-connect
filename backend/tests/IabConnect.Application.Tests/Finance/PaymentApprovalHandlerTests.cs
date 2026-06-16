@@ -227,7 +227,8 @@ public class PaymentApprovalHandlerTests
         var handler = new MarkPaymentAsPaidCommandHandler(
             _paymentRepo.Object, _profileRepo.Object,
             _unitOfWork.Object, _auditService.Object, _fiscalPeriodService.Object,
-            _autoBookingService.Object);
+            _autoBookingService.Object,
+            new Mock<IabConnect.Application.Integration.IWebhookDispatchService>().Object);
 
         // Act
         await handler.Handle(new MarkPaymentAsPaidCommand(payment.Id, "admin"), CancellationToken.None);
@@ -254,16 +255,23 @@ public class PaymentApprovalHandlerTests
             It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
+        // REQ-058 (E8-S3): capture the webhook dispatch to assert payment.received is emitted.
+        var webhookDispatch = new Mock<IabConnect.Application.Integration.IWebhookDispatchService>();
         var handler = new MarkPaymentAsPaidCommandHandler(
             _paymentRepo.Object, _profileRepo.Object,
             _unitOfWork.Object, _auditService.Object, _fiscalPeriodService.Object,
-            _autoBookingService.Object);
+            _autoBookingService.Object,
+            webhookDispatch.Object);
 
         // Act
         await handler.Handle(new MarkPaymentAsPaidCommand(payment.Id, "admin"), CancellationToken.None);
 
         // Assert
         payment.Status.Should().Be(PaymentStatus.Paid);
+        webhookDispatch.Verify(w => w.EmitAsync(
+            IabConnect.Domain.Integration.WebhookEventTypes.PaymentReceived,
+            It.IsAny<object>(), It.IsAny<CancellationToken>()), Times.Once,
+            "marking a payment paid must emit the payment.received webhook (E8-S3)");
     }
 
     [Fact]
@@ -285,7 +293,8 @@ public class PaymentApprovalHandlerTests
         var handler = new MarkPaymentAsPaidCommandHandler(
             _paymentRepo.Object, _profileRepo.Object,
             _unitOfWork.Object, _auditService.Object, _fiscalPeriodService.Object,
-            _autoBookingService.Object);
+            _autoBookingService.Object,
+            new Mock<IabConnect.Application.Integration.IWebhookDispatchService>().Object);
 
         // Act
         var act = () => handler.Handle(

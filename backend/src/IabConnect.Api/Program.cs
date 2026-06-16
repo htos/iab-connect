@@ -1,9 +1,11 @@
 using IabConnect.Api;
+using IabConnect.Api.Logging;
 using IabConnect.Application;
 using IabConnect.Infrastructure;
 using IabConnect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using Serilog.Core;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
@@ -16,11 +18,20 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
-    // Use Serilog instead of default logging
+    // Use Serilog instead of default logging. REQ-088 AC-4 (E14-S5):
+    // - Destructure.With<SensitiveDataDestructuringPolicy>() replaces sensitive-property
+    //   values with "***REDACTED***" when an object is logged via the @ destructuring
+    //   syntax (e.g., Log.Information("Config: {@Cfg}", cfg)).
+    // - BearerPresenceEnricher is registered as an ILogEventEnricher service and picked
+    //   up by ReadFrom.Services(); emits a BearerPresence={bearer-present|bearer-absent}
+    //   property without ever exposing the raw token contents.
+    // See docs/14_beta_railway_setup.md Section 24.
+    builder.Services.AddSingleton<ILogEventEnricher, BearerPresenceEnricher>();
     builder.Host.UseSerilog((context, services, configuration) => configuration
         .ReadFrom.Configuration(context.Configuration)
         .ReadFrom.Services(services)
-        .Enrich.FromLogContext());
+        .Enrich.FromLogContext()
+        .Destructure.With<SensitiveDataDestructuringPolicy>());
 
     // Suppress Server header (SEC-012)
     builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
@@ -40,8 +51,17 @@ try
         {
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var env = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
+            var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
 
             Log.Information("Environment: {Environment}", env.EnvironmentName);
+
+            // REQ-088 AC-4 (E15-S2 / ADR-015): Database:AutoMigrate gates the versioned
+            // EF Core MigrateAsync call. Default true preserves current Dev/Beta behaviour;
+            // Production may flip to false via Database__AutoMigrate=false env var per the
+            // E19-S2 manual-migration runbook so a rolling api restart cannot race the
+            // schema migration. Testing branch above is intentionally not gated — it uses
+            // EnsureCreatedAsync for per-test-class schema, not versioned migrations.
+            var autoMigrate = Program.ShouldAutoMigrate(configuration);
 
             if (env.EnvironmentName == "Testing")
             {
@@ -50,11 +70,18 @@ try
             }
             else if (env.IsDevelopment())
             {
-                Log.Information("Using migrations for development (shared database with Keycloak)");
-                // Always use migrations because EnsureCreated doesn't work when Keycloak
-                // has already created tables in the shared database
-                await db.Database.MigrateAsync();
-                Log.Information("Database migrations applied");
+                if (autoMigrate)
+                {
+                    Log.Information("Using migrations for development (shared database with Keycloak)");
+                    // Always use migrations because EnsureCreated doesn't work when Keycloak
+                    // has already created tables in the shared database
+                    await db.Database.MigrateAsync();
+                    Log.Information("Database migrations applied");
+                }
+                else
+                {
+                    Log.Information("Database migrations skipped (Database:AutoMigrate=false)");
+                }
 
                 // Seed development data (creates Member records for Keycloak users)
                 try
@@ -83,10 +110,17 @@ try
             }
             else
             {
-                Log.Information("Using migrations for production");
-                // In production, use migrations
-                await db.Database.MigrateAsync();
-                Log.Information("Database migrations applied successfully");
+                if (autoMigrate)
+                {
+                    Log.Information("Using migrations for production");
+                    // In production, use migrations
+                    await db.Database.MigrateAsync();
+                    Log.Information("Database migrations applied successfully");
+                }
+                else
+                {
+                    Log.Information("Database migrations skipped (Database:AutoMigrate=false)");
+                }
             }
 
             // REQ-057: Seed default retention policies (idempotent — skips if already exist)
@@ -99,6 +133,40 @@ try
             catch (Exception rpEx)
             {
                 Log.Warning(rpEx, "Retention policy seeding failed (non-fatal, continuing startup)");
+            }
+
+            // Ensure the S3 buckets the app writes to exist. RustFS (like MinIO) does NOT
+            // auto-create buckets on first PutObject, and S3DocumentStorage assumes the
+            // bucket is present — so on a fresh object-store volume the first document
+            // upload would fail with NoSuchBucket. Idempotent + non-fatal (a transient
+            // storage outage must never block api startup). Dev uses the compose rustfs-init
+            // one-shot; Testing manages its own buckets — so this runs only on Beta/Prod.
+            if (!env.IsDevelopment() && env.EnvironmentName != "Testing")
+            {
+                try
+                {
+                    var s3 = scope.ServiceProvider.GetRequiredService<Amazon.S3.IAmazonS3>();
+                    var candidateBuckets = new[]
+                    {
+                        configuration["DocumentStorage:BucketName"] ?? "iabconnect-documents",
+                        configuration["Backup:BucketName"] ?? "backups",
+                    };
+
+                    foreach (var bucket in candidateBuckets)
+                    {
+                        if (string.IsNullOrWhiteSpace(bucket))
+                            continue;
+                        if (!await Amazon.S3.Util.AmazonS3Util.DoesS3BucketExistV2Async(s3, bucket))
+                        {
+                            await s3.PutBucketAsync(new Amazon.S3.Model.PutBucketRequest { BucketName = bucket });
+                            Log.Information("Created storage bucket {Bucket}", bucket);
+                        }
+                    }
+                }
+                catch (Exception bucketEx)
+                {
+                    Log.Warning(bucketEx, "Storage bucket-ensure failed (non-fatal, continuing startup)");
+                }
             }
         }
     }
@@ -124,4 +192,20 @@ finally
 }
 
 // Make Program accessible for integration tests
-public partial class Program { }
+public partial class Program
+{
+    /// <summary>
+    /// REQ-088 AC-4 (E15-S2 / ADR-015): Reads the <c>Database:AutoMigrate</c> toggle from
+    /// configuration. Default <c>true</c> preserves current Dev/Beta behaviour (auto-apply
+    /// EF Core versioned migrations on api boot). Production may set
+    /// <c>Database__AutoMigrate=false</c> via env var to skip the startup migrate and apply
+    /// migrations manually in a controlled change window per the E19-S2 runbook — required so
+    /// a rolling api restart cannot race the schema migration and so a botched migration cannot
+    /// corrupt the live schema during a normal deploy. The Testing branch in
+    /// <c>Program.cs</c> bypasses this gate intentionally; it uses
+    /// <see cref="ApplicationDbContext.Database.EnsureCreatedAsync"/> for per-test-class
+    /// schema, not versioned migrations.
+    /// </summary>
+    internal static bool ShouldAutoMigrate(IConfiguration configuration) =>
+        configuration.GetValue<bool>("Database:AutoMigrate", defaultValue: true);
+}

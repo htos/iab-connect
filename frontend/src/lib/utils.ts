@@ -35,12 +35,17 @@ export function formatDateTime(date: Date | string): string {
 }
 
 /**
- * Formats a currency amount in Swiss Francs
+ * Formats a currency amount. Defaults to Swiss Francs for backward compatibility, but accepts
+ * an ISO-4217 code (e.g. "EUR") so white-label deployments and per-event fee currencies
+ * (REQ-022 / E4) render with the correct symbol instead of a hardcoded "CHF".
  */
-export function formatCurrency(amount: number): string {
+export function formatCurrency(
+  amount: number,
+  currency: string = "CHF"
+): string {
   return new Intl.NumberFormat("de-CH", {
     style: "currency",
-    currency: "CHF",
+    currency,
   }).format(amount);
 }
 

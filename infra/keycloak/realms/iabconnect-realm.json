@@ -225,7 +225,7 @@
       "name": "IAB Connect Admin Service",
       "enabled": true,
       "publicClient": false,
-      "secret": "admin-service-secret-2026",
+      "secret": "dev-admin-secret-change-me",
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": true,

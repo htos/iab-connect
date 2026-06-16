@@ -15,6 +15,7 @@ public static class EndpointMapper
         app.MapRegistrationEndpoints(); // Public registration
         app.MapUnsubscribeEndpoints(); // REQ-029: Newsletter unsubscribe
         app.MapAboutEndpoints(); // REQ-089 AC-5 (E20-S3): AGPL §13 source-disclosure
+        app.MapExternalApiEndpoints(); // REQ-058 (E8-S2): external integration read API (ApiKey + scope + Module:api)
 
         // Module Endpoints - REQ-001: Identity first
         api.MapIdentityEndpoints();
@@ -23,14 +24,19 @@ public static class EndpointMapper
         app.MapMemberSegmentEndpoints(); // REQ-017: Segmentierung & Verteiler
         app.MapAuditEndpoints(); // REQ-011: Audit Log
         api.MapPrivacyEndpoints(); // REQ-012: Datenschutz & Einwilligungen (DSGVO)
+        app.MapChannelPreferenceEndpoints(); // REQ-030 (E5-S5): self-service channel preferences
         app.MapEventEndpoints(); // REQ-019: Eventverwaltung (uses EventEndpoints.cs)
         app.MapEventRegistrationEndpoints(); // REQ-020: Event-Anmeldung / RSVP
         app.MapEventVolunteerEndpoints(); // REQ-024 (E3.S3): Volunteer planning (roles, shifts, assignments)
+        app.MapEventFeeEndpoints(); // REQ-022 (E4-S1): Event fee categories (paid registration)
         app.MapEmailCampaignEndpoints(); // REQ-026: E-Mail-Kampagnen
         app.MapEmailTemplateEndpoints(); // REQ-027: Email Template Editor
+        app.MapAutomationEndpoints(); // REQ-028 (E5-S1): Communication automations (journeys)
         app.MapSettingsEndpoints(); // REQ-059: System Settings
         app.MapModuleSettingsEndpoints(); // REQ-087 (E10-S2): Module enablement configuration
         app.MapCustomRoleEndpoints(); // REQ-003: Custom Roles
+        app.MapApiClientEndpoints(); // REQ-058 (E8-S1): External API credential management (admin)
+        app.MapWebhookEndpoints(); // REQ-058 (E8-S3): Webhook subscription management (admin)
         app.MapDocumentEndpoints(); // REQ-034..037: Documents
 
         // REQ-038-044: Finance module endpoints
@@ -49,6 +55,7 @@ public static class EndpointMapper
         app.MapExpenseClaimEndpoints(); // REQ-067: Expense Claims
         app.MapInvoiceTemplateEndpoints(); // REQ-064: Invoice Templates
         app.MapActivityAreaEndpoints(); // REQ-068: Activity Areas
+        app.MapBudgetEndpoints(); // REQ-044 (E6-S1): Finance Planning — Budgets
         app.MapDashboardEndpoints(); // Finance Dashboard overview
         app.MapArchiveEndpoints(); // REQ-070: Archive/Retention
 

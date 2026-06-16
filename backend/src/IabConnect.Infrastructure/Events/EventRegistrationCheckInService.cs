@@ -37,17 +37,20 @@ public sealed class EventRegistrationCheckInService : IEventRegistrationCheckInS
         Guid checkedInBy,
         CancellationToken cancellationToken = default)
     {
-        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
-
-        var registration = await LockAndLoadByIdAsync(registrationId, cancellationToken);
-        if (registration is null || registration.EventId != eventId)
+        // Retrying-strategy compatible: the FOR UPDATE lock + CheckIn mutation + SaveChanges run as
+        // one retriable transactional unit (a raw BeginTransactionAsync is rejected under
+        // EnableRetryOnFailure). An entity-state conflict thrown by ApplyCheckInAsync propagates out
+        // (no commit → rollback) exactly as before.
+        return await _context.ExecuteTransactionalAsync(async () =>
         {
-            return CheckInResultDto.NotFound();
-        }
+            var registration = await LockAndLoadByIdAsync(registrationId, cancellationToken);
+            if (registration is null || registration.EventId != eventId)
+            {
+                return CheckInResultDto.NotFound();
+            }
 
-        var result = await ApplyCheckInAsync(registration, checkedInBy, cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-        return result;
+            return await ApplyCheckInAsync(registration, checkedInBy, cancellationToken);
+        }, cancellationToken);
     }
 
     public async Task<CheckInResultDto> CheckInByQrCodeAsync(
@@ -76,20 +79,19 @@ public sealed class EventRegistrationCheckInService : IEventRegistrationCheckInS
             return CheckInResultDto.NotFound();
         }
 
-        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
-
-        var registration = await LockAndLoadByIdAsync(resolved.Id, cancellationToken);
-        if (registration is null)
+        // Retrying-strategy compatible (see CheckInByIdAsync): lock + apply + SaveChanges as one
+        // retriable unit. The "row deleted between resolve and lock" branch returns NotFound; the
+        // delegate's return commits the (empty) transaction so connection state stays clean.
+        return await _context.ExecuteTransactionalAsync(async () =>
         {
-            // Row deleted between resolve and lock — close the (empty) transaction cleanly
-            // so the connection state stays clean and the log shows a paired BEGIN/COMMIT.
-            await transaction.CommitAsync(cancellationToken);
-            return CheckInResultDto.NotFound();
-        }
+            var registration = await LockAndLoadByIdAsync(resolved.Id, cancellationToken);
+            if (registration is null)
+            {
+                return CheckInResultDto.NotFound();
+            }
 
-        var result = await ApplyCheckInAsync(registration, checkedInBy, cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-        return result;
+            return await ApplyCheckInAsync(registration, checkedInBy, cancellationToken);
+        }, cancellationToken);
     }
 
     private async Task<EventRegistration?> LockAndLoadByIdAsync(

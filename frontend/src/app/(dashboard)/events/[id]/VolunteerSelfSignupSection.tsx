@@ -15,7 +15,7 @@ import {
   getEventVolunteerShifts,
   signUpForVolunteerShift,
   withdrawFromVolunteerShift,
-} from '@/lib/services/events';
+} from '@/features/events/api/events-transport';
 
 /**
  * REQ-024 (E3.S4 review M-S4-6): backend stores shift times in UTC. Lock the formatter to

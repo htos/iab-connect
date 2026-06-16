@@ -1,6 +1,7 @@
 using IabConnect.Application.Audit;
 using IabConnect.Domain.Audit;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace IabConnect.Infrastructure.Audit;
@@ -10,16 +11,16 @@ namespace IabConnect.Infrastructure.Audit;
 /// </summary>
 public class AuditService : IAuditService
 {
-    private readonly IAuditEventRepository _repository;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<AuditService> _logger;
 
     public AuditService(
-        IAuditEventRepository repository,
+        IServiceScopeFactory scopeFactory,
         IHttpContextAccessor httpContextAccessor,
         ILogger<AuditService> logger)
     {
-        _repository = repository;
+        _scopeFactory = scopeFactory;
         _httpContextAccessor = httpContextAccessor;
         _logger = logger;
     }
@@ -28,7 +29,15 @@ public class AuditService : IAuditService
     {
         try
         {
-            await _repository.AddAsync(auditEvent, ct);
+            // Audit writes must be independent of the request's DbContext. Several callers
+            // (notably SecurityAuditLogger) fire audit persistence as detached background
+            // tasks (`_ = LogActionAsync(...)`); reusing the request-scoped DbContext there
+            // races with — and can outlive — the request, surfacing as ObjectDisposedException
+            // or Npgsql "BindComplete while expecting ReadyForQueryMessage" and corrupting the
+            // shared connection. Persisting on a dedicated short-lived scope isolates the write.
+            using var scope = _scopeFactory.CreateScope();
+            var repository = scope.ServiceProvider.GetRequiredService<IAuditEventRepository>();
+            await repository.AddAsync(auditEvent, ct);
         }
         catch (Exception ex)
         {

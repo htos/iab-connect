@@ -132,6 +132,8 @@ public static class BlogEndpoints
             request.Title, request.Content, request.Excerpt,
             request.Author, request.Category, request.Tags,
             request.ImageUrl, userId);
+        // REQ-055 (E7-S4): optional content language (validated at the write boundary)
+        post.SetContentLanguage(request.ContentLanguage);
 
         await repository.AddAsync(post, ct);
         await dbContext.SaveChangesAsync(ct);
@@ -155,6 +157,8 @@ public static class BlogEndpoints
         post.Update(request.Title, request.Content, request.Excerpt,
             request.Author, request.Category, request.Tags,
             request.ImageUrl, userId);
+        // REQ-055 (E7-S4): optional content language (validated at the write boundary)
+        post.SetContentLanguage(request.ContentLanguage);
 
         repository.Update(post);
         await dbContext.SaveChangesAsync(ct);
@@ -236,11 +240,11 @@ public static class BlogEndpoints
 
     private static PublicBlogPostDto MapToPublicDto(BlogPost p) => new(
         p.Id, p.Title, p.Slug, p.Excerpt ?? (p.Content.Length > 200 ? p.Content[..200] + "..." : p.Content),
-        p.Content, p.Author, p.Category, p.Tags, p.PublishedAt, p.ImageUrl);
+        p.Content, p.Author, p.Category, p.Tags, p.PublishedAt, p.ImageUrl, p.ContentLanguage);
 
     private static BlogPostAdminDto MapToAdminDto(BlogPost p) => new(
         p.Id, p.Title, p.Slug, p.Content, p.Excerpt, p.Author, p.Category,
-        p.Tags, p.ImageUrl, p.Status.ToString(), p.PublishedAt, p.CreatedAt, p.UpdatedAt);
+        p.Tags, p.ImageUrl, p.Status.ToString(), p.PublishedAt, p.CreatedAt, p.UpdatedAt, p.ContentLanguage);
 }
 
 public sealed record CreateBlogPostRequest(
@@ -250,7 +254,8 @@ public sealed record CreateBlogPostRequest(
     string Author,
     string Category,
     List<string>? Tags = null,
-    string? ImageUrl = null);
+    string? ImageUrl = null,
+    string? ContentLanguage = null);
 
 public sealed record UpdateBlogPostRequest(
     string Title,
@@ -259,7 +264,8 @@ public sealed record UpdateBlogPostRequest(
     string Author,
     string Category,
     List<string>? Tags = null,
-    string? ImageUrl = null);
+    string? ImageUrl = null,
+    string? ContentLanguage = null);
 
 public sealed record PublicBlogPostDto(
     Guid Id,
@@ -271,7 +277,8 @@ public sealed record PublicBlogPostDto(
     string Category,
     List<string> Tags,
     DateTime? PublishedAt,
-    string? ImageUrl);
+    string? ImageUrl,
+    string? ContentLanguage);
 
 public sealed record BlogPostAdminDto(
     Guid Id,
@@ -286,4 +293,5 @@ public sealed record BlogPostAdminDto(
     string Status,
     DateTime? PublishedAt,
     DateTime CreatedAt,
-    DateTime? UpdatedAt);
+    DateTime? UpdatedAt,
+    string? ContentLanguage);

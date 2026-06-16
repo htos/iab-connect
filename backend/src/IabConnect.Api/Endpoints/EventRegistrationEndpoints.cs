@@ -1,7 +1,13 @@
 using IabConnect.Api.Authorization;
+using IabConnect.Application.Common;
 using IabConnect.Application.Events;
 using IabConnect.Application.Events.CheckIn;
+using IabConnect.Application.Events.PaidRegistration;
+using IabConnect.Application.Finance;
+using IabConnect.Domain.Common;
 using IabConnect.Domain.Events;
+using IabConnect.Domain.Finance;
+using IabConnect.Domain.Members;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -215,7 +221,10 @@ public static class EventRegistrationEndpoints
         RegisterPublicRequest request,
         IEventRepository eventRepository,
         IEventRegistrationRepository registrationRepository,
-        IEventNotificationService notificationService)
+        IEventNotificationService notificationService,
+        IEventFeeCategoryRepository feeCategoryRepository,
+        IModuleSettingsService moduleSettings,
+        IPaidRegistrationService paidRegistrationService)
     {
         var evt = await eventRepository.GetByIdAsync(eventId);
         if (evt == null)
@@ -272,6 +281,13 @@ public static class EventRegistrationEndpoints
                 request.SpecialRequirements);
         }
 
+        // REQ-022 (E4-S2): if a paid fee category applies, register + raise the invoice atomically.
+        var paidResult = await TryHandlePaidRegistrationAsync(
+            evt, registration, request.FeeCategoryId, isMember: false,
+            feeCategoryRepository, moduleSettings, paidRegistrationService, notificationService);
+        if (paidResult is not null)
+            return paidResult;
+
         await registrationRepository.AddAsync(registration);
 
         // REQ-021: Send notification email (waitlist or confirmation)
@@ -295,6 +311,10 @@ public static class EventRegistrationEndpoints
         IEventRepository eventRepository,
         IEventRegistrationRepository registrationRepository,
         IEventNotificationService notificationService,
+        IEventFeeCategoryRepository feeCategoryRepository,
+        IModuleSettingsService moduleSettings,
+        IPaidRegistrationService paidRegistrationService,
+        IMemberRepository memberRepository,
         ClaimsPrincipal user)
     {
         var evt = await eventRepository.GetByIdAsync(eventId);
@@ -314,6 +334,12 @@ public static class EventRegistrationEndpoints
                        ?? user.FindFirst("sub")?.Value;
         if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
             return Results.BadRequest(new { message = "User ID not found" });
+
+        // Self-registration: the member IS the authenticated user, so derive the member id
+        // from the Keycloak subject — the UI does not (and should not) send it. An explicit
+        // request.MemberId still wins (e.g. staff registering on behalf of a member).
+        var member = await memberRepository.GetByKeycloakUserIdAsync(userId);
+        var effectiveMemberId = request.MemberId ?? member?.Id;
 
         // Check for existing registration
         var exists = await registrationRepository.ExistsAsync(eventId, userId);
@@ -342,7 +368,7 @@ public static class EventRegistrationEndpoints
             registration = EventRegistration.CreateWaitlisted(
                 eventId,
                 userId,
-                request.MemberId,
+                effectiveMemberId,
                 userName,
                 userEmail,
                 waitlistPosition,
@@ -356,24 +382,30 @@ public static class EventRegistrationEndpoints
         }
         else
         {
-            // REQ-023 (E3.S2 Round-3 R3-H-S2-4): MemberId is mandatory for member-bound
-            // registrations. Previous code defaulted to Guid.Empty, which the entity factory
-            // now rejects — return a clean 400 instead of letting the ArgumentException bubble
-            // up as a 500. (The waitlisted branch above accepts a nullable MemberId because
-            // `CreateWaitlisted` legitimately supports both member and guest waitlist rows.)
-            if (request.MemberId is null || request.MemberId.Value == Guid.Empty)
-                return Results.BadRequest(new { message = "MemberId is required for member registration" });
+            // REQ-023 (E3.S2 Round-3 R3-H-S2-4): a member-bound registration needs a member id.
+            // It is normally derived from the authenticated user above; only if the caller has
+            // no linked member record (and supplied none explicitly) do we reject — with a clean
+            // 400 instead of letting the entity factory's ArgumentException bubble up as a 500.
+            if (effectiveMemberId is null || effectiveMemberId.Value == Guid.Empty)
+                return Results.BadRequest(new { message = "No member record is linked to your account" });
 
             registration = EventRegistration.CreateForMember(
                 eventId,
                 userId,
-                request.MemberId.Value,
+                effectiveMemberId.Value,
                 userName,
                 userEmail,
                 request.NumberOfGuests,
                 request.Phone,
                 request.SpecialRequirements);
         }
+
+        // REQ-022 (E4-S2): if a paid fee category applies, register + raise the invoice atomically.
+        var paidResult = await TryHandlePaidRegistrationAsync(
+            evt, registration, request.FeeCategoryId, isMember: true,
+            feeCategoryRepository, moduleSettings, paidRegistrationService, notificationService);
+        if (paidResult is not null)
+            return paidResult;
 
         await registrationRepository.AddAsync(registration);
 
@@ -395,6 +427,8 @@ public static class EventRegistrationEndpoints
     private static async Task<IResult> GetRegistrations(
         Guid eventId,
         IEventRegistrationRepository registrationRepository,
+        IInvoiceRepository invoiceRepository,
+        IFinanceProfileRepository financeProfileRepository,
         RegistrationStatus? status = null,
         bool? isWaitlisted = null,
         string? searchTerm = null,
@@ -411,9 +445,33 @@ public static class EventRegistrationEndpoints
         var (items, totalCount) = await registrationRepository.GetPagedAsync(
             eventId, filter, page, pageSize);
 
+        // REQ-022 (E4-S3): enrich the roster with the linked-invoice payment status (E4-S2).
+        var ids = items.Select(r => r.Id).ToList();
+        var invoices = await invoiceRepository.GetByEventRegistrationIdsAsync(ids);
+        string? currency = null;
+        if (invoices.Count > 0)
+            currency = (await financeProfileRepository.GetActiveProfileAsync())?.Currency.ToString();
+
+        var dtos = items.Select(r =>
+        {
+            var dto = MapToDto(r);
+            if (invoices.TryGetValue(r.Id, out var inv) && inv.Status != InvoiceStatus.Cancelled)
+            {
+                dto = dto with
+                {
+                    PaymentStatus = inv.Status == InvoiceStatus.Paid ? "Paid" : "Pending",
+                    AmountDue = inv.Total,
+                    Currency = currency,
+                    InvoiceId = inv.Id,
+                    InvoiceNumber = inv.InvoiceNumber,
+                };
+            }
+            return dto;
+        }).ToList();
+
         return Results.Ok(new PagedResult<EventRegistrationDto>
         {
-            Items = items.Select(MapToDto).ToList(),
+            Items = dtos,
             TotalCount = totalCount,
             Page = page,
             PageSize = pageSize,
@@ -867,6 +925,85 @@ public static class EventRegistrationEndpoints
     }
 
     private static EventRegistrationDto MapToDto(EventRegistration r) => EventRegistrationDto.FromEntity(r);
+
+    /// <summary>
+    /// REQ-022 (E4-S2): paid-registration branch. Returns a non-null <see cref="IResult"/> when the
+    /// registration is handled here (paid path created, selection required, or finance disabled);
+    /// returns <c>null</c> to fall through to the existing free registration path.
+    /// </summary>
+    private static async Task<IResult?> TryHandlePaidRegistrationAsync(
+        Event evt,
+        EventRegistration registration,
+        Guid? requestedFeeCategoryId,
+        bool isMember,
+        IEventFeeCategoryRepository feeCategoryRepository,
+        IModuleSettingsService moduleSettings,
+        IPaidRegistrationService paidRegistrationService,
+        IEventNotificationService notificationService)
+    {
+        // Waitlisted registrations are not charged yet — no invoice until they are promoted.
+        if (registration.IsWaitlisted)
+            return null;
+
+        var now = DateTime.UtcNow;
+        var categories = await feeCategoryRepository.GetByEventIdAsync(evt.Id, includeInactive: false);
+        var applicable = categories
+            .Where(c => c.IsAvailableAt(now) && c.AppliesTo(isMember))
+            .ToList();
+
+        if (applicable.Count == 0)
+            return null; // free path
+
+        EventFeeCategory? chosen;
+        if (requestedFeeCategoryId is Guid fid && fid != Guid.Empty)
+        {
+            chosen = applicable.FirstOrDefault(c => c.Id == fid);
+            if (chosen is null)
+                return Results.BadRequest(new { message = "Selected fee category is not available for this registration." });
+        }
+        else if (applicable.Count == 1)
+        {
+            chosen = applicable[0];
+        }
+        else
+        {
+            return Results.BadRequest(new
+            {
+                message = "A fee category must be selected for this event.",
+                errorCode = "FeeCategorySelectionRequired",
+            });
+        }
+
+        // DEC-7 / ADR-008 L237: the paid branch requires the Finance module. The free path is
+        // unaffected. (E10-S5 owns the toggle rules; here we block the paid action when off.)
+        if (!await moduleSettings.IsEnabledAsync(ModuleKeys.Finance))
+        {
+            return Results.Json(
+                new { message = "Paid registration requires the Finance module to be enabled." },
+                statusCode: StatusCodes.Status403Forbidden);
+        }
+
+        try
+        {
+            await paidRegistrationService.CreatePaidRegistrationAsync(
+                registration, chosen, evt.Title, evt.StartDate);
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Locked fiscal period or currency mismatch — nothing was persisted (AC-3).
+            return Results.BadRequest(new { message = ex.Message });
+        }
+
+        try
+        {
+            await notificationService.SendRegistrationConfirmationAsync(registration, evt);
+        }
+        catch { /* Email failure should not break the committed registration + invoice */ }
+
+        return Results.Created(
+            $"/api/v1/events/{evt.Id}/registrations/{registration.Id}",
+            MapToDto(registration));
+    }
 }
 
 // Request/Response DTOs
@@ -875,7 +1012,10 @@ public record RegisterPublicRequest(
     string Email,
     string? Phone = null,
     int NumberOfGuests = 1,
-    string? SpecialRequirements = null);
+    string? SpecialRequirements = null,
+    // REQ-022 (E4-S2): the chosen fee category for a paid event (set by the E4-S3 UI). Optional;
+    // auto-resolved when the event has exactly one applicable active fee category.
+    Guid? FeeCategoryId = null);
 
 public record RegisterMemberRequest(
     string? Name = null,
@@ -883,7 +1023,8 @@ public record RegisterMemberRequest(
     string? Phone = null,
     Guid? MemberId = null,
     int NumberOfGuests = 1,
-    string? SpecialRequirements = null);
+    string? SpecialRequirements = null,
+    Guid? FeeCategoryId = null);
 
 public record UpdateRegistrationRequest(
     string ParticipantName,

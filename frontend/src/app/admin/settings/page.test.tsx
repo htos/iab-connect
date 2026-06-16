@@ -18,9 +18,9 @@ vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
 }));
 
-// next/navigation: stubbed router
+// next/navigation: stubbed router with a shared `push` spy (E27-S1 redirect assertion).
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
+  useRouter: () => ({ push, replace: vi.fn(), refresh: vi.fn() }),
 }));
 
 // next/link: passthrough
@@ -35,18 +35,25 @@ vi.mock("@/components/providers/AppSettingsProvider", () => ({
 
 const apiGet = vi.fn();
 const apiPut = vi.fn();
+const apiPost = vi.fn();
+const apiDelete = vi.fn();
 const apiUpload = vi.fn();
+// E27-S1 (AC-3): mutable auth state so the admin-redirect test can flip it per-test.
+// Defaults to an authenticated admin (the prior fixed shape) so every pre-existing test
+// stays green; afterEach resets it back to the admin defaults.
+const authState = {
+  isAuthenticated: true,
+  isLoading: false,
+  isAdmin: true,
+};
+const push = vi.fn();
 vi.mock("@/lib/auth", () => ({
-  useAuth: () => ({
-    isAuthenticated: true,
-    isLoading: false,
-    isAdmin: true,
-  }),
+  useAuth: () => authState,
   useApiClient: () => ({
     get: apiGet,
     put: apiPut,
-    post: vi.fn(),
-    delete: vi.fn(),
+    post: apiPost,
+    delete: apiDelete,
     upload: apiUpload,
   }),
 }));
@@ -111,6 +118,10 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  // Reset the mutable auth state back to the authenticated-admin default.
+  authState.isAuthenticated = true;
+  authState.isLoading = false;
+  authState.isAdmin = true;
 });
 
 describe("Branding tab (REQ-086 E9-S1)", () => {
@@ -324,5 +335,307 @@ describe("Modules tab (REQ-087 E10-S2)", () => {
     });
     // Enabling is non-destructive — no confirmation dialog.
     expect(screen.queryByText("moduleDisableConfirm")).not.toBeInTheDocument();
+  });
+});
+
+// ============================================================================
+// E27-S1 (REQ-004) AC-3 — added characterization coverage
+// ============================================================================
+
+// Two custom roles spanning the linked-role badge colours (Admin=red, Member=green).
+const mockRoles = [
+  {
+    id: "role-admin-1",
+    name: "Super Admin",
+    description: "Full access",
+    linkedRole: "Admin" as const,
+    isActive: true,
+    color: "#ff0000",
+    sortOrder: 0,
+    createdAt: "2026-05-14T00:00:00Z",
+    createdBy: "admin",
+    updatedAt: "2026-05-14T00:00:00Z",
+    updatedBy: "admin",
+  },
+  {
+    id: "role-member-2",
+    name: "Junior Member",
+    description: "Limited access",
+    linkedRole: "Member" as const,
+    isActive: false,
+    color: "#00ff00",
+    sortOrder: 1,
+    createdAt: "2026-05-14T00:00:00Z",
+    createdBy: "admin",
+    updatedAt: "2026-05-14T00:00:00Z",
+    updatedBy: "admin",
+  },
+];
+
+// apiGet implementation that also serves /api/v1/custom-roles with the role fixture.
+function mockGetWithRoles() {
+  apiGet.mockImplementation((endpoint: string) => {
+    if (endpoint === "/api/v1/settings") {
+      return Promise.resolve({ data: mockSettings, error: null });
+    }
+    if (endpoint === "/api/v1/module-settings") {
+      return Promise.resolve({ data: mockModules, error: null });
+    }
+    if (endpoint === "/api/v1/custom-roles") {
+      return Promise.resolve({ data: mockRoles, error: null });
+    }
+    return Promise.resolve({ data: [], error: null });
+  });
+}
+
+describe("Admin auth guard (E27-S1 AC-3)", () => {
+  it("redirects a non-admin to / (target is /, not /login)", async () => {
+    authState.isAdmin = false;
+    const { container } = render(<SettingsPage />);
+
+    await waitFor(() => {
+      expect(push).toHaveBeenCalledWith("/");
+    });
+    // Non-admin guard returns null — no tabs render.
+    expect(screen.queryByText("tabBranding")).not.toBeInTheDocument();
+    expect(container.querySelector(".mx-auto")).toBeNull();
+  });
+
+  it("redirects an unauthenticated user to /", async () => {
+    authState.isAuthenticated = false;
+    render(<SettingsPage />);
+
+    await waitFor(() => {
+      expect(push).toHaveBeenCalledWith("/");
+    });
+  });
+});
+
+describe("Custom Roles tab (E27-S1 AC-3 / REQ-004)", () => {
+  async function openRolesTab() {
+    await waitFor(() => {
+      expect(screen.getByText("tabCustomRoles")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText("tabCustomRoles"));
+  }
+
+  it("lists roles loaded from GET /api/v1/custom-roles", async () => {
+    mockGetWithRoles();
+    render(<SettingsPage />);
+    await openRolesTab();
+
+    await waitFor(() => {
+      expect(screen.getByText("Super Admin")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Junior Member")).toBeInTheDocument();
+    expect(apiGet.mock.calls.some((c) => c[0] === "/api/v1/custom-roles")).toBe(
+      true
+    );
+  });
+
+  it("renders linked-role badge colours (Admin=red, Member=green)", async () => {
+    mockGetWithRoles();
+    render(<SettingsPage />);
+    await openRolesTab();
+
+    await waitFor(() => {
+      expect(screen.getByText("Super Admin")).toBeInTheDocument();
+    });
+    // Badge text is the literal linkedRole value (not translated).
+    const adminBadge = screen.getByText("Admin");
+    expect(adminBadge.className).toContain("bg-red-100");
+    expect(adminBadge.className).toContain("text-red-800");
+    const memberBadge = screen.getByText("Member");
+    expect(memberBadge.className).toContain("bg-green-100");
+    expect(memberBadge.className).toContain("text-green-800");
+  });
+
+  it("creating a role POSTs a subset (no isActive) to /api/v1/custom-roles", async () => {
+    mockGetWithRoles();
+    apiPost.mockResolvedValue({ data: mockRoles[0], error: null });
+    render(<SettingsPage />);
+    await openRolesTab();
+
+    await waitFor(() => {
+      expect(screen.getByText("newRole")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText("newRole"));
+
+    // Modal opens with the create title; fill the required name then submit.
+    // Title + submit button both use the createRole key, so expect >= 1 match.
+    await waitFor(() => {
+      expect(screen.getAllByText("createRole").length).toBeGreaterThan(0);
+    });
+    const nameInput = screen.getAllByRole("textbox")[0] as HTMLInputElement;
+    fireEvent.change(nameInput, { target: { value: "New Role" } });
+
+    // The submit button label equals "createRole" (same key as the title) — it's the
+    // last matching node (title comes first in DOM order).
+    const createButtons = screen.getAllByText("createRole");
+    fireEvent.click(createButtons[createButtons.length - 1]);
+
+    await waitFor(() => {
+      expect(apiPost).toHaveBeenCalledWith(
+        "/api/v1/custom-roles",
+        expect.objectContaining({
+          name: "New Role",
+          linkedRole: "Member",
+        })
+      );
+    });
+    // POST payload is a subset — it must NOT carry isActive.
+    const payload = apiPost.mock.calls[0][1] as Record<string, unknown>;
+    expect(payload).not.toHaveProperty("isActive");
+  });
+
+  it("editing a role PUTs the full form to /api/v1/custom-roles/:id", async () => {
+    mockGetWithRoles();
+    apiPut.mockResolvedValue({ data: mockRoles[0], error: null });
+    render(<SettingsPage />);
+    await openRolesTab();
+
+    await waitFor(() => {
+      expect(screen.getByText("Super Admin")).toBeInTheDocument();
+    });
+    // Open the edit modal for the first role via its edit button (title=editRole).
+    const editButtons = screen.getAllByTitle("editRole");
+    fireEvent.click(editButtons[0]);
+
+    await waitFor(() => {
+      // Modal heading uses the editRole key.
+      expect(screen.getAllByText("editRole").length).toBeGreaterThan(0);
+    });
+    // Submit the edit (button label is editRole when editing).
+    const editLabels = screen.getAllByText("editRole");
+    fireEvent.click(editLabels[editLabels.length - 1]);
+
+    await waitFor(() => {
+      expect(apiPut).toHaveBeenCalledWith(
+        "/api/v1/custom-roles/role-admin-1",
+        expect.objectContaining({
+          name: "Super Admin",
+          linkedRole: "Admin",
+          isActive: true,
+          color: "#ff0000",
+          sortOrder: 0,
+        })
+      );
+    });
+  });
+
+  it("inline delete-confirm then DELETE /api/v1/custom-roles/:id", async () => {
+    mockGetWithRoles();
+    apiDelete.mockResolvedValue({ data: null, error: null });
+    render(<SettingsPage />);
+    await openRolesTab();
+
+    await waitFor(() => {
+      expect(screen.getByText("Super Admin")).toBeInTheDocument();
+    });
+    // First click on the row's delete icon arms the inline confirm; no DELETE yet.
+    const deleteIcons = screen.getAllByTitle("deleteRole");
+    fireEvent.click(deleteIcons[0]);
+    expect(apiDelete).not.toHaveBeenCalled();
+
+    // The inline confirm renders a labelled "deleteRole" button — click it.
+    const confirmButton = screen.getByText("deleteRole");
+    fireEvent.click(confirmButton);
+
+    await waitFor(() => {
+      expect(apiDelete).toHaveBeenCalledWith(
+        "/api/v1/custom-roles/role-admin-1"
+      );
+    });
+  });
+
+  it("shows the rolesLoadError banner when the roles GET fails", async () => {
+    apiGet.mockImplementation((endpoint: string) => {
+      if (endpoint === "/api/v1/settings") {
+        return Promise.resolve({ data: mockSettings, error: null });
+      }
+      if (endpoint === "/api/v1/module-settings") {
+        return Promise.resolve({ data: mockModules, error: null });
+      }
+      if (endpoint === "/api/v1/custom-roles") {
+        return Promise.resolve({ data: null, error: "boom" });
+      }
+      return Promise.resolve({ data: [], error: null });
+    });
+    render(<SettingsPage />);
+    await openRolesTab();
+
+    await waitFor(() => {
+      expect(screen.getByText("rolesLoadError")).toBeInTheDocument();
+    });
+  });
+});
+
+describe("Settings load/save errors + persistent banners (E27-S1 AC-3)", () => {
+  it("shows loadError when the settings GET fails", async () => {
+    apiGet.mockImplementation((endpoint: string) => {
+      if (endpoint === "/api/v1/settings") {
+        return Promise.resolve({ data: null, error: "boom" });
+      }
+      if (endpoint === "/api/v1/module-settings") {
+        return Promise.resolve({ data: mockModules, error: null });
+      }
+      return Promise.resolve({ data: [], error: null });
+    });
+    render(<SettingsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("loadError")).toBeInTheDocument();
+    });
+  });
+
+  it("shows saveError when the settings PUT fails", async () => {
+    apiPut.mockResolvedValue({ data: null, error: "boom" });
+    render(<SettingsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("saveSettings")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText("saveSettings"));
+
+    await waitFor(() => {
+      expect(screen.getByText("saveError")).toBeInTheDocument();
+    });
+  });
+
+  it("a successful branding save calls refreshAppSettings()", async () => {
+    render(<SettingsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("saveSettings")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText("saveSettings"));
+
+    await waitFor(() => {
+      expect(refreshAppSettings).toHaveBeenCalled();
+    });
+    // Success banner present.
+    expect(screen.getByText("saveSuccess")).toBeInTheDocument();
+  });
+
+  it("success banner is persistent — no auto-dismiss timer", async () => {
+    vi.useFakeTimers();
+    try {
+      render(<SettingsPage />);
+
+      // Resolve the initial loads under fake timers.
+      await vi.waitFor(() => {
+        expect(screen.getByText("saveSettings")).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByText("saveSettings"));
+      await vi.waitFor(() => {
+        expect(screen.getByText("saveSuccess")).toBeInTheDocument();
+      });
+
+      // Advance well past any plausible auto-dismiss window — banner must remain.
+      vi.advanceTimersByTime(60_000);
+      expect(screen.getByText("saveSuccess")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

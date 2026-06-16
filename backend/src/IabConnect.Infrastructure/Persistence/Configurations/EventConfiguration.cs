@@ -144,6 +144,11 @@ public sealed class EventConfiguration : IEntityTypeConfiguration<Event>
             .HasColumnName("cost_description")
             .HasMaxLength(500);
 
+        // REQ-055 (E7-S4): optional content language (ISO 639-1; null = default)
+        builder.Property(e => e.ContentLanguage)
+            .HasColumnName("content_language")
+            .HasMaxLength(10);
+
         builder.Property(e => e.CreatedAt)
             .HasColumnName("created_at")
             .IsRequired();

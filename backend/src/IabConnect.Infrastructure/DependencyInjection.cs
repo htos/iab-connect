@@ -75,6 +75,7 @@ public static class DependencyInjection
         services.AddScoped<IDeletionRequestRepository, DeletionRequestRepository>();
         services.AddScoped<IEventRepository, EventRepository>();
         services.AddScoped<IEventRegistrationRepository, EventRegistrationRepository>();
+        services.AddScoped<IEventFeeCategoryRepository, EventFeeCategoryRepository>(); // REQ-022 (E4-S1)
 
         // REQ-024 (E3.S4): TimeProvider for testable time in the reminder service
         services.AddSingleton(TimeProvider.System);
@@ -92,12 +93,80 @@ public static class DependencyInjection
         services.AddScoped<IEmailTemplateRepository, EmailTemplateRepository>();
         services.AddScoped<INewsletterSubscriberRepository, NewsletterSubscriberRepository>();
 
+        // REQ-028 (E5-S1): Communication automation definition repository + shared recipient resolver
+        services.AddScoped<IAutomationDefinitionRepository, AutomationDefinitionRepository>();
+        services.AddScoped<IabConnect.Application.Communication.Automations.IRecipientResolutionService,
+            Infrastructure.Communication.RecipientResolutionService>();
+
+        // REQ-028 (E5-S2): automation execution engine + Hangfire dispatch job
+        services.AddScoped<IAutomationExecutionRepository, AutomationExecutionRepository>();
+        services.AddSingleton<IabConnect.Application.Communication.Automations.AutomationTriggerEvaluator>();
+        services.AddScoped<IabConnect.Application.Communication.Automations.IAutomationExecutionService,
+            Infrastructure.Communication.AutomationExecutionService>();
+        services.AddScoped<Infrastructure.Communication.Jobs.AutomationDispatchJob>();
+
+        // REQ-030 (E5-S4): multi-channel messaging abstraction. Email is the always-enabled default;
+        // SMS/WhatsApp ship as disabled stubs (config-driven, false by default — provider secrets are
+        // config-only). The automation send path (S2) routes through IMessageDispatcher (DEC-3);
+        // campaigns + event-notifications stay on IEmailSender directly. IChannelPreferenceService is
+        // the S4 seam with a default "email always eligible" impl that S5 replaces.
+        services.Configure<Messaging.SmsSettings>(configuration.GetSection(Messaging.SmsSettings.SectionName));
+        services.Configure<Messaging.WhatsAppSettings>(configuration.GetSection(Messaging.WhatsAppSettings.SectionName));
+        services.AddScoped<IabConnect.Application.Communication.Messaging.IMessageChannelSender, Messaging.EmailChannelSender>();
+        services.AddScoped<IabConnect.Application.Communication.Messaging.IMessageChannelSender, Messaging.SmsChannelSender>();
+        services.AddScoped<IabConnect.Application.Communication.Messaging.IMessageChannelSender, Messaging.WhatsAppChannelSender>();
+        services.AddScoped<IabConnect.Application.Communication.Messaging.IMessageDispatcher, Messaging.MessageDispatcher>();
+
+        // REQ-030 (E5-S5): the REAL channel-preference (eligibility) service replaces S4's default
+        // email-always-eligible seam — consent AND preference AND provider-availability before send.
+        services.AddScoped<IUserChannelPreferenceRepository, UserChannelPreferenceRepository>();
+        services.AddScoped<IabConnect.Application.Communication.Messaging.IChannelPreferenceService,
+            Messaging.ChannelPreferenceService>();
+
         // REQ-059: System Settings & Custom Roles
         services.AddScoped<ISystemSettingsRepository, SystemSettingsRepository>();
         services.AddScoped<ICustomRoleRepository, CustomRoleRepository>();
 
         // REQ-087 (E10-S1): Module settings — per-module enablement state
         services.AddScoped<IModuleSettingsRepository, ModuleSettingsRepository>();
+
+        // REQ-058 (E8-S1): External API credentials — repository, token-safe hashing, pepper.
+        services.Configure<Integration.ApiKeyOptions>(
+            configuration.GetSection(Integration.ApiKeyOptions.SectionName));
+        services.AddScoped<IabConnect.Domain.Integration.IApiClientRepository,
+            Persistence.Repositories.ApiClientRepository>();
+        services.AddSingleton<IabConnect.Application.Integration.IApiKeyHashingService,
+            Integration.ApiKeyHashingService>();
+
+        // REQ-058 (E8-S3): webhook subscriptions — repository, secret encryption, HMAC signing,
+        // and the write-path dispatch seam (E8-S4 fills delivery).
+        services.Configure<Integration.WebhookOptions>(
+            configuration.GetSection(Integration.WebhookOptions.SectionName));
+        services.AddScoped<IabConnect.Domain.Integration.IWebhookSubscriptionRepository,
+            Persistence.Repositories.WebhookSubscriptionRepository>();
+        services.AddSingleton<IabConnect.Application.Integration.IWebhookSecretService,
+            Integration.WebhookSecretService>();
+        services.AddSingleton<IabConnect.Application.Integration.IWebhookSignatureService,
+            Integration.WebhookSignatureService>();
+        services.AddScoped<IabConnect.Application.Integration.IWebhookDispatchService,
+            Integration.WebhookDispatchService>();
+
+        // REQ-058 (E8-S4): webhook delivery — history repo, Hangfire one-off delivery job + enqueuer,
+        // the delivery service, and a named HttpClient with a short timeout (SSRF-guarded outbound POST).
+        services.Configure<Integration.WebhookDeliveryOptions>(
+            configuration.GetSection(Integration.WebhookDeliveryOptions.SectionName));
+        services.AddScoped<IabConnect.Domain.Integration.IWebhookDeliveryRepository,
+            Persistence.Repositories.WebhookDeliveryRepository>();
+        services.AddScoped<IabConnect.Application.Integration.IWebhookDeliveryService,
+            Integration.WebhookDeliveryService>();
+        services.AddSingleton<IabConnect.Application.Integration.IWebhookDeliveryEnqueuer,
+            Integration.WebhookDeliveryEnqueuer>();
+        services.AddScoped<Integration.WebhookDeliveryJob>();
+        services.AddHttpClient(Integration.WebhookDeliveryService.HttpClientName, (sp, client) =>
+        {
+            var opts = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<Integration.WebhookDeliveryOptions>>().Value;
+            client.Timeout = TimeSpan.FromSeconds(opts.HttpTimeoutSeconds);
+        });
 
         // REQ-038..045: Finance repositories
         services.AddScoped<IAccountRepository, AccountRepository>();
@@ -119,6 +188,9 @@ public static class DependencyInjection
         services.AddScoped<IInvoiceTemplateRepository, InvoiceTemplateRepository>();
         services.AddScoped<IActivityAreaRepository, ActivityAreaRepository>();
 
+        // REQ-044 (E6-S1): Finance planning — budget repository
+        services.AddScoped<IBudgetRepository, BudgetRepository>();
+
         // REQ-031..033: Sponsors & Suppliers repositories
         services.AddScoped<ISponsorRepository, SponsorRepository>();
         services.AddScoped<ISupplierRepository, SupplierRepository>();
@@ -129,9 +201,12 @@ public static class DependencyInjection
         // REQ-052: Global search service
         services.AddScoped<IGlobalSearchService, PostgresGlobalSearchService>();
 
-        // REQ-053: Backup service
+        // REQ-053 / REQ-088 AC-6 (E15-S3): Backup service + Hangfire-resolvable job
+        // classes. PostgresBackupService now depends on IAmazonS3 (registered above for
+        // RustFS) + IHostEnvironment for the fail-fast-on-missing-encryption-key check.
         services.AddScoped<IBackupService, PostgresBackupService>();
         services.AddScoped<ScheduledBackupJob>();
+        services.AddScoped<PruneOldBackupsJob>();
 
         // REQ-057: Retention policy & enforcement services
         services.AddScoped<IRetentionPolicyService, PostgresRetentionPolicyService>();
@@ -253,6 +328,10 @@ public static class DependencyInjection
         // registration cancellation + waitlist-promotion service
         services.AddScoped<IabConnect.Application.Events.IEventRegistrationCancellationService,
             Events.EventRegistrationCancellationService>();
+
+        // REQ-022 (E4-S2): atomic cross-module paid-registration coordinator (registration + invoice)
+        services.AddScoped<IabConnect.Application.Events.PaidRegistration.IPaidRegistrationService,
+            Events.PaidRegistrationService>();
 
         // REQ-034: Document Storage (RustFS via S3 SDK)
         services.Configure<DocumentStorageSettings>(configuration.GetSection(DocumentStorageSettings.SectionName));

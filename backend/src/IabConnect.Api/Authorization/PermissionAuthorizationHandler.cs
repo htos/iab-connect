@@ -1,5 +1,6 @@
 using IabConnect.Domain.Authorization;
 using IabConnect.Domain.Common;
+using IabConnect.Domain.Integration;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
 
@@ -69,6 +70,7 @@ public sealed class PermissionPolicyProvider : IAuthorizationPolicyProvider
 {
     private const string PermissionPolicyPrefix = "Permission:";
     private const string ModulePolicyPrefix = "Module:";
+    private const string ScopePolicyPrefix = "Scope:";
     private readonly DefaultAuthorizationPolicyProvider _fallbackPolicyProvider;
 
     public PermissionPolicyProvider(IOptions<AuthorizationOptions> options)
@@ -112,6 +114,27 @@ public sealed class PermissionPolicyProvider : IAuthorizationPolicyProvider
             }
             var policy = new AuthorizationPolicyBuilder()
                 .AddRequirements(new ModuleRequirement(moduleKey))
+                .Build();
+            return Task.FromResult<AuthorizationPolicy?>(policy);
+        }
+
+        // REQ-058 (E8-S1): "Scope:<resource:action>" → a policy carrying a single ScopeRequirement,
+        // resolved at request time by ScopeAuthorizationHandler against the scope claims the
+        // ApiKeyAuthenticationHandler emits. Unlike Module:, the scope suffix is case-SENSITIVE and
+        // itself contains a ':' (e.g. Scope:events:read), so only the leading "Scope:" prefix is
+        // stripped and the remainder is the literal scope string validated against ApiScopes.All.
+        if (policyName.StartsWith(ScopePolicyPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            var scope = policyName[ScopePolicyPrefix.Length..];
+            if (!ApiScopes.All.Contains(scope))
+            {
+                throw new InvalidOperationException(
+                    $"Unknown API scope '{scope}' in authorization policy '{policyName}'. "
+                    + $"Scopes must be one of: {string.Join(", ", ApiScopes.All)}. "
+                    + "Check the RequireAuthorization(\"Scope:...\") declaration on the endpoint group.");
+            }
+            var policy = new AuthorizationPolicyBuilder()
+                .AddRequirements(new ScopeRequirement(scope))
                 .Build();
             return Task.FromResult<AuthorizationPolicy?>(policy);
         }

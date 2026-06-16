@@ -18,6 +18,7 @@ This document defines the design standards for the IAB Connect frontend. All new
 12. [Loading States](#loading-states)
 13. [Internationalization (i18n)](#internationalization-i18n)
 14. [Responsive Design](#responsive-design)
+15. [Accessibility](#accessibility)
 
 ---
 
@@ -809,3 +810,86 @@ When creating a new page, ensure:
 - [ ] Primary color is Orange-600 (not blue)
 - [ ] Buttons follow standard styles
 - [ ] Cards use `rounded-xl shadow-sm` pattern
+- [ ] Accessibility: icon-only buttons have `aria-label`, form controls have labels, status is not color-only (see [Accessibility](#accessibility))
+
+---
+
+## Accessibility
+
+Target: **WCAG 2.2 AA** for the critical authenticated and public flows (REQ-056). The
+full baseline checklist and the per-page audit live in
+`docs/16_accessibility_audit_checklist.md`; this section is the day-to-day patterns to
+apply while building UI. Cross-reference: `docs/16` Section A is the source of truth.
+
+### Icon-only buttons — accessible name (required)
+
+A button whose only visible child is an icon has **no** accessible name unless you add
+one. Always pass an `aria-label` from a next-intl key (never a hardcoded string):
+
+```tsx
+// ✅ icon-only button with an accessible name
+<button onClick={onClose} aria-label={t("common.close")}>
+  <XIcon className="h-5 w-5" />
+</button>
+
+// ✅ toggle button also exposes pressed state
+<button onClick={() => setViewMode("grid")} aria-label={t("gridView")} aria-pressed={viewMode === "grid"}>
+  <GridIcon className="h-5 w-5" />
+</button>
+
+// ❌ no accessible name — a screen reader announces only "button"
+<button onClick={onClose}><XIcon className="h-5 w-5" /></button>
+```
+
+The shared `Button` component forwards `aria-label` via `...props`, so the gap is always
+at the call-site, not the component. A visible-text label or an `sr-only` span is an
+acceptable alternative to `aria-label`; if `sr-only`, the text must still come from a
+next-intl key (a hardcoded `sr-only` literal is the anti-pattern fixed in E7-S2).
+
+### Form labels + validation association
+
+Every input/select/textarea needs a programmatic label and, when it can show an error, a
+programmatic error association:
+
+- A `<label htmlFor={id}>` paired with the control `id`, **or** an `aria-label` (use
+  `aria-label` for filter controls that have no visible label, e.g. a list-page search
+  box or a status `<select>`).
+- Error text gets a stable `id`; the control sets `aria-describedby={errorId}` and
+  `aria-invalid={!!error}` while in error. (The shared `Input` component wires this in
+  E7-S2 — reuse it for new forms.)
+
+```tsx
+// ✅ filter control with no visible label
+<select aria-label={t("allStatuses")} value={status} onChange={...}>...</select>
+```
+
+### Focus state — design-system token (not ad-hoc colors)
+
+Use the design-system focus token, **not** a per-component colour. The library standard
+(used by `Button`/`Select`/`Badge`/`Tabs`) is:
+
+```
+focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
+```
+
+Do not introduce `focus:ring-indigo-*` or other ad-hoc focus colours (the `Input`
+outlier is aligned to the standard token in E7-S2). Never remove the focus indicator with
+a bare `outline-none` and no replacement ring.
+
+### Status not by color alone
+
+Status badges and variances must carry the meaning in **text, an icon, or a sign** — not
+colour alone (a red/green colour is invisible to color-blind users and to screen
+readers). A finance variance shows the numeric value **and** sign (`-120.00`), not just a
+red cell. Pair every coloured badge with its text label (the existing badges already do
+this — preserve it).
+
+### Keyboard & focus traps (live-verify)
+
+- Every interactive control must be reachable and operable by keyboard
+  (`Tab`/`Shift+Tab`/`Enter`/`Space`).
+- Modals/overlays must not trap focus: `Escape` closes, `Tab` cycles within and then
+  escapes. Prefer the shared Radix `Dialog` (built-in focus trap + restore) over a
+  hand-rolled `fixed inset-0` modal.
+- These behaviours are browser-only and are tracked as `[!]` manual-verify items in
+  `docs/16`.

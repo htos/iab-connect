@@ -214,6 +214,11 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("content");
 
+                    b.Property<string>("ContentLanguage")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("content_language");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -407,6 +412,198 @@ namespace IabConnect.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("system_settings", (string)null);
+                });
+
+            modelBuilder.Entity("IabConnect.Domain.Communication.AutomationDefinition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ConsentFilter")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("consent_filter");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<string>("CreatedByName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("created_by_name");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("SegmentFilter")
+                        .HasColumnType("text")
+                        .HasColumnName("segment_filter");
+
+                    b.Property<string>("SegmentType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("segment_type");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<int>("TemplateId")
+                        .HasColumnType("integer")
+                        .HasColumnName("template_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("CreatedById");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("automation_definitions", (string)null);
+                });
+
+            modelBuilder.Entity("IabConnect.Domain.Communication.AutomationExecution", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<Guid>("DefinitionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("definition_id");
+
+                    b.Property<int>("FailedCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("failed_count");
+
+                    b.Property<int>("SentCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("sent_count");
+
+                    b.Property<int>("SkippedCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("skipped_count");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<int>("TotalRecipients")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("total_recipients");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DefinitionId");
+
+                    b.HasIndex("StartedAt");
+
+                    b.ToTable("automation_executions", (string)null);
+                });
+
+            modelBuilder.Entity("IabConnect.Domain.Communication.AutomationRecipient", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("email");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("text")
+                        .HasColumnName("error_message");
+
+                    b.Property<Guid>("ExecutionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("execution_id");
+
+                    b.Property<string>("FirstName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("first_name");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<string>("LastName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("last_name");
+
+                    b.Property<Guid?>("MemberId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("member_id");
+
+                    b.Property<DateTime?>("SentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sent_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExecutionId");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique();
+
+                    b.ToTable("automation_recipients", (string)null);
                 });
 
             modelBuilder.Entity("IabConnect.Domain.Communication.ContactMessage", b =>
@@ -899,6 +1096,38 @@ namespace IabConnect.Infrastructure.Migrations
                     b.ToTable("newsletter_subscribers", (string)null);
                 });
 
+            modelBuilder.Entity("IabConnect.Domain.Communication.UserChannelPreference", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("PreferredChannel")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("preferred_channel");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("user_channel_preferences", (string)null);
+                });
+
             modelBuilder.Entity("IabConnect.Domain.Documents.Document", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1227,6 +1456,11 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("contact_phone");
 
+                    b.Property<string>("ContentLanguage")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("content_language");
+
                     b.Property<decimal?>("Cost")
                         .HasPrecision(10, 2)
                         .HasColumnType("numeric(10,2)")
@@ -1406,6 +1640,92 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasDatabaseName("ix_events_filter");
 
                     b.ToTable("events", (string)null);
+                });
+
+            modelBuilder.Entity("IabConnect.Domain.Events.EventFeeCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<string>("Applicability")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Everyone")
+                        .HasColumnName("applicability");
+
+                    b.Property<DateTime?>("AvailableFrom")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("available_from");
+
+                    b.Property<DateTime?>("AvailableUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("available_until");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<int?>("MaxQuantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_quantity");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventId")
+                        .HasDatabaseName("ix_event_fee_categories_event_id");
+
+                    b.HasIndex("EventId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("ux_event_fee_categories_event_active_name")
+                        .HasFilter("is_active = true");
+
+                    b.ToTable("event_fee_categories", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_event_fee_categories_amount_non_negative", "amount >= 0");
+                        });
                 });
 
             modelBuilder.Entity("IabConnect.Domain.Events.EventRegistration", b =>
@@ -2083,6 +2403,81 @@ namespace IabConnect.Infrastructure.Migrations
                     b.ToTable("bank_import_items", (string)null);
                 });
 
+            modelBuilder.Entity("IabConnect.Domain.Finance.Budget", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActivityAreaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("activity_area_id");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("currency");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("DeletedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<Guid>("FiscalPeriodId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("fiscal_period_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("notes");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FiscalPeriodId");
+
+                    b.HasIndex("ActivityAreaId", "FiscalPeriodId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_budgets_activity_area_fiscal_period_unique")
+                        .HasFilter("is_deleted = false");
+
+                    b.ToTable("budgets", (string)null);
+                });
+
             modelBuilder.Entity("IabConnect.Domain.Finance.Category", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2659,6 +3054,10 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("due_date");
 
+                    b.Property<Guid?>("EventRegistrationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_registration_id");
+
                     b.Property<string>("InvoiceNumber")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -2766,6 +3165,9 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("EventRegistrationId")
+                        .HasDatabaseName("ix_invoices_event_registration_id");
 
                     b.HasIndex("InvoiceNumber")
                         .IsUnique()
@@ -3818,6 +4220,193 @@ namespace IabConnect.Infrastructure.Migrations
                     b.ToTable("transactions", (string)null);
                 });
 
+            modelBuilder.Entity("IabConnect.Domain.Integration.ApiClient", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<bool>("IsRevoked")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_revoked");
+
+                    b.Property<DateTime?>("LastUsedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_used_at");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<string>("Scopes")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("scopes");
+
+                    b.Property<string>("SecretHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("secret_hash");
+
+                    b.Property<string>("SecretPrefix")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("secret_prefix");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("SecretPrefix")
+                        .IsUnique();
+
+                    b.ToTable("api_clients", (string)null);
+                });
+
+            modelBuilder.Entity("IabConnect.Domain.Integration.WebhookDelivery", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempt_count");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DedupKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("dedup_key");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("error");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("event_type");
+
+                    b.Property<DateTime?>("LastAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_attempt_at");
+
+                    b.Property<DateTime?>("NextRetryAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_retry_at");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("payload");
+
+                    b.Property<int?>("ResponseStatusCode")
+                        .HasColumnType("integer")
+                        .HasColumnName("response_status_code");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("SubscriptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subscription_id");
+
+                    b.Property<string>("TargetUrl")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)")
+                        .HasColumnName("target_url");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("DedupKey")
+                        .IsUnique();
+
+                    b.HasIndex("SubscriptionId");
+
+                    b.ToTable("webhook_deliveries", (string)null);
+                });
+
+            modelBuilder.Entity("IabConnect.Domain.Integration.WebhookSubscription", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("ConsecutiveFailureCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("consecutive_failure_count");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("EventTypes")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("event_types");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("SecretCipher")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("secret_cipher");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("TargetUrl")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)")
+                        .HasColumnName("target_url");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("webhook_subscriptions", (string)null);
+                });
+
             modelBuilder.Entity("IabConnect.Domain.Members.DuplicateCandidateDismissal", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4633,6 +5222,44 @@ namespace IabConnect.Infrastructure.Migrations
                     b.ToTable("suppliers", (string)null);
                 });
 
+            modelBuilder.Entity("IabConnect.Domain.Communication.AutomationDefinition", b =>
+                {
+                    b.OwnsOne("IabConnect.Domain.Communication.AutomationTrigger", "Trigger", b1 =>
+                        {
+                            b1.Property<Guid>("AutomationDefinitionId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<int?>("OffsetDays")
+                                .HasColumnType("integer")
+                                .HasColumnName("trigger_offset_days");
+
+                            b1.Property<string>("Type")
+                                .IsRequired()
+                                .HasMaxLength(50)
+                                .HasColumnType("character varying(50)")
+                                .HasColumnName("trigger_type");
+
+                            b1.HasKey("AutomationDefinitionId");
+
+                            b1.ToTable("automation_definitions");
+
+                            b1.WithOwner()
+                                .HasForeignKey("AutomationDefinitionId");
+                        });
+
+                    b.Navigation("Trigger")
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("IabConnect.Domain.Communication.AutomationRecipient", b =>
+                {
+                    b.HasOne("IabConnect.Domain.Communication.AutomationExecution", null)
+                        .WithMany("Recipients")
+                        .HasForeignKey("ExecutionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("IabConnect.Domain.Communication.EmailRecipient", b =>
                 {
                     b.HasOne("IabConnect.Domain.Communication.EmailCampaign", null)
@@ -4699,6 +5326,15 @@ namespace IabConnect.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("IabConnect.Domain.Events.EventFeeCategory", b =>
+                {
+                    b.HasOne("IabConnect.Domain.Events.Event", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("IabConnect.Domain.Events.Volunteers.EventVolunteerAssignment", b =>
                 {
                     b.HasOne("IabConnect.Domain.Members.Member", null)
@@ -4750,6 +5386,21 @@ namespace IabConnect.Infrastructure.Migrations
                         .WithMany("Items")
                         .HasForeignKey("BankImportId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("IabConnect.Domain.Finance.Budget", b =>
+                {
+                    b.HasOne("IabConnect.Domain.Finance.ActivityArea", null)
+                        .WithMany()
+                        .HasForeignKey("ActivityAreaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("IabConnect.Domain.Finance.FiscalPeriod", null)
+                        .WithMany()
+                        .HasForeignKey("FiscalPeriodId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
@@ -5070,6 +5721,11 @@ namespace IabConnect.Infrastructure.Migrations
                         .HasForeignKey("SponsorId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("IabConnect.Domain.Communication.AutomationExecution", b =>
+                {
+                    b.Navigation("Recipients");
                 });
 
             modelBuilder.Entity("IabConnect.Domain.Communication.EmailCampaign", b =>

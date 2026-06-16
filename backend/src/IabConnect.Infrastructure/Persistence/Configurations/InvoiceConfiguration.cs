@@ -105,6 +105,16 @@ public sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
             .HasForeignKey(i => i.TemplateId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        // REQ-022 (E4-S2): link to the source event registration (paid registration). No FK
+        // navigation/cascade — a cancelled registration is soft-cancelled (its row stays), and
+        // the invoice must outlive registration changes (finance compliance). Indexed so the
+        // cancellation wiring + S3 roster can look up an invoice by registration id.
+        builder.Property(i => i.EventRegistrationId)
+            .HasColumnName("event_registration_id");
+
+        builder.HasIndex(i => i.EventRegistrationId)
+            .HasDatabaseName("ix_invoices_event_registration_id");
+
         builder.Property(i => i.CancellationReason)
             .HasColumnName("cancellation_reason")
             .HasMaxLength(1000);

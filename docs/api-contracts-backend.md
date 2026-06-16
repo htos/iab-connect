@@ -134,6 +134,61 @@ Finance read operations typically require `RequireFinanceRead`; write operations
 | Global search | `/api/v1/search` | `RequireSearch` |
 | Backups | `/api/v1/admin/backups` | `RequireAdmin` |
 | Retention | `/api/v1/admin/retention` | `RequireAdmin` |
+| External API credentials (admin) | `/api/v1/admin/api-clients` | `RequireAdmin` |
+| External API (integrations) | `/api/v1/external` | `ApiKey` scheme + `Scope:*` + `Module:api` |
+
+## External API (REQ-058, Epic E8)
+
+A dedicated, versioned integration surface under `/api/v1/external/*` for approved external systems.
+It is **separate** from the first-party `/api/v1/*` endpoints and the anonymous `*/public` reads, with
+its own authentication, authorization, and rate-limit contract.
+
+### v1 scope (deliberately small)
+
+The external API currently exposes **only published Events and published Blog posts** — the low-risk,
+public, author-managed content. Members, finance, documents, audit, users and registration data are
+**not** exposed. New resources are added only after a per-resource integration-safety review.
+
+### Authentication
+
+- Credentials are created/revoked by an admin under `POST/GET /api/v1/admin/api-clients` (`RequireAdmin`).
+- The secret is returned **exactly once** at creation; only a one-way hash + a non-secret lookup prefix
+  are stored.
+- External requests authenticate with the header `X-Api-Key: iabc.{prefix}.{secret}` (the `ApiKey`
+  authentication scheme — a second scheme alongside the first-party Keycloak JWT bearer).
+
+### Authorization & limits
+
+| Layer | Rule |
+| --- | --- |
+| Authentication | `X-Api-Key` (scheme `ApiKey`); absent/invalid → **401** |
+| Scope | per-endpoint `Scope:events:read` / `Scope:blog:read`; credential lacking it → **403** |
+| Module | `Module:api`; if an admin disabled the `api` module → **403** |
+| Rate limit | per-credential `external-api` policy (default 300/min, partitioned on the credential id) → **429** over limit |
+
+### Endpoints
+
+| Method | Path | Scope | Returns |
+| --- | --- | --- | --- |
+| GET | `/api/v1/external/events` | `events:read` | `PagedResult<ExternalEventDto>` |
+| GET | `/api/v1/external/events/{id}` | `events:read` | `ExternalEventDto` (404 if not published) |
+| GET | `/api/v1/external/blog` | `blog:read` | `PagedResult<ExternalBlogPostDto>` |
+| GET | `/api/v1/external/blog/{id}` | `blog:read` | `ExternalBlogPostDto` (404 if not published) |
+
+List endpoints accept `page`, `pageSize` (clamped 1..100), `sort` (`field:asc|desc`), and
+`filter` (`language=de,category=News`). Responses use the standard `PagedResult<T>` envelope.
+
+### Integration-safe DTOs (whitelist only)
+
+- **`ExternalEventDto`**: id, title, description, shortDescription, start/end, isAllDay, timeZone,
+  location(+address/url), category, tags, image(+alt), cost(+description), contentLanguage.
+  Deliberately **omits** organizer identity, contact email/phone, internal status, audit timestamps,
+  visibility and soft-delete flags.
+- **`ExternalBlogPostDto`**: id, title, slug, summary, content, author, category, tags, publishedAt,
+  imageUrl, contentLanguage. **Omits** internal status and created/updated timestamps.
+
+These records are whitelist-by-construction; the internal `EventDto`/`MemberDto` are never reused
+(they carry contact/organizer/PII). Swagger (dev-only) tags these endpoints `External API`.
 
 ## Security Notes
 

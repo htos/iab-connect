@@ -25,6 +25,8 @@
     <PackageVersion Include="Serilog.Sinks.Console" Version="6.1.1" />
     <PackageVersion Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageVersion Include="Serilog.Sinks.Seq" Version="8.0.0" />
+    <!-- REQ-088 AC-4 (E14-S5): in-memory Serilog sink for redaction-policy + enricher tests -->
+    <PackageVersion Include="Serilog.Sinks.TestCorrelator" Version="4.0.0" />
     <!-- CQRS & Validation -->
     <PackageVersion Include="MediatR" Version="12.4.1" />
     <PackageVersion Include="FluentValidation" Version="11.11.0" />
@@ -45,6 +47,8 @@
     <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="9.0.0" />
     <PackageVersion Include="Testcontainers" Version="4.10.0" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.10.0" />
+    <!-- REQ-088 AC-3 (E16-S3): S3-compatible storage round-trip tests against in-process MinIO -->
+    <PackageVersion Include="Testcontainers.Minio" Version="4.10.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.2" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <!-- PDF Generation -->

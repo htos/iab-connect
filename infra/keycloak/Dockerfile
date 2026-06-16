@@ -41,6 +41,21 @@ ENV KC_DB=${KC_DB}
 # /opt/keycloak/providers/ are auto-discovered at build time. See story
 # Question #4 — first build attempt failed with "'disable-new-users' is an
 # unrecognized feature" exactly per the documented workaround branch.
-RUN /opt/keycloak/bin/kc.sh build
+# Bake health + metrics as BUILD-TIME options. In `--optimized` mode these
+# cannot be changed at runtime; setting KC_HEALTH_ENABLED/KC_METRICS_ENABLED as
+# Railway env vars on an image that did NOT bake them makes `start --optimized`
+# refuse the mismatched build-time values and crash-loop. Baking them here (to
+# the exact values E13-S2 sets at runtime) clears the mismatch AND exposes
+# `/health/ready` for the Railway healthcheck (setup guide §9 / RUNBOOK §6.1).
+# --cache=local disables Infinispan/JGroups clustering. Beta runs a single
+# replica; with the default clustered cache, each redeploy's new node finds the
+# previous (now-dead) node's JDBC_PING discovery row in the DB and blocks
+# startup retrying to reach it (SocketTimeoutException flood). local cache =
+# no JGroups = clean single-node startup. (build-time option, must be baked.)
+RUN /opt/keycloak/bin/kc.sh build --health-enabled=true --metrics-enabled=false --cache=local
 
-CMD ["start", "--optimized"]
+# --import-realm imports realms from /opt/keycloak/data/import on startup
+# (the realm copied at line 30). `start --optimized` alone does NOT import —
+# the local compose added --import-realm in its command, but Railway runs this
+# CMD verbatim. Idempotent: Keycloak skips realms that already exist on restart.
+CMD ["start", "--optimized", "--import-realm"]

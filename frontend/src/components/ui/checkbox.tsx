@@ -6,6 +6,11 @@ import { Check } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 
+// Accessibility caller contract (E7-S2 / REQ-056): Radix supplies the checkbox
+// role + keyboard behaviour, but it needs an accessible NAME. The caller MUST pair
+// it with a `<label htmlFor>` wired via `id`, or pass an `aria-label`/`aria-labelledby`
+// (next-intl key, never a hardcoded string). Focus ring uses the design-system token.
+// See docs/16 + docs/13 Accessibility.
 const Checkbox = React.forwardRef<
   React.ElementRef<typeof CheckboxPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>

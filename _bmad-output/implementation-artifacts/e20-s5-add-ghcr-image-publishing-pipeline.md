@@ -266,8 +266,20 @@ claude-opus-4-7[1m]
 - [x] [Review][Patch] **P3** No `concurrency:` group — two rapid pushes to `beta` would race the `:beta` moving tag (lit by whichever job finishes last, NOT necessarily by HEAD). Fix: added `concurrency: { group: build-images-${{ github.ref }}, cancel-in-progress: false }` at the workflow level. `cancel-in-progress` deliberately false so an in-flight publish completes — killing it mid-build would leave orphan layers in GHCR cache. `.github/workflows/build-images.yml:91-97`
 - [x] [Review][Defer] D1 `BUILD_DATE` has no defensive fallback for non-push events / re-runs — future-proofing
 - [x] [Review][Defer] D2 Build-args block sends frontend NEXT_PUBLIC_* to api/keycloak matrix entries too — harmless today, hardening later
-- [x] [Review][Defer] D3 `revision` + `created` OCI labels rely on `metadata-action` auto-population — verify at first run (already in `[!]` Task 7 queue)
+- [x] [Review][**Resolved**] D3 `revision` + `created` OCI labels rely on `metadata-action` auto-population — **VERIFIED via run #3 docker inspect (2026-06-01 18:31 UTC):** `revision=58382e8188ca9ecb8dd8114f2cf4494bea69a17c` (matches fix-commit SHA) + `created=2026-06-01T18:31:46.214Z` (proper ISO-8601 UTC). Bonus: `version=beta` auto-populated from branch ref. 9 OCI labels total (spec called for 7, image ships with 9).
 - Dismiss F12 `NEXT_PUBLIC_SOURCE_URL` hardcoded — intentional (canonical AGPL §13 identifier).
+
+### Post-Merge Verification Artifacts (2026-06-01)
+
+**[x]** **Task 5 — First successful workflow run:** [actions/runs/26774085850](https://github.com/htos/iab-connect/actions/runs/26774085850) — commit `58382e8` on branch `beta`. (Initial run on `beta` from ed5e8db failed with `Unable to resolve action docker/build-push-action@<bogus-SHA>` — fixed by switching 4 docker/* actions from invalid SHAs to floating `@vN` tags. See E20-S5-D4 defer + new defer E20-S5-D5 below.)
+
+**[x]** **Task 6 — Packages flipped to Public visibility:** all 3 (`iabc-api`, `iabc-web`, `iabc-keycloak`) made Public via GitHub UI by Harry.
+
+**[x]** **Task 7 — Anonymous `docker pull` + `docker inspect` confirmation:** `iabc-api:beta` pulled from a clean PowerShell session without `docker login`. `docker inspect ... --format '{{json .Config.Labels}}'` returned 9 OCI labels including `org.opencontainers.image.licenses=AGPL-3.0-or-later`, `org.opencontainers.image.source=https://github.com/htos/iab-connect`, `revision=58382e8...`, `created=2026-06-01T18:31:46.214Z`. Cross-story orthogonal-AC license-string parity now confirmed at 9 anchors and sourceUrl parity at 15 anchors — zero drift.
+
+### New defer surfaced during Task 5 execution
+
+**E20-S5-D5: workflow initial-run failure from unverified docker/* action SHA pins.** The first attempt at SHA-pinning the 4 docker/* actions (commit `682072f`, run #1 on beta = `actions/runs/26773377771`) used SHAs that the dev-agent could not verify at impl time (no `gh` CLI + restricted WebFetch on github.com api endpoints) and guessed digests. `docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c1c` resolved to "Unable to resolve action" at workflow parse time, taking down all 3 matrix jobs before any step ran. Fix in commit `58382e8`: switched the 4 docker/* actions to floating `@v3` / `@v5` / `@v6` major-version tags. `actions/checkout@<SHA>` kept SHA-pinned (verified working in dco.yml). **Action when picked up:** set up `.github/dependabot.yml` with `github-actions` ecosystem; Dependabot will propose SHA-pin PRs refreshing the comment + digest in lock-step. This closes the supply-chain gap of floating tags being silently re-pointable.
 
 ### Change Log
 

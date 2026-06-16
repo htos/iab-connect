@@ -1,8 +1,10 @@
 using FluentAssertions;
 using IabConnect.Application.Common;
 using IabConnect.Application.Events;
+using IabConnect.Application.Finance;
 using IabConnect.Domain.Common;
 using IabConnect.Domain.Events;
+using IabConnect.Domain.Finance;
 using IabConnect.Infrastructure.Email;
 using IabConnect.Infrastructure.Events;
 using Microsoft.Extensions.Logging;
@@ -21,6 +23,8 @@ public class EventNotificationServiceTests
     private readonly Mock<IEmailSender> _emailSender = new();
     private readonly Mock<ILogger<EventNotificationService>> _logger = new();
     private readonly Mock<ISystemSettingsRepository> _settingsRepository = new();
+    private readonly Mock<IInvoiceRepository> _invoiceRepository = new();
+    private readonly Mock<IFinanceProfileRepository> _financeProfileRepository = new();
     private readonly EventNotificationService _service;
 
     private static readonly SmtpSettings TestSmtpSettings = new()
@@ -37,7 +41,8 @@ public class EventNotificationServiceTests
             .Setup(r => r.GetSettingsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(SystemSettings.CreateDefault());
         _service = new EventNotificationService(
-            _emailSender.Object, options, _settingsRepository.Object, _logger.Object);
+            _emailSender.Object, options, _settingsRepository.Object,
+            _invoiceRepository.Object, _financeProfileRepository.Object, _logger.Object);
     }
 
     // --- SendWaitlistConfirmationAsync ---
@@ -94,6 +99,60 @@ public class EventNotificationServiceTests
             It.IsAny<string?>(),
             TestSmtpSettings.FromName,
             TestSmtpSettings.FromEmail,
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    // REQ-022 (E4-S3 / AC-2): paid-registration confirmation includes the fee + payment instructions.
+    [Fact]
+    public async Task SendRegistrationConfirmation_PaidRegistration_IncludesFeeAndPaymentInstructions()
+    {
+        var (registration, evt) = CreateTestData();
+
+        var invoice = Invoice.Create(
+            "INV-2026-0042", DateTime.UtcNow, DateTime.UtcNow.AddDays(30),
+            RecipientType.Other, null, registration.ParticipantName, null, 0m, null, "test",
+            eventRegistrationId: registration.Id);
+        invoice.AddItem("Workshop – Adult", 1, 25m);
+        _invoiceRepository
+            .Setup(r => r.GetByEventRegistrationIdAsync(registration.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(invoice);
+
+        var profile = FinanceProfile.Create(
+            Jurisdiction.CH, "CH", FinanceCurrency.CHF, 1, "Verein", "Street 1", "Zürich", "8000", "CH",
+            null, null, null, null, "Bank XYZ", "CH93 0076 2011 6238 5295 7", null);
+        _financeProfileRepository
+            .Setup(r => r.GetActiveProfileAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        await _service.SendRegistrationConfirmationAsync(registration, evt, TestContext.Current.CancellationToken);
+
+        _emailSender.Verify(s => s.SendAsync(
+            "guest@example.com",
+            It.IsAny<string>(),
+            It.Is<string>(html => html.Contains("CHF 25.00") && html.Contains("INV-2026-0042")
+                && html.Contains("CH93 0076 2011 6238 5295 7") && html.Contains("payment pending")),
+            It.Is<string?>(plain => plain != null && plain.Contains("CHF 25.00") && plain.Contains("INV-2026-0042")),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    // REQ-022 (E4-S3 / AC-2): free registration email is unchanged (no invoice → no fee block).
+    [Fact]
+    public async Task SendRegistrationConfirmation_FreeRegistration_HasNoPaymentSection()
+    {
+        var (registration, evt) = CreateTestData();
+        // _invoiceRepository default mock returns null → free path.
+
+        await _service.SendRegistrationConfirmationAsync(registration, evt, TestContext.Current.CancellationToken);
+
+        _emailSender.Verify(s => s.SendAsync(
+            "guest@example.com",
+            It.IsAny<string>(),
+            It.Is<string>(html => !html.Contains("payment pending") && !html.Contains("Fee:")),
+            It.IsAny<string?>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 

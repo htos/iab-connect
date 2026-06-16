@@ -105,3 +105,10 @@ docker-compose.override.yml
 #  Seed data (not for production)
 # ───────────────────────────────────────────────
 **/RealisticDataSeeder.cs
+
+# ───────────────────────────────────────────────
+#  Build / tooling cache + local agent worktrees
+# ───────────────────────────────────────────────
+*.lscache
+.claude/worktrees/
+docs/frontend-brownfield-refactoring-prompt.md

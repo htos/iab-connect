@@ -38,7 +38,7 @@ services:
       # Values are the local-dev secrets from infra/keycloak/realms/iabconnect-realm.json
       # (also in appsettings.Development.json) — appropriate because this overlay runs
       # against the LOCAL stack, not real Beta. Real Beta gets these from Railway env vars.
-      IABCONNECT_ADMIN_CLIENT_SECRET: "admin-service-secret-2026"
+      IABCONNECT_ADMIN_CLIENT_SECRET: "dev-admin-secret-change-me"
       IABCONNECT_FRONTEND_CLIENT_SECRET: "frontend-dev-secret-2026"
       FRONTEND_PUBLIC_URL: "http://localhost:3000"
       # E12-S3 D2 resolution (Epic-12 boundary review): wildcard

@@ -4,6 +4,33 @@ Items deferred during code reviews — not caused by the reviewed change, but wo
 
 ---
 
+## Deferred from: code review of Epic-15 boundary (2026-06-02)
+
+Triage: 3 review layers (Blind Hunter + Edge Case Hunter + Acceptance Auditor) over the full E15 close diff (e15-s1 through e15-s4, ~1970 lines across 13 changed files + 7 new files). 9 patches applied in this session (P1 pg_restore exit-code tightening, P2 AWS-CLI-absence in Section 15.4 + 15.5 → RustFS web console / `mc` paths, P3 0-byte pg_dump file Failed-mark, P4 default-DateTime S3 object skip+warn, P5 PostgresBackupService state-setter single-transition refactor, P6 IsTruncated bool-vs-bool? cleanup, P7 PruneOldBackupsJob S3Objects null guard, P8 global-uniqueness Hangfire job-id test, P9 DisablePayloadSigning documenting comment) + 6 defers (below) + 3 dismisses.
+
+- **E15-FT-1: PGDG GPG key fingerprint pinning in backend Dockerfile.** Current `backend/Dockerfile` runtime stage adds the PGDG apt repo via `curl ... ACCC4CF8.asc | gpg --dearmor` — unauthenticated. A MITM attack during image build could supply a malicious key which would then be trusted for all `postgresql-client-17` installs. **Trigger to flip:** before E19-S3 (production gate checklist) accepts the production-go-live; supply-chain hardening item. **Action when picked up:** either (a) hardcode the expected fingerprint and verify via `gpg --import-options show-only --import` before importing, OR (b) pre-download the key file and COPY it into the image, skipping the network fetch. Owner: E14-S1 (`secrets-audit-and-repo-cleanup`) or E19-S3.
+- **E15-FT-2: DevelopmentDataSeederGatingTests Assembly.Location on trimmed single-file publishes.** The test walks up from `Assembly.Location` to find `src/IabConnect.Api/Program.cs`. On a future single-file trimmed publish, `Assembly.Location` may be empty and the test throws InvalidOperationException at load time. **Trigger to flip:** if/when single-file or trimmed publishing is adopted for any test scenario. **Action when picked up:** add a path-override via env var (`PROGRAM_CS_PATH`) OR resolve via `AppContext.BaseDirectory` walk-up as a fallback.
+- **E15-FT-3: Local-cache prune race with mid-running pg_dump.** `PruneOldBackupsJob.PruneLocalCache` enumerates `Backup__Directory` and deletes files older than 30 days. If a backup job at 03:00 UTC is still running into 04:00 UTC (when the prune fires), a partial file could be considered for deletion by `LastWriteTimeUtc`. Mitigated today by the 1-hour gap between the two jobs and the fact that a stuck >1h pg_dump would surface other alerts. **Trigger to flip:** if E17-S4 alerting shows the gap is regularly tight. **Action when picked up:** add a `.tmp` extension to in-flight pg_dump output OR enumerate the directory once at job-start and snapshot the file list.
+- **E15-FT-4: Non-boolean `Database__AutoMigrate` env-var operator error.** Setting `Database__AutoMigrate=maybe` causes `.NET`'s config binder to throw on the bool parse. Operator-error category; framework already protects with a clear exception. **Action when picked up:** add explicit validation + a friendlier startup-failure message; or accept as-is per "operator error".
+- **E15-FT-5: `Directory.CreateDirectory` against a path that already exists as a regular file.** `PostgresBackupService` constructor calls `Directory.CreateDirectory(_backupDirectory)` when the path doesn't exist. If a file at the same path exists, the call throws IOException. Beta volume layout makes this extremely unlikely. **Action when picked up:** add `Path.GetAttributes` check for `FileAttributes.Directory` and a clearer error message.
+- **E15-FT-6: Section 11.2 cross-link verification in Section 16.7.** Section 16.7 references "Section 11.2" for Keycloak admin recovery. Verified to exist (E13-S4 patch P11 series). No action needed; tracked here as a "verified-during-retro" anchor for future doc-section reorg awareness.
+
+**Three dismisses:** PGDG key rotation breakage (build fails loudly = correct); single-file trimmed publish test failure (already fails loudly with clear error); future AWSSDK.S3 `bool → bool?` upgrade for IsTruncated (compile-time breakage will catch this).
+
+---
+
+## Forward-tracked from: bmad-create-story bulk refresh of Epic-13 (2026-06-01)
+
+These are items the dev-agent will NOT do during E13 execution but that MUST happen before Beta is opened to real users beyond Harry's trusted-tester circle. Tracked here (not in a story file) because they outlive any single E13 story.
+
+- **E13-FT-1: Switch outbound mail from Mailtrap Sandbox to a real SMTP provider.** Decided at E13 create-story (2026-06-01): keep ADR-018 Mailtrap-Sandbox for the initial Beta deploy so the Beta wiring is verified end-to-end without deliverability risk. **Trigger to flip:** before the first non-Harry tester is invited (so they can actually receive password-reset, invoice, dunning, and volunteer-reminder mails). **Provider candidates per ADR-018 / E19-S4:** Brevo (free tier 300/day, EU jurisdiction), Postmark (transactional-mail focused, paid), Postal on Hetzner (sovereign, self-hosted, more ops). Provider choice deferred to E19-S4 (`document-postal-smtp-migration-plan`), which authors the migration plan; E14-S2 or a new story does the actual variable swap on Railway. **Variables to change** (set on `api` Railway service, Sealed): `Smtp__Host`, `Smtp__Port`, `Smtp__Username`, `Smtp__Password`, `Smtp__EnableSsl`, `Smtp__FromEmail` (move from `noreply@iabconnect.app` placeholder to the real verified-sender address). SPF + DKIM records for the chosen From: domain must be in DNS BEFORE the flip. **Verification:** send a test password-reset to an external mailbox; check inbox + spam folder; verify SPF=pass / DKIM=pass / DMARC=aligned in the message headers.
+- **E13-FT-2: Custom-domain CNAMEs for the Railway public hostnames.** Per E13-S3 Q1: Beta stays on `*.up.railway.app` Railway-assigned hostnames initially. **Trigger to flip:** when the `iabconnect.app` (or chosen) domain is registered AND DNS is under maintainer control. E19-S1 (`add-custom-domain-runbook-entry`) is the canonical story; folding into E13 was explicitly declined at create-story time. Variables to update: every `${{<service>.RAILWAY_PUBLIC_DOMAIN}}` reference in `api`/`web`/`keycloak` env vars, plus the 12 `_BETA` GHA repo variables that bake into the next `web` image build. Plan for a coordinated change (one push, one image rebuild, one env-var swap, one Railway redeploy of all 3 image services).
+- **E13-FT-3: HSTS max-age bump from default 30 days to ≥ 6 months + `includeSubDomains` + `preload`.** Per E13-S3 Q2: the live Beta deploy starts with `app.UseHsts()` default (30 days, no subdomains). **Trigger to flip:** before the first non-Harry tester uses the Beta (so their browser's HSTS cache reflects the long lifetime). Owner: E14-S2 (`review-security-headers-and-https`). Code change: in [backend/src/IabConnect.Api/DependencyInjection.cs](backend/src/IabConnect.Api/DependencyInjection.cs) before line 257 (`app.UseHsts()`), add `services.AddHsts(o => { o.MaxAge = TimeSpan.FromDays(365); o.IncludeSubDomains = true; o.Preload = true; });`. Coordination: do NOT submit to https://hstspreload.org until production custom domain is in place AND maintainer is confident no subdomain serves cleartext (preload-list inclusion is hard to reverse).
+- **E13-FT-4: Pin `rustfs/rustfs` to a specific digest instead of `:latest`.** Per E13-S1 AC-2: initial deploy used `rustfs/rustfs:latest` with the digest captured at deploy time. **Trigger to flip:** anytime — E13-S1 should already record the resolved digest in [docs/14_beta_railway_setup.md](docs/14_beta_railway_setup.md). Action: change the Railway `rustfs` service image source from `rustfs/rustfs:latest` to `rustfs/rustfs@sha256:<captured-digest>`. Reason: supply-chain hygiene per ADR-014 deferred-work; protects against an unexpected upstream `:latest` change silently breaking the Beta. Re-pinning after an intentional RustFS upgrade is a 30-second Railway edit.
+- **E13-FT-5: Retire the env-var-seeded `KEYCLOAK_ADMIN` master account.** Per E13-S2 AC-4: Beta boots with `KEYCLOAK_ADMIN`/`KEYCLOAK_ADMIN_PASSWORD` seeded in Railway Sealed vars. After Harry creates a personal admin account (E13-S2 Task 3 augmentation, post-decision 2026-06-01), the env-var admin remains in the database as a parallel credential. **Trigger to flip:** anytime after E13-S2 Task 3 confirms the personal admin works. Action: delete the env-var admin user from the Keycloak Admin Console master realm; remove the two env vars from Railway. Reason: anyone with read access to Railway's Sealed values can otherwise log in as a master-realm admin.
+
+---
+
 ## Deferred from: code review of Epic-20 boundary (2026-06-01)
 
 Triage: 3 review layers (Blind Hunter + Edge Case Hunter + Acceptance Auditor) over the full E20 close diff (e20-s1 through e20-s5, ~1207 lines covering 4 markdown files, 2 GitHub workflows, 5 backend source + 2 tests, 4 frontend source + 2 tests). 19 findings → 4 patches applied in this session (P1 NOTICE.md QuestPDF license correction, P2 DCO `--no-merges`, P3 build-images.yml concurrency group, P4 TestWebApplicationFactory clears BUILD_SHA/BUILD_DATE for CI-host independence) + 11 defers (below) + 4 dismisses.
@@ -29,7 +56,8 @@ Triage: 3 review layers (Blind Hunter + Edge Case Hunter + Acceptance Auditor) o
 
 - **E20-S5-D1: BUILD_DATE has no defensive fallback for non-push events.** `${{ github.event.head_commit.timestamp }}` is empty on workflow re-runs that lose context or future `workflow_dispatch` trigger additions. **Action when picked up:** change to `${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}` or add a `date -u +%FT%TZ` shell step before build.
 - **E20-S5-D2: Build-args block sends frontend NEXT_PUBLIC_* values to api/keycloak matrix entries too.** Currently harmless because `backend/Dockerfile` and `infra/keycloak/Dockerfile` don't declare those ARG names. Risk: a future Dockerfile change silently consumes frontend config. **Action when picked up:** restructure matrix to declare `build-args` per matrix entry (via `matrix.include.build_args` multi-line YAML string).
-- **E20-S5-D3: `revision` + `created` OCI labels rely on `metadata-action` auto-population.** Spec called them out explicitly. Auto-population is correct behavior of `docker/metadata-action` v5.7.0, but should be verified at first publish via `docker inspect`. **Action when picked up:** during E20-S5 Task 7 human-verify, capture the JSON of `Config.Labels` and confirm 7 keys present (incl. `revision` matching `github.sha` and `created` matching `head_commit.timestamp`).
+- **E20-S5-D3: `revision` + `created` OCI labels rely on `metadata-action` auto-population.** Spec called them out explicitly. Auto-population is correct behavior of `docker/metadata-action` v5.x, but should be verified at first publish via `docker inspect`. **RESOLVED 2026-06-01 18:31 UTC** via Task 7 manual verify: `docker inspect ghcr.io/htos/iabc-api:beta` returned 9 OCI labels (spec required 7) including `revision=58382e8188ca9ecb8dd8114f2cf4494bea69a17c` (matches fix-commit SHA) + `created=2026-06-01T18:31:46.214Z` (proper ISO-8601 UTC). Plus bonus `version=beta` auto-populated from branch ref. No drift across the 9-anchor license-string parity check or 15-anchor sourceUrl parity check.
+- **E20-S5-D5: workflow initial-run failure from unverified docker/* action SHA pins (NEW from Task 5 execution).** Initial workflow runs on beta and main (commits ed5e8db merge of 682072f, runs `actions/runs/26773377771` + `actions/runs/26773415494`) failed with `Unable to resolve action docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c1c` at workflow-parse time — the dev-agent had guessed 4 docker/* action SHAs without API verification. Fix commit `58382e8` switched the 4 actions to floating `@v3`/`@v5`/`@v6` major-version tags; `actions/checkout` kept its proven SHA pin. Workflow run #3 (`actions/runs/26774085850`) on beta then succeeded, producing all 3 images with correct OCI labels (verified Task 7 above). **Action when picked up:** add `.github/dependabot.yml` configuring `github-actions` ecosystem; Dependabot proposes SHA-pin PRs refreshing the comment + digest in lock-step. Closes the supply-chain gap of floating tags being silently re-pointable.
 
 ### Dismisses (recorded for completeness)
 
@@ -584,3 +612,304 @@ Switching between base `docker compose up` (volume-mounted SPI path, dev realm) 
 
 `curl -sf` treats non-2xx as failure → AC-9 command's literal exit code would be non-zero. 403/501 with valid `x-request-id` does prove reachability (AC-9 closing sentence's intent). **Action when picked up:** change AC-9 smoke target to a S3-API endpoint that returns 200 (e.g., MinIO-compatible `/minio/health/live` if RustFS exposes one); retrospective AC update.
 
+
+## Deferred from: code review of Epic-13 boundary (2026-06-01)
+
+Five entries logged at Epic-13 boundary review. All are forward-looking concerns surfaced by the
+adversarial review (Blind Hunter + Edge Case Hunter + Acceptance Auditor) that don't block
+E13's `done` flip but should be addressed in their target stories.
+
+### E13-FT-6: PostgresBackupService uses `docker exec` — incompatible with Railway runtime
+
+[Source: backend/src/IabConnect.Infrastructure/Backup/PostgresBackupService.cs:34-59; E13 boundary review Edge Case Hunter finding E5, 2026-06-01]
+
+`PostgresBackupService` defaults `_dockerContainer = "iabconnect-postgres"` and shells out via `Process.Start("docker", "exec ... pg_dump ...")`. On Railway the `api` container has no Docker daemon, no `docker` CLI, and no host-side container to exec into. **Action when picked up:** refactor to a process-direct `pg_dump` against `${{postgres-app.RAILWAY_PRIVATE_DOMAIN}}:${{postgres-app.PGPORT}}` using `Npgsql.NpgsqlConnection` or a `pg_dump` binary baked into the api image. Targets **E15-S3** (daily encrypted Postgres backup to RustFS) — should not be flipped to ready-for-dev until this refactor is scoped.
+
+### E13-FT-7: Frontend in-image HEALTHCHECK `/` traverses middleware module-gating
+
+[Source: frontend/Dockerfile:121-122, frontend/src/middleware.ts:97-122; E13 boundary review Edge Case Hunter finding E7, 2026-06-01]
+
+The frontend Docker `HEALTHCHECK` probes `/` (root path). The middleware rewrites `/` to `/site-unavailable` when `public_view` module is disabled OR caches an empty module-map fallback on api-unavailability. Both paths return 200, so the healthcheck "passes" even when the real landing page is broken. **Action when picked up:** either point the in-image HEALTHCHECK at `/api/health` (same as Railway-platform probe — but loses the belt-and-suspenders intent) OR add a dedicated `/api/health/full` route that probes the module map + landing-page render. Targets **E14-S3** (observability hardening) or **E17-S4** (external uptime monitoring).
+
+### E13-FT-8: `KC_PROXY=edge` deprecated in Keycloak 27.x in favor of `KC_PROXY_HEADERS`
+
+[Source: docs/14_beta_railway_setup.md Section 5.3 row 2; E13 boundary review Edge Case Hunter finding E12, 2026-06-01]
+
+Keycloak 26 still supports `KC_PROXY=edge` (with deprecation warning); Keycloak 27+ removes it in favor of `KC_PROXY_HEADERS=xforwarded` and `KC_HOSTNAME_STRICT_HTTPS=true`. Beta runs 26.5.2 (`infra/keycloak/Dockerfile:20`) so this is not blocking. **Action when picked up:** at the next Keycloak major-version upgrade, update Section 5.3 to drop `KC_PROXY` in favor of `KC_PROXY_HEADERS=xforwarded` + `KC_HOSTNAME_STRICT_HTTPS=true`. Targets a future Keycloak-bump story (no concrete owner yet — flag during Keycloak 27 evaluation).
+
+### E13-FT-9: Vitest cleanup convention (A35) for non-React tests
+
+[Source: frontend/src/app/api/health/route.test.ts:5,12; E13 boundary review Blind Hunter H13 + Edge Case Hunter E9, 2026-06-01]
+
+A35 mandates `afterEach(cleanup)` on every Testing-Library-using test. The `/api/health` route.test.ts imports `@testing-library/react`'s `cleanup` even though no React tree is rendered — the convention applies but contributes nothing in this case + costs JSDOM startup. **Action when picked up:** revisit A35 to scope it to tests that actually call `render()`. Until then the noop import is the safer-default per convention parity. Targets **next E14/E17 retro** as a process refinement; no story-level action.
+
+### E13-FT-10: DEC-1 was auto-resolved without AskUserQuestion (A32 procedural soft-flag) — **CLOSED 2026-06-01 by A41 Path B**
+
+[Source: e13-s4 Dev Agent Record Debug Log; E13 boundary review Acceptance Auditor A32 flag, 2026-06-01]
+
+A32 specifies "Decision-Resolution with Manual-Verify Hand-off" — Decision-Needed findings should surface via `AskUserQuestion` once before proceeding. DEC-1 (frontend `/api/health` Option A vs B vs C) was auto-resolved Option A in the same session per user "no stopping just straight forwards, implement them full" directive + the story file's own Option A recommendation.
+
+**Resolution (2026-06-01, Epic-13 retro):** A41 Path B chosen — A32 now has an explicit autonomous-mode escape clause documented in `project-context.md` requiring all three preconditions (pre-declared autonomous-mode + story-recommended option + dev-agent records (a)/(b)/(c) in Debug Log). DEC-1 resolution stands; no rework. Future sessions know the rule.
+
+---
+
+## Deferred from: code review of Epic-17 boundary (2026-06-02)
+
+Epic-17 closed Monitoring/Logging/Health (S1 Console-only Serilog + S2 CorrelationId structured logs + S4 external uptime monitoring). 3-layer adversarial boundary review produced 39 findings (12 Blind Hunter + 15 Edge Case Hunter + 12 Acceptance Auditor). **14 patches APPLIED** in-session (P1 status footers + P2 checkbox convention + P3 anchor + P4 §23 cite + P5/E2 A36 InMemoryCollection populated + P8 refresh-note + P11 §27.6 heading + P12 §27.3 reframe + E1 Logging:LogLevel parity + E3 HealthReady brace-walking + A1 Quality-Gates AC-1 evidence + A6 AC-9 sub-item expansion + A7 AC-6 sub-item enumeration + A9 A52 note + A10 Task 5.3 [!]). 14 findings deferred (below). 11 dismissed (also below).
+
+### E17-FT-1: Section anchor parsing fragile to heading-text changes
+
+[Source: E17 boundary review Edge Case Hunter E4 + Blind Hunter P3, 2026-06-02]
+
+Several E17 tests locate doc/14 sections via `IndexOf("## 25. Serilog Console-only sink")` / similar exact substrings. A future story renaming a section heading silently breaks the tests. **Action when picked up:** refactor to a SectionAnchorRegistry helper that maintains a single canonical mapping (section number → heading-text canonical form), used by all doc-vs-code A31 invariant tests. Heading renames then become a one-place edit. Targets a chore-commit between E17 and E19.
+
+### E17-FT-2: Path resolution fragile to `dotnet test --output` and CI containerization
+
+[Source: E17 boundary review Edge Case Hunter E9, 2026-06-02]
+
+Every E17 test file uses 5/6-level `..` path traversal from `AppContext.BaseDirectory`. Works for standard `dotnet test` but fails under `--output ./custom-output`, `dotnet publish` of test project, or VSTest with `/Platform:x86` (extra subfolder). **Action when picked up:** replace `..` traversal with an ancestor-walking helper that searches for `IabConnect.sln` and resolves from that anchor. Targets the next CI hardening epic; not blocking pre-Railway-deploy.
+
+### E17-FT-3: Regex evasion via Serilog wrapper sinks (Async, Logger, Conditional)
+
+[Source: E17 boundary review Edge Case Hunter E5 + E6, 2026-06-02]
+
+`BootstrapSerilogConfigurationTests` uses `\.WriteTo\.File\s*\(` regex. A future `WriteTo.Async(c => c.File(...))` for low-latency startup buffering evades the regex (the inner `c.File(` is preceded by `c.`, not `.WriteTo.`). Same risk for `.WriteTo.Logger(lc => lc.WriteTo.File(...))` and `AuditTo.File(...)`. **Action when picked up:** broaden the bootstrap regex to match `\bFile\s*\(` anywhere within the LoggerConfiguration→CreateBootstrapLogger chain; add assertions against `.WriteTo.Async(` / `.WriteTo.Logger(` / `.WriteTo.Conditional(`. Also extend AC-6 to detect a Testing-branch `Log.Logger = new LoggerConfiguration(...)` reassignment. Trigger: next story that touches Serilog setup OR Serilog 5.x upgrade.
+
+### E17-FT-4: Layering / contract A31 invariant tests are text-coarse
+
+[Source: E17 boundary review Edge Case Hunter E14 + Acceptance Auditor A8, 2026-06-02]
+
+The current `LayeringMatrix_MatchesDocs14Section25_AC9` checks the section contains each environment label as a substring + `\bFile\b` count ≥1 anywhere. A doc that misstates "Beta = Console + File" or "Development = Console only" still passes. **Action when picked up:** extract the Section 25.2 markdown table rows via regex (`| Development | ... | Console + File | ... |`), parse each Effective-WriteTo cell, assert byte-for-byte parity. Same hardening for `Docs14Section26_MatchesRuntimeSources_AC11` and `HealthReady_PathReferencesParity_AC10`. Current coverage catches whole-section deletion (most likely regression).
+
+### E17-FT-5: `ReadWriteToSinkNames` ignores bare-string WriteTo + Using array
+
+[Source: E17 boundary review Edge Case Hunter E10, 2026-06-02]
+
+Serilog allows `"Using": ["Serilog.Sinks.File"], "WriteTo": ["File"]`. Current helper filters on `JsonValueKind.Object && HasProperty("Name")` and skips bare-string entries, returning empty list. AC-4's `NotContain("File")` passes on a file-sink-active config. **Action when picked up:** extend helper to handle `JsonValueKind.String` entries + enumerate `Serilog:Using` and assert non-Development overlays don't list `Serilog.Sinks.File`. Trigger: if any future story refactors the Serilog config to bare-string form.
+
+### E17-FT-6: Concurrent-isolation test (AC-7) missing ContainKey guard
+
+[Source: E17 boundary review Edge Case Hunter E7 + Acceptance Auditor A2, 2026-06-02]
+
+`LogContext_IsolatesCorrelationIdAcrossConcurrentTasks_AC7` accesses `evt.Properties["CorrelationId"]` directly. A regression making PushProperty a no-op throws KeyNotFoundException instead of a clear assertion failure. **Action when picked up:** add explicit `.Should().ContainKey("CorrelationId")` before the indexer access. Trigger: Serilog 5.x upgrade that may change LogContext semantics.
+
+### E17-FT-7: A36 doc-vs-code parity tightening for log levels
+
+[Source: E17 boundary review Acceptance Auditor A4, 2026-06-02]
+
+`Docs14Section26_MatchesRuntimeSources_AC11` asserts Section 26 contains literal strings `Information` and `Warning` — but doesn't extract specific values from `appsettings.json` and assert they appear in matching contexts within Section 26.3. **Action when picked up:** extract each log-level value from `appsettings.json` and assert each appears within a 100-char window of the matching key name in Section 26.3. Trigger: when Section 26 grows beyond current shape or log-level overrides change.
+
+### E17-FT-8: AC-3 (E17-S4) response-writer 503 runtime path not exercised
+
+[Source: E17 boundary review Acceptance Auditor A5, 2026-06-02]
+
+`HealthReady_ResponseWriter_PropagatesHealthReportStatus_AC3` is code-audit-only. The 503-on-unhealthy behavior is wired by ASP.NET healthcheck framework dispatch. **Action when picked up after A49 Serilog re-entrancy is fixed:** add a runtime assertion using `WebApplicationFactory<Program>` that triggers a stub `IHealthCheck` returning Unhealthy and inspects `HttpResponse.StatusCode == 503`. Currently blocked by A49.
+
+### E17-FT-9: ExceptionHandlingMiddleware AC-9 weak negative assertion
+
+[Source: E17 boundary review Acceptance Auditor A3, 2026-06-02]
+
+`Pipeline_ExceptionHandlingMiddleware_DoesNotStripLogContext_AC9` asserts absence of `LogContext.Reset` — but Serilog has no `Reset()` method; the real scope-clear APIs are `LogContext.Suspend()` and re-pushing same key. **Action when picked up:** expand negative assertion list to include `LogContext.Suspend` plus future Serilog 4.x scope-clear APIs. Trigger: next Serilog API surface change.
+
+### E17-FT-10: `Pipeline_UseSerilogRequestLogging_IsRegistered_AC8` is file-wide scope
+
+[Source: E17 boundary review Edge Case Hunter E11, 2026-06-02]
+
+Current AC-8 counts `app.UseSerilogRequestLogging(` anywhere in DependencyInjection.cs. A future alternate-pipeline method adding it elsewhere fails the `Count == 1` assertion. Conversely, dropping it from UseApiPipeline but adding it elsewhere passes. **Action when picked up:** use the same `UseApiPipeline` body isolation pattern as `Pipeline_CorrelationIdMiddleware_BeforeExceptionAndRequestLogging_AC4` before counting. Trigger: if a second pipeline method is ever introduced.
+
+### E17-FT-11: Empty-string `X-Correlation-Id` request header — edge case for AC-2
+
+[Source: E17 boundary review Edge Case Hunter E13, 2026-06-02]
+
+A client sending `X-Correlation-Id: ` (empty after colon) results in `Headers[...].FirstOrDefault()` returning `""`. The middleware's null check does NOT fall through to `Guid.NewGuid()` because `""` is not null — response header echoes empty string. **Action when picked up:** decide whether empty-string-then-Guid is the intended contract. If no, change CorrelationIdMiddleware.cs:16 to `string.IsNullOrWhiteSpace(...)` and add `Middleware_RejectsEmptyIncomingHeader` regression test. Trigger: if any operator reports CorrelationId tracing producing empty-string entries.
+
+### E17-FT-12: Dockerfile audit surface widening (`install -d`, `WORKDIR /app/logs`)
+
+[Source: E17 boundary review Edge Case Hunter E15, 2026-06-02]
+
+Current Dockerfile_HasNoLogsDirectoryCreation_AC7 covers VOLUME / mkdir / COPY. A future `RUN install -d /app/logs`, `WORKDIR /app/logs`, or `RUN chown app:app /app/logs` slips through. **Action when picked up:** add patterns for `install\s+-d\b[^\n]*\blogs\b`, `WORKDIR\b[^\n]*/logs(\b|/|$)`, `chown\b[^\n]*\blogs\b`. Trigger: any Dockerfile change touching the /app filesystem layout.
+
+### E17-FT-13: Tighten cross-section anchor cites in docs/14 §25-27
+
+[Source: E17 boundary review Blind Hunter P4 partial-patch follow-up, 2026-06-02]
+
+§27.1 was patched from a wrong sub-section anchor to the whole-§23 anchor. The broader pattern (citing whole-section anchors when sub-section would be more useful) appears elsewhere in §25-27. **Action when picked up:** audit all cross-section cites in the three new sections; tighten to specific sub-section anchors where applicable. Trigger: next docs hygiene pass.
+
+### E17-FT-14: AC-1 (E17-S2) canonical test should assert LogContext push directly
+
+[Source: E17 boundary review Acceptance Auditor A1, 2026-06-02 — partially patched via Quality-Gates evidence update]
+
+Patched Quality-Gates row cites `_AC1 + _AC1b` together; structurally cleaner fix is to move the TestCorrelator probe (in `_AC1b`) INTO `_AC1`. **Action when picked up:** refactor `_AC1` to assert LogContext directly via TestCorrelator; remove `_AC1b` as duplicate; update Quality-Gates row. Trigger: next refactor pass through E17 tests.
+
+### Dismissed findings (not deferred)
+
+- P7 (Section 25.2 Testing-row clarification) — additional precondition framing is polish; row text is accurate.
+- P9 (test line-count drift in story File Lists) — line-count nits don't affect functionality.
+- P10 (BootstrapSerilogConfigurationTests includes Dockerfile assertion) — class-vs-scope cosmetic.
+- A2 (AC-3 HttpContext.Items parity) — AC-3 scope is "32-char hex contract on response header"; AC-2 covers the three-surface round-trip.
+- A11 (AC-2 LogContext probe missing) — same as A2 dismissal; `_AC1b` already covers the LogContext probe.
+- A12 (AC-10 .DisableRateLimiting parity is one-sided) — Section 23↔Section 27 parity sufficiently covered by `Docs14Section27_DocumentsRateLimitExemption_AndUnauthenticated_AC10b` + path-parity; further byte-presence assertion in Section 23 is polish.
+- E8 (DevelopmentOverlay path StartWith) — current `logs/` check is operationally adequate; cross-platform path concern is theoretical.
+- E12 (HealthReady regex lookahead) — added `.DisableRateLimiting()` positive assertion at the end mitigates the regex-ordering edge case.
+- P6 (Section 26.4 sample curl path) — `/api/v1/members` is an illustrative repro example; a fork operator substitutes their own route.
+- P9 line-count + P10 class-naming are pure cosmetic.
+
+---
+
+## Deferred from: code review of Epic-4 (Event Monetization, REQ-022) (2026-06-06)
+
+3-layer adversarial epic-boundary review (Blind Hunter + Edge Case Hunter + Acceptance Auditor) over the full E4 code diff (36 code files, ~3250 insertions). **2 boundary patches APPLIED** (not deferred):
+- **P1** — `PaidRegistrationService` + `EventRegistrationCancellationService`: wrapped the POST-COMMIT audit `LogActionAsync` in try/catch. The registration+invoice (or cancellation) is already durably committed before the audit fires, so an audit-sink failure must not surface as a 500 — which would invite a client retry that double-registers/double-invoices (the public/member endpoints dedup by email/user → 409, but a 500 path is still a hazard).
+- **P2** — public fee-categories endpoint (`EventFeeEndpoints.GetPublicFeeCategories`): added `.RequireModule("finance")` so when Finance is disabled the page receives NO fee categories and gracefully falls through to free registration, instead of offering a fee the paid branch then rejects with 403 (S3 AC-8 consistent degradation).
+
+Build + targeted suites re-ran green after patches (Api 226, Infra PaidRegistration+cancellation 11, email 9).
+
+### E4-FT-1: Waitlist promotion never raises an invoice for paid events [HIGH]
+
+[Source: Blind Hunter + Edge Case Hunter, 2026-06-06 — known follow-up acknowledged in E4-S2 completion notes]
+
+Neither the manual `PromoteFromWaitlist` endpoint nor the cancellation-driven promotion in `EventRegistrationCancellationService` calls `IPaidRegistrationService` — a waitlisted registrant on a PAID event who is later promoted becomes `Confirmed` with **no invoice and no payment-pending email**. `TryHandlePaidRegistrationAsync` deliberately skips waitlisted (`registration.IsWaitlisted → return null`) with the comment "no invoice until they are promoted," but the promotion paths were never wired to raise one. **Action when picked up:** on promotion of a paid event registration, resolve the applicable fee category and raise the invoice via the coordinator (within the promotion transaction); resolve the "which category" question (a straight-to-waitlist registration carried no `feeCategoryId`). Trigger: before paid events use the waitlist in anger.
+
+### E4-FT-2: Member-registration fee/payment UI is missing — only the public path was built [HIGH]
+
+[Source: Acceptance Auditor (S3 AC-1/AC-3) + Edge Case Hunter, 2026-06-06]
+
+S3 AC-1 requires the *member* registration surface to render applicable fee categories (Everyone/MembersOnly) and AC-3 the member-facing paid/pending states; only the anonymous public page was built (it fetches the public endpoint hard-coded to `AppliesTo(isMember:false)` → Everyone/PublicOnly only). The backend `RegisterMember` resolves `isMember:true` categories and will return `400 FeeCategorySelectionRequired` for a multi-tier member event — a state no UI provides a selector for, so member registration of such events is unfulfillable; a single MembersOnly tier auto-charges with no fee shown. S3 QGT marks AC-1/AC-3 ✅ — that **overstates coverage** (Completion Notes acknowledge the deferral, but the ✅ should be downgraded). **Action when picked up:** add a member-scoped fee read path (member-applicable endpoint or fees on the member event DTO) + a fee selector on the member registration surface; correct the S3 QGT. Note: S1 AC-4 gates the admin GET fee-categories to `RequireEventFeeManager`, so plain members have no read path today (the data-layer half of this gap).
+
+### E4-FT-3: `EventFeeCategory.MaxQuantity` (per-category sales cap) is never enforced [MED]
+
+[Source: Blind Hunter + Edge Case Hunter, 2026-06-06]
+
+`MaxQuantity` is collected, validated (`>=1`), persisted, exposed on the DTO, and editable in the admin form — but never checked at registration time. A category capped at N can be sold to a registration with `NumberOfGuests > N` and oversold without limit across registrations. The field is currently decorative. **Action when picked up:** enforce the cap in `TryHandlePaidRegistrationAsync`/coordinator (sum sold quantity for the category vs `MaxQuantity`, reject/waitlist on overflow). Trigger: when capped tiers (early-bird, limited seats) are actually used.
+
+### E4-FT-4: Currency-mismatch reject is skipped when there is no active FinanceProfile [MED]
+
+[Source: Blind Hunter + Edge Case Hunter, 2026-06-06]
+
+`PaidRegistrationService` guards `if (profile is not null && profile.Currency != feeCategory.Currency) throw`. With no active profile (Finance enabled but unconfigured — reachable), the guard is bypassed: a EUR fee proceeds, the invoice carries no per-row currency, `GetNextInvoiceNumberAsync` uses the sentinel profile id, and downstream display falls back to CHF — a EUR fee shown/"billed" as CHF. **Action when picked up:** require an active FinanceProfile for paid registration (clean reject when absent) OR persist the currency on the invoice. Trigger: multi-currency / first Finance-enabled-but-unconfigured deployment.
+
+### E4-FT-5: Roster payment stat cards are page-scoped but presented as event-wide totals [MED]
+
+[Source: Edge Case Hunter, 2026-06-06]
+
+`registrations/page.tsx` computes `paymentSummary` (paid/pending counts + amounts) from the loaded page only (`pageSize = 20`), but the cards read as event totals (`amountPaid`/`amountOwed`). For any event with >20 paid registrations the "amount owed" figure silently undercounts. The backend `GetRegistrations` only enriches the current page, so no event-wide payment total is available to the UI. **Action when picked up:** add an event-wide payment aggregate (extend the statistics endpoint) and bind the cards to it, or relabel the cards to "this page." Trigger: events with >20 paid registrations.
+
+### E4-FT-6: Roster/email currency derived from the current active profile, not the invoice [MED]
+
+[Source: Blind Hunter + Edge Case Hunter, 2026-06-06 — architectural]
+
+Both the roster (`GetRegistrations`) and the email (`BuildPaymentInfoAsync`) label amounts with the *current* active `FinanceProfile.Currency`, not the currency in force when the invoice was raised. Root cause: `Invoice` has no per-row currency. If the profile currency ever changes, historical paid-registration amounts relabel (numeric total unchanged). **Action when picked up:** persist currency on `Invoice` (or the registration link) and read it back. Trigger: any currency change / multi-currency support (couples with E4-FT-4).
+
+### E4-FT-7: AC-8 `Module:finance`-off paid-branch 403 has no end-to-end test [MED]
+
+[Source: Acceptance Auditor (S2 AC-8), 2026-06-06 — honestly marked [~] in the S2 QGT]
+
+The in-handler `IsEnabledAsync(ModuleKeys.Finance) → 403` guard (and now the P2 public-endpoint finance gate) is verified by build + DI-harness wiring, but no WebApplicationFactory test exercises a disabled-Finance paid registration returning 403 while the free branch still works. **Action when picked up:** add a WAF integration test toggling the Finance module. Trigger: next API integration-test pass.
+
+### E4-FT-8: Zero-amount fee category produces an inconsistent cross-surface state [MED]
+
+[Source: Edge Case Hunter, 2026-06-06]
+
+`Amount = 0` is allowed by the validator. A chosen zero-amount category creates a real (Total 0) invoice → roster shows "Pending / CHF 0.00", the public success banner shows "Amount due: CHF 0.00 — payment pending", but the confirmation email suppresses the payment section (`invoice.Total <= 0`). **Action when picked up:** decide the semantics — treat a zero-amount applicable category as the free path (no invoice), or render zero consistently across all three surfaces. Trigger: if zero-priced "register but track" tiers are wanted.
+
+### E4-FT-9: Low-severity polish cluster [LOW]
+
+[Source: Blind Hunter + Edge Case Hunter, 2026-06-06]
+
+Batch for a future hygiene pass: (a) frontend `decimalPlaces` mis-detects exponential-notation amounts (`String(1e-7)` has no `.`) so the >2-decimal client zod check is bypassable for extreme magnitudes — backend `decimal.Round` still catches it (defense-in-depth only); (b) `EventFeeCategoryRepository.ActiveNameExistsAsync` is case-insensitive but the DB filtered-unique index on `(event_id, name)` is case-sensitive — concurrent "adult"/"Adult" creates can both pass (TOCTOU); (c) `EventFeeCategory.IsAvailableAt` upper bound is inclusive (`[from, until]`) — unstated semantic; (d) the fees-form zod availability-window refine compares local-input strings while the server compares converted UTC — can disagree across a DST boundary; (e) `getEventFeeCategories(includeInactive:true)` never writes the query param (relies on backend default `true`) — fragile contract; (f) a fee category deactivated/expired mid-session surfaces the raw backend 400 string verbatim on submit.
+
+### Dismissed findings (not deferred) — Epic-4 review
+
+- **Soft-deleted Draft invoice mislabeled on the roster/email** (Blind, Med) — `InvoiceConfiguration` declares `HasQueryFilter(i => !i.IsDeleted)`, so `GetByEventRegistrationId(s)Async` (querying `_context.Invoices`; AsNoTracking does not disable the filter) already exclude soft-deleted invoices. Non-issue.
+- **No idempotency → duplicate submits double-invoice** (Blind, Med) — the public (`ExistsByEmailAsync`) and member (`ExistsAsync(eventId,userId)`) handlers already return 409 on a duplicate, blocking re-registration before the coordinator runs.
+- **Member-via-public `isMember` mismatch applies MembersOnly to a non-member** (Blind, Med) — `RegisterMember` requires `MemberId` for the non-waitlist (paid) branch, so `isMember:true` always pairs with a present `MemberId` → `RecipientType.Member`; paths are consistent. (The real member gap is E4-FT-2.)
+- **DEC-3 Infrastructure-coordinator pivot, S1 standalone-entity pivot, DEC-2 ISO-string currency, regression guards (Event.Cost/RecipientType untouched), i18n parity/no-hi.json, invoice-derived email** — Acceptance Auditor confirmed all acceptable-as-built and documented; the `Amount (18,2)` ↔ InvoiceItem precision parity holds.
+
+## Epic-5 (Communication Automation) — deferred follow-ups (from epic-5-boundary-review-2026-06-06)
+
+- **E5-FT-1** — Bind time-relative triggers (`EventUpcoming`/`MembershipRenewalDue`) to real event/renewal records: per-event/per-renewal occurrence keys + a due-window query, replacing the v1 once-per-recipient segment broadcast. v1 `AutomationTriggerEvaluator` emits one occurrence per resolved recipient with a date-free key (so it never daily-resends); `OffsetDays` is metadata only until this lands.
+- **E5-FT-2** — DEC-3 / A31-invariant-1 consolidation: refactor `EmailCampaignEndpoints.LoadRecipientsForCampaign/GetMembersForSegment` + `EmailCampaignJobService.LoadRecipientsForCampaign` onto `IRecipientResolutionService` so recipient resolution is truly one implementation. (The dynamic-segment criteria evaluator `MemberSegmentCriteria` is already single-source after S1; the campaign send-path helpers are not. Note the resolver intentionally resolves members only — external newsletter subscribers are out of scope for the consent/preference-keyed automation path.)
+- **E5-FT-3** — `GetAutomationsQuery` loads the entire `EmailTemplate` table per list request to render the template-name column; replace with a targeted id→name lookup scoped to the page's template ids.
+- **E5-FT-4** — `AutomationForm` swallows template/segment load failures into empty dropdowns with no surfaced error; surface a load-error message.
+- **E5-FT-5** — Per-definition isolation in `AutomationExecutionService.ExecuteDueAsync`: a throwing definition (corrupt dynamic-segment `CriteriaJson`, DB timeout, etc.) aborts the whole pass and starves later definitions; wrap each definition dispatch in try/catch so one bad definition doesn't block the rest (still rethrow/log for whole-run infra failures).
+- **E5-FT-6** — `RecipientResolutionService.PreviewAsync` materialises the full recipient set in memory to count + sample; for large memberships switch to a `CountAsync` + bounded `Take` projection.
+- **E5-FT-7** — Channel-preference write/eligibility accept numeric enum strings (`"1"`) via `Enum.TryParse`; normalise PUT input to the canonical channel name (reject numerics) so a malformed client can't store an unintended preference.
+
+### Dismissed findings (not deferred) — Epic-5 review
+- **`ChannelPreferenceEndpoints.GetUserId` uses `FindFirst("sub")`** (Blind, Med) — correct on this project: `MapInboundClaims=false` preserves `sub`; the shared `GetUserId()` + `PrivacyEndpoints` read it the same way. False positive (no project context).
+- **`MemberJoined` welcomes the whole active segment on activation** (Blind, Med) — accepted v1 semantics: once-ever per recipient, bounded, non-repeating. Real event-binding is E5-FT-1.
+- **Channel-preference GET advertises availability without consent** (Blind, Med) — by design: channel preference (medium) is orthogonal to per-journey consent (purpose); the card shows provider availability, the send path applies consent.
+
+## Epic-6 (Finance Planning) — deferred follow-ups (from epic-6-boundary-review-2026-06-07)
+
+- **E6-FT-1** — Mode-aware actuals source for the budget-vs-actual (Soll/Ist) report. S3-DEC-1 v1 sums actuals from `Transaction` only (correct for the default/Beta `SimpleCash` mode). For `DoubleEntry`-mode installations, spend is booked via `JournalEntryLine`; add a mode-aware actuals path (Transaction in SimpleCash, JournalEntryLine in DoubleEntry) so the report is non-zero there. Until then a DoubleEntry installation sees actuals = 0 (disclosed v1 boundary; the report UI could also surface a "SimpleCash actuals only" note).
+- **E6-FT-2** — Map a concurrent duplicate-budget insert to 409 instead of 500. `CreateBudgetCommandHandler` pre-checks uniqueness then inserts; two concurrent creates for the same `(ActivityAreaId, FiscalPeriodId)` both pass the pre-check and the second trips the filtered-unique-index → `DbUpdateException` → 500. Translate the unique-violation to a clean 409 at the repository/Infrastructure boundary (not in the Application handler — keep EF Core out of Application).
+- **E6-FT-3** — Budget-currency vs profile-currency consistency in the Soll/Ist report. The report labels each row with the budget's stored currency while actuals are implicitly in the active `FinanceProfile` currency. Latent while the module is single-currency (budgets default to the profile currency); harden by either pinning budgets to the profile currency or converting/flagging mixed-currency rows.
+
+### Dismissed findings (not deferred) — Epic-6 review
+- **Budget double-save** (repo AddAsync + handler UnitOfWork) — mirrors the canonical `AccountRepository`; second save is a no-op. Non-issue.
+- **Budget FK OnDelete.Restrict** — `ActivityArea` soft-deletes + `FiscalPeriod` is not hard-deleted, so the FK is never violated; Restrict correctly prevents orphaning a budget.
+- **N+1 area lookup in the report handler** — bounded by cost-centers-per-period (single digits); acceptable.
+- **JournalEntryLine edit round-trip** — `JournalEntryLineDto` exposes `ActivityAreaId` (+ `MapToDto`), so the new journal-line selector preserves an existing line's cost center on edit. Verified, no data-loss.
+
+## Epic-7 (Accessibility & Localization) — deferred follow-ups
+
+- **E7-FT-1** — Net-new Blog admin UI with a content-language select. E7-S4 added `ContentLanguage` to `BlogPost` (domain/EF/migration/DTOs) and exposes it via the admin API + the public blog page, but there is no `(dashboard)/blog` admin frontend (blog is API-only), so the blog content language is currently only settable via the admin API. Building a blog admin UI is out of scope for "add language metadata" (DEC-1=A, A65 multi-surface honesty). When a blog admin UI is built, add a content-language `<select>` mirroring the event forms.
+
+## Epic-8 (External API & Webhooks, REQ-058) — deferred follow-ups
+
+- **E8-FT-1** (Low) — `WebhookDeliveryService` calls `subscription.RecordFailure` per *retry attempt*, so the auto-pause threshold (default 15) counts attempts rather than distinct failed events. Safe (a persistently-down receiver pauses sooner) but the threshold semantics could be documented/tuned, or counted per-delivery instead of per-attempt.
+- **E8-FT-2** (Low) — The SSRF guard fails-closed on a DNS-resolution exception and does NOT rethrow (no Hangfire retry), so a transient DNS outage permanently fails that delivery. Safe-by-default; a transient-vs-confirmed distinction (retry on resolution error, block only on a confirmed private result) would improve availability (see A75).
+- **E8-FT-3** (Low) — `payment.received` is wired only on `MarkPaymentAsPaidCommandHandler` (A68 degrade-to-less). Other paid transitions (`CreatePaymentCommandHandler`, bank-import match → `Invoice.MarkAsPaid`) are candidate future hooks once a real consumer needs them.
+- **E8-FT-4** (Low) — The external read API exposes only FUTURE published events (`GetPublicEventsAsync` bounds `EndDate >= now`), matching the public calendar. A `from`/`to` query parameter could surface past events for integrations that need history.
+
+## Deferred from: code review of Epic E21 (2026-06-07)
+
+- **D1 (E21-S3)** — Out-of-union supplier status renders Badge `default` + the raw i18n key. Pre-existing gap (the old `getStatusBadge` had the same), not caused by the refactor. Add a status fallback (and consider runtime validation at the API boundary) in a later pass. [frontend/src/features/suppliers/components/supplier-status-badge.tsx]
+- **D2 (E21-S5)** — ESLint import-boundary rules match only the `@/` alias; relative cross-zone imports (`../../features/...`) are not caught. Documented as intentional scope. Add relative-path patterns (or `import/no-restricted-paths`) in a later hardening pass. [frontend/eslint.config.mjs]
+- **D3 (E21-S3)** — Feature page-chrome brand colours (CTA / links / focus rings / spinner) still ship raw `orange-*`/`red-*` classes; incremental token adoption deferred per DEC-2 (only the status badge is tokenised so far). Fold into the per-feature token-adoption pass as the program progresses. [suppliers-page-content.tsx, suppliers-filter-bar.tsx, suppliers-table.tsx]
+- **D4 (E21-S1)** — Broaden the S1 Q1 visual-smoke check to `<body bg-background>` + every shadcn token consumer (the new token layer resolves app-wide), not just the 3 Dialog consumers. Verification task for the live-Beta/visual walkthrough. [frontend/src/app/globals.css]
+
+## Deferred from: code review of Epic-22 (2026-06-07)
+
+- **D1 [Low] 200-with-`data:null` detail GET → silent blank page.** `use-sponsor.ts`/`use-supplier.ts` `return result.data!`; a 200 with a null/non-JSON body writes null into the cache and `sponsor-detail`/`supplier-detail` render nothing (no error/not-found). Preserved from the god-pages. Fix: treat null-data-on-200 as a not-found/error state.
+- **D2 [Low] Mutation 2xx with `data:null` no-ops the cache write.** `use-*-detail-mutations.ts` `writeDetail` guards `if (data)`; a successful-but-empty mutation response leaves the view stale with no alert. Preserved. Fix: on success-with-no-data, invalidate the detail query as a fallback.
+- **D3 [Low] `toLocaleDateString` on an invalid/null date renders "Invalid Date".** `sponsor-detail.tsx` (agreement dates), `*-contract-links.tsx` (`createdAt`, no null guard). Truthiness guard only. Pre-existing. Fix: validate the date before formatting; em-dash fallback.
+- **D4 [Low] Detail status `<select>` with an out-of-enum status shows no matching option.** `sponsor-detail.tsx`/`supplier-detail.tsx` 4 hardcoded options. Type-narrowed, runtime-unguarded. Pre-existing. Fix: render the raw value as a disabled fallback option.
+- **D5 [Low] Concurrent inline mutation + status-change race (last-write-wins).** All detail mutations `setQueryData(detail(id), fullSnapshot)` with no merge; the slower endpoint's pre-mutation snapshot can drop the other's effect until reload. Identical race in the old single-`setSponsor` god-page. Fix: invalidate instead of overwrite, or merge by field.
+- **D6 [Low] `supplier-detail` retains `text-blue-600` links vs the "no new blue links" design standard.** Copied verbatim in the behaviour-preserving migration. Align in a future theming chore (alongside the richer semantic status tokens add-on).
+
+## Deferred from: code review of Epic-23 (2026-06-07)
+
+- **CR-D1 [Med→accepted] Client-side email-format validation removed on member create/edit.** God-pages used `<input type="email" required>`; the slice form is `noValidate` + Zod without `.email()` (MANDATED by E23-S2 AC-10 + the program-wide E22 form recipe; backend still validates). Candidate for a future program-wide form-validation story (would also revisit suppliers/sponsors).
+- **CR-D2 [Med] `useSegment`/`useSegmentMembers` error surfacing.** `useSegment` resolves null for both 404 and generic GET error, so a transient detail refetch error (after add/remove invalidation) can flip the loaded view to `segments.notFound`; `useSegmentMembers` errors fall through to the empty state with no banner. God-page kept last-good data + an inline banner. Fix: throw on non-404 in `useSegment` (keep last-good data via TanStack) + surface the members-query error.
+- **CR-D3 [Low] Segment-detail member typeahead lost-update race.** No AbortController/sequence guard (unlike the edit-member dup re-check). Pre-existing (god-page had none). Fix: add an AbortController + cancelled guard to `runSearch`.
+- **CR-D4 [Low] Cascade-dismiss non-atomic.** Partial `Promise.all` failure leaves some C(N,2) pairs dismissed with no rollback; idempotency-tolerant on retry. Pre-existing. Fix: report partial progress / sequential-with-resume, or accept idempotent retry.
+- **CR-D5 [Low] Member-detail status/type selects disable independently.** God-page used one shared `statusUpdating` flag (both disabled during either PUT); the slice disables each by its own mutation, allowing a concurrent type change during a status PUT. Fix: disable both on `changeStatus.isPending || changeType.isPending`.
+- **CR-D6 [Low] Member-edit header subtitle is static.** Bound to the cached `member` name, not the live-typed form value (god-page bound to `formData`). Cosmetic. Fix: read the form's watched name for the subtitle.
+- **CR-D7 [Low] Whitespace-only required fields now rejected** (Zod `.trim().min(1)` vs HTML5 `required`). Minor tightening, arguably an improvement; program-wide recipe. No action unless parity is required.
+
+## Deferred from: code review of Epic-24 Events feature-slice (2026-06-08)
+
+Epic-boundary review (3 adversarial layers: Blind Hunter / Edge Case Hunter / Acceptance Auditor) over e24-s1/s2/s3. Verdict: APPROVED — behaviour-preserving, 659 tests green, tsc/eslint/prettier clean, no contract/route/i18n changes. All findings below are non-blocking follow-ups.
+
+- **E24-CR1 [Med] Fees vs Volunteers disabled-query surface inconsistency.** For an *authenticated out-of-role* user, the new fees page (`features/events/components/fees/event-fees-content.tsx`) now renders the `permissionDenied` alert (TanStack disabled query → `isLoading=false`), whereas the original god-page showed the loading skeleton forever; the volunteers page (`event-volunteers-content.tsx`) deliberately PRESERVED the skeleton-forever quirk. The two sub-pages are now inconsistent and neither path is test-covered. Decide one direction (preferably the `permissionDenied` alert as the better UX) and apply to both, with a test. The original "skeleton-forever" was a latent bug.
+- **E24-CR2 [Low] Detail event-load gate widened.** `event-detail.tsx` enables `useEvent(id, isAuthenticated && !authLoading)`; the god-page (and `event-edit-content.tsx`) gate on `!!accessToken`. Theoretical token-race could fire a GET with no Bearer → 401 → loadFailed view. Align the detail gate to `!!accessToken` for consistency.
+- **E24-CR3 [Low] Extra background detail GET after publish/unpublish/cancel.** `use-event-detail-mutations.ts` does `setQueryData(detail)` then `invalidateQueries({ queryKey: eventsKeys.all })`; since `all` is a prefix of `detail(id)`, it triggers an extra background `GET /events/{id}` the god-page never issued. Cosmetic/network-only. Optionally invalidate list/statistics keys narrowly instead of `all`.
+- **E24-CR4 [Low] Dead `EventStatusBadge` has wrong i18n namespace.** `features/events/components/event-status-badge.tsx` calls `useTranslations()` (root) + `t('status.*')`, but all real call sites use `useTranslations('events')`. The component is currently unconsumed (only `statusColors`/`eventStatusColor` are used). Either fix the namespace or delete the unused component.
+- **E24-CR5 [Low] Unused slice exports (dead code).** Five registration hooks (`useEventRegistrations`, `useEventWaitlist`, `useMyRegistrations`, `useEventRegistrationStatistics`, `useRegistrationMutations`), the `signUp`/`withdraw` members of `useVolunteerMutations`, and the `getMyWaitlistPosition` slice api fn have no component callers (detail/registrations call the api fns imperatively). Either adopt them or prune to reduce surface.
+- **E24-CR6 [Low] `features → app` back-dependency.** `event-detail.tsx` imports `VolunteerSelfSignupSection` from `@/app/(dashboard)/events/[id]/...`. Boundary-legal (the E21-S5 rule only blocks cross-`@/features/*`) but inverts the app→features direction; one events component lives outside the slice. Relocate `VolunteerSelfSignupSection` into the slice (it may keep its legal `@/lib/services/events` import) — note it was retained on the service because `useApiClient` cannot express `ApiResult.errorBody.errorCode` (4 volunteer conflict branches). A `useApiClient` error-body enhancement would also unblock fully emptying `events.ts`.
+- **E24-CR7 [Low/Med] 300ms list search debounce not pinned at page level.** The final `events/page.test.tsx` has no fake-timer test for the debounce (positive filter-param wiring is covered at the api-unit level in `events-api.test.ts`). Add a page-level debounce timing test to close the S1 AC-4 coverage gap.
+
+## Deferred from: code review of Epic-29 Smaller-Features feature-slice (2026-06-12)
+
+Epic-boundary review (3 adversarial layers: Blind Hunter / Edge Case Hunter / Acceptance Auditor) over e29-s1..s4 (documents / board-documents list+detail / profile+security). Verdict: APPROVED — behaviour-preserving, 839 tests green, tsc/eslint/prettier clean, `next build` green, shared `lib/services/documents.ts` + `lib/api/{privacy,members,users}.ts` untouched. 5 patches applied (P1-P5: upload/version/tag error-path input-preservation + deterministic-404 no-retry + profile PUT-body de-trim). All findings below are non-blocking Low follow-ups.
+
+- **E29-CR-D1 [Low] Session-revoke transient state differs from HEAD.** Optimistic row removal moved from success-time (god-page `.then` after await) to mutate-time (`use-revoke-session.ts` `onMutate` `setQueryData`), so the per-row "revoking…" disabled label effectively never shows, and on a revoke ERROR there's a brief remove-then-rollback flicker (god-page never removed on error). End state identical; S1 net green. Fix if exact parity matters: remove the row in `onSuccess` (invalidation-free `setQueryData`) instead of `onMutate`, dropping the rollback.
+- **E29-CR-D2 [Low] Unauthorized user briefly sees content before redirect.** TanStack v5 reports `isLoading=false` for a disabled query, so a Member-only user on a board page (or an unauth user mid-redirect) falls through to the `documents.notFound` view (detail) / empty main (list) for one render before the `router.push` effect runs. No data leak (queries are `enabled`-gated). Fix: gate the spinner on `authLoading || !authorized || query.isLoading`.
+- **E29-CR-D3 [Low] Concurrent revoke of two different rows can mis-rollback.** `session-list.tsx` only disables the SAME row being revoked; a second different row can be revoked while the first is in flight. `revokingSessionId` holds only the last `mutate`'s id (spinner label reverts mid-flight), and interleaved `onMutate` snapshots can, on one error, restore a list that re-adds the other row. Pre-existing single-`revokingSessionId` limitation; no revoke test exists. Fix: `disabled={!!revokingSessionId}` on all revoke buttons (or key optimistic state per-id) + a concurrent-revoke test.
+- **E29-CR-D4 [Low] Consent success toast can show when the post-toggle refetch fails.** `use-toggle-consent.ts` fires `invalidateQueries` (not awaited) and the component's `onSuccess` sets the success toast synchronously; so toggle-succeeds + refetch-fails → SUCCESS toast with a stale checkbox, whereas the god-page (`await fetchConsents()` in the same try) showed the ERROR toast. A76-branch divergence; self-heals on next interaction. Fix if strict A76 parity matters: await the refetch in the mutation and reject on its failure.
+
+## Deferred from: code review of e31-s1/e31-s2 (2026-06-13)
+
+- **2 pre-existing `react-hooks/incompatible-library` eslint warnings** in `frontend/src/features/admin-users/components/admin-user-form.tsx` (RHF `watch()` / React Compiler advisory). The file is byte-identical to HEAD — these warnings pre-date Epic-31 (surfaced only by a whole-tree `eslint`, not by the per-story changed-file gate). Fold into a future `watch()`→`useWatch({ control })` cleanup (cf. A102 library-idiom convergence). Not introduced by E31; the E31 changed-file set is 0-problem.

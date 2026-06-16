@@ -13,7 +13,10 @@ public class KeycloakHealthCheck(IConfiguration configuration, IHttpClientFactor
     {
         try
         {
-            var authority = configuration["Authentication:Authority"];
+            // Read the SAME key the JWT bearer auth is configured from ("Keycloak:Authority");
+            // the legacy "Authentication:Authority" key is never populated, so the probe always
+            // reported Degraded — turning /health/detail into a 503 even when Keycloak is reachable.
+            var authority = configuration["Keycloak:Authority"];
             if (string.IsNullOrEmpty(authority))
                 return HealthCheckResult.Degraded("Keycloak authority not configured.");
 

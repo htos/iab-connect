@@ -6,6 +6,7 @@
     "save": "Speichern",
     "saving": "Speichern...",
     "cancel": "Abbrechen",
+    "close": "Schließen",
     "delete": "Löschen",
     "edit": "Bearbeiten",
     "back": "Zurück",
@@ -251,7 +252,20 @@
     "consentEventNotifications": "Event-Benachrichtigungen",
     "consentEventNotificationsDesc": "Benachrichtigungen über kommende Veranstaltungen erhalten.",
     "consentSaved": "Einstellungen gespeichert.",
-    "consentError": "Fehler beim Speichern der Einstellungen."
+    "consentError": "Fehler beim Speichern der Einstellungen.",
+    "channelPreferences": {
+      "title": "Kanal-Präferenzen",
+      "description": "Über welchen Kanal möchten Sie Benachrichtigungen erhalten?",
+      "saved": "Präferenz gespeichert.",
+      "error": "Präferenz konnte nicht gespeichert werden.",
+      "loadError": "Präferenz konnte nicht geladen werden.",
+      "comingSoon": "(bald verfügbar)",
+      "channel": {
+        "Email": "E-Mail",
+        "Sms": "SMS",
+        "WhatsApp": "WhatsApp"
+      }
+    }
   },
   "members": {
     "title": "Mitgliederverwaltung",
@@ -267,6 +281,7 @@
     "allStatuses": "Alle Status",
     "allTypes": "Alle Typen",
     "memberNotFound": "Mitglied nicht gefunden",
+    "confirmDeleteTitle": "Mitglied löschen?",
     "deleteConfirm": "Möchtest du {name} wirklich löschen?",
     "editMember": "Mitglied bearbeiten",
     "newMember": "Neues Mitglied",
@@ -435,7 +450,8 @@
   "language": {
     "select": "Sprache",
     "en": "English",
-    "de": "Deutsch"
+    "de": "Deutsch",
+    "hi": "हिन्दी"
   },
   "users": {
     "backToAdmin": "Zurück zur Administration",
@@ -554,6 +570,10 @@
       "title": "Schnellaktionen",
       "newCampaign": "Neue Kampagne erstellen",
       "newTemplate": "Neue Vorlage erstellen"
+    },
+    "automations": {
+      "title": "Automationen",
+      "description": "Wiederkehrende Nachrichten automatisch versenden"
     }
   },
   "admin": {
@@ -710,6 +730,68 @@
       "refreshing": "Wird geprüft...",
       "autoRefreshInfo": "Die Statusanzeige wird automatisch alle 30 Sekunden aktualisiert.",
       "fetchError": "Systemstatus konnte nicht abgerufen werden."
+    },
+    "apiClients": {
+      "title": "API-Zugänge",
+      "description": "Erstellen und widerrufen Sie API-Anmeldedaten für externe Integrationen. Das Secret wird nur einmal angezeigt.",
+      "create": "Zugang erstellen",
+      "name": "Name",
+      "namePlaceholder": "z. B. Partner-Integration",
+      "scopes": "Berechtigungen (Scopes)",
+      "status": "Status",
+      "active": "Aktiv",
+      "revoked": "Widerrufen",
+      "lastUsed": "Zuletzt verwendet",
+      "never": "Nie",
+      "revoke": "Widerrufen",
+      "confirmRevoke": "Diesen API-Zugang wirklich widerrufen? Er kann sich danach nicht mehr authentifizieren.",
+      "createDialogTitle": "Neuen API-Zugang erstellen",
+      "save": "Erstellen",
+      "secretOnceWarning": "Dieses Secret wird nur einmal angezeigt — kopieren Sie es jetzt.",
+      "copy": "Kopieren",
+      "copied": "Kopiert",
+      "dismissSecret": "Schließen",
+      "noClients": "Noch keine API-Zugänge vorhanden.",
+      "createFailed": "Der API-Zugang konnte nicht erstellt werden."
+    },
+    "webhooks": {
+      "title": "Webhooks",
+      "description": "Konfigurieren Sie Webhook-Abonnements für ausgewählte Ereignisse. Das Signing-Secret wird nur einmal angezeigt.",
+      "create": "Webhook erstellen",
+      "name": "Name",
+      "namePlaceholder": "z. B. Partner-Benachrichtigung",
+      "targetUrl": "Ziel-URL",
+      "events": "Ereignisse",
+      "status": "Status",
+      "active": "Aktiv",
+      "disabled": "Deaktiviert",
+      "edit": "Bearbeiten",
+      "enable": "Aktivieren",
+      "disable": "Deaktivieren",
+      "delete": "Löschen",
+      "confirmDelete": "Dieses Webhook-Abonnement wirklich löschen?",
+      "createDialogTitle": "Neues Webhook-Abonnement",
+      "editDialogTitle": "Webhook-Abonnement bearbeiten",
+      "save": "Speichern",
+      "saveFailed": "Das Webhook-Abonnement konnte nicht gespeichert werden.",
+      "secretOnceWarning": "Dieses Signing-Secret wird nur einmal angezeigt — kopieren Sie es jetzt.",
+      "copy": "Kopieren",
+      "copied": "Kopiert",
+      "dismissSecret": "Schließen",
+      "noWebhooks": "Noch keine Webhook-Abonnements vorhanden.",
+      "deliveriesLink": "Zustellungen"
+    },
+    "webhookDeliveries": {
+      "title": "Webhook-Zustellungen",
+      "description": "Verlauf der Webhook-Zustellungen mit Status, Antwortcode und Versuchen. Nutzdaten werden nicht angezeigt.",
+      "noDeliveries": "Noch keine Zustellungen vorhanden.",
+      "event": "Ereignis",
+      "target": "Ziel",
+      "status": "Status",
+      "code": "Code",
+      "attempts": "Versuche",
+      "lastAttempt": "Letzter Versuch",
+      "pageOf": "Seite {page} von {total}"
     }
   },
   "events": {
@@ -727,6 +809,8 @@
     "filterByStatus": "Status",
     "allCategories": "Alle Kategorien",
     "allStatuses": "Alle Status",
+    "gridView": "Rasteransicht",
+    "listView": "Listenansicht",
     "showPastEvents": "Vergangene Events anzeigen",
     "editEvent": "Event bearbeiten",
     "new": {
@@ -770,6 +854,8 @@
       "description": "Beschreibung",
       "descriptionPlaceholder": "Ausführliche Beschreibung des Events...",
       "category": "Kategorie",
+      "contentLanguage": "Inhaltssprache",
+      "contentLanguageDefault": "Standard (Organisationssprache)",
       "visibility": "Sichtbarkeit",
       "tags": "Tags (kommagetrennt)",
       "tagsPlaceholder": "z.B. Festival, Kultur, Familie",
@@ -937,6 +1023,11 @@
       "specialRequirementsPlaceholder": "z.B. Barrierefreiheit, Ernährung...",
       "requirements": "Anforderungen",
       "registeredAt": "Angemeldet am",
+      "payment": "Zahlung",
+      "paymentPaid": "Bezahlt",
+      "paymentPending": "Ausstehend",
+      "amountPaid": "Eingegangen",
+      "amountOwed": "Offen",
       "ticket": "Ticket",
       "showAllRegistrations": "Alle Anmeldungen anzeigen",
       "deadlinePassed": "Anmeldeschluss überschritten",
@@ -952,6 +1043,7 @@
       "waitlistEnabled": "Warteliste aktiviert",
       "open": "Anmeldung offen",
       "closed": "Anmeldung geschlossen",
+      "notPublishedYet": "Noch nicht veröffentlicht",
       "deadline": "Anmeldeschluss",
       "registerForEvent": "Anmeldung für {eventTitle}",
       "fillFormToRegister": "Füllen Sie das Formular aus, um sich anzumelden.",
@@ -1093,6 +1185,52 @@
         "capacityMin": "Plätze müssen mindestens 1 sein.",
         "descriptionTooLong": "Beschreibung darf höchstens 1000 Zeichen lang sein.",
         "notesTooLong": "Notizen dürfen höchstens 1000 Zeichen lang sein."
+      }
+    },
+    "fees": {
+      "pageTitle": "Teilnahmegebühren",
+      "pageDescription": "Gebührenkategorien für die kostenpflichtige Anmeldung verwalten",
+      "manageFees": "Gebühren",
+      "backToEvent": "Zurück zum Event",
+      "newCategory": "Neue Gebührenkategorie",
+      "editCategory": "Gebührenkategorie bearbeiten",
+      "dialogDescription": "Lege Name, Betrag, Währung und Gültigkeit der Gebühr fest.",
+      "name": "Name",
+      "amount": "Betrag",
+      "currency": "Währung",
+      "applicability": "Gültig für",
+      "availability": "Verfügbarkeit",
+      "availableFrom": "Verfügbar ab (optional)",
+      "availableUntil": "Verfügbar bis (optional)",
+      "alwaysAvailable": "Immer verfügbar",
+      "maxQuantity": "Max. Anzahl (optional)",
+      "description": "Beschreibung (optional)",
+      "pricePreview": "Vorschau: {price}",
+      "applicabilityOptions": {
+        "Everyone": "Alle",
+        "MembersOnly": "Nur Mitglieder",
+        "PublicOnly": "Nur Öffentlichkeit"
+      },
+      "noCategories": "Noch keine Gebührenkategorien. Ohne Kategorie ist die Anmeldung kostenlos.",
+      "edit": "Bearbeiten",
+      "deactivate": "Deaktivieren",
+      "retired": "Zurückgezogen",
+      "confirmDeactivate": "Diese Gebührenkategorie wirklich deaktivieren? Bestehende Anmeldungen bleiben unberührt.",
+      "permissionDenied": "Du hast keine Berechtigung, Gebühren zu verwalten.",
+      "loadFailed": "Die Gebührenkategorien konnten nicht geladen werden.",
+      "saveFailed": "Speichern fehlgeschlagen.",
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "validation": {
+        "nameRequired": "Name ist erforderlich.",
+        "nameTooLong": "Name darf höchstens 100 Zeichen lang sein.",
+        "amountInvalid": "Bitte gib einen gültigen Betrag ein.",
+        "amountMin": "Der Betrag darf nicht negativ sein.",
+        "amountDecimals": "Der Betrag darf höchstens 2 Dezimalstellen haben.",
+        "currencyInvalid": "Bitte wähle eine gültige Währung.",
+        "maxQuantityMin": "Die maximale Anzahl muss mindestens 1 sein.",
+        "untilAfterFrom": "Das Ende muss nach dem Beginn liegen.",
+        "descriptionTooLong": "Beschreibung darf höchstens 500 Zeichen lang sein."
       }
     }
   },
@@ -1261,6 +1399,7 @@
       "subject": "Betreffzeile",
       "subjectPlaceholder": "z.B. Willkommen bei '{{organizationName}}'",
       "htmlContent": "HTML Inhalt",
+      "editorPlaceholder": "E-Mail-Inhalt eingeben...",
       "textContent": "Text Inhalt",
       "variables": "Variablen",
       "variableNamePlaceholder": "Variablenname (z.B. name, eventTitle)",
@@ -1454,6 +1593,7 @@
       "resetFinanceError": "Fehler beim Löschen der Finanzdaten."
     },
     "backToSettings": "Zurück zu Finanzeinstellungen",
+    "backToFinance": "Zurück zu Finanzen",
     "totalIncome": "Gesamteinnahmen",
     "totalExpense": "Gesamtausgaben",
     "balance": "Saldo",
@@ -2179,6 +2319,52 @@
     "noFinanceProfile": "Bitte erstelle zuerst ein Finanzprofil unter Einstellungen.",
     "goToSettings": "Zu den Finanzeinstellungen"
   },
+  "budgets": {
+    "title": "Budgets",
+    "subtitle": "Budgetbeträge pro Kostenstelle und Geschäftsperiode planen (REQ-044)",
+    "addBudget": "Budget hinzufügen",
+    "editBudget": "Budget bearbeiten",
+    "costCenter": "Kostenstelle",
+    "selectCostCenter": "Kostenstelle auswählen",
+    "period": "Periode",
+    "selectPeriod": "Periode auswählen",
+    "amount": "Betrag",
+    "currency": "Währung",
+    "notes": "Notizen",
+    "notesPlaceholder": "Optionale Notiz",
+    "filterByCostCenter": "Nach Kostenstelle filtern",
+    "filterByPeriod": "Nach Periode filtern",
+    "allCostCenters": "Alle Kostenstellen",
+    "allPeriods": "Alle Perioden",
+    "noBudgets": "Keine Budgets",
+    "noBudgetsDescription": "Es wurden noch keine Budgets erfasst.",
+    "createSuccess": "Budget erstellt.",
+    "updateSuccess": "Budget aktualisiert.",
+    "deleteSuccess": "Budget gelöscht.",
+    "loadError": "Budgets konnten nicht geladen werden.",
+    "saveError": "Budget konnte nicht gespeichert werden.",
+    "deleteError": "Budget konnte nicht gelöscht werden."
+  },
+  "budgetVsActual": {
+    "title": "Soll/Ist-Vergleich",
+    "subtitle": "Budget gegen Ist-Kosten pro Kostenstelle und Geschäftsperiode (REQ-044)",
+    "period": "Periode",
+    "selectPeriod": "Periode auswählen",
+    "costCenter": "Kostenstelle",
+    "allCostCenters": "Alle Kostenstellen",
+    "soll": "Soll (Budget)",
+    "ist": "Ist (Kosten)",
+    "variance": "Abweichung",
+    "variancePercent": "Abweichung %",
+    "generate": "Auswerten",
+    "generating": "Wird ausgewertet …",
+    "exportCsv": "CSV exportieren",
+    "exporting": "Exportiert …",
+    "noData": "Keine Daten",
+    "noDataDescription": "Für diese Periode gibt es keine Budgets oder Ist-Kosten.",
+    "loadError": "Bericht konnte nicht geladen werden.",
+    "exportError": "Export fehlgeschlagen."
+  },
   "activityAreas": {
     "title": "Tätigkeitsbereiche",
     "subtitle": "Tätigkeitsbereiche und Projekttags für die Finanzverfolgung verwalten",
@@ -2373,6 +2559,12 @@
     "registrationSuccess": "Erfolgreich angemeldet!",
     "registrationSuccessDetail": "Sie erhalten in Kürze eine Bestätigungs-E-Mail.",
     "registrationError": "Anmeldung fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    "fee": {
+      "sectionTitle": "Teilnahmegebühr",
+      "choose": "Gebühr auswählen",
+      "paymentPendingNotice": "Zahlung ausstehend — bitte per Banküberweisung oder vor Ort am Event bezahlen. Eine Online-Zahlung ist nicht möglich.",
+      "amountDue": "Zu zahlen: {amount}"
+    },
     "formName": "Name",
     "formEmail": "E-Mail",
     "formPhone": "Telefon (optional)",
@@ -2619,5 +2811,102 @@
     "title": "Lizenz",
     "body": "IAB Connect ist unter der GNU Affero General Public License Version 3.0 oder neuer lizenziert. Den vollständigen Lizenztext finden Sie unten oder auf der offiziellen FSF-Website.",
     "viewExternal": "AGPL-3.0 Lizenztext auf gnu.org ansehen"
+  },
+  "automations": {
+    "title": "Automationen",
+    "subtitle": "Wiederkehrende Nachrichten automatisch versenden",
+    "totalAutomations": "{count} Automation(en)",
+    "newAutomation": "Neue Automation",
+    "createTitle": "Automation erstellen",
+    "editTitle": "Automation bearbeiten",
+    "search": "Automationen suchen…",
+    "status": "Status",
+    "allStatuses": "Alle Status",
+    "statusDraft": "Entwurf",
+    "statusActive": "Aktiv",
+    "statusPaused": "Pausiert",
+    "statusDisabled": "Deaktiviert",
+    "noAutomationsFound": "Keine Automationen gefunden",
+    "loading": "Wird geladen…",
+    "loadError": "Automationen konnten nicht geladen werden",
+    "genericError": "Ein Fehler ist aufgetreten",
+    "saving": "Wird gespeichert…",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "previous": "Zurück",
+    "next": "Weiter",
+    "pagination": "Seite {current} von {total}",
+    "backToList": "Zurück zur Übersicht",
+    "actions": "Aktionen",
+    "activate": "Aktivieren",
+    "pause": "Pausieren",
+    "resume": "Fortsetzen",
+    "disable": "Deaktivieren",
+    "edit": "Bearbeiten",
+    "recentRuns": "Letzte Ausführungen",
+    "noRunsYet": "Noch keine Ausführungen",
+    "previewRecipients": "Empfänger anzeigen",
+    "previewing": "Wird berechnet…",
+    "previewCount": "{count} Empfänger",
+    "table": {
+      "name": "Name",
+      "trigger": "Auslöser",
+      "template": "Vorlage",
+      "created": "Erstellt"
+    },
+    "run": {
+      "startedAt": "Gestartet",
+      "sent": "Gesendet",
+      "failed": "Fehlgeschlagen",
+      "skipped": "Übersprungen"
+    },
+    "form": {
+      "name": "Name",
+      "description": "Beschreibung",
+      "template": "E-Mail-Vorlage",
+      "selectTemplate": "Vorlage auswählen…",
+      "trigger": "Auslöser",
+      "offsetDays": "Tage vorher",
+      "recipients": "Empfänger",
+      "segment": "Segment",
+      "selectSegment": "Segment auswählen…",
+      "consentFilter": "Einwilligungs-Filter",
+      "noConsentFilter": "Kein Filter"
+    },
+    "trigger": {
+      "MemberJoined": "Mitglied beigetreten",
+      "EventUpcoming": "Event steht bevor",
+      "MembershipRenewalDue": "Verlängerung fällig",
+      "Scheduled": "Geplant (wiederkehrend)",
+      "Manual": "Manuell"
+    },
+    "triggerLabel": {
+      "memberJoined": "Bei Beitritt",
+      "eventUpcoming": "{days} Tage vor Event",
+      "membershipRenewalDue": "{days} Tage vor Verlängerung",
+      "scheduled": "Geplant (wiederkehrend)",
+      "manual": "Manuell"
+    },
+    "segment": {
+      "AllActiveMembers": "Alle aktiven Mitglieder",
+      "NewsletterSubscribers": "Newsletter-Abonnenten",
+      "MemberSegment": "Mitglieder-Segment",
+      "Custom": "Benutzerdefiniert",
+      "Manual": "Manuell ausgewählt",
+      "EventParticipants": "Event-Teilnehmer"
+    },
+    "consent": {
+      "Newsletter": "Newsletter",
+      "EventNotifications": "Event-Benachrichtigungen",
+      "Marketing": "Marketing",
+      "DataProcessing": "Datenverarbeitung",
+      "PhotoUsage": "Fotonutzung"
+    },
+    "validation": {
+      "nameRequired": "Name ist erforderlich",
+      "templateRequired": "Bitte eine Vorlage auswählen",
+      "offsetRequired": "Dieser Auslöser benötigt eine nicht-negative Tagesangabe",
+      "segmentRequired": "Bitte ein Segment auswählen"
+    }
   }
 }
